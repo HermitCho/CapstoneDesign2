@@ -1574,6 +1574,37 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 301849918}
   m_CullTransparentMesh: 1
+--- !u!1 &406270166
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 406270167}
+  m_Layer: 0
+  m_Name: Fire  Position
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &406270167
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 406270166}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0.54}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 696530321}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &411398328
 GameObject:
   m_ObjectHideFlags: 0
@@ -2587,6 +2618,7 @@ GameObject:
   - component: {fileID: 696530324}
   - component: {fileID: 696530323}
   - component: {fileID: 696530322}
+  - component: {fileID: 696530325}
   m_Layer: 0
   m_Name: Test Gun
   m_TagString: Untagged
@@ -2606,7 +2638,8 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0.518}
   m_LocalScale: {x: 0.3, y: 0.3, z: 0.3}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 406270167}
   m_Father: {fileID: 1892993444}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!135 &696530322
@@ -2680,6 +2713,25 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 696530320}
   m_Mesh: {fileID: 10207, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &696530325
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 696530320}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 34eecfcda6d9b2d4a99cff7a890cc70d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  gunData: {fileID: 11400000, guid: eee8c8cefcd18f347a6197c178d25ce0, type: 2}
+  muzzleFlashEffect: {fileID: 0}
+  shellEjectEffect: {fileID: 0}
+  magAmmo: 0
+  mainCamera: {fileID: 679747426}
+  fireTransform: {fileID: 406270167}
+  aimPointUI: {fileID: 217245343}
 --- !u!1 &730395900
 GameObject:
   m_ObjectHideFlags: 0
@@ -5948,6 +6000,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 26afeac3d39d01e45bf1aa978d2ae552, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  gun: {fileID: 696530325}
 --- !u!1 &1937815905
 GameObject:
   m_ObjectHideFlags: 0
