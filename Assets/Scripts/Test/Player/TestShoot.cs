@@ -11,16 +11,25 @@ public class TestShoot : MonoBehaviour
     {
         InputManager.OnShootPressed += OnShootInput;
         InputManager.OnShootCanceledPressed += OnShootCanceledInput;
+
+        InputManager.OnZoomPressed += OnZoomPressed;
+        InputManager.OnZoomCanceledPressed += OnZoomPressedCanceled;
+
+
     }
 
     void OnDisable()
     {
         InputManager.OnShootPressed -= OnShootInput;
         InputManager.OnShootCanceledPressed -= OnShootCanceledInput;
+
+        InputManager.OnZoomPressed -= OnZoomPressed;
+        InputManager.OnZoomCanceledPressed -= OnZoomPressedCanceled;
+
     }
 
 
-
+    #region 총 발사 관련 함수 - 줌 X
     void OnShootInput()
     {
         Debug.Log("총 발사");
@@ -30,4 +39,19 @@ public class TestShoot : MonoBehaviour
     {
         Debug.Log("총 발사 취소");
     }
+    #endregion
+
+
+
+    #region 총 발사 관련 함수 - 줌 O
+    void OnZoomPressed()
+    {
+        Debug.Log("줌 버튼 눌림");
+    }
+
+    void OnZoomPressedCanceled()
+    {
+        Debug.Log("줌 버튼 취소");
+    }
+    #endregion
 }

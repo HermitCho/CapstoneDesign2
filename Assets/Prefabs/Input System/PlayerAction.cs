@@ -293,6 +293,34 @@ public partial class @PlayerAction: IInputActionCollection2, IDisposable
                     ""isPartOfComposite"": false
                 }
             ]
+        },
+        {
+            ""name"": ""Test"",
+            ""id"": ""37937b81-5c35-4bbd-9cc7-4145149496cb"",
+            ""actions"": [
+                {
+                    ""name"": ""test"",
+                    ""type"": ""Button"",
+                    ""id"": ""a6272687-1d05-44f7-960c-f3d690f4cbd3"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                }
+            ],
+            ""bindings"": [
+                {
+                    ""name"": """",
+                    ""id"": ""aaedb2a2-36d4-4420-b82e-66f1a4d1dc09"",
+                    ""path"": ""<Keyboard>/p"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""test"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                }
+            ]
         }
     ],
     ""controlSchemes"": [
@@ -328,12 +356,16 @@ public partial class @PlayerAction: IInputActionCollection2, IDisposable
         // UI
         m_UI = asset.FindActionMap("UI", throwIfNotFound: true);
         m_UI_ItemUI = m_UI.FindAction("ItemUI", throwIfNotFound: true);
+        // Test
+        m_Test = asset.FindActionMap("Test", throwIfNotFound: true);
+        m_Test_test = m_Test.FindAction("test", throwIfNotFound: true);
     }
 
     ~@PlayerAction()
     {
         UnityEngine.Debug.Assert(!m_Player.enabled, "This will cause a leak and performance issues, PlayerAction.Player.Disable() has not been called.");
         UnityEngine.Debug.Assert(!m_UI.enabled, "This will cause a leak and performance issues, PlayerAction.UI.Disable() has not been called.");
+        UnityEngine.Debug.Assert(!m_Test.enabled, "This will cause a leak and performance issues, PlayerAction.Test.Disable() has not been called.");
     }
 
     public void Dispose()
@@ -547,6 +579,52 @@ public partial class @PlayerAction: IInputActionCollection2, IDisposable
         }
     }
     public UIActions @UI => new UIActions(this);
+
+    // Test
+    private readonly InputActionMap m_Test;
+    private List<ITestActions> m_TestActionsCallbackInterfaces = new List<ITestActions>();
+    private readonly InputAction m_Test_test;
+    public struct TestActions
+    {
+        private @PlayerAction m_Wrapper;
+        public TestActions(@PlayerAction wrapper) { m_Wrapper = wrapper; }
+        public InputAction @test => m_Wrapper.m_Test_test;
+        public InputActionMap Get() { return m_Wrapper.m_Test; }
+        public void Enable() { Get().Enable(); }
+        public void Disable() { Get().Disable(); }
+        public bool enabled => Get().enabled;
+        public static implicit operator InputActionMap(TestActions set) { return set.Get(); }
+        public void AddCallbacks(ITestActions instance)
+        {
+            if (instance == null || m_Wrapper.m_TestActionsCallbackInterfaces.Contains(instance)) return;
+            m_Wrapper.m_TestActionsCallbackInterfaces.Add(instance);
+            @test.started += instance.OnTest;
+            @test.performed += instance.OnTest;
+            @test.canceled += instance.OnTest;
+        }
+
+        private void UnregisterCallbacks(ITestActions instance)
+        {
+            @test.started -= instance.OnTest;
+            @test.performed -= instance.OnTest;
+            @test.canceled -= instance.OnTest;
+        }
+
+        public void RemoveCallbacks(ITestActions instance)
+        {
+            if (m_Wrapper.m_TestActionsCallbackInterfaces.Remove(instance))
+                UnregisterCallbacks(instance);
+        }
+
+        public void SetCallbacks(ITestActions instance)
+        {
+            foreach (var item in m_Wrapper.m_TestActionsCallbackInterfaces)
+                UnregisterCallbacks(item);
+            m_Wrapper.m_TestActionsCallbackInterfaces.Clear();
+            AddCallbacks(instance);
+        }
+    }
+    public TestActions @Test => new TestActions(this);
     private int m_PCSchemeIndex = -1;
     public InputControlScheme PCScheme
     {
@@ -571,5 +649,9 @@ public partial class @PlayerAction: IInputActionCollection2, IDisposable
     public interface IUIActions
     {
         void OnItemUI(InputAction.CallbackContext context);
+    }
+    public interface ITestActions
+    {
+        void OnTest(InputAction.CallbackContext context);
     }
 }

@@ -17,6 +17,9 @@ public class InputManager : MonoBehaviour
     private bool itemUIPressed;
     private bool zoomPressed; 
     private bool shootPressed;
+
+
+    private bool isTest;
     
     
     // 이벤트들 (다른 스크립트들이 구독)
@@ -32,6 +35,9 @@ public class InputManager : MonoBehaviour
     public static event Action OnZoomCanceledPressed;
     public static event Action OnShootPressed;
     public static event Action OnShootCanceledPressed;
+
+    //테스트 버튼 삭제필요
+    public static event Action OnTestPressed;
     
     // 현재 입력 값들 (다른 스크립트들이 읽기용)
     public static Vector2 MoveInput { get; private set; }
@@ -43,6 +49,9 @@ public class InputManager : MonoBehaviour
     public static bool ItemUIPressed { get; private set; }
     public static bool ZoomPressed { get; private set; }
     public static bool ShootPressed { get; private set; }
+
+    //테스트 버튼 삭제필요
+    public static bool TestPressed { get; private set; }
     
     void Awake()
     {
@@ -96,6 +105,17 @@ public class InputManager : MonoBehaviour
         {
             Debug.LogError($"UI actions 등록 실패: {e.Message}");
         }
+
+        //테스트 버튼 삭제필요
+        try
+        {
+            playerAction.Test.test.performed += OnTest;
+            Debug.Log("Test actions이 등록되었습니다.");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"Test actions 등록 실패: {e.Message}");
+        }
     }
     
     void OnDisable()
@@ -136,7 +156,32 @@ public class InputManager : MonoBehaviour
         {
             Debug.LogError($"UI actions 해제 실패: {e.Message}");
         }
+
+        //테스트 버튼 삭제필요
+        try
+        {
+            playerAction.Test.test.performed -= OnTest;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"Test actions 해제 실패: {e.Message}");
+        }
     }
+
+    //테스트 버튼 삭제필요
+    void OnTest(InputAction.CallbackContext context)
+    {
+        isTest = context.performed;
+        TestPressed = isTest;
+
+        if (isTest)
+        {
+            OnTestPressed?.Invoke();
+
+            Debug.Log("Test 버튼 눌림");
+        }
+    }
+
 
     
     // 이동 입력 처리
