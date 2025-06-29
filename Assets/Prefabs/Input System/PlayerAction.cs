@@ -116,15 +116,6 @@ public partial class @PlayerAction: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
-                },
-                {
-                    ""name"": ""Dead"",
-                    ""type"": ""Value"",
-                    ""id"": ""c333b548-0d70-467b-857d-79e520a7d2ac"",
-                    ""expectedControlType"": ""Analog"",
-                    ""processors"": """",
-                    ""interactions"": """",
-                    ""initialStateCheck"": true
                 }
             ],
             ""bindings"": [
@@ -292,17 +283,6 @@ public partial class @PlayerAction: IInputActionCollection2, IDisposable
                     ""action"": ""Reload"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
-                },
-                {
-                    ""name"": """",
-                    ""id"": ""589d5aa2-c714-4e04-9b4e-de8041615963"",
-                    ""path"": """",
-                    ""interactions"": """",
-                    ""processors"": """",
-                    ""groups"": """",
-                    ""action"": ""Dead"",
-                    ""isComposite"": false,
-                    ""isPartOfComposite"": false
                 }
             ]
         },
@@ -366,7 +346,6 @@ public partial class @PlayerAction: IInputActionCollection2, IDisposable
         m_Player_Zoom = m_Player.FindAction("Zoom", throwIfNotFound: true);
         m_Player_Shoot = m_Player.FindAction("Shoot", throwIfNotFound: true);
         m_Player_Reload = m_Player.FindAction("Reload", throwIfNotFound: true);
-        m_Player_Dead = m_Player.FindAction("Dead", throwIfNotFound: true);
         // UI
         m_UI = asset.FindActionMap("UI", throwIfNotFound: true);
         m_UI_ItemUI = m_UI.FindAction("ItemUI", throwIfNotFound: true);
@@ -447,7 +426,6 @@ public partial class @PlayerAction: IInputActionCollection2, IDisposable
     private readonly InputAction m_Player_Zoom;
     private readonly InputAction m_Player_Shoot;
     private readonly InputAction m_Player_Reload;
-    private readonly InputAction m_Player_Dead;
     public struct PlayerActions
     {
         private @PlayerAction m_Wrapper;
@@ -462,7 +440,6 @@ public partial class @PlayerAction: IInputActionCollection2, IDisposable
         public InputAction @Zoom => m_Wrapper.m_Player_Zoom;
         public InputAction @Shoot => m_Wrapper.m_Player_Shoot;
         public InputAction @Reload => m_Wrapper.m_Player_Reload;
-        public InputAction @Dead => m_Wrapper.m_Player_Dead;
         public InputActionMap Get() { return m_Wrapper.m_Player; }
         public void Enable() { Get().Enable(); }
         public void Disable() { Get().Disable(); }
@@ -502,9 +479,6 @@ public partial class @PlayerAction: IInputActionCollection2, IDisposable
             @Reload.started += instance.OnReload;
             @Reload.performed += instance.OnReload;
             @Reload.canceled += instance.OnReload;
-            @Dead.started += instance.OnDead;
-            @Dead.performed += instance.OnDead;
-            @Dead.canceled += instance.OnDead;
         }
 
         private void UnregisterCallbacks(IPlayerActions instance)
@@ -539,9 +513,6 @@ public partial class @PlayerAction: IInputActionCollection2, IDisposable
             @Reload.started -= instance.OnReload;
             @Reload.performed -= instance.OnReload;
             @Reload.canceled -= instance.OnReload;
-            @Dead.started -= instance.OnDead;
-            @Dead.performed -= instance.OnDead;
-            @Dead.canceled -= instance.OnDead;
         }
 
         public void RemoveCallbacks(IPlayerActions instance)
@@ -626,7 +597,6 @@ public partial class @PlayerAction: IInputActionCollection2, IDisposable
         void OnZoom(InputAction.CallbackContext context);
         void OnShoot(InputAction.CallbackContext context);
         void OnReload(InputAction.CallbackContext context);
-        void OnDead(InputAction.CallbackContext context);
     }
     public interface IUIActions
     {

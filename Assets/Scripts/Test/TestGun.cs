@@ -2,113 +2,225 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// 총기 시스템을 관리하는 클래스
+/// 발사, 재장전, 조준, 효과 재생 등의 기능을 담당
+/// </summary>
 public class TestGun : MonoBehaviour
 {
-    public enum State
+    #region Enums
+
+    /// <summary>
+    /// 총기의 현재 상태를 나타내는 열거형
+    /// </summary>
+    public enum GunState
     {
         Ready,       // 발사 준비 완료
         Empty,       // 탄창이 빔
         Reloading    // 재장전 중
     }
-    public State state { get; set; } // 현재 총의 상태
-    public GunData gunData;                      // 총의 데이터 기본값
 
-    [Header("총 효과")]
-    public ParticleSystem muzzleFlashEffect; // 총구 화염 효과
-    public ParticleSystem shellEjectEffect;  // 탄피 배출 효과
-    protected AudioSource gunAudioPlayer;        // 총 소리를 재생할 오디오 소스
+    #endregion
 
-    [Header("해당 스크립트가 가진 현재 총 정보")]
-    protected bool isShot;
-    [HideInInspector] public int magAmmo;    // 현재 탄창에 남아있는 총알 수
-    protected float lastFireTime;              // 마지막으로 총을 발사한 시각
+    #region Serialized Fields
 
-    [Header("총알 적중 관련 요소")]
-    public Camera mainCamera;
-    public Transform fireTransform; // 총알이 발사될 위치
-    public RectTransform aimPointUI; // UI상의 조준점
-    public bool shouldering; //견착 상태 확인
+    [Header("Gun Configuration")]
+    [SerializeField] private GunData gunData;
 
+    [Header("Visual Effects")]
+    [SerializeField] private ParticleSystem muzzleFlashEffect;
+    [SerializeField] private ParticleSystem shellEjectEffect;
 
-    // 컴포넌트 초기화
-    protected void Awake()
+    [Header("Aiming System")]
+    [SerializeField] private Camera mainCamera;
+    [SerializeField] private Transform fireTransform;
+    [SerializeField] private RectTransform aimPointUI;
+
+    #endregion
+
+    #region Properties
+
+    /// <summary>
+    /// 현재 총기의 상태
+    /// </summary>
+    public GunState CurrentState { get; private set; }
+
+    /// <summary>
+    /// 현재 탄창에 남아있는 총알 수
+    /// </summary>
+    [HideInInspector] public int CurrentMagAmmo { get; private set; }
+
+    /// <summary>
+    /// 견착 상태 여부
+    /// </summary>
+    public bool IsShouldering { get; private set; }
+
+    #endregion
+
+    #region Private Fields
+
+    private AudioSource gunAudioPlayer;
+    private bool isFiring;
+    private float lastFireTime;
+
+    #endregion
+
+    #region Unity Lifecycle
+
+    /// <summary>
+    /// 컴포넌트 초기화
+    /// </summary>
+    protected virtual void Awake()
+    {
+        InitializeComponents();
+    }
+
+    /// <summary>
+    /// 총기 활성화 시 초기화
+    /// </summary>
+    protected virtual void OnEnable()
+    {
+        InitializeGunState();
+    }
+
+    /// <summary>
+    /// 총기 비활성화 시 상태 변경
+    /// </summary>
+    protected virtual void OnDisable()
+    {
+        CurrentState = GunState.Empty;
+    }
+
+    /// <summary>
+    /// 매 프레임 업데이트
+    /// </summary>
+    private void Update()
+    {
+        if (isFiring)
+        {
+            ProcessFiring();
+        }
+    }
+
+    #endregion
+
+    #region Initialization
+
+    /// <summary>
+    /// 컴포넌트들을 초기화합니다.
+    /// </summary>
+    private void InitializeComponents()
     {
         gunAudioPlayer = GetComponent<AudioSource>();
     }
 
-    // 총 활성화 시 초기화
-    protected void OnEnable()
+    /// <summary>
+    /// 총기 상태를 초기화합니다.
+    /// </summary>
+    private void InitializeGunState()
     {
-        isShot = false;
-        magAmmo = gunData.currentAmmo;      // 탄창을 가득 채움
-        state = State.Ready;                // 상태를 준비 완료로 설정
-        lastFireTime = 0;                   // 마지막 발사 시각 초기화
-        shouldering = false;
+        isFiring = false;
+        CurrentMagAmmo = gunData.currentAmmo;
+        CurrentState = GunState.Ready;
+        lastFireTime = 0f;
+        IsShouldering = false;
     }
 
-    protected void OnDisable()
+    #endregion
+
+    #region Input Handling
+
+    /// <summary>
+    /// 발사 입력을 처리합니다.
+    /// </summary>
+    /// <param name="shouldFire">발사 여부</param>
+    public void InputFire(bool shouldFire)
     {
-        state = State.Empty; // 비활성화 시 상태를 Empty로
+        isFiring = shouldFire;
     }
 
-    public void InputFire(bool inputBool)
+    #endregion
+
+    #region Firing System
+
+    /// <summary>
+    /// 발사 처리를 수행합니다.
+    /// </summary>
+    private void ProcessFiring()
     {
-        Debug.Log(inputBool);
-        isShot = inputBool;
+        Vector3 targetPosition = CalculateShotTarget();
+        FireAtWorldPoint(targetPosition);
     }
 
-    void Update()
+    /// <summary>
+    /// 조준점을 기반으로 발사 목표점을 계산합니다.
+    /// </summary>
+    /// <returns>발사할 월드 좌표</returns>
+    private Vector3 CalculateShotTarget()
     {
-        Debug.Log(isShot);
-        if (isShot)
-            SetShotPoint();
+        Vector3 screenPoint = GetScreenPoint();
+        ApplyRecoilOffset(ref screenPoint);
+        
+        return GetWorldPositionFromScreen(screenPoint);
     }
 
-    //조준점을 월드 좌표에 맞추기
-    void SetShotPoint()
+    /// <summary>
+    /// UI 조준점을 스크린 좌표로 변환합니다.
+    /// </summary>
+    /// <returns>스크린 좌표</returns>
+    private Vector3 GetScreenPoint()
     {
-        Vector3 screenPoint;
         if (aimPointUI != null)
         {
-            // UI 좌표 → 스크린 좌표
+            // UI 좌표 → 월드 좌표 → 스크린 좌표
             RectTransformUtility.ScreenPointToWorldPointInRectangle(
                 aimPointUI, aimPointUI.position, mainCamera, out Vector3 worldPoint);
-            screenPoint = mainCamera.WorldToScreenPoint(worldPoint);
+            return mainCamera.WorldToScreenPoint(worldPoint);
         }
-        else
-        {
-            // 화면 중앙
-            screenPoint = new Vector3(Screen.width / 2, Screen.height / 2, 0);
-        }
-
-        // 원형 랜덤 오프셋 추가 (조준점 주변에서 랜덤하게)
-        float randomRadius = 20f; // 픽셀 단위 반지름
-        Vector2 randomOffset = Random.insideUnitCircle * randomRadius;
-        if(!shouldering)
-            screenPoint += new Vector3(randomOffset.x, randomOffset.y, 0);
-
-        // 스크린 좌표에서 ray 생성
-        Ray ray = mainCamera.ScreenPointToRay(screenPoint);
-        RaycastHit hit;
-        Vector3 hitPosition;
-        if (Physics.Raycast(ray, out hit, gunData.range))
-        {
-            hitPosition = hit.point;
-        }
-        else
-        {
-            // 충돌이 없으면 최대 사거리로
-            hitPosition = ray.origin + ray.direction * gunData.range;
-        }
-
-        // 총구에서 hitPosition까지 궤적
-        FireAtWorldPoint(hitPosition);
+        
+        // UI 조준점이 없으면 화면 중앙 사용
+        return new Vector3(Screen.width * 0.5f, Screen.height * 0.5f, 0f);
     }
 
-    //월드 좌표로 발사 명령 전달
+    /// <summary>
+    /// 견착 상태에 따른 반동 오프셋을 적용합니다.
+    /// </summary>
+    /// <param name="screenPoint">스크린 좌표 (참조로 수정)</param>
+    private void ApplyRecoilOffset(ref Vector3 screenPoint)
+    {
+        if (!IsShouldering)
+        {
+            const float randomRadius = 20f; // 픽셀 단위 반지름
+            Vector2 randomOffset = Random.insideUnitCircle * randomRadius;
+            screenPoint += new Vector3(randomOffset.x, randomOffset.y, 0f);
+        }
+    }
+
+    /// <summary>
+    /// 스크린 좌표를 월드 좌표로 변환합니다.
+    /// </summary>
+    /// <param name="screenPoint">스크린 좌표</param>
+    /// <returns>월드 좌표</returns>
+    private Vector3 GetWorldPositionFromScreen(Vector3 screenPoint)
+    {
+        Ray ray = mainCamera.ScreenPointToRay(screenPoint);
+        
+        if (Physics.Raycast(ray, out RaycastHit hit, gunData.range))
+        {
+            return hit.point;
+        }
+        
+        // 충돌이 없으면 최대 사거리로
+        return ray.origin + ray.direction * gunData.range;
+    }
+
+    /// <summary>
+    /// 지정된 월드 좌표로 발사합니다.
+    /// </summary>
+    /// <param name="worldPoint">발사할 월드 좌표</param>
     public void FireAtWorldPoint(Vector3 worldPoint)
     {
-        if (state == State.Ready && (Time.time >= lastFireTime + gunData.fireRate))
+        if (CanFire())
         {
             lastFireTime = Time.time;
             Vector3 direction = (worldPoint - fireTransform.position).normalized;
@@ -116,101 +228,231 @@ public class TestGun : MonoBehaviour
         }
     }
 
-    // Shot 오버로드 추가 (끝점 지정)
+    /// <summary>
+    /// 발사 가능한지 확인합니다.
+    /// </summary>
+    /// <returns>발사 가능 여부</returns>
+    private bool CanFire()
+    {
+        return CurrentState == GunState.Ready && 
+               Time.time >= lastFireTime + gunData.fireRate;
+    }
+
+    /// <summary>
+    /// 실제 발사를 수행합니다.
+    /// </summary>
+    /// <param name="shootDirection">발사 방향</param>
+    /// <param name="hitPosition">목표 위치</param>
     protected virtual void Shot(Vector3 shootDirection, Vector3 hitPosition)
     {
         for (int i = 0; i < gunData.pelletCount; i++)
         {
-            //샷건의 경우 퍼짐 적용
-            Vector3 direction = shootDirection;
-            if (gunData.spreadAngle > 0)
-            {
-                direction = Quaternion.Euler(
-                    Random.Range(-gunData.spreadAngle, gunData.spreadAngle),
-                    Random.Range(-gunData.spreadAngle, gunData.spreadAngle),
-                    0f
-                ) * direction;
-            }
-
-            Vector3 pelletHitPosition = fireTransform.position + direction * gunData.range;
-            RaycastHit hit;
-            if (Physics.Raycast(fireTransform.position, direction, out hit, gunData.range))
-            {
-                pelletHitPosition = hit.point;
-                IDamageable target = hit.collider.GetComponent<IDamageable>();
-                if (target != null)
-                {
-                    target.OnDamage(gunData.damage, hit.point, hit.normal);
-                }
-            }
-            else
-            {
-                // 첫 펠릿은 지정된 hitPosition 사용
-                if (i == 0)
-                    pelletHitPosition = hitPosition;
-            }
+            Vector3 pelletDirection = CalculatePelletDirection(shootDirection, i);
+            Vector3 pelletHitPosition = CalculatePelletHitPosition(pelletDirection, hitPosition, i);
+            
+            ProcessPelletHit(pelletDirection);
             StartCoroutine(ShotEffect(fireTransform.position, pelletHitPosition));
         }
-        magAmmo--;
-        if (magAmmo <= 0)
-            state = State.Empty;
+        
+        ConsumeAmmo();
     }
 
-    //발사 효과 코루틴 (총구 화염, 탄피, 궤적, 사운드)
-    //start와 end 위치를 매개변수로 받아서 동적으로 LineRenderer를 생성합니다.
+    /// <summary>
+    /// 개별 펠릿의 방향을 계산합니다.
+    /// </summary>
+    /// <param name="baseDirection">기본 발사 방향</param>
+    /// <param name="pelletIndex">펠릿 인덱스</param>
+    /// <returns>펠릿 방향</returns>
+    private Vector3 CalculatePelletDirection(Vector3 baseDirection, int pelletIndex)
+    {
+        if (gunData.spreadAngle <= 0f)
+        {
+            return baseDirection;
+        }
+
+        return Quaternion.Euler(
+            Random.Range(-gunData.spreadAngle, gunData.spreadAngle),
+            Random.Range(-gunData.spreadAngle, gunData.spreadAngle),
+            0f
+        ) * baseDirection;
+    }
+
+    /// <summary>
+    /// 펠릿의 충돌 위치를 계산합니다.
+    /// </summary>
+    /// <param name="direction">펠릿 방향</param>
+    /// <param name="defaultHitPosition">기본 충돌 위치</param>
+    /// <param name="pelletIndex">펠릿 인덱스</param>
+    /// <returns>충돌 위치</returns>
+    private Vector3 CalculatePelletHitPosition(Vector3 direction, Vector3 defaultHitPosition, int pelletIndex)
+    {
+        if (Physics.Raycast(fireTransform.position, direction, out RaycastHit hit, gunData.range))
+        {
+            return hit.point;
+        }
+        
+        // 첫 번째 펠릿은 지정된 위치 사용, 나머지는 방향 기반 계산
+        return pelletIndex == 0 ? defaultHitPosition : fireTransform.position + direction * gunData.range;
+    }
+
+    /// <summary>
+    /// 펠릿의 충돌을 처리합니다.
+    /// </summary>
+    /// <param name="direction">펠릿 방향</param>
+    private void ProcessPelletHit(Vector3 direction)
+    {
+        if (Physics.Raycast(fireTransform.position, direction, out RaycastHit hit, gunData.range))
+        {
+            IDamageable target = hit.collider.GetComponent<IDamageable>();
+            target?.OnDamage(gunData.damage, hit.point, hit.normal);
+        }
+    }
+
+    /// <summary>
+    /// 탄약을 소모합니다.
+    /// </summary>
+    private void ConsumeAmmo()
+    {
+        CurrentMagAmmo--;
+        if (CurrentMagAmmo <= 0)
+        {
+            CurrentState = GunState.Empty;
+        }
+    }
+
+    #endregion
+
+    #region Visual Effects
+
+    /// <summary>
+    /// 발사 효과를 재생합니다.
+    /// </summary>
+    /// <param name="start">시작 위치</param>
+    /// <param name="end">끝 위치</param>
+    /// <returns>코루틴</returns>
     protected virtual IEnumerator ShotEffect(Vector3 start, Vector3 end)
     {
-        // 총구 화염 및 탄피 배출은 한 번의 발사에 한 번만 재생
-        // (펠릿마다 반복되면 과함)
-        if (muzzleFlashEffect != null && !muzzleFlashEffect.isPlaying)
-            muzzleFlashEffect.Play();
-        if (shellEjectEffect != null && !shellEjectEffect.isPlaying)
-            shellEjectEffect.Play();
-        if (gunAudioPlayer != null && gunData.shotClip != null)
-            gunAudioPlayer.PlayOneShot(gunData.shotClip);
-
-        // 새로운 LineRenderer 오브젝트 생성 (펠릿당 하나)
-        GameObject lineObj = new GameObject("PelletTrail");
-        LineRenderer line = lineObj.AddComponent<LineRenderer>();
-
-        line.positionCount = 2;
-        // GunData에서 라인 렌더러 속성을 가져와 설정
-        line.material = gunData.bulletTrailMaterial;
-        line.startWidth = gunData.bulletTrailStartWidth;
-        line.endWidth = gunData.bulletTrailEndWidth;
-        line.useWorldSpace = true; // 월드 공간에서 궤적을 그림
-
-        line.SetPosition(0, start);
-        line.SetPosition(1, end);
-
-        yield return new WaitForSeconds(gunData.bulletTrailDuration); // 궤적 유지 시간
-
-        Destroy(lineObj); // 궤적 오브젝트 제거
+        PlayMuzzleEffects();
+        PlayAudioEffect();
+        
+        GameObject trailObject = CreateBulletTrail(start, end);
+        
+        yield return new WaitForSeconds(gunData.bulletTrailDuration);
+        
+        Destroy(trailObject);
     }
 
+    /// <summary>
+    /// 총구 효과를 재생합니다.
+    /// </summary>
+    private void PlayMuzzleEffects()
+    {
+        if (muzzleFlashEffect != null && !muzzleFlashEffect.isPlaying)
+        {
+            muzzleFlashEffect.Play();
+        }
+        
+        if (shellEjectEffect != null && !shellEjectEffect.isPlaying)
+        {
+            shellEjectEffect.Play();
+        }
+    }
+
+    /// <summary>
+    /// 발사 사운드를 재생합니다.
+    /// </summary>
+    private void PlayAudioEffect()
+    {
+        if (gunAudioPlayer != null && gunData.shotClip != null)
+        {
+            gunAudioPlayer.PlayOneShot(gunData.shotClip);
+        }
+    }
+
+    /// <summary>
+    /// 총알 궤적을 생성합니다.
+    /// </summary>
+    /// <param name="start">시작 위치</param>
+    /// <param name="end">끝 위치</param>
+    /// <returns>궤적 오브젝트</returns>
+    private GameObject CreateBulletTrail(Vector3 start, Vector3 end)
+    {
+        GameObject trailObject = new GameObject("BulletTrail");
+        LineRenderer lineRenderer = trailObject.AddComponent<LineRenderer>();
+        
+        ConfigureLineRenderer(lineRenderer);
+        lineRenderer.SetPosition(0, start);
+        lineRenderer.SetPosition(1, end);
+        
+        return trailObject;
+    }
+
+    /// <summary>
+    /// 라인 렌더러를 설정합니다.
+    /// </summary>
+    /// <param name="lineRenderer">설정할 라인 렌더러</param>
+    private void ConfigureLineRenderer(LineRenderer lineRenderer)
+    {
+        lineRenderer.positionCount = 2;
+        lineRenderer.material = gunData.bulletTrailMaterial;
+        lineRenderer.startWidth = gunData.bulletTrailStartWidth;
+        lineRenderer.endWidth = gunData.bulletTrailEndWidth;
+        lineRenderer.useWorldSpace = true;
+    }
+
+    #endregion
+
+    #region Reload System
+
+    /// <summary>
+    /// 재장전을 시작합니다.
+    /// </summary>
+    /// <returns>재장전 시작 성공 여부</returns>
     public bool Reload()
     {
-        if (state == State.Reloading || magAmmo >= gunData.currentAmmo)
+        if (CurrentState == GunState.Reloading || CurrentMagAmmo >= gunData.currentAmmo)
         {
-            return false; // 이미 재장전 중이거나 탄창이 가득 찼으면 리턴
+            return false;
         }
 
         StartCoroutine(ReloadRoutine());
-        Debug.Log("Reload Time: " + gunData.reloadTime); // 리로드 시간 디버깅
         return true;
     }
 
-    // 재장전 처리 루틴
-    protected IEnumerator ReloadRoutine()
+    /// <summary>
+    /// 재장전 루틴을 수행합니다.
+    /// </summary>
+    /// <returns>코루틴</returns>
+    protected virtual IEnumerator ReloadRoutine()
     {
-        state = State.Reloading;
-        if (gunAudioPlayer != null && gunData.reloadClip != null)
-            gunAudioPlayer.PlayOneShot(gunData.reloadClip); // 재장전 소리
-
-        yield return new WaitForSeconds(gunData.reloadTime); // 리로드 대기
-
-        magAmmo = gunData.maxAmmo; // 탄창을 가득 채움
-
-        state = State.Ready; // 상태를 준비 완료로 변경
+        CurrentState = GunState.Reloading;
+        
+        PlayReloadSound();
+        
+        yield return new WaitForSeconds(gunData.reloadTime);
+        
+        CompleteReload();
     }
+
+    /// <summary>
+    /// 재장전 사운드를 재생합니다.
+    /// </summary>
+    private void PlayReloadSound()
+    {
+        if (gunAudioPlayer != null && gunData.reloadClip != null)
+        {
+            gunAudioPlayer.PlayOneShot(gunData.reloadClip);
+        }
+    }
+
+    /// <summary>
+    /// 재장전을 완료합니다.
+    /// </summary>
+    private void CompleteReload()
+    {
+        CurrentMagAmmo = gunData.maxAmmo;
+        CurrentState = GunState.Ready;
+    }
+
+    #endregion
 }
