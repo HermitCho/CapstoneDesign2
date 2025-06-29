@@ -4,27 +4,33 @@ using UnityEngine;
 
 public class TestTeddyBear : MonoBehaviour
 {
-    [Header("테디베어 부착 위치")]
-    [Tooltip("플레이어 앞에 부착될 위치 오프셋")]
-    [SerializeField] private Vector3 attachOffset = new Vector3(0f, 1f, 1f);
-    
-    [Tooltip("부착 시 회전값")]
-    [SerializeField] private Vector3 attachRotation = new Vector3(0f, 0f, 0f);
 
+    private DataBase.TeddyBearData teddyBearData;
     private Collider colliderTeddyBear;
-    private bool isAttached = false;
+    private Rigidbody teddyRigidbody;
+    
+    //테디베어 부착 관련 변수
     private Transform playerTransform;
     private Vector3 originalPosition;
     private Quaternion originalRotation;
     private Transform originalParent;
-    private Rigidbody teddyRigidbody;
+   
+
+    //테디베어 발광 상태 확인 변수
+    private bool isGlowing = false;
+    //테디베어 부착 상태 확인 변수
+    private bool isAttached = false;
     
+    void Awake()
+    {
+        teddyBearData = DataBase.Instance.teddyBearData;
+        colliderTeddyBear = GetComponent<Collider>();
+        teddyRigidbody = GetComponent<Rigidbody>();
+    }
+
     // Start is called before the first frame update
     void Start()
     {
-        colliderTeddyBear = GetComponent<Collider>();
-        teddyRigidbody = GetComponent<Rigidbody>();
-        
         // 원본 위치와 회전값 저장
         originalPosition = transform.position;
         originalRotation = transform.rotation;
@@ -56,8 +62,8 @@ public class TestTeddyBear : MonoBehaviour
         transform.SetParent(player);
         
         // 플레이어 앞에 즉시 부착
-        Vector3 targetPosition = player.position + player.forward * attachOffset.z + player.up * attachOffset.y + player.right * attachOffset.x;
-        Quaternion targetRotation = player.rotation * Quaternion.Euler(attachRotation);
+        Vector3 targetPosition = player.position + player.forward * teddyBearData.AttachOffset.z + player.up * teddyBearData.AttachOffset.y + player.right * teddyBearData.AttachOffset.x;
+        Quaternion targetRotation = player.rotation * Quaternion.Euler(teddyBearData.AttachRotation);
         
         // 즉시 위치와 회전 설정
         transform.position = targetPosition;
@@ -77,6 +83,24 @@ public class TestTeddyBear : MonoBehaviour
         }
         
     }
+
+
+
+    //테디베어 자체 발광 메서드
+    void TeddyBearGlowing()
+    {
+        if(isGlowing)
+        {
+
+        }
+    }
+
+
+
+
+
+
+    #region 외부 호출용 메서드 모음
     
     // 외부에서 부착 해제 기능 
     public void DetachFromPlayer()
@@ -108,10 +132,20 @@ public class TestTeddyBear : MonoBehaviour
         playerTransform = null;
         
     }
-    
+
+
+    //아이템 사용 효과 전용 메서드
+    public void TeddyBearGlowingOff()
+    {
+        
+    }
+
+   
     // 현재 부착 상태 확인
     public bool IsAttached()
     {
         return isAttached;
     }
+
+    #endregion
 }
