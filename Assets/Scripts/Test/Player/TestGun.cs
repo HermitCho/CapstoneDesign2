@@ -73,6 +73,7 @@ public class TestGun : MonoBehaviour
     protected virtual void Awake()
     {
         InitializeComponents();
+    
     }
 
     /// <summary>

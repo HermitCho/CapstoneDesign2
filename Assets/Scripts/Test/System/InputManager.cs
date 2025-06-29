@@ -125,6 +125,7 @@ public class InputManager : MonoBehaviour
             playerAction.Player.Zoom.canceled -= OnZoomCanceled;
             playerAction.Player.Shoot.performed -= OnShoot;
             playerAction.Player.Shoot.canceled -= OnShootCanceled;
+            playerAction.Player.Reload.performed -= OnReload;
         }
         catch (System.Exception e)
         {
