@@ -17,10 +17,7 @@ public class InputManager : MonoBehaviour
     private bool itemUIPressed;
     private bool zoomPressed; 
     private bool shootPressed;
-
-
-    private bool isTest;
-    
+    private bool reloadPressed;
     
     // 이벤트들 (다른 스크립트들이 구독)
     public static event Action<Vector2> OnMoveInput;
@@ -35,9 +32,7 @@ public class InputManager : MonoBehaviour
     public static event Action OnZoomCanceledPressed;
     public static event Action OnShootPressed;
     public static event Action OnShootCanceledPressed;
-
-    //테스트 버튼 삭제필요
-    public static event Action OnTestPressed;
+    public static event Action OnReloadPressed;
     
     // 현재 입력 값들 (다른 스크립트들이 읽기용)
     public static Vector2 MoveInput { get; private set; }
@@ -49,9 +44,7 @@ public class InputManager : MonoBehaviour
     public static bool ItemUIPressed { get; private set; }
     public static bool ZoomPressed { get; private set; }
     public static bool ShootPressed { get; private set; }
-
-    //테스트 버튼 삭제필요
-    public static bool TestPressed { get; private set; }
+    public static bool ReloadPressed { get; private set; }
     
     void Awake()
     {
@@ -88,6 +81,8 @@ public class InputManager : MonoBehaviour
             playerAction.Player.Zoom.canceled += OnZoomCanceled;
             playerAction.Player.Shoot.performed += OnShoot;
             playerAction.Player.Shoot.canceled += OnShootCanceled;
+            playerAction.Player.Reload.performed += OnReload;
+
             Debug.Log("Player actions이 등록되었습니다.");
         }
         catch (System.Exception e)
@@ -104,17 +99,6 @@ public class InputManager : MonoBehaviour
         catch (System.Exception e)
         {
             Debug.LogError($"UI actions 등록 실패: {e.Message}");
-        }
-
-        //테스트 버튼 삭제필요
-        try
-        {
-            playerAction.Test.test.performed += OnTest;
-            Debug.Log("Test actions이 등록되었습니다.");
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"Test actions 등록 실패: {e.Message}");
         }
     }
     
@@ -156,32 +140,7 @@ public class InputManager : MonoBehaviour
         {
             Debug.LogError($"UI actions 해제 실패: {e.Message}");
         }
-
-        //테스트 버튼 삭제필요
-        try
-        {
-            playerAction.Test.test.performed -= OnTest;
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"Test actions 해제 실패: {e.Message}");
-        }
     }
-
-    //테스트 버튼 삭제필요
-    void OnTest(InputAction.CallbackContext context)
-    {
-        isTest = context.performed;
-        TestPressed = isTest;
-
-        if (isTest)
-        {
-            OnTestPressed?.Invoke();
-
-            Debug.Log("Test 버튼 눌림");
-        }
-    }
-
 
     
     // 이동 입력 처리
@@ -307,6 +266,7 @@ public class InputManager : MonoBehaviour
         }
     }
 
+    //총 발사 입력 취소 처리
     void OnShootCanceled(InputAction.CallbackContext context)
     {
         shootPressed = false;
@@ -315,4 +275,15 @@ public class InputManager : MonoBehaviour
         OnShootCanceledPressed?.Invoke();
     }
 
+    //총 재장전 입력 처리
+    void OnReload(InputAction.CallbackContext context)
+    {
+        reloadPressed = context.performed;
+        ReloadPressed = reloadPressed;
+
+        if (reloadPressed)
+        {
+            OnReloadPressed?.Invoke();
+        }
+    }
 } 
