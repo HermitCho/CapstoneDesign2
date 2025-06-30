@@ -2250,7 +2250,7 @@ MonoBehaviour:
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 0
-  m_FillAmount: 0.5
+  m_FillAmount: 0.366
   m_FillClockwise: 1
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
@@ -3570,7 +3570,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 50
+  m_text: 37
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 928da2220a0ff5e44aa484bdb0006131, type: 2}
   m_sharedMaterial: {fileID: -7304394381272760782, guid: 928da2220a0ff5e44aa484bdb0006131,
@@ -3905,7 +3905,7 @@ Transform:
   m_GameObject: {fileID: 679747424}
   serializedVersion: 2
   m_LocalRotation: {x: 0.034488056, y: 0.7062653, z: -0.034488056, w: 0.7062652}
-  m_LocalPosition: {x: -58.20065, y: 3.9468246, z: -19.07}
+  m_LocalPosition: {x: -9.51, y: 3.9468246, z: -1.2}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -4674,7 +4674,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 50
+  m_text: 37
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 3c499bda0f839fa40ae8c42951d5779d, type: 2}
   m_sharedMaterial: {fileID: -7304394381272760782, guid: 3c499bda0f839fa40ae8c42951d5779d,
@@ -7781,9 +7781,9 @@ MonoBehaviour:
     zoomMouseSensitivityY: 4
     minVerticalAngle: -20
     maxVerticalAngle: 45
+    rotationSmoothTime: 0
     zoomValue: 2
     zoomDuration: 0.3
-    rotationSmoothTime: 0
     useWallCollisionAvoidance: 1
     cameraFix: 1
     wallAvoidanceSpeed: 5
@@ -7808,6 +7808,18 @@ MonoBehaviour:
   teddyBearData:
     attachOffset: {x: 0, y: 1, z: 1}
     attachRotation: {x: 0, y: 0, z: 0}
+    teddyBearScore: 0
+    initialScore: 1
+    scoreIncreaseRate: 2
+    scoreIncreaseTime: 20
+    scoreGetTick: 2
+    glowingIntensity: 0.5
+    glowingColor: {r: 1, g: 0, b: 0, a: 1}
+    glowingOutlineWidth: 7
+    glowingColorChangeTime: 1
+    canUseItem: 1
+    canUseSkill: 1
+    canUseGun: 0
 --- !u!1 &1510712219
 GameObject:
   m_ObjectHideFlags: 0
@@ -8298,6 +8310,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1526225523}
+  - component: {fileID: 1526225524}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -8320,6 +8333,19 @@ Transform:
   m_Children: []
   m_Father: {fileID: 555623769}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1526225524
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1526225522}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 852b4e20546159448943eb9af0a5f646, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  totalTeddyBearScore: 0
 --- !u!1 &1555737691
 GameObject:
   m_ObjectHideFlags: 0
@@ -9271,7 +9297,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   icon: {fileID: 21300000, guid: cb65f9b175056d74abe83d100aa7e866, type: 3}
-  currentValue: 50
+  currentValue: 36.6
   minValue: 0
   maxValue: 100
   minValueLimit: 0
@@ -9779,7 +9805,7 @@ Transform:
   m_GameObject: {fileID: 1892993439}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: 0.7071068, z: -0, w: 0.7071068}
-  m_LocalPosition: {x: -47.6, y: -1.1929041, z: -28.099998}
+  m_LocalPosition: {x: 8.7, y: -1.1929041, z: -14}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -10480,37 +10506,6 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2086216246}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
---- !u!1 &2100182264
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2100182265}
-  m_Layer: 0
-  m_Name: Tset
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &2100182265
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2100182264}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -5.866684, y: 9.995742, z: 7.546696}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2112008300
 GameObject:
   m_ObjectHideFlags: 0
@@ -10613,4 +10608,3 @@ SceneRoots:
   - {fileID: 1694788182}
   - {fileID: 429585272}
   - {fileID: 730395901}
-  - {fileID: 2100182265}
