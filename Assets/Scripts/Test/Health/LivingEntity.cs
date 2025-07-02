@@ -77,9 +77,9 @@ public class LivingEntity : MonoBehaviour, IDamageable
     /// </summary>
     private void LogDamageInfo(float damage)
     {
-        Debug.Log($"Damage received: {damage}");
-        Debug.Log($"Current Shield: {CurrentShield}");
-        Debug.Log($"Current Health: {CurrentHealth}");
+        // Debug.Log($"Damage received: {damage}");
+        // Debug.Log($"Current Shield: {CurrentShield}");
+        // Debug.Log($"Current Health: {CurrentHealth}");
     }
 
     /// <summary>
@@ -88,19 +88,21 @@ public class LivingEntity : MonoBehaviour, IDamageable
     /// <param name="damage">처리할 데미지량</param>
     private void ProcessDamage(float damage)
     {
-        // 방어막이 데미지를 완전히 흡수할 수 있는 경우
-        if (CurrentShield >= damage)
-        {
-            CurrentShield -= damage;
-            return;
-        }
+        // // 방어막이 데미지를 완전히 흡수할 수 있는 경우
+        // if (CurrentShield >= damage)
+        // {
+        //     CurrentShield -= damage;
+        //     GameManager.Instance.ChangePlayerHealth(-damage);
+        //     return;
+        // }
 
         // 방어막이 부족한 경우
-        float remainingDamage = damage - CurrentShield;
-        CurrentShield = 0f;
+        float remainingDamage = damage;// - CurrentShield;
+        //CurrentShield = 0f;
         
         // 남은 데미지를 체력에 적용
         CurrentHealth = Mathf.Max(0f, CurrentHealth - remainingDamage);
+        GameManager.Instance.ChangePlayerHealth(-remainingDamage);
     }
 
     /// <summary>

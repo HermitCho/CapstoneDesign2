@@ -8,6 +8,7 @@ public class GameManager : Singleton<GameManager>
     [Header("테디베어 점수 관리 - 자동 할당")]
     [SerializeField] private float totalTeddyBearScore = 0f;
     private TestTeddyBear currentTeddyBear;
+<<<<<<< Updated upstream
     
     [Header("게임 시간 관리 - 자동 할당")]
     [SerializeField] private float gameStartTime = 0f;
@@ -19,39 +20,40 @@ public class GameManager : Singleton<GameManager>
     private bool dataBaseCached = false;
     
     
+=======
+
+>>>>>>> Stashed changes
     [Header("플레이어 상태 관리 - 자동 할당")]
     [SerializeField] private float playerHealth = 100f;
     [SerializeField] private float maxPlayerHealth = 100f;
     [SerializeField] private LivingEntity player;
-    
+
     // ✅ UI 시스템을 위한 이벤트들
     // 점수 관련 이벤트
     public static event Action<float> OnScoreUpdated;
     public static event Action<float> OnScoreMultiplierUpdated;
     public static event Action<float> OnGameTimeUpdated;
-    
+
     // 테디베어 관련 이벤트
     public static event Action<bool> OnTeddyBearAttachmentChanged;
     public static event Action<float> OnTeddyBearReattachTimeChanged;
-    
+
     // 플레이어 상태 이벤트
     public static event Action<float, float> OnPlayerHealthChanged; // current, max
-    
+
     // 아이템 UI 이벤트
     public static event Action<bool> OnItemUIToggled;
-    
+
     // 크로스헤어 이벤트
     public static event Action<bool> OnCrosshairTargetingChanged;
-    
+
     // 스킬 이벤트 (구현 예정)
     public static event Action<int> OnSkillUsed;
     public static event Action<int, float> OnSkillCooldownStarted;
-    
+
     void Awake()
     {
-        player = GameObject.FindGameObjectWithTag("Player").GetComponent<LivingEntity>();
-        playerHealth = player.StartingHealth;
-        maxPlayerHealth = player.CurrentHealth;
+
     }
 
     // Start is called before the first frame update
@@ -65,14 +67,17 @@ public class GameManager : Singleton<GameManager>
         
         // 테디베어 찾기
         FindTeddyBear();
+        player = GameObject.FindGameObjectWithTag("Player").GetComponent<LivingEntity>();
+        playerHealth = player.CurrentHealth;
+        maxPlayerHealth = player.StartingHealth;
     }
 
     // Update is called once per frame
     void Update()
     {
-        
+
     }
-    
+
     // 테디베어 찾기
     void FindTeddyBear()
     {
@@ -85,6 +90,7 @@ public class GameManager : Singleton<GameManager>
             }
         }
     }
+<<<<<<< Updated upstream
     
     // DataBase 정보 캐싱 (안전한 접근)
     void CacheDataBaseInfo()
@@ -111,19 +117,31 @@ public class GameManager : Singleton<GameManager>
         }
     }
     
+=======
+
+>>>>>>> Stashed changes
     // 테디베어 점수 업데이트 (TestTeddyBear에서 호출)
     public void UpdateTeddyBearScore(float newScore)
     {
         totalTeddyBearScore = newScore;
-        
+
         // HeatUI에 점수 업데이트 이벤트 발생
         OnScoreUpdated?.Invoke(totalTeddyBearScore);
+<<<<<<< Updated upstream
         
         // 점수 배율도 실시간 계산으로 업데이트
         float currentMultiplier = GetScoreMultiplier();
         OnScoreMultiplierUpdated?.Invoke(currentMultiplier);
+=======
+
+        // 점수 배율도 함께 업데이트
+        if (currentTeddyBear != null)
+        {
+            OnScoreMultiplierUpdated?.Invoke(currentTeddyBear.GetCurrentScoreMultiplier());
+        }
+>>>>>>> Stashed changes
     }
-    
+
     // 현재 테디베어 점수 가져오기
     public float GetTeddyBearScore()
     {
@@ -133,8 +151,13 @@ public class GameManager : Singleton<GameManager>
         }
         return totalTeddyBearScore;
     }
+<<<<<<< Updated upstream
     
     // 현재 점수 배율 가져오기 (실시간 계산)
+=======
+
+    // 현재 점수 배율 가져오기
+>>>>>>> Stashed changes
     public float GetScoreMultiplier()
     {
         // 실시간 게임 시간 기반으로 배율 계산
@@ -156,7 +179,7 @@ public class GameManager : Singleton<GameManager>
         
         return multiplier;
     }
-    
+
     // 게임 시간 가져오기
     public float GetGameTime()
     {
@@ -175,7 +198,7 @@ public class GameManager : Singleton<GameManager>
             return Time.time - gameStartTime;
         }
     }
-    
+
     // 테디베어가 부착되어 있는지 확인
     public bool IsTeddyBearAttached()
     {
@@ -185,7 +208,7 @@ public class GameManager : Singleton<GameManager>
         }
         return false;
     }
-    
+
     // 테디베어 재부착까지 남은 시간 가져오기
     public float GetTimeUntilReattach()
     {
@@ -195,7 +218,7 @@ public class GameManager : Singleton<GameManager>
         }
         return 0f;
     }
-    
+
     // 테디베어 재부착 가능 여부 확인
     public bool CanTeddyBearReattach()
     {
@@ -205,7 +228,7 @@ public class GameManager : Singleton<GameManager>
         }
         return true;
     }
-    
+
     // 점수 초기화 (개발자용)
     public void ResetAllScores()
     {
@@ -217,7 +240,7 @@ public class GameManager : Singleton<GameManager>
         OnScoreUpdated?.Invoke(0f);
         OnScoreMultiplierUpdated?.Invoke(1f);
     }
-    
+
     // ====================================
     // ✅ 안전한 DataBase 정보 접근 메서드들
     // ====================================
@@ -271,7 +294,7 @@ public class GameManager : Singleton<GameManager>
     // ====================================
     // ✅ 플레이어 체력 관리 메서드들
     // ====================================
-    
+
     /// <summary>
     /// 플레이어 체력 설정
     /// </summary>
@@ -280,10 +303,15 @@ public class GameManager : Singleton<GameManager>
         playerHealth = Mathf.Clamp(current, 0f, max);
         maxPlayerHealth = Mathf.Max(max, 1f);
         
+<<<<<<< Updated upstream
         OnPlayerHealthChanged?.Invoke(playerHealth, maxPlayerHealth);
 
+=======
+        Debug.Log($"플레이어 체력 설정: {playerHealth}/{maxPlayerHealth}");
+        OnPlayerHealthChanged?.Invoke(playerHealth, maxPlayerHealth);
+>>>>>>> Stashed changes
     }
-    
+
     /// <summary>
     /// 플레이어 현재 체력만 변경
     /// </summary>
@@ -291,26 +319,27 @@ public class GameManager : Singleton<GameManager>
     {
         SetPlayerHealth(health, maxPlayerHealth);
     }
-    
+
     /// <summary>
     /// 플레이어 체력 변경 (데미지/힐)
     /// </summary>
     public void ChangePlayerHealth(float amount)
     {
+        Debug.Log(amount);
         SetPlayerHealth(playerHealth + amount, maxPlayerHealth);
     }
-    
+
     /// <summary>
     /// 플레이어 체력 정보 가져오기
     /// </summary>
     public float GetPlayerHealth() => playerHealth;
     public float GetMaxPlayerHealth() => maxPlayerHealth;
     public float GetPlayerHealthRatio() => playerHealth / maxPlayerHealth;
-    
+
     // ====================================
     // ✅ 테디베어 상태 이벤트 발생 메서드들
     // ====================================
-    
+
     /// <summary>
     /// 테디베어 부착 상태 변경 알림
     /// </summary>
@@ -319,7 +348,7 @@ public class GameManager : Singleton<GameManager>
         OnTeddyBearAttachmentChanged?.Invoke(isAttached);
  
     }
-    
+
     /// <summary>
     /// 테디베어 재부착 시간 변경 알림
     /// </summary>
@@ -327,7 +356,7 @@ public class GameManager : Singleton<GameManager>
     {
         OnTeddyBearReattachTimeChanged?.Invoke(timeRemaining);
     }
-    
+
     /// <summary>
     /// 게임 시간 업데이트 알림
     /// </summary>
@@ -335,6 +364,7 @@ public class GameManager : Singleton<GameManager>
     {
         OnGameTimeUpdated?.Invoke(gameTime);
     }
+<<<<<<< Updated upstream
     
     /// <summary>
     /// 점수 배율 업데이트 알림 (외부에서 호출용)
@@ -345,10 +375,13 @@ public class GameManager : Singleton<GameManager>
         OnScoreMultiplierUpdated?.Invoke(currentMultiplier);
     }
     
+=======
+
+>>>>>>> Stashed changes
     // ====================================
     // ✅ UI 상태 관리 메서드들
     // ====================================
-    
+
     /// <summary>
     /// 아이템 UI 토글 알림
     /// </summary>
@@ -357,7 +390,7 @@ public class GameManager : Singleton<GameManager>
         OnItemUIToggled?.Invoke(isOpen);
 
     }
-    
+
     /// <summary>
     /// 크로스헤어 타겟팅 상태 변경 알림
     /// </summary>
@@ -366,11 +399,11 @@ public class GameManager : Singleton<GameManager>
         OnCrosshairTargetingChanged?.Invoke(isTargeting);
 
     }
-    
+
     // ====================================
     // ✅ 스킬 시스템 메서드들 (구현 예정)
     // ====================================
-    
+
     /// <summary>
     /// 스킬 사용 알림
     /// </summary>
@@ -379,7 +412,7 @@ public class GameManager : Singleton<GameManager>
         OnSkillUsed?.Invoke(skillIndex);
    
     }
-    
+
     /// <summary>
     /// 스킬 쿨다운 시작 알림
     /// </summary>

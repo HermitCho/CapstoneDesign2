@@ -279,6 +279,7 @@ public class HUDPanel : MonoBehaviour
         {
             healthProgressBar.currentValue = currentHealth;
             healthProgressBar.maxValue = maxHealth;
+            healthProgressBar.UpdateUI(); // 반드시 호출!
         }
         
         // 체력 텍스트 업데이트

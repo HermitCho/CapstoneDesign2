@@ -73,7 +73,7 @@ public class TestGun : MonoBehaviour
     protected virtual void Awake()
     {
         InitializeComponents();
-    
+
     }
 
     /// <summary>
@@ -101,6 +101,37 @@ public class TestGun : MonoBehaviour
         {
             ProcessFiring();
         }
+
+        // 항상 디버그 레이 그리기
+        DrawDebugRays();
+    }
+
+    private void DrawDebugRays()
+    {
+        if (aimPointUI == null || mainCamera == null || fireTransform == null) return;
+
+        Vector3 screenPoint = aimPointUI.position;
+        Ray cameraRay = mainCamera.ScreenPointToRay(screenPoint);
+        Debug.DrawRay(cameraRay.origin, cameraRay.direction * gunData.range, Color.blue);
+
+        int layerMask = ~LayerMask.GetMask("PlayerPosition");
+
+        Vector3 targetPoint;
+        if (Physics.Raycast(cameraRay, out RaycastHit hit, gunData.range, layerMask))
+        {
+            targetPoint = hit.point;
+        }
+        else
+        {
+            targetPoint = cameraRay.origin + cameraRay.direction * gunData.range;
+        }
+
+        // 빨간색 레이: fireTransform에서 targetPoint로
+        Vector3 fireDirection = (targetPoint - fireTransform.position).normalized;
+        Debug.DrawRay(fireTransform.position, fireDirection * gunData.range, Color.red);
+
+        // 노란색 레이: Shot 함수의 실제 발사 방향(실시간)
+        Debug.DrawRay(fireTransform.position, fireDirection * gunData.range, Color.yellow);
     }
 
     #endregion
@@ -113,6 +144,8 @@ public class TestGun : MonoBehaviour
     private void InitializeComponents()
     {
         gunAudioPlayer = GetComponent<AudioSource>();
+        mainCamera = GameObject.FindGameObjectWithTag("MainCamera").GetComponent<Camera>();
+        aimPointUI = GameObject.FindGameObjectWithTag("Crosshair").GetComponent<RectTransform>();
     }
 
     /// <summary>
@@ -159,60 +192,24 @@ public class TestGun : MonoBehaviour
     /// <returns>발사할 월드 좌표</returns>
     private Vector3 CalculateShotTarget()
     {
-        Vector3 screenPoint = GetScreenPoint();
-        ApplyRecoilOffset(ref screenPoint);
-        
-        return GetWorldPositionFromScreen(screenPoint);
-    }
+        Vector3 screenPoint = aimPointUI.position;
+        Ray cameraRay = mainCamera.ScreenPointToRay(screenPoint);
 
-    /// <summary>
-    /// UI 조준점을 스크린 좌표로 변환합니다.
-    /// </summary>
-    /// <returns>스크린 좌표</returns>
-    private Vector3 GetScreenPoint()
-    {
-        if (aimPointUI != null)
-        {
-            // UI 좌표 → 월드 좌표 → 스크린 좌표
-            RectTransformUtility.ScreenPointToWorldPointInRectangle(
-                aimPointUI, aimPointUI.position, mainCamera, out Vector3 worldPoint);
-            return mainCamera.WorldToScreenPoint(worldPoint);
-        }
-        
-        // UI 조준점이 없으면 화면 중앙 사용
-        return new Vector3(Screen.width * 0.5f, Screen.height * 0.5f, 0f);
-    }
+        // 카메라에서 나가는 레이 시각화 (파란색)
+        Debug.DrawRay(cameraRay.origin, cameraRay.direction * gunData.range, Color.blue, 1f);
 
-    /// <summary>
-    /// 견착 상태에 따른 반동 오프셋을 적용합니다.
-    /// </summary>
-    /// <param name="screenPoint">스크린 좌표 (참조로 수정)</param>
-    private void ApplyRecoilOffset(ref Vector3 screenPoint)
-    {
-        if (!IsShouldering)
-        {
-            const float randomRadius = 20f; // 픽셀 단위 반지름
-            Vector2 randomOffset = Random.insideUnitCircle * randomRadius;
-            screenPoint += new Vector3(randomOffset.x, randomOffset.y, 0f);
-        }
-    }
+        // IgnoreRaycast 레이어를 무시하는 마스크 생성
+        int layerMask = ~LayerMask.GetMask("PlayerPosition");
 
-    /// <summary>
-    /// 스크린 좌표를 월드 좌표로 변환합니다.
-    /// </summary>
-    /// <param name="screenPoint">스크린 좌표</param>
-    /// <returns>월드 좌표</returns>
-    private Vector3 GetWorldPositionFromScreen(Vector3 screenPoint)
-    {
-        Ray ray = mainCamera.ScreenPointToRay(screenPoint);
-        
-        if (Physics.Raycast(ray, out RaycastHit hit, gunData.range))
+        if (Physics.Raycast(cameraRay, out RaycastHit hit, gunData.range, layerMask))
         {
+            Debug.Log("Ray hit: " + hit.collider.gameObject.name + " (Layer: " + LayerMask.LayerToName(hit.collider.gameObject.layer) + ")");
             return hit.point;
         }
-        
-        // 충돌이 없으면 최대 사거리로
-        return ray.origin + ray.direction * gunData.range;
+        else
+        {
+            return cameraRay.origin + cameraRay.direction * gunData.range;
+        }
     }
 
     /// <summary>
@@ -224,8 +221,38 @@ public class TestGun : MonoBehaviour
         if (CanFire())
         {
             lastFireTime = Time.time;
-            Vector3 direction = (worldPoint - fireTransform.position).normalized;
-            Shot(direction, worldPoint);
+            Vector3 direction;
+            Collider fireCollider = fireTransform.GetComponent<BoxCollider>();
+            bool isBlocked = false;
+            if (fireCollider != null)
+            {
+                Collider[] hits = Physics.OverlapBox(
+                    fireCollider.bounds.center,
+                    fireCollider.bounds.extents,
+                    fireTransform.rotation,
+                    ~0, // 모든 레이어
+                    QueryTriggerInteraction.Collide
+                );
+                Debug.Log($"OverlapBox hits: {hits.Length}");
+                foreach (var hit in hits)
+                {
+                    Debug.Log($"Hit: {hit.name}, Layer: {LayerMask.LayerToName(hit.gameObject.layer)}");
+                }
+            }
+
+            if (isBlocked)
+            {
+                Debug.Log("Blocked");
+                direction = fireTransform.forward;
+            }
+            else
+            {
+                Debug.Log("Not Blocked");
+                direction = (worldPoint - fireTransform.position).normalized;
+            }
+
+            Debug.DrawRay(fireTransform.position, direction * gunData.range, Color.red, 1f);
+            Shot(direction);
         }
     }
 
@@ -235,7 +262,7 @@ public class TestGun : MonoBehaviour
     /// <returns>발사 가능 여부</returns>
     private bool CanFire()
     {
-        return CurrentState == GunState.Ready && 
+        return CurrentState == GunState.Ready &&
                Time.time >= lastFireTime + gunData.fireRate;
     }
 
@@ -244,17 +271,16 @@ public class TestGun : MonoBehaviour
     /// </summary>
     /// <param name="shootDirection">발사 방향</param>
     /// <param name="hitPosition">목표 위치</param>
-    protected virtual void Shot(Vector3 shootDirection, Vector3 hitPosition)
+    protected virtual void Shot(Vector3 shootDirection)
     {
+        // 노란색 레이(실제 발사 방향)로만 총알이 나가도록 함
         for (int i = 0; i < gunData.pelletCount; i++)
         {
             Vector3 pelletDirection = CalculatePelletDirection(shootDirection, i);
-            Vector3 pelletHitPosition = CalculatePelletHitPosition(pelletDirection, hitPosition, i);
-            
+            Vector3 pelletHitPosition = CalculatePelletHitPosition(pelletDirection, fireTransform.position + pelletDirection * gunData.range, i);
             ProcessPelletHit(pelletDirection);
             StartCoroutine(ShotEffect(fireTransform.position, pelletHitPosition));
         }
-        
         ConsumeAmmo();
     }
 
@@ -291,7 +317,7 @@ public class TestGun : MonoBehaviour
         {
             return hit.point;
         }
-        
+
         // 첫 번째 펠릿은 지정된 위치 사용, 나머지는 방향 기반 계산
         return pelletIndex == 0 ? defaultHitPosition : fireTransform.position + direction * gunData.range;
     }
@@ -335,11 +361,11 @@ public class TestGun : MonoBehaviour
     {
         PlayMuzzleEffects();
         PlayAudioEffect();
-        
+
         GameObject trailObject = CreateBulletTrail(start, end);
-        
+
         yield return new WaitForSeconds(gunData.bulletTrailDuration);
-        
+
         Destroy(trailObject);
     }
 
@@ -352,7 +378,7 @@ public class TestGun : MonoBehaviour
         {
             muzzleFlashEffect.Play();
         }
-        
+
         if (shellEjectEffect != null && !shellEjectEffect.isPlaying)
         {
             shellEjectEffect.Play();
@@ -380,11 +406,11 @@ public class TestGun : MonoBehaviour
     {
         GameObject trailObject = new GameObject("BulletTrail");
         LineRenderer lineRenderer = trailObject.AddComponent<LineRenderer>();
-        
+
         ConfigureLineRenderer(lineRenderer);
         lineRenderer.SetPosition(0, start);
         lineRenderer.SetPosition(1, end);
-        
+
         return trailObject;
     }
 
@@ -427,11 +453,11 @@ public class TestGun : MonoBehaviour
     protected virtual IEnumerator ReloadRoutine()
     {
         CurrentState = GunState.Reloading;
-        
+
         PlayReloadSound();
-        
+
         yield return new WaitForSeconds(gunData.reloadTime);
-        
+
         CompleteReload();
     }
 
