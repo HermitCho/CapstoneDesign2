@@ -8,7 +8,6 @@ public class GameManager : Singleton<GameManager>
     [Header("테디베어 점수 관리 - 자동 할당")]
     [SerializeField] private float totalTeddyBearScore = 0f;
     private TestTeddyBear currentTeddyBear;
-<<<<<<< Updated upstream
     
     [Header("게임 시간 관리 - 자동 할당")]
     [SerializeField] private float gameStartTime = 0f;
@@ -20,9 +19,6 @@ public class GameManager : Singleton<GameManager>
     private bool dataBaseCached = false;
     
     
-=======
-
->>>>>>> Stashed changes
     [Header("플레이어 상태 관리 - 자동 할당")]
     [SerializeField] private float playerHealth = 100f;
     [SerializeField] private float maxPlayerHealth = 100f;
@@ -90,7 +86,6 @@ public class GameManager : Singleton<GameManager>
             }
         }
     }
-<<<<<<< Updated upstream
     
     // DataBase 정보 캐싱 (안전한 접근)
     void CacheDataBaseInfo()
@@ -117,9 +112,6 @@ public class GameManager : Singleton<GameManager>
         }
     }
     
-=======
-
->>>>>>> Stashed changes
     // 테디베어 점수 업데이트 (TestTeddyBear에서 호출)
     public void UpdateTeddyBearScore(float newScore)
     {
@@ -127,19 +119,10 @@ public class GameManager : Singleton<GameManager>
 
         // HeatUI에 점수 업데이트 이벤트 발생
         OnScoreUpdated?.Invoke(totalTeddyBearScore);
-<<<<<<< Updated upstream
         
         // 점수 배율도 실시간 계산으로 업데이트
         float currentMultiplier = GetScoreMultiplier();
         OnScoreMultiplierUpdated?.Invoke(currentMultiplier);
-=======
-
-        // 점수 배율도 함께 업데이트
-        if (currentTeddyBear != null)
-        {
-            OnScoreMultiplierUpdated?.Invoke(currentTeddyBear.GetCurrentScoreMultiplier());
-        }
->>>>>>> Stashed changes
     }
 
     // 현재 테디베어 점수 가져오기
@@ -151,13 +134,8 @@ public class GameManager : Singleton<GameManager>
         }
         return totalTeddyBearScore;
     }
-<<<<<<< Updated upstream
     
     // 현재 점수 배율 가져오기 (실시간 계산)
-=======
-
-    // 현재 점수 배율 가져오기
->>>>>>> Stashed changes
     public float GetScoreMultiplier()
     {
         // 실시간 게임 시간 기반으로 배율 계산
@@ -303,13 +281,8 @@ public class GameManager : Singleton<GameManager>
         playerHealth = Mathf.Clamp(current, 0f, max);
         maxPlayerHealth = Mathf.Max(max, 1f);
         
-<<<<<<< Updated upstream
         OnPlayerHealthChanged?.Invoke(playerHealth, maxPlayerHealth);
 
-=======
-        Debug.Log($"플레이어 체력 설정: {playerHealth}/{maxPlayerHealth}");
-        OnPlayerHealthChanged?.Invoke(playerHealth, maxPlayerHealth);
->>>>>>> Stashed changes
     }
 
     /// <summary>
@@ -364,7 +337,6 @@ public class GameManager : Singleton<GameManager>
     {
         OnGameTimeUpdated?.Invoke(gameTime);
     }
-<<<<<<< Updated upstream
     
     /// <summary>
     /// 점수 배율 업데이트 알림 (외부에서 호출용)
@@ -375,9 +347,6 @@ public class GameManager : Singleton<GameManager>
         OnScoreMultiplierUpdated?.Invoke(currentMultiplier);
     }
     
-=======
-
->>>>>>> Stashed changes
     // ====================================
     // ✅ UI 상태 관리 메서드들
     // ====================================
