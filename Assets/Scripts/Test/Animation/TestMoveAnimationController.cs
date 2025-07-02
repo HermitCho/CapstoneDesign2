@@ -5,88 +5,93 @@ using UnityEngine.InputSystem;
 
 public class TestMoveAnimationController : MonoBehaviour
 {
-
-    public PlayerIKController iKController;
     private Animator animator;
+    private Vector2 moveInput;
+    private Vector2 mouseInput;
+    private float turnValue;
 
-    // 현재값과 목표값
-    private float currentMoveX = 0f;
-    private float currentMoveY = 0f;
-    private float targetMoveX = 0f;
-    private float targetMoveY = 0f;
+    [Header("IK Controller")]
+    [SerializeField] private WeaponIKController iKController; // IK Controller 참조
 
-    // Lerp 속도 (부드럽게 적용할 속도)
-    [Header("Lerp 속도 설정")]
-    public float moveLerpSpeed = 10f; // 이동 애니메이션 부드럽게 변경할 속도
+    [SerializeField] private float turnSmoothing = 5f;
+    [SerializeField] private float turnSensitivity = 1f;
+
+    [Header("MoveController 참조")]
+    [SerializeField] private MoveController moveController;
+    [SerializeField] private Rigidbody rb; // Rigidbody 참조
+
+    private bool isReloading = false;  // 장전 상태 확인용
 
     private void Awake()
     {
         animator = GetComponent<Animator>();
-        if (iKController == null)
-        {
-            iKController = GetComponent<PlayerIKController>(); 
-        }
-    }
-    void Update()
-    {
-        // 매 프레임 목표값으로 부드럽게 수렴
-        currentMoveX = Mathf.Lerp(currentMoveX, targetMoveX, moveLerpSpeed * Time.deltaTime);
-        currentMoveY = Mathf.Lerp(currentMoveY, targetMoveY, moveLerpSpeed * Time.deltaTime);
-
-        animator.SetFloat("MoveX", currentMoveX);
-        animator.SetFloat("MoveY", currentMoveY);
-
-        if (Keyboard.current.rKey.wasPressedThisFrame)
-        {
-            animator.SetTrigger("Reload");
-        }
     }
 
-    void OnEnable()
+    private void OnEnable()
     {
-        // InputManager 이벤트 구독
         InputManager.OnMoveInput += OnMoveInput;
         InputManager.OnXMouseInput += OnMouseInput;
-        InputManager.OnJumpPressed += OnJumpInput;
         InputManager.OnZoomPressed += OnZoomInput;
         InputManager.OnZoomCanceledPressed += OnZoomCanceledInput;
+        InputManager.OnReloadPressed += OnReloadInput;
     }
 
-    void OnDisable()
+    private void OnDisable()
     {
-        // InputManager 이벤트 구독 해제
         InputManager.OnMoveInput -= OnMoveInput;
         InputManager.OnXMouseInput -= OnMouseInput;
-        InputManager.OnJumpPressed -= OnJumpInput;
         InputManager.OnZoomPressed -= OnZoomInput;
         InputManager.OnZoomCanceledPressed -= OnZoomCanceledInput;
+        InputManager.OnReloadPressed -= OnReloadInput;
     }
 
-
-    void OnMoveInput(Vector2 moveInput)
+    private void Update()
     {
-        // 입력될 때 목표값만 갱신
-        targetMoveX = moveInput.x;
-        targetMoveY = moveInput.y;
+        HandleMovementAnimation();
+        HandleTurnAnimation();
+        HandleJumpAnimation();
     }
 
-    void OnMouseInput(Vector2 mouseInput)
+    void OnMoveInput(Vector2 input)
     {
-        // 캐릭터 회전 애니메이션 재생
-        iKController.turnAngle += mouseInput.x;
-        iKController.turnAngle = Mathf.Clamp(iKController.turnAngle, -iKController.maxTurn, iKController.maxTurn);
-        animator.SetFloat("Turn", mouseInput.x);
-
-        // 위아래 회전 애니메이션 재생
-        iKController.lookAngle -= mouseInput.y;
-        iKController.lookAngle = Mathf.Clamp(iKController.lookAngle, -iKController.maxLookDown, iKController.maxLookUp);
-        animator.SetFloat("LookAngle", iKController.lookAngle);
+        moveInput = input;
     }
-    
-    void OnJumpInput()
-    {      
-        //캐릭터 점프 애니메이션 재생
-        animator.SetTrigger("Jump");
+
+    void OnMouseInput(Vector2 input)
+    {
+        mouseInput = input;
+    }
+
+    void HandleMovementAnimation()
+    {
+        animator.SetFloat("MoveX", moveInput.x, 0.1f, Time.deltaTime);
+        animator.SetFloat("MoveY", moveInput.y, 0.1f, Time.deltaTime);
+    }
+
+    void HandleTurnAnimation()
+    {
+        
+    }
+
+    void HandleJumpAnimation()
+    {
+        if (moveController == null || rb == null) return;
+
+        bool isGrounded = GetPrivateField<bool>(moveController, "isGrounded");
+        float verticalVelocity = rb.velocity.y;
+
+        // Set the grounded status and vertical velocity for animation
+        animator.SetBool("IsGrounded", isGrounded);
+        animator.SetFloat("VerticalVelocity", verticalVelocity);
+
+        // Trigger Jump animation when grounded and vertical velocity is not zero
+        if (isGrounded && verticalVelocity <= 0.1f)  // when grounded and vertical velocity is low (or zero)
+        {
+            animator.SetTrigger("Jump");
+            Debug.Log("[Animation] Jump Triggered");
+        }
+
+        Debug.Log($"[Anim] isGrounded: {isGrounded}, verticalVelocity: {verticalVelocity}, CurrentState: {animator.GetCurrentAnimatorStateInfo(0).shortNameHash}");
     }
 
     void OnZoomInput()
@@ -97,5 +102,34 @@ public class TestMoveAnimationController : MonoBehaviour
     void OnZoomCanceledInput()
     {
         animator.SetBool("IsAiming", false);
+    }
+
+    void OnReloadInput()
+    {
+        animator.SetTrigger("Reload");
+
+        // 장전 중 IK 해제
+        if (iKController != null)
+        {
+            iKController.SetLeftHandIK(false);  // 왼손 IK 해제
+        }
+        
+        // 4초 후에 왼손 IK 설정
+        Invoke("EnableLeftHandIK", 4f);  // 4초 후에 LeftHand IK 다시 활성화
+    }
+    
+    void EnableLeftHandIK()
+    {
+        if (iKController != null)
+        {
+            iKController.SetLeftHandIK(true);  // 왼손 IK 다시 설정
+        }
+    }
+
+    private T GetPrivateField<T>(object obj, string fieldName)
+    {
+        var field = obj.GetType().GetField(fieldName, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        if (field == null) return default;
+        return (T)field.GetValue(obj);
     }
 }
