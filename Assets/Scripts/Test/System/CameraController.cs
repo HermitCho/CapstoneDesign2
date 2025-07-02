@@ -505,4 +505,12 @@ public class CameraController : MonoBehaviour
         return angle;
     }
 
+
+    /// <summary>
+    /// 외부 메서드
+    /// </summary>
+    public float GetTargetVerticalAngle()
+    {
+        return targetVerticalAngle;
+    }
 }

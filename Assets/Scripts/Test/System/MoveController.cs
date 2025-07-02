@@ -248,6 +248,7 @@ public class MoveController : MonoBehaviour
     void OnMouseInput(Vector2 mouseInput)
     {
         float mouseX = mouseInput.x;
+       
         
         rotationAmount = mouseX * Time.deltaTime * cachedRotationSpeed; // 캐싱된 값 사용
 
@@ -475,5 +476,14 @@ public class MoveController : MonoBehaviour
         Vector3 moveDirection = cameraForward * input.y + cameraRight * input.x;
         
         return moveDirection.normalized;
+    }
+
+
+    /// <summary>
+    /// 외부 메서드
+    /// </summary>
+    public float GetRotationAmount()
+    {
+        return rotationAmount;
     }
 }   
