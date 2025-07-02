@@ -44,13 +44,29 @@ public class CameraController : MonoBehaviour
     
     // 데이터베이스 참조
     private DataBase.CameraData cameraData;
-
-
+    
+    // ✅ DataBase 캐싱된 값들 (성능 최적화)
+    private float cachedMouseSensitivityY;
+    private float cachedZoomMouseSensitivityY;
+    private float cachedMinVerticalAngle;
+    private float cachedMaxVerticalAngle;
+    private float cachedRotationSmoothTime;
+    private float cachedZoomValue;
+    private float cachedZoomDuration;
+    private bool cachedUseWallCollisionAvoidance;
+    private float cachedCameraFix;
+    private float cachedWallAvoidanceSpeed;
+    private float cachedMaxCameraDistance;
+    private float cachedPivotHeightOffset;
+    private string cachedPlayerTag;
+    private float cachedFindPlayerInterval;
+    private bool dataBaseCached = false;
 
 
     void Awake()
     {
-        cameraData = DataBase.Instance.cameraData;  
+        // DataBase 정보 안전하게 캐싱
+        CacheDataBaseInfo();
     }
 
     void Start()
@@ -70,12 +86,55 @@ public class CameraController : MonoBehaviour
     }
     
     /// <summary>
+    /// DataBase 정보 안전하게 캐싱 (GameManager와 동일한 방식)
+    /// </summary>
+    void CacheDataBaseInfo()
+    {
+        try
+        {
+            if (DataBase.Instance != null && DataBase.Instance.cameraData != null)
+            {
+                cameraData = DataBase.Instance.cameraData;
+                
+                // 자주 사용되는 값들을 개별 변수로 캐싱
+                cachedMouseSensitivityY = cameraData.MouseSensitivityY;
+                cachedZoomMouseSensitivityY = cameraData.ZoomMouseSensitivityY;
+                cachedMinVerticalAngle = cameraData.MinVerticalAngle;
+                cachedMaxVerticalAngle = cameraData.MaxVerticalAngle;
+                cachedRotationSmoothTime = cameraData.RotationSmoothTime;
+                cachedZoomValue = cameraData.ZoomValue;
+                cachedZoomDuration = cameraData.ZoomDuration;
+                cachedUseWallCollisionAvoidance = cameraData.UseWallCollisionAvoidance;
+                cachedCameraFix = cameraData.CameraFix;
+                cachedWallAvoidanceSpeed = cameraData.WallAvoidanceSpeed;
+                cachedMaxCameraDistance = cameraData.MaxCameraDistance;
+                cachedPivotHeightOffset = cameraData.PivotHeightOffset;
+                cachedPlayerTag = cameraData.PlayerTag;
+                cachedFindPlayerInterval = cameraData.FindPlayerInterval;
+                
+                dataBaseCached = true;
+                Debug.Log("✅ CameraController - DataBase 정보 캐싱 완료");
+            }
+            else
+            {
+                Debug.LogWarning("⚠️ CameraController - DataBase 접근 실패, 기본값 사용");
+                dataBaseCached = false;
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ CameraController - DataBase 캐싱 중 오류: {e.Message}");
+            dataBaseCached = false;
+        }
+    }
+    
+    /// <summary>
     /// 카메라 시스템 초기화
     /// </summary>
     void InitializeCamera()
     {
-        // 초기 카메라 거리 설정 (데이터베이스에서 가져오기)
-        maxCameraDistance = cameraData.MaxCameraDistance;
+        // 초기 카메라 거리 설정 (캐싱된 값 사용)
+        maxCameraDistance = cachedMaxCameraDistance;
         currentCameraDistance = maxCameraDistance;
         targetCameraDistance = maxCameraDistance;
         
@@ -106,11 +165,11 @@ public class CameraController : MonoBehaviour
         {
             if(isZoomed)
             {
-                mouseY = mouseInput.y * cameraData.ZoomMouseSensitivityY * Time.deltaTime;
+                mouseY = mouseInput.y * cachedZoomMouseSensitivityY * Time.deltaTime;
             }
             else
             {
-                mouseY = mouseInput.y * cameraData.MouseSensitivityY * Time.deltaTime;
+                mouseY = mouseInput.y * cachedMouseSensitivityY * Time.deltaTime;
             }
 
             //사용 X
@@ -120,7 +179,7 @@ public class CameraController : MonoBehaviour
             // float mouseY = mouseInput.y * currentSensitivity * Time.deltaTime;
 
             targetVerticalAngle -= mouseY; // Y축은 반전
-            targetVerticalAngle = Mathf.Clamp(targetVerticalAngle, cameraData.MinVerticalAngle, cameraData.MaxVerticalAngle);
+            targetVerticalAngle = Mathf.Clamp(targetVerticalAngle, cachedMinVerticalAngle, cachedMaxVerticalAngle);
             
         }
     }
@@ -156,14 +215,14 @@ public class CameraController : MonoBehaviour
                 break;
             }
             
-            yield return new WaitForSeconds(cameraData.FindPlayerInterval);
+            yield return new WaitForSeconds(cachedFindPlayerInterval);
         }
     }
     
     // 플레이어 찾기
     void FindPlayer()
     {
-        GameObject player = GameObject.FindGameObjectWithTag(cameraData.PlayerTag);
+        GameObject player = GameObject.FindGameObjectWithTag(cachedPlayerTag);
         if (player != null)
         {
             playerTransform = player.transform;
@@ -186,14 +245,14 @@ public class CameraController : MonoBehaviour
     {
         if (isPlayerFound)
         {       
-            // 벽 충돌 방지 처리
-            if (cameraData.UseWallCollisionAvoidance)
+            // 벽 충돌 방지 처리 (캐싱된 값 사용)
+            if (cachedUseWallCollisionAvoidance)
             {
                 HandleWallCollisionAvoidance();
             }
             
-            // 부드러운 회전 적용 (수직 각도만)
-            currentVerticalAngle = Mathf.SmoothDamp(currentVerticalAngle, targetVerticalAngle, ref rotationVelocity, cameraData.RotationSmoothTime);
+            // 부드러운 회전 적용 (수직 각도만) (캐싱된 값 사용)
+            currentVerticalAngle = Mathf.SmoothDamp(currentVerticalAngle, targetVerticalAngle, ref rotationVelocity, cachedRotationSmoothTime);
             
             // 3인칭 카메라 위치 및 회전 적용
             ApplyThirdPersonCamera();
@@ -207,8 +266,8 @@ public class CameraController : MonoBehaviour
     {
         if (playerTransform == null || mainCamera == null) return;
         
-        // 플레이어 피벗 포인트 계산 (카메라가 바라볼 지점)
-        Vector3 pivotPoint = playerTransform.position + Vector3.up * cameraData.PivotHeightOffset;
+        // 플레이어 피벗 포인트 계산 (카메라가 바라볼 지점) (캐싱된 값 사용)
+        Vector3 pivotPoint = playerTransform.position + Vector3.up * cachedPivotHeightOffset;
         
         // 플레이어 뒤쪽 방향 계산 (플레이어가 바라보는 방향의 반대)
         Vector3 playerBackward = -playerTransform.forward;
@@ -260,25 +319,25 @@ public class CameraController : MonoBehaviour
                 originalFOV = mainCamera.fieldOfView;
             }
             
-            // 회전 부드러움 값 저장 (첫 번째 줌 시에만)
+            // 회전 부드러움 값 저장 (첫 번째 줌 시에만) (캐싱된 값 사용)
             if (!rotationSmoothTimeStored)
             {
-                originalRotationSmoothTime = cameraData.RotationSmoothTime;
+                originalRotationSmoothTime = cachedRotationSmoothTime;
                 rotationSmoothTimeStored = true;
             }
             
             // 기존 애니메이션 중지
             zoomTween?.Kill();
             
-            // 줌 인: FOV를 zoomValue만큼 감소
-            float targetFOV = originalFOV / cameraData.ZoomValue;
+            // 줌 인: FOV를 zoomValue만큼 감소 (캐싱된 값 사용)
+            float targetFOV = originalFOV / cachedZoomValue;
             zoomTween = DOTween.To(() => mainCamera.fieldOfView, 
                                   x => mainCamera.fieldOfView = x, 
-                                  targetFOV, cameraData.ZoomDuration)
+                                  targetFOV, cachedZoomDuration)
                                .SetEase(Ease.OutQuad);
 
-            // 회전 부드러움을 0으로 설정 (즉시 반응)
-            cameraData.RotationSmoothTime = 0f;
+            // 회전 부드러움을 0으로 설정 (즉시 반응) (캐싱된 값 직접 수정)
+            cachedRotationSmoothTime = 0f;
         }
     }
 
@@ -291,22 +350,42 @@ public class CameraController : MonoBehaviour
             // 기존 애니메이션 중지
             zoomTween?.Kill();
             
-            // 줌 아웃: 원본 FOV로 복원
+            // 줌 아웃: 원본 FOV로 복원 (캐싱된 값 사용)
             zoomTween = DOTween.To(() => mainCamera.fieldOfView, 
                                 x => mainCamera.fieldOfView = x, 
-                                originalFOV, cameraData.ZoomDuration)
+                                originalFOV, cachedZoomDuration)
                                 .SetEase(Ease.OutQuad);
 
-            // 회전 부드러움을 원본 값으로 복원
+            // 회전 부드러움을 원본 값으로 복원 (캐싱된 값 사용)
             if (rotationSmoothTimeStored)
             {
-                cameraData.RotationSmoothTime = originalRotationSmoothTime;
+                cachedRotationSmoothTime = originalRotationSmoothTime;
             }
         }
     }
 
     
 
+
+    // ========================================
+    // === DataBase 캐싱 유틸리티 메서드들 ===
+    // ========================================
+    
+    /// <summary>
+    /// DataBase가 성공적으로 캐싱되었는지 확인
+    /// </summary>
+    public bool IsDataBaseCached()
+    {
+        return dataBaseCached;
+    }
+    
+    /// <summary>
+    /// DataBase 정보 강제 새로고침
+    /// </summary>
+    public void RefreshDataBaseCache()
+    {
+        CacheDataBaseInfo();
+    }
 
     // ========================================
     // === 유틸리티 함수들 ===
@@ -369,8 +448,8 @@ public class CameraController : MonoBehaviour
     {
         if (playerTransform == null) return;
         
-        // 이상적인 카메라 위치 계산 (3인칭 방식)
-        Vector3 pivotPoint = playerTransform.position + Vector3.up * cameraData.PivotHeightOffset;
+        // 이상적인 카메라 위치 계산 (3인칭 방식) (캐싱된 값 사용)
+        Vector3 pivotPoint = playerTransform.position + Vector3.up * cachedPivotHeightOffset;
         Vector3 idealCameraPosition = CalculateThirdPersonCameraPosition(pivotPoint, maxCameraDistance);
         
         // 벽 충돌 감지 및 안전 거리 계산
@@ -379,9 +458,9 @@ public class CameraController : MonoBehaviour
         // 타겟 거리 업데이트
         targetCameraDistance = safeDistance;
         
-        // 현재 거리를 타겟 거리로 부드럽게 보간
+        // 현재 거리를 타겟 거리로 부드럽게 보간 (캐싱된 값 사용)
         currentCameraDistance = Mathf.Lerp(currentCameraDistance, targetCameraDistance, 
-            Time.deltaTime * cameraData.WallAvoidanceSpeed);
+            Time.deltaTime * cachedWallAvoidanceSpeed);
     }
     
     /// <summary>
@@ -396,14 +475,14 @@ public class CameraController : MonoBehaviour
         RaycastHit hit;
         if (Physics.Raycast(pivotPoint, directionToCamera, out hit, maxDistance))
         {
-            // 플레이어 자신은 무시
-            if (hit.collider.CompareTag(cameraData.PlayerTag))
+            // 플레이어 자신은 무시 (캐싱된 값 사용)
+            if (hit.collider.CompareTag(cachedPlayerTag))
             {
                 return maxDistance;
             }
             
-            // 안전 거리 계산 (충돌 지점에서 약간 떨어진 위치)
-            float safeDistance = hit.distance - cameraData.CameraFix;
+            // 안전 거리 계산 (충돌 지점에서 약간 떨어진 위치) (캐싱된 값 사용)
+            float safeDistance = hit.distance - cachedCameraFix;
             safeDistance = Mathf.Max(safeDistance, 0.5f); // 최소 거리 보장
             
             return safeDistance;

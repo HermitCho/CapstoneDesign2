@@ -46,9 +46,17 @@ public class HUDPanel : MonoBehaviour
     
     [Header("🎨 UI 설정")]
     [SerializeField] private string scoreFormat = "점수: {0:F0}";
-    [SerializeField] private string multiplierFormat = "배율: {0:F2}x";
+    [SerializeField] private string GeneralMultiplierFormat = "점수 배율 {0:F0}x";
+    [SerializeField] private string multiplierFormat = "배율: {0:F0}x";
     [SerializeField] private string gameTimeFormat = "시간: {0:F0}초";
     [SerializeField] private string healthFormat = "{0:F0} / {1:F0}";
+
+    [Header("🎨 UI 색상 설정")]
+    [SerializeField] private Color scoreFormatColor = Color.black;
+    [SerializeField] private Color GeneralMultiplierFormatColor = Color.black;
+    [SerializeField] private Color multiplierFormatColor = Color.black;
+    [SerializeField] private Color gameTimeFormatColor = Color.black;
+    [SerializeField] private Color healthFormatColor = Color.black;
     
     // 내부 상태 변수들
     private float currentHealth = 100f;
@@ -84,6 +92,15 @@ public class HUDPanel : MonoBehaviour
         
         // 실시간 점수 상태 업데이트
         UpdateRealTimeScoreStatus();
+        
+        // 실시간 게임 시간 업데이트
+        UpdateRealTimeUI();
+        
+        // 시간대별 배율 UI 실시간 업데이트
+        if (GameManager.Instance != null)
+        {
+            UpdateMultiplier(GameManager.Instance.GetScoreMultiplier());
+        }
     }
     
     #endregion
@@ -105,8 +122,7 @@ public class HUDPanel : MonoBehaviour
         UpdateMultiplier(1f);
         UpdateGameTime(0f);
         UpdateAttachStatus(false, 0f);
-        
-        Debug.Log("HUD 패널 초기화 완료");
+
     }
     
     /// <summary>
@@ -139,7 +155,7 @@ public class HUDPanel : MonoBehaviour
         // 아이템 UI 닫힌 상태로 시작
         CloseItemUI();
         
-        Debug.Log("HUD 초기 상태 설정 완료");
+
     }
     
     #endregion
@@ -173,8 +189,7 @@ public class HUDPanel : MonoBehaviour
         // InputManager 이벤트
         InputManager.OnItemUIPressed += OpenItemUI;
         InputManager.OnItemUICanceledPressed += CloseItemUI;
-        
-        Debug.Log("HUD 이벤트 구독 완료");
+
     }
     
     void UnsubscribeFromEvents()
@@ -288,7 +303,7 @@ public class HUDPanel : MonoBehaviour
     
     #endregion
     
-    #region 점수 UI
+    #region 점수, 시간, 배율 UI
     
     /// <summary>
     /// 점수 업데이트
@@ -298,18 +313,57 @@ public class HUDPanel : MonoBehaviour
         if (scoreText != null)
         {
             scoreText.text = string.Format(scoreFormat, score);
+            scoreText.color = scoreFormatColor;
         }
     }
     
     /// <summary>
-    /// 배율 업데이트
+    /// 배율 업데이트 (시간대별 포맷 적용)
     /// </summary>
     public void UpdateMultiplier(float multiplier)
     {
-        if (multiplierText != null)
+        if (multiplierText == null) return;
+        
+        // 시간대에 따른 포맷 선택 - GameManager 기반 안전한 접근
+        try
         {
-            multiplierText.text = string.Format(multiplierFormat, multiplier);
-            multiplierText.color = multiplier > 1f ? Color.yellow : Color.white;
+            // GameManager 존재 여부만 체크
+            bool hasGameManager = GameManager.Instance != null;
+            
+            if (hasGameManager)
+            {
+                float gameTime = GameManager.Instance.GetGameTime();
+                float scoreIncreaseTime = GameManager.Instance.GetScoreIncreaseTime();
+                bool dataBaseCached = GameManager.Instance.IsDataBaseCached();
+                
+                if (gameTime >= scoreIncreaseTime)
+                {
+                    // 점수배율 적용 시점 이후: multiplierFormat 사용
+                    multiplierText.color = multiplier > 1f ? multiplierFormatColor : GeneralMultiplierFormatColor;
+                    multiplierText.text = string.Format(multiplierFormat, multiplier);
+                }
+                else
+                {
+                    multiplierText.color = GeneralMultiplierFormatColor;
+                    // 점수배율 적용 전: GeneralMultiplierFormat 사용
+                    multiplierText.text = string.Format(GeneralMultiplierFormat, multiplier);
+                   
+                }
+            }
+            else
+            {
+                multiplierText.color = GeneralMultiplierFormatColor;
+                // GameManager가 없는 경우
+                multiplierText.text = string.Format(GeneralMultiplierFormat, multiplier);
+                
+            }
+        }
+        catch (System.Exception e)
+        {
+            multiplierText.color = GeneralMultiplierFormatColor;
+            // 안전한 fallback
+            multiplierText.text = string.Format(GeneralMultiplierFormat, multiplier);
+            
         }
     }
     
@@ -321,6 +375,7 @@ public class HUDPanel : MonoBehaviour
         if (gameTimeText != null)
         {
             gameTimeText.text = string.Format(gameTimeFormat, time);
+            gameTimeText.color = gameTimeFormatColor;
         }
     }
     
@@ -561,18 +616,18 @@ public class HUDPanel : MonoBehaviour
     /// </summary>
     void UpdateRealTimeScoreStatus()
     {
-        if (GameManager.Instance == null || DataBase.Instance?.teddyBearData == null) return;
+        if (GameManager.Instance == null) return;
         
         float gameTime = GameManager.Instance.GetGameTime();
-        var teddyData = DataBase.Instance.teddyBearData;
+        float scoreIncreaseTime = GameManager.Instance.GetScoreIncreaseTime();
         
-        if (gameTime >= teddyData.ScoreIncreaseTime)
+        if (gameTime >= scoreIncreaseTime)
         {
             UpdateScoreStatus("증가한 점수", 0f);
         }
         else
         {
-            float remaining = teddyData.ScoreIncreaseTime - gameTime;
+            float remaining = scoreIncreaseTime - gameTime;
             UpdateScoreStatus("기본 점수", remaining);
         }
         
@@ -584,6 +639,34 @@ public class HUDPanel : MonoBehaviour
         }
     }
     
+    /// <summary>
+    /// 실시간 게임 시간 및 배율 업데이트
+    /// </summary>
+    void UpdateRealTimeUI()
+    {
+        if (GameManager.Instance == null) return;
+        
+        // 게임 시간 가져오기
+        float gameTime = GameManager.Instance.GetGameTime();
+        
+        // 게임 시간 UI 업데이트
+        if (gameTimeText != null)
+        {
+            gameTimeText.text = string.Format(gameTimeFormat, gameTime);
+            gameTimeText.color = gameTimeFormatColor;
+        }
+        
+        // GameManager에 게임 시간 업데이트 알림
+        GameManager.Instance.NotifyGameTimeUpdated(gameTime);
+        
+        // 배율도 실시간으로 추가 업데이트 (더 빠른 반응을 위해)
+        float currentMultiplier = GameManager.Instance.GetScoreMultiplier();
+        UpdateMultiplier(currentMultiplier);
+    }
+
+
+
+
     #endregion
     
     #region 공개 메서드들

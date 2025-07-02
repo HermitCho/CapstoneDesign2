@@ -271,23 +271,21 @@ public class TestTeddyBear : MonoBehaviour
         }
     }
     
-    // 게임 시간에 따른 점수 증가량 계산
+    // 게임 시간에 따른 점수 증가량 계산 (GameManager 기반)
     float CalculateScoreToAdd(float gameTime)
     {
-        // scoreIncreaseTime이 지났는지 확인
-        if (gameTime >= teddyBearData.ScoreIncreaseTime)
+        // GameManager에서 실시간 배율 가져오기
+        float currentMultiplier = 1f;
+        if (GameManager.Instance != null)
         {
-            // 증가된 점수로 변경: initialScore * scoreIncreaseRate
-            float enhancedScore = teddyBearData.InitialScore * teddyBearData.ScoreIncreaseRate;
-            currentScoreMultiplier = teddyBearData.ScoreIncreaseRate; // UI 표시용
-            return enhancedScore;
+            currentMultiplier = GameManager.Instance.GetScoreMultiplier();
         }
-        else
-        {
-            // 기본 점수: initialScore
-            currentScoreMultiplier = 1f; // UI 표시용
-            return teddyBearData.InitialScore;
-        }
+        
+        // currentScoreMultiplier를 실시간으로 동기화
+        currentScoreMultiplier = currentMultiplier;
+        
+        // 초기 점수에 배율 적용
+        return teddyBearData.InitialScore * currentMultiplier;
     }
     
     // 점수 업데이트 알림 (게임매니저나 UI 시스템에 전달)
@@ -296,13 +294,10 @@ public class TestTeddyBear : MonoBehaviour
         // GameManager가 있다면 점수 업데이트 알림
         if (GameManager.Instance != null)
         {
+            // GameManager의 실시간 배율로 currentScoreMultiplier 동기화
+            currentScoreMultiplier = GameManager.Instance.GetScoreMultiplier();
             GameManager.Instance.UpdateTeddyBearScore(currentScore);
         }
-        
-        // 디버그 로그 (개발 중 확인용)
-        float gameTime = Time.time - gameStartTime;
-        string scoreStatus = gameTime >= teddyBearData.ScoreIncreaseTime ? "증가한 점수" : "기본 점수";
-        Debug.Log($"테디베어 점수: {currentScore:F1} ({scoreStatus}, 게임시간: {gameTime:F1}초, 다음 단계까지: {(teddyBearData.ScoreIncreaseTime - gameTime):F1}초)");
     }
 
     //테디베어 점수 증가 메서드 - 외부 호출용
@@ -326,7 +321,7 @@ public class TestTeddyBear : MonoBehaviour
         teddyBearData.TeddyBearScore = 0f;
         gameStartTime = Time.time; // 게임 시작 시간도 리셋
         lastDetachTime = -999f; // 재부착 방지 시간도 리셋
-        Debug.Log($"테디베어 점수가 초기화되었습니다. 증가한 점수는 {teddyBearData.ScoreIncreaseTime}초 후에 시작됩니다.");
+
     }
 
     
@@ -370,7 +365,7 @@ public class TestTeddyBear : MonoBehaviour
                 Vector3 pushDirection = playerTransform.forward + Vector3.up * 0.5f; // 약간 위쪽으로도 힘 가하기
                 float pushForce = 5f; // 밀어내는 힘의 강도
                 teddyRigidbody.AddForce(pushDirection * pushForce, ForceMode.Impulse);
-                Debug.Log($"테디베어를 플레이어 앞쪽으로 밀어냄: {pushDirection * pushForce}");
+
             }
         }
         
@@ -390,8 +385,7 @@ public class TestTeddyBear : MonoBehaviour
         
         // 분리되면 다시 발광 시작
         StartGlowing();
-        
-        Debug.Log($"테디베어를 현재 위치에 떨구었습니다. 재부착 방지 시간: {teddyBearData.DetachReattachTime}초");
+
     }
     
     // 아이템 사용 시 원래 위치로 되돌아가는 부착 해제 기능
@@ -431,8 +425,6 @@ public class TestTeddyBear : MonoBehaviour
         
         // 분리되면 다시 발광 시작
         StartGlowing();
-        
-        Debug.Log($"테디베어를 원래 위치로 되돌렸습니다. 재부착 방지 시간: {teddyBearData.DetachReattachTime}초");
     }
 
 
@@ -467,9 +459,18 @@ public class TestTeddyBear : MonoBehaviour
         return currentScore;
     }
     
-    // 현재 점수 배율 가져오기
+    // 현재 점수 배율 가져오기 (GameManager 실시간 값 사용)
     public float GetCurrentScoreMultiplier()
     {
+        // GameManager에서 실시간 배율 가져오기 (더 정확함)
+        if (GameManager.Instance != null)
+        {
+            float realtimeMultiplier = GameManager.Instance.GetScoreMultiplier();
+            currentScoreMultiplier = realtimeMultiplier; // 내부 값도 동기화
+            return realtimeMultiplier;
+        }
+        
+        // GameManager가 없으면 내부 값 사용
         return currentScoreMultiplier;
     }
     

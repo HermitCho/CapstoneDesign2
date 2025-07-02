@@ -22,6 +22,19 @@ public class MoveController : MonoBehaviour
     private Rigidbody playerRigidbody;
     private Vector2 rawMoveInput; // 원본 입력값 저장
 
+    // ✅ DataBase 캐싱된 값들 (성능 최적화)
+    private float cachedSpeed;
+    private float cachedRotationSpeed;
+    private float cachedZoomRotationSpeed;
+    private float cachedMouseInputTimeout;
+    private float cachedJumpCooldown;
+    private float cachedJumpHeight;
+    private float cachedJumpBufferTime;
+    private float cachedAirAcceleration;
+    private float cachedAirMaxSpeed;
+    private float cachedLandingFriction;
+    private bool dataBaseCached = false;
+
     private float rotationAmount;
     
     // 마우스 입력 타이머 (마우스 입력이 없으면 정지)
@@ -64,13 +77,54 @@ public class MoveController : MonoBehaviour
     void Awake()
     {
         playerRigidbody = GetComponent<Rigidbody>();
-        playerMoveData = DataBase.Instance.playerMoveData;
+        
+        // DataBase 정보 안전하게 캐싱
+        CacheDataBaseInfo();
         
         // 메인 카메라 찾기
         mainCamera = Camera.main;
         if (mainCamera == null)
         {
             mainCamera = FindObjectOfType<Camera>();
+        }
+    }
+    
+    /// <summary>
+    /// DataBase 정보 안전하게 캐싱 (GameManager와 동일한 방식)
+    /// </summary>
+    void CacheDataBaseInfo()
+    {
+        try
+        {
+            if (DataBase.Instance != null && DataBase.Instance.playerMoveData != null)
+            {
+                playerMoveData = DataBase.Instance.playerMoveData;
+                
+                // 자주 사용되는 값들을 개별 변수로 캐싱
+                cachedSpeed = playerMoveData.Speed;
+                cachedRotationSpeed = playerMoveData.RotationSpeed;
+                cachedZoomRotationSpeed = playerMoveData.ZoomRotationSpeed;
+                cachedMouseInputTimeout = playerMoveData.MouseInputTimeout;
+                cachedJumpCooldown = playerMoveData.JumpCooldown;
+                cachedJumpHeight = playerMoveData.JumpHeight;
+                cachedJumpBufferTime = playerMoveData.JumpBufferTime;
+                cachedAirAcceleration = playerMoveData.AirAcceleration;
+                cachedAirMaxSpeed = playerMoveData.AirMaxSpeed;
+                cachedLandingFriction = playerMoveData.LandingFriction;
+                
+                dataBaseCached = true;
+                Debug.Log("✅ MoveController - DataBase 정보 캐싱 완료");
+            }
+            else
+            {
+                Debug.LogWarning("⚠️ MoveController - DataBase 접근 실패, 기본값 사용");
+                dataBaseCached = false;
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ MoveController - DataBase 캐싱 중 오류: {e.Message}");
+            dataBaseCached = false;
         }
     }
 
@@ -99,8 +153,8 @@ public class MoveController : MonoBehaviour
 
         if (isGrounded)
         {
-            // 지상 이동 (즉시 반응)
-            Vector3 movement = playerRelativeMovement * playerMoveData.Speed * Time.deltaTime;
+            // 지상 이동 (즉시 반응) (캐싱된 값 사용)
+            Vector3 movement = playerRelativeMovement * cachedSpeed * Time.deltaTime;
             transform.Translate(movement, Space.World);
         }
         else
@@ -136,12 +190,12 @@ public class MoveController : MonoBehaviour
         // 현재 속도와 원하는 방향의 내적
         float currentSpeed = Vector3.Dot(horizontalVelocity, wishDirection);
         
-        // 가속할 수 있는 속도 계산
-        float addSpeed = playerMoveData.AirMaxSpeed - currentSpeed;
+        // 가속할 수 있는 속도 계산 (캐싱된 값 사용)
+        float addSpeed = cachedAirMaxSpeed - currentSpeed;
         if (addSpeed <= 0) return;
         
-        // 가속도 적용
-        float accelerationSpeed = playerMoveData.AirAcceleration * Time.deltaTime;
+        // 가속도 적용 (캐싱된 값 사용)
+        float accelerationSpeed = cachedAirAcceleration * Time.deltaTime;
         if (accelerationSpeed > addSpeed)
             accelerationSpeed = addSpeed;
         
@@ -174,7 +228,7 @@ public class MoveController : MonoBehaviour
         {
             Vector3 currentVelocity = playerRigidbody.velocity;
             Vector3 horizontalVelocity = new Vector3(currentVelocity.x, 0, currentVelocity.z);
-            Vector3 reducedVelocity = horizontalVelocity * playerMoveData.LandingFriction;
+            Vector3 reducedVelocity = horizontalVelocity * cachedLandingFriction; // 캐싱된 값 사용
             
             playerRigidbody.velocity = new Vector3(reducedVelocity.x, currentVelocity.y, reducedVelocity.z);
             
@@ -195,11 +249,11 @@ public class MoveController : MonoBehaviour
     {
         float mouseX = mouseInput.x;
         
-        rotationAmount = mouseX * Time.deltaTime * playerMoveData.RotationSpeed;
+        rotationAmount = mouseX * Time.deltaTime * cachedRotationSpeed; // 캐싱된 값 사용
 
         if (CameraController.isZoomed)
         {
-            rotationAmount = mouseX * Time.deltaTime * playerMoveData.ZoomRotationSpeed;
+            rotationAmount = mouseX * Time.deltaTime * cachedZoomRotationSpeed; // 캐싱된 값 사용
         }
 
         lastMouseInputTime = Time.time;
@@ -208,7 +262,7 @@ public class MoveController : MonoBehaviour
     // 회전 처리
     void HandleRotation()
     {   
-        if (Time.time - lastMouseInputTime > playerMoveData.MouseInputTimeout)
+        if (Time.time - lastMouseInputTime > cachedMouseInputTimeout) // 캐싱된 값 사용
         {
             rotationAmount = 0;
         }
@@ -225,21 +279,21 @@ public class MoveController : MonoBehaviour
         }
         else
         {
-            // 점프 버퍼 활성화 (착지 직전 점프 입력 허용)
-            jumpBufferTimer = playerMoveData.JumpBufferTime;
+            // 점프 버퍼 활성화 (착지 직전 점프 입력 허용) (캐싱된 값 사용)
+            jumpBufferTimer = cachedJumpBufferTime;
         }
     }
 
     // 점프 실행
     void PerformJump()
     {
-        if (Time.time - lastJumpTime < playerMoveData.JumpCooldown) return;
+        if (Time.time - lastJumpTime < cachedJumpCooldown) return; // 캐싱된 값 사용
 
         // 수직 속도만 리셋 (수평 속도는 유지)
         Vector3 currentVelocity = playerRigidbody.velocity;
         
-        // 점프 높이를 직접 계산
-        float jumpVelocity = Mathf.Sqrt(2f * playerMoveData.JumpHeight * Mathf.Abs(Physics.gravity.y));
+        // 점프 높이를 직접 계산 (캐싱된 값 사용)
+        float jumpVelocity = Mathf.Sqrt(2f * cachedJumpHeight * Mathf.Abs(Physics.gravity.y));
             
         // 수평 관성 유지하면서 수직 속도만 변경
         playerRigidbody.velocity = new Vector3(currentVelocity.x, jumpVelocity, currentVelocity.z);
@@ -341,6 +395,26 @@ public class MoveController : MonoBehaviour
             isAgainstWall = false;
             wallNormal = Vector3.zero;
             }            
+    }
+
+    // ========================================
+    // === DataBase 캐싱 유틸리티 메서드들 ===
+    // ========================================
+    
+    /// <summary>
+    /// DataBase가 성공적으로 캐싱되었는지 확인
+    /// </summary>
+    public bool IsDataBaseCached()
+    {
+        return dataBaseCached;
+    }
+    
+    /// <summary>
+    /// DataBase 정보 강제 새로고침
+    /// </summary>
+    public void RefreshDataBaseCache()
+    {
+        CacheDataBaseInfo();
     }
 
     // InputManager에서 스킬 입력 받기
