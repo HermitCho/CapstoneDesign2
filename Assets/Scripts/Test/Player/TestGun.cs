@@ -102,37 +102,39 @@ public class TestGun : MonoBehaviour
             ProcessFiring();
         }
 
-        // 항상 디버그 레이 그리기
-        DrawDebugRays();
+        // 디버그 레이
+
+        //DrawDebugRays();
     }
 
-    private void DrawDebugRays()
-    {
-        if (aimPointUI == null || mainCamera == null || fireTransform == null) return;
+    //디버그 용 레이를 그려주는 함수, 필요하면 주석 해제
+    // private void DrawDebugRays()
+    // {
+    //     if (aimPointUI == null || mainCamera == null || fireTransform == null) return;
 
-        Vector3 screenPoint = aimPointUI.position;
-        Ray cameraRay = mainCamera.ScreenPointToRay(screenPoint);
-        Debug.DrawRay(cameraRay.origin, cameraRay.direction * gunData.range, Color.blue);
+    //     Vector3 screenPoint = aimPointUI.position;
+    //     Ray cameraRay = mainCamera.ScreenPointToRay(screenPoint);
+    //     Debug.DrawRay(cameraRay.origin, cameraRay.direction * gunData.range, Color.blue);
 
-        int layerMask = ~LayerMask.GetMask("PlayerPosition");
+    //     int layerMask = ~LayerMask.GetMask("PlayerPosition");
 
-        Vector3 targetPoint;
-        if (Physics.Raycast(cameraRay, out RaycastHit hit, gunData.range, layerMask))
-        {
-            targetPoint = hit.point;
-        }
-        else
-        {
-            targetPoint = cameraRay.origin + cameraRay.direction * gunData.range;
-        }
+    //     Vector3 targetPoint;
+    //     if (Physics.Raycast(cameraRay, out RaycastHit hit, gunData.range, layerMask))
+    //     {
+    //         targetPoint = hit.point;
+    //     }
+    //     else
+    //     {
+    //         targetPoint = cameraRay.origin + cameraRay.direction * gunData.range;
+    //     }
 
-        // 빨간색 레이: fireTransform에서 targetPoint로
-        Vector3 fireDirection = (targetPoint - fireTransform.position).normalized;
-        Debug.DrawRay(fireTransform.position, fireDirection * gunData.range, Color.red);
+    //     // 빨간색 레이: fireTransform에서 targetPoint로
+    //     Vector3 fireDirection = (targetPoint - fireTransform.position).normalized;
+    //     Debug.DrawRay(fireTransform.position, fireDirection * gunData.range, Color.red);
 
-        // 노란색 레이: Shot 함수의 실제 발사 방향(실시간)
-        Debug.DrawRay(fireTransform.position, fireDirection * gunData.range, Color.yellow);
-    }
+    //     // 노란색 레이: Shot 함수의 실제 발사 방향(실시간)
+    //     Debug.DrawRay(fireTransform.position, fireDirection * gunData.range, Color.yellow);
+    // }
 
     #endregion
 
@@ -292,16 +294,35 @@ public class TestGun : MonoBehaviour
     /// <returns>펠릿 방향</returns>
     private Vector3 CalculatePelletDirection(Vector3 baseDirection, int pelletIndex)
     {
-        if (gunData.spreadAngle <= 0f)
+        // 줌 상태에 따라 분산도 결정
+        float currentSpreadAngle = GetCurrentSpreadAngle();
+        
+        if (currentSpreadAngle <= 0f)
         {
             return baseDirection;
         }
 
         return Quaternion.Euler(
-            Random.Range(-gunData.spreadAngle, gunData.spreadAngle),
-            Random.Range(-gunData.spreadAngle, gunData.spreadAngle),
+            Random.Range(-currentSpreadAngle, currentSpreadAngle),
+            Random.Range(-currentSpreadAngle, currentSpreadAngle),
             0f
         ) * baseDirection;
+    }
+
+    /// <summary>
+    /// 현재 줌 상태에 따른 분산도를 반환합니다.
+    /// </summary>
+    /// <returns>현재 분산도</returns>
+    private float GetCurrentSpreadAngle()
+    {
+        // 줌 상태일 때는 분산도 0 (정확한 조준)
+        if (CameraController.isZoomed)
+        {
+            return 0f;
+        }
+        
+        // 일반 상태일 때는 설정된 분산도 사용
+        return gunData.spreadAngle;
     }
 
     /// <summary>
