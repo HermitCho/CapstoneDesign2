@@ -63,6 +63,7 @@ public class HUDPanel : MonoBehaviour
     private float maxHealth = 100f;
     private bool isTargeting = false;
     private bool isItemUIOpen = false;
+    private float playTime = 360f;
     private float[] skillCooldowns;
     private float[] maxCooldowns;
     private bool[] skillAvailable;
@@ -72,6 +73,7 @@ public class HUDPanel : MonoBehaviour
     void Awake()
     {
         InitializeHUD();
+        
     }
     
     void Start()
@@ -115,8 +117,10 @@ public class HUDPanel : MonoBehaviour
         // 스킬 시스템 초기화
         InitializeSkillSystem();
         
+        
         // 초기값 설정
         SetHealth(100f, 100f);
+        SetPlayTime();
         SetCrosshairTargeting(false);
         UpdateScore(0f);
         UpdateMultiplier(1f);
@@ -156,6 +160,10 @@ public class HUDPanel : MonoBehaviour
         CloseItemUI();
         
 
+    }
+    void SetPlayTime()
+    {
+        playTime = GameManager.Instance.GetPlayTime();
     }
     
     #endregion
@@ -649,6 +657,7 @@ public class HUDPanel : MonoBehaviour
         
         // 게임 시간 가져오기
         float gameTime = GameManager.Instance.GetGameTime();
+        gameTime = playTime - gameTime;
         
         // 게임 시간 UI 업데이트
         if (gameTimeText != null)

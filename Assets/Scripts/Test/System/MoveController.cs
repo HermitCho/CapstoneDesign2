@@ -486,4 +486,10 @@ public class MoveController : MonoBehaviour
     {
         return rotationAmount;
     }
+
+    public bool IsGrounded()
+    {
+        return isGrounded;
+    }
+
 }   

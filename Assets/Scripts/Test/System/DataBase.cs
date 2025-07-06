@@ -434,6 +434,20 @@ public class DataBase : Singleton<DataBase>
         }
     }   
 
+
+
+    [System.Serializable]
+    public class GameData
+    {
+        [Header("전체 게임 시간 설정")]
+        [SerializeField] private float playTime = 360f;
+        public float PlayTime
+        {
+            set { playTime = value; }
+            get { return playTime; }
+        }
+    }
+
     
 
     [Header("카메라 데이터")]
@@ -444,4 +458,7 @@ public class DataBase : Singleton<DataBase>
 
     [Header("테디베어 데이터")]
     public TeddyBearData teddyBearData;
+
+    [Header("게임 데이터")]
+    public GameData gameData;
 }

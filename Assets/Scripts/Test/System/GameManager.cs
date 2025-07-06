@@ -12,10 +12,10 @@ public class GameManager : Singleton<GameManager>
     [Header("게임 시간 관리 - 자동 할당")]
     [SerializeField] private float gameStartTime = 0f;
     [SerializeField] private bool useGameManagerTime = true; // GameManager에서 시간 관리 여부
-    
-    
+
     private float cachedScoreIncreaseTime = 20f; // 기본값
     private float cachedScoreIncreaseRate = 2f; // 기본
+    private float cachedPlayTime = 360f; // 기본
     private bool dataBaseCached = false;
     
     
@@ -66,6 +66,7 @@ public class GameManager : Singleton<GameManager>
         player = GameObject.FindGameObjectWithTag("Player").GetComponent<LivingEntity>();
         playerHealth = player.CurrentHealth;
         maxPlayerHealth = player.StartingHealth;
+ 
     }
 
     // Update is called once per frame
@@ -92,10 +93,11 @@ public class GameManager : Singleton<GameManager>
     {
         try
         {
-            if (DataBase.Instance != null && DataBase.Instance.teddyBearData != null)
+            if (DataBase.Instance != null && DataBase.Instance.teddyBearData != null && DataBase.Instance.gameData != null)
             {
                 cachedScoreIncreaseTime = DataBase.Instance.teddyBearData.ScoreIncreaseTime;
                 cachedScoreIncreaseRate = DataBase.Instance.teddyBearData.ScoreIncreaseRate;
+                cachedPlayTime = DataBase.Instance.gameData.PlayTime;
                 dataBaseCached = true;
                 Debug.Log($"✅ DataBase 정보 캐싱 완료 - Time: {cachedScoreIncreaseTime}, Rate: {cachedScoreIncreaseRate}");
             }
@@ -110,6 +112,11 @@ public class GameManager : Singleton<GameManager>
             Debug.LogError($"❌ DataBase 캐싱 중 오류: {e.Message} - 기본값 사용");
             dataBaseCached = false;
         }
+    }
+
+    public float GetPlayTime()
+    {
+        return cachedPlayTime;
     }
     
     // 테디베어 점수 업데이트 (TestTeddyBear에서 호출)
