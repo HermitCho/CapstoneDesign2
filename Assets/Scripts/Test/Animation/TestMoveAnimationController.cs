@@ -58,7 +58,6 @@ public class TestMoveAnimationController : MonoBehaviour
     {
         HandleMovementAnimation();
         HandleReloadAnimation();
-        HandleJumpAnimation();
         HandleTurnAnimation();
         HandleAnimatorSpeed();
     }
@@ -91,29 +90,7 @@ public class TestMoveAnimationController : MonoBehaviour
         animator.SetFloat("TurnX", rotationAmount, 0.1f, Time.deltaTime);
     }
 
-    // 점프 및 낙하 애니메이션 처리
-    void HandleJumpAnimation()
-    {
-        bool isGrounded = moveController.IsGrounded();
 
-        if (!isGrounded)
-        {
-            animator.SetBool("IsFalling", true);
-        }
-        else
-        {
-            animator.SetBool("IsFalling", false);
-        }
-
-        if (moveController.IsJumping())
-        {
-            animator.SetBool("IsJumping", true);
-        }
-        else
-        {
-            animator.SetBool("IsJumping", false);
-        }
-    }
 
     // 재장전시 트리거 실행
     void OnReloadInput()
