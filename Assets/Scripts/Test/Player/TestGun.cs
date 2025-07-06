@@ -35,6 +35,7 @@ public class TestGun : MonoBehaviour
     [SerializeField] private Camera mainCamera;
     [SerializeField] private Transform fireTransform;
     [SerializeField] private RectTransform aimPointUI;
+    [SerializeField] private MuzzleDirectionController muzzleDirectionController;
 
     #endregion
 
@@ -250,6 +251,8 @@ public class TestGun : MonoBehaviour
                 Debug.Log("Not Blocked");
                 direction = (worldPoint - fireTransform.position).normalized;
             }
+
+            muzzleDirectionController?.SetDirection(direction);
 
             Debug.DrawRay(fireTransform.position, direction * gunData.range, Color.red, 1f);
             Shot(direction);

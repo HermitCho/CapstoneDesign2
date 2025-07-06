@@ -44,6 +44,7 @@ public class MoveController : MonoBehaviour
     private float lastJumpTime = 0f;
     private float jumpBufferTimer = 0f;
     private bool isGrounded = false;
+    private bool isJumping = false;
     private bool wasGrounded = false;
     private bool isAgainstWall = false; // 벽에 붙어있는 상태 추적
     private Vector3 wallNormal = Vector3.zero; // 벽의 법선 벡터 저장
@@ -226,6 +227,9 @@ public class MoveController : MonoBehaviour
         // 공중에서 땅으로 착지한 순간
         if (!wasGrounded && isGrounded)
         {
+
+            isJumping = false;
+
             Vector3 currentVelocity = playerRigidbody.velocity;
             Vector3 horizontalVelocity = new Vector3(currentVelocity.x, 0, currentVelocity.z);
             Vector3 reducedVelocity = horizontalVelocity * cachedLandingFriction; // 캐싱된 값 사용
@@ -290,6 +294,8 @@ public class MoveController : MonoBehaviour
     {
         if (Time.time - lastJumpTime < cachedJumpCooldown) return; // 캐싱된 값 사용
 
+        isJumping = true;
+
         // 수직 속도만 리셋 (수평 속도는 유지)
         Vector3 currentVelocity = playerRigidbody.velocity;
         
@@ -301,13 +307,14 @@ public class MoveController : MonoBehaviour
         
         lastJumpTime = Time.time;
         isGrounded = false; // 점프 시 즉시 공중 상태로 변경
+        isJumping = true;
     }
 
     // 지면 체크
     private bool CheckGrounded()
     {
         RaycastHit hit;
-        float groundCheckDistance = 1.1f;
+        float groundCheckDistance = 0.3f;
         
         return Physics.Raycast(transform.position, Vector3.down, out hit, groundCheckDistance);
     }
@@ -395,7 +402,7 @@ public class MoveController : MonoBehaviour
             // 벽 상태 해제
             isAgainstWall = false;
             wallNormal = Vector3.zero;
-            }            
+        }            
     }
 
     // ========================================
@@ -485,5 +492,19 @@ public class MoveController : MonoBehaviour
     public float GetRotationAmount()
     {
         return rotationAmount;
+    }
+
+    // 점프 상태 체크
+    public bool IsJumping()
+    {
+        return isJumping; // 점프 상태 반환
+    }
+
+    /// <summary>
+    /// 외부 메서드
+    /// </summary>
+    public bool IsGrounded()
+    {
+        return isGrounded;
     }
 }   

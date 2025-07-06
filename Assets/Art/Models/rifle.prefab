@@ -24,14 +24,14 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3135341908685346979}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.70710903, y: -0.7071046, z: 0.00000020861623, w: 0.00000016391276}
+  m_LocalRotation: {x: 0, y: 0, z: 0.7071068, w: 0.7071068}
   m_LocalPosition: {x: 0, y: 0.075, z: -0.605}
   m_LocalScale: {x: 0.2999999, y: 0.29999995, z: 0.29999983}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 4693431448838390967}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &3595531774115595587
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 90}
+--- !u!1 &4028001254283489675
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -39,30 +39,30 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 2337012370174476483}
+  - component: {fileID: 5548377995336891130}
   m_Layer: 0
-  m_Name: LeftHandIK
+  m_Name: LeftGripPoint
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &2337012370174476483
+--- !u!4 &5548377995336891130
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3595531774115595587}
+  m_GameObject: {fileID: 4028001254283489675}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.042, y: 0.06, z: -0.148}
+  m_LocalPosition: {x: 0, y: 0.03, z: -0.1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 4693431448838390967}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &5356484099892020960
+--- !u!1 &5217543316951838570
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -70,24 +70,24 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 5195680627812632792}
+  - component: {fileID: 9081657771679812145}
   m_Layer: 0
-  m_Name: RightHandIK
+  m_Name: GripPoint
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &5195680627812632792
+--- !u!4 &9081657771679812145
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5356484099892020960}
+  m_GameObject: {fileID: 5217543316951838570}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.0331, y: -0.0324, z: 0.164}
+  m_LocalPosition: {x: 0, y: -0.03, z: 0.15}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -202,12 +202,12 @@ PrefabInstance:
       addedObject: {fileID: 8900110239507678792}
     - targetCorrespondingSourceObject: {fileID: 400004, guid: c21fd8055cc8cdc4da37c1254275f767,
         type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 5195680627812632792}
+      insertIndex: 1
+      addedObject: {fileID: 9081657771679812145}
     - targetCorrespondingSourceObject: {fileID: 400004, guid: c21fd8055cc8cdc4da37c1254275f767,
         type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 2337012370174476483}
+      insertIndex: 2
+      addedObject: {fileID: 5548377995336891130}
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: c21fd8055cc8cdc4da37c1254275f767, type: 3}
 --- !u!4 &4693431448838390967 stripped
