@@ -30,6 +30,13 @@ public class TestMoveAnimationController : MonoBehaviour
     private bool isJumping = false;  
     private bool isFalling = false;  
     
+    // 회전 관련 파라미터
+    private float smoothedTurnValue = 0f;  // 회전 방향 스무딩
+    private float smoothedMoveTurnValue = 0f; // 회전 방향 스무딩
+    private float turnSensitivity = 0.1f;  // 민감도 조절
+    private float MoveturnLerpSpeed = 2f; // Moveturn 부드러운 전환 속도
+    private float turnLerpSpeed = 15f;     // turn 부드러운 전환 속도
+
     private void Awake()
     {
         animator = GetComponent<Animator>();
@@ -57,7 +64,7 @@ public class TestMoveAnimationController : MonoBehaviour
     private void Update()
     {
         HandleMovementAnimation();
-        HandleReloadAnimation();
+        //HandleReloadAnimation();
         HandleTurnAnimation();
         HandleAnimatorSpeed();
     }
@@ -84,12 +91,24 @@ public class TestMoveAnimationController : MonoBehaviour
     // 캐릭터 회전값을 받아 애니메이션 전달
     void HandleTurnAnimation()
     {
-        
-        float rotationAmount = moveController.GetRotationAmount();
+        float currentRotationAmount = moveController.GetRotationAmount();
 
-        animator.SetFloat("TurnX", rotationAmount, 0.1f, Time.deltaTime);
+        float rawTurn = Mathf.Clamp(currentRotationAmount * turnSensitivity, -1f, 1f);
+
+        if (Mathf.Abs(rawTurn) < 0.05f)
+            rawTurn = 0f;
+
+        bool isMoving = moveInput.magnitude > 0.1f;
+
+        float targetTurnX = isMoving ? 0f : rawTurn;
+        float targetMoveTurnX = isMoving ? rawTurn : 0f;
+
+        smoothedTurnValue = Mathf.Lerp(smoothedTurnValue, targetTurnX, Time.deltaTime * turnLerpSpeed);
+        smoothedMoveTurnValue = Mathf.Lerp(targetMoveTurnX, targetMoveTurnX, Time.deltaTime * MoveturnLerpSpeed);
+
+        animator.SetFloat("TurnX", smoothedTurnValue, 0.1f, Time.deltaTime);
+        animator.SetFloat("MoveTurnX", smoothedMoveTurnValue, 0.1f, Time.deltaTime);
     }
-
 
 
     // 재장전시 트리거 실행
@@ -98,14 +117,14 @@ public class TestMoveAnimationController : MonoBehaviour
         animator.SetTrigger("Reload");
     }
 
-    // 재장전 상태 확인 후 애니메이션 파라미터 반영
-    void HandleReloadAnimation()
-    {
-        if (testGun == null) return;
+    // // 재장전 상태 확인 후 애니메이션 파라미터 반영
+    // void HandleReloadAnimation()
+    // {
+    //     if (testGun == null) return;
 
-        bool isReloading = testGun.CurrentState == TestGun.GunState.Reloading;
-        animator.SetBool("IsReloading", isReloading);
-    }
+    //     bool isReloading = testGun.CurrentState == TestGun.GunState.Reloading;
+    //     animator.SetBool("IsReloading", isReloading);
+    // }
 
     // 조준 상태에 따른 애니메이션 속도 변경
     void HandleAnimatorSpeed()
