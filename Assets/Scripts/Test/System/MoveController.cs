@@ -28,6 +28,7 @@ public class MoveController : MonoBehaviour
     private float cachedZoomRotationSpeed;
     private float cachedMouseInputTimeout;
     private float cachedJumpCooldown;
+    private float cachedGroundCheckDistance;
     private float cachedJumpHeight;
     private float cachedJumpBufferTime;
     private float cachedAirAcceleration;
@@ -106,6 +107,7 @@ public class MoveController : MonoBehaviour
                 cachedZoomRotationSpeed = playerMoveData.ZoomRotationSpeed;
                 cachedMouseInputTimeout = playerMoveData.MouseInputTimeout;
                 cachedJumpCooldown = playerMoveData.JumpCooldown;
+                cachedGroundCheckDistance = playerMoveData.GroundCheckDistance;
                 cachedJumpHeight = playerMoveData.JumpHeight;
                 cachedJumpBufferTime = playerMoveData.JumpBufferTime;
                 cachedAirAcceleration = playerMoveData.AirAcceleration;
@@ -135,6 +137,8 @@ public class MoveController : MonoBehaviour
         HandleRotation();
         UpdateJumpBuffer();
         HandleLanding();
+
+        Debug.Log("isGrounded: " + isGrounded);
     }
 
     // 지면 상태 업데이트
@@ -307,9 +311,8 @@ public class MoveController : MonoBehaviour
     private bool CheckGrounded()
     {
         RaycastHit hit;
-        float groundCheckDistance = 1.1f;
         
-        return Physics.Raycast(transform.position, Vector3.down, out hit, groundCheckDistance);
+        return Physics.Raycast(transform.position, Vector3.down, out hit, cachedGroundCheckDistance);
     }
 
     public void MouseLock()
