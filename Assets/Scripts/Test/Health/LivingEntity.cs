@@ -128,7 +128,10 @@ public class LivingEntity : MonoBehaviour, IDamageable
     {
         if (IsDead || healAmount <= 0f) return;
 
+        float prevHealth = CurrentHealth;
         CurrentHealth = Mathf.Min(StartingHealth, CurrentHealth + healAmount);
+        float actualHealed = CurrentHealth - prevHealth;
+        GameManager.Instance.ChangePlayerHealth(actualHealed);
     }
 
     /// <summary>
@@ -159,7 +162,35 @@ public class LivingEntity : MonoBehaviour, IDamageable
         // 사망 이벤트 호출
         OnDeath?.Invoke();
         
+        // 10초 후 부활
+        StartCoroutine(ReviveAfterDelay(10f));
+        
         return true;
+    }
+
+    /// <summary>
+    /// 일정 시간 후 부활 처리 코루틴
+    /// </summary>
+    private IEnumerator ReviveAfterDelay(float delay)
+    {
+        float remaining = delay;
+        while (remaining > 0f)
+        {
+            Debug.Log($"[부활 대기] 남은 시간: {Mathf.CeilToInt(remaining)}초");
+            yield return new WaitForSeconds(1f);
+            remaining -= 1f;
+        }
+        Revive();
+    }
+
+    /// <summary>
+    /// 부활 처리: 체력 회복 및 IsDead 해제
+    /// </summary>
+    public virtual void Revive()
+    {
+        IsDead = false;
+        RestoreHealth(StartingHealth);
+        // 필요시 부활 이벤트 등 추가 가능
     }
 
     #endregion

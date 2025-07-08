@@ -4586,6 +4586,7 @@ MonoBehaviour:
   mainCamera: {fileID: 679747426}
   fireTransform: {fileID: 1623628152}
   aimPointUI: {fileID: 217245343}
+  muzzleDirectionController: {fileID: 0}
 --- !u!1 &710082011
 GameObject:
   m_ObjectHideFlags: 0
@@ -8749,6 +8750,8 @@ MonoBehaviour:
     canUseItem: 1
     canUseSkill: 1
     canUseGun: 0
+  gameData:
+    playTime: 360
 --- !u!1 &1510712219
 GameObject:
   m_ObjectHideFlags: 0
@@ -10869,6 +10872,7 @@ GameObject:
   - component: {fileID: 1892993451}
   - component: {fileID: 1892993452}
   - component: {fileID: 1892993453}
+  - component: {fileID: 1892993454}
   m_Layer: 0
   m_Name: Test Player
   m_TagString: Player
@@ -11005,11 +11009,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0433fd1910f9e2248b4d9323fad4ad84, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  iKController: {fileID: 0}
-  turnSmoothing: 5
-  turnSensitivity: 1
-  moveController: {fileID: 0}
-  rb: {fileID: 0}
 --- !u!114 &1892993450
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -11060,6 +11059,30 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   characterData: {fileID: 11400000, guid: 26a1431acb874354f8bcad6d232225f7, type: 2}
+--- !u!114 &1892993454
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1892993439}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 191a28227504b314a8dab3a43ff4e0c0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  skillName: "\uC18D\uB3C4 \uC2A4\uD0AC"
+  skillDescription: "8\uCD08\uB3D9\uC548 \uC774\uB3D9\uC18D\uB3C4\uAC00 \uBE68\uB77C\uC9D0"
+  duration: 8
+  castTime: 0
+  skillIcon: {fileID: 0}
+  skillColor: {r: 1, g: 1, b: 1, a: 1}
+  skillEffect: {fileID: 0}
+  skillSound: {fileID: 0}
+  cooldownTime: 30
+  showCooldownUI: 1
+  useSkillInput: 1
+  speedMultiplier: 2
 --- !u!1 &1920671862
 GameObject:
   m_ObjectHideFlags: 0
