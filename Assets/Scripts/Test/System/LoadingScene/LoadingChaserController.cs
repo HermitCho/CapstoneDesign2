@@ -5,28 +5,25 @@ using UnityEngine;
 public class LoadingChaserController : MonoBehaviour
 {
     [SerializeField] private Animator animator;
-    [SerializeField] private Transform chaseTarget;
-    [SerializeField] private float jumpPower = 2f;
-    [SerializeField] private float jumpPhysicsDelay = 0.3f; // 점프 애니메이션 후 물리적 점프까지의 지연시간
-    [SerializeField] private Rigidbody rb;
+    
+    [Header("Animation Control")]
+    [SerializeField] private float jumpDelay = 5f; // 점프하기까지의 지연시간
     
     private bool canMove = true;
-    private bool useRootMotion = true;
+    private bool isJumping = false;
     
     // Start is called before the first frame update
     void Start()
     {
-        // Rigidbody 컴포넌트 자동 할당
-        if (rb == null)
-            rb = GetComponent<Rigidbody>();
-            
-        // Animator에서 Apply Root Motion 활성화
-        if (animator != null)
+        // Rigidbody가 있다면 제거 (Root Motion만 사용)
+        Rigidbody rb = GetComponent<Rigidbody>();
+        if (rb != null)
         {
-            animator.applyRootMotion = true;
+            DestroyImmediate(rb);
+            Debug.Log($"{gameObject.name}: Rigidbody 제거됨 - Root Motion만 사용");
         }
             
-        // 5초 후 점프 실행
+        // 지정된 시간 후 점프 실행
         StartCoroutine(JumpAfterDelay());
     }
 
@@ -34,70 +31,88 @@ public class LoadingChaserController : MonoBehaviour
     void Update()
     {
         // 애니메이션 재생 제어
-        if (canMove && animator != null)
+        if (animator != null)
         {
-            // 달리기 애니메이션 활성화 (Bool 파라미터 사용)
-            animator.SetBool("IsRunning", true);
-        }
-        else if (animator != null)
-        {
-            // 달리기 애니메이션 비활성화
-            animator.SetBool("IsRunning", false);
-        }
-    }
-    
-    // Root Motion 처리
-    void OnAnimatorMove()
-    {
-        if (canMove && useRootMotion && animator != null)
-        {
-            // Root Motion을 Rigidbody에 적용
-            if (rb != null)
+            if (canMove && !isJumping)
             {
-                rb.MovePosition(rb.position + animator.deltaPosition);
-                rb.MoveRotation(rb.rotation * animator.deltaRotation);
+                // 달리기 애니메이션 활성화
+                animator.SetBool("IsRunning", true);
             }
             else
             {
-                // Rigidbody가 없는 경우 Transform에 직접 적용
-                transform.position += animator.deltaPosition;
-                transform.rotation *= animator.deltaRotation;
+                // 달리기 애니메이션 비활성화
+                animator.SetBool("IsRunning", false);
             }
         }
     }
     
+
     private IEnumerator JumpAfterDelay()
     {
-        yield return new WaitForSeconds(5f);
+        yield return new WaitForSeconds(jumpDelay);
         
-        // 이동 정지
+        // 달리기 중지
         canMove = false;
+        isJumping = true;
         
-        // Root Motion 비활성화 (점프 시에는 물리 기반으로 처리)
-        useRootMotion = false;
-        if (animator != null)
-        {
-            animator.applyRootMotion = false;
-        }
-        
-        // Jump 애니메이션 트리거 발생
+        // Jump 애니메이션 트리거 발생 (애니메이션에 Root Motion이 포함되어야 함)
         if (animator != null)
         {
             animator.SetTrigger("Jump");
         }
         
-        // 점프 애니메이션이 어느 정도 재생된 후 물리적 점프 실행
-        yield return new WaitForSeconds(jumpPhysicsDelay);
-        
-        // 물리적 점프 실행
-        if (rb != null)
+        Debug.Log($"{gameObject.name}: 점프 애니메이션 시작 (Root Motion 기반)");
+    }
+    
+    // 애니메이션 이벤트에서 호출될 수 있는 메서드들
+    public void OnJumpStart()
+    {
+        Debug.Log($"{gameObject.name}: 점프 시작");
+    }
+    
+    public void OnJumpEnd()
+    {
+        isJumping = false;
+        Debug.Log($"{gameObject.name}: 점프 종료");
+    }
+    
+    public void OnLanding()
+    {
+        Debug.Log($"{gameObject.name}: 착지");
+    }
+    
+    // 외부에서 호출 가능한 메서드들
+    public void SetCanMove(bool enable)
+    {
+        canMove = enable;
+    }
+    
+    public void TriggerJump()
+    {
+        if (animator != null && !isJumping)
         {
-            rb.AddForce(Vector3.up * jumpPower, ForceMode.Impulse);
+            canMove = false;
+            isJumping = true;
+            animator.SetTrigger("Jump");
         }
     }
-
-    private IEnumerator TriggerFallAfterDelay()
+    
+    public void StopMovement()
     {
-        yield return new WaitForSeconds(0.5f);
+        canMove = false;
+        if (animator != null)
+        {
+            animator.SetBool("IsRunning", false);
+        }
+    }
+    
+    public bool IsMoving()
+    {
+        return canMove && !isJumping;
+    }
+    
+    public bool IsJumping()
+    {
+        return isJumping;
     }
 }

@@ -107,8 +107,8 @@ public class TestMoveAnimationController : MonoBehaviour
         float targetTurnX = isMoving ? 0f : rawTurn;
         float targetMoveTurnX = isMoving ? rawTurn : 0f;
         
-        smoothedTurnValue = Mathf.Lerp(0, targetTurnX, Time.deltaTime * turnLerpSpeed);
-        smoothedMoveTurnValue = Mathf.Lerp(0, targetMoveTurnX, Time.deltaTime * MoveturnLerpSpeed);
+        smoothedTurnValue = Mathf.Lerp(smoothedTurnValue, targetTurnX, Time.deltaTime * turnLerpSpeed);
+        smoothedMoveTurnValue = Mathf.Lerp(smoothedMoveTurnValue, targetMoveTurnX, Time.deltaTime * MoveturnLerpSpeed);
 
         animator.SetFloat("TurnX", smoothedTurnValue, 0.1f, Time.deltaTime);
         animator.SetFloat("MoveTurnX", smoothedMoveTurnValue, 0.1f, Time.deltaTime);
