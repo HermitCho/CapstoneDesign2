@@ -203,6 +203,17 @@ public class DataBase : Singleton<DataBase>
             set { jumpCooldown = value; }
             get { return jumpCooldown; }
         }
+
+        [Space(10)]
+        [Tooltip("IsGround 체크 거리 설정")]
+        [Range(0f, 10f)]
+        [SerializeField] private float groundCheckDistance = 1.1f;
+        public float GroundCheckDistance
+        {
+            set { groundCheckDistance = value; }
+            get { return groundCheckDistance; }
+        }
+
         [Space(10)]
         [Tooltip("착지 시 마찰력 배율 설정")]
         [Range(0f, 1f)]

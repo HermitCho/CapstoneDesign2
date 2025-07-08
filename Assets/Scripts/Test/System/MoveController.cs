@@ -29,6 +29,7 @@ public class MoveController : MonoBehaviour
     private float cachedZoomRotationSpeed;
     private float cachedMouseInputTimeout;
     private float cachedJumpCooldown;
+    private float cachedGroundCheckDistance;
     private float cachedJumpHeight;
     private float cachedJumpBufferTime;
     private float cachedAirAcceleration;
@@ -51,6 +52,14 @@ public class MoveController : MonoBehaviour
     
     // 카메라 참조
     private Camera mainCamera;
+
+    // ✅ 기절/조작 제어 관련 변수들
+    private bool isStunned = false;
+    private bool canMove = true;
+    private bool canRotate = true;
+    private bool canJump = true;
+    private bool canUseSkill = true;
+    private bool canUseItem = true;
 
     // InputManager 이벤트 구독
     void OnEnable()
@@ -107,6 +116,7 @@ public class MoveController : MonoBehaviour
                 cachedZoomRotationSpeed = playerMoveData.ZoomRotationSpeed;
                 cachedMouseInputTimeout = playerMoveData.MouseInputTimeout;
                 cachedJumpCooldown = playerMoveData.JumpCooldown;
+                cachedGroundCheckDistance = playerMoveData.GroundCheckDistance;
                 cachedJumpHeight = playerMoveData.JumpHeight;
                 cachedJumpBufferTime = playerMoveData.JumpBufferTime;
                 cachedAirAcceleration = playerMoveData.AirAcceleration;
@@ -142,6 +152,8 @@ public class MoveController : MonoBehaviour
         HandleRotation();
         UpdateJumpBuffer();
         HandleLanding();
+
+        Debug.Log("isGrounded: " + isGrounded);
     }
 
     // 지면 상태 업데이트
@@ -248,12 +260,26 @@ public class MoveController : MonoBehaviour
     // InputManager에서 이동 입력 받기
     void OnMoveInput(Vector2 moveInput)
     {
+        // ✅ 움직임 제어 확인
+        if (!canMove || isStunned)
+        {
+            rawMoveInput = Vector2.zero;
+            return;
+        }
+        
         rawMoveInput = moveInput;
     }
 
     // InputManager에서 마우스 입력 받기
     void OnMouseInput(Vector2 mouseInput)
     {
+        // ✅ 마우스 조작 제어 확인
+        if (!canRotate || isStunned)
+        {
+            rotationAmount = 0;
+            return;
+        }
+        
         float mouseX = mouseInput.x;
        
         
@@ -270,6 +296,13 @@ public class MoveController : MonoBehaviour
     // 회전 처리
     void HandleRotation()
     {   
+        // ✅ 회전 제어 확인
+        if (!canRotate || isStunned)
+        {
+            rotationAmount = 0;
+            return;
+        }
+        
         if (Time.time - lastMouseInputTime > cachedMouseInputTimeout) // 캐싱된 값 사용
         {
             rotationAmount = 0;
@@ -280,6 +313,12 @@ public class MoveController : MonoBehaviour
     // InputManager에서 점프 입력 받기
     void OnJumpInput()
     {      
+        // ✅ 점프 제어 확인
+        if (!canJump || isStunned)
+        {
+            return;
+        }
+        
         if (isGrounded)
         {
             // 즉시 점프
@@ -314,9 +353,8 @@ public class MoveController : MonoBehaviour
     private bool CheckGrounded()
     {
         RaycastHit hit;
-        float groundCheckDistance = 1.1f;
         
-        return Physics.Raycast(transform.position, Vector3.down, out hit, groundCheckDistance);
+        return Physics.Raycast(transform.position, Vector3.down, out hit, cachedGroundCheckDistance);
     }
 
     public void MouseLock()
@@ -428,12 +466,24 @@ public class MoveController : MonoBehaviour
     // InputManager에서 스킬 입력 받기
     void OnSkillInput()
     {
+        // ✅ 스킬 사용 제어 확인
+        if (!canUseSkill || isStunned)
+        {
+            return;
+        }
+        
         Debug.Log("E키가 눌렸습니다 - 스킬 사용");
     }
 
     // InputManager에서 아이템 입력 받기
     void OnItemInput()
     {
+        // ✅ 아이템 사용 제어 확인
+        if (!canUseItem || isStunned)
+        {
+            return;
+        }
+        
         Debug.Log("Q키가 눌렸습니다 - 아이템 사용");
     }
 
@@ -497,6 +547,232 @@ public class MoveController : MonoBehaviour
     public bool IsGrounded()
     {
         return isGrounded;
+    }
+
+    // ========================================
+    // === 기절/조작 제어 관련 메서드들 ===
+    // ========================================
+
+    /// <summary>
+    /// 기절 상태 설정 (모든 조작 차단)
+    /// </summary>
+    /// <param name="stunned">기절 상태 여부</param>
+    public void SetStunned(bool stunned)
+    {
+        isStunned = stunned;
+        
+        if (stunned)
+        {
+            // 기절 시 모든 입력 차단 및 움직임 정지
+            rawMoveInput = Vector2.zero;
+            rotationAmount = 0;
+            jumpBufferTimer = 0;
+            
+            Debug.Log("✅ 캐릭터 기절 상태 - 모든 조작 차단");
+        }
+        else
+        {
+            Debug.Log("✅ 캐릭터 기절 해제 - 조작 가능");
+        }
+    }
+
+    /// <summary>
+    /// 현재 기절 상태 확인
+    /// </summary>
+    /// <returns>기절 상태 여부</returns>
+    public bool IsStunned()
+    {
+        return isStunned;
+    }
+
+    // --- 움직임 제어 메서드들 ---
+
+    /// <summary>
+    /// 움직임 조작 차단
+    /// </summary>
+    public void DisableMovement()
+    {
+        canMove = false;
+        rawMoveInput = Vector2.zero;
+        Debug.Log("✅ 움직임 조작 차단");
+    }
+
+    /// <summary>
+    /// 움직임 조작 허용
+    /// </summary>
+    public void EnableMovement()
+    {
+        canMove = true;
+        Debug.Log("✅ 움직임 조작 허용");
+    }
+
+    /// <summary>
+    /// 움직임 조작 가능 여부 확인
+    /// </summary>
+    /// <returns>움직임 조작 가능 여부</returns>
+    public bool CanMove()
+    {
+        return canMove && !isStunned;
+    }
+
+    // --- 마우스 조작 제어 메서드들 ---
+
+    /// <summary>
+    /// 마우스 조작 차단 (회전 차단)
+    /// </summary>
+    public void DisableMouseControl()
+    {
+        canRotate = false;
+        rotationAmount = 0;
+        Debug.Log("✅ 마우스 조작 차단");
+    }
+
+    /// <summary>
+    /// 마우스 조작 허용 (회전 허용)
+    /// </summary>
+    public void EnableMouseControl()
+    {
+        canRotate = true;
+        Debug.Log("✅ 마우스 조작 허용");
+    }
+
+    /// <summary>
+    /// 마우스 조작 가능 여부 확인
+    /// </summary>
+    /// <returns>마우스 조작 가능 여부</returns>
+    public bool CanRotate()
+    {
+        return canRotate && !isStunned;
+    }
+
+    // --- 점프 제어 메서드들 ---
+
+    /// <summary>
+    /// 점프 조작 차단
+    /// </summary>
+    public void DisableJump()
+    {
+        canJump = false;
+        jumpBufferTimer = 0;
+        Debug.Log("✅ 점프 조작 차단");
+    }
+
+    /// <summary>
+    /// 점프 조작 허용
+    /// </summary>
+    public void EnableJump()
+    {
+        canJump = true;
+        Debug.Log("✅ 점프 조작 허용");
+    }
+
+    /// <summary>
+    /// 점프 조작 가능 여부 확인
+    /// </summary>
+    /// <returns>점프 조작 가능 여부</returns>
+    public bool CanJump()
+    {
+        return canJump && !isStunned;
+    }
+
+    // --- 스킬 제어 메서드들 ---
+
+    /// <summary>
+    /// 스킬 사용 차단
+    /// </summary>
+    public void DisableSkill()
+    {
+        canUseSkill = false;
+        Debug.Log("✅ 스킬 사용 차단");
+    }
+
+    /// <summary>
+    /// 스킬 사용 허용
+    /// </summary>
+    public void EnableSkill()
+    {
+        canUseSkill = true;
+        Debug.Log("✅ 스킬 사용 허용");
+    }
+
+    /// <summary>
+    /// 스킬 사용 가능 여부 확인
+    /// </summary>
+    /// <returns>스킬 사용 가능 여부</returns>
+    public bool CanUseSkill()
+    {
+        return canUseSkill && !isStunned;
+    }
+
+    // --- 아이템 제어 메서드들 ---
+
+    /// <summary>
+    /// 아이템 사용 차단
+    /// </summary>
+    public void DisableItem()
+    {
+        canUseItem = false;
+        Debug.Log("✅ 아이템 사용 차단");
+    }
+
+    /// <summary>
+    /// 아이템 사용 허용
+    /// </summary>
+    public void EnableItem()
+    {
+        canUseItem = true;
+        Debug.Log("✅ 아이템 사용 허용");
+    }
+
+    /// <summary>
+    /// 아이템 사용 가능 여부 확인
+    /// </summary>
+    /// <returns>아이템 사용 가능 여부</returns>
+    public bool CanUseItem()
+    {
+        return canUseItem && !isStunned;
+    }
+
+    // --- 통합 제어 메서드들 ---
+
+    /// <summary>
+    /// 모든 조작 차단 (기절 제외)
+    /// </summary>
+    public void DisableAllControls()
+    {
+        DisableMovement();
+        DisableMouseControl();
+        DisableJump();
+        DisableSkill();
+        DisableItem();
+        Debug.Log("✅ 모든 조작 차단");
+    }
+
+    /// <summary>
+    /// 모든 조작 허용
+    /// </summary>
+    public void EnableAllControls()
+    {
+        EnableMovement();
+        EnableMouseControl();
+        EnableJump();
+        EnableSkill();
+        EnableItem();
+        Debug.Log("✅ 모든 조작 허용");
+    }
+
+    /// <summary>
+    /// 현재 조작 상태 로그 출력
+    /// </summary>
+    public void LogControlStatus()
+    {
+        Debug.Log($"=== 조작 상태 ===");
+        Debug.Log($"기절 상태: {isStunned}");
+        Debug.Log($"움직임: {canMove && !isStunned}");
+        Debug.Log($"마우스 조작: {canRotate && !isStunned}");
+        Debug.Log($"점프: {canJump && !isStunned}");
+        Debug.Log($"스킬: {canUseSkill && !isStunned}");
+        Debug.Log($"아이템: {canUseItem && !isStunned}");
     }
 
 }   
