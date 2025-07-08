@@ -10,6 +10,7 @@ public class TestMoveAnimationController : MonoBehaviour
 {   
     // 애니메이터 컴포넌트
     private Animator animator;
+    private Rigidbody rb;
 
     // 입력값(WASD, 마우스 X)
     private Vector2 moveInput; 
@@ -26,14 +27,21 @@ public class TestMoveAnimationController : MonoBehaviour
     private float aimingAnimSpeed = 0.5f;
     private bool isAiming = false;
 
-    // 점프 및 낙하 상태
-    private bool isJumping = false;  
-    private bool isFalling = false;  
+    // 점프 관련
     
+    
+    // 회전 관련 파라미터
+    private float smoothedTurnValue = 0f;  // 회전 방향 스무딩
+    private float smoothedMoveTurnValue = 0f; // 회전 방향 스무딩
+    private float turnSensitivity = 0.1f;  // 민감도 조절
+    private float MoveturnLerpSpeed = 5f; // Moveturn 부드러운 전환 속도
+    private float turnLerpSpeed = 5f;     // turn 부드러운 전환 속도
+
     private void Awake()
     {
         animator = GetComponent<Animator>();
         moveController = GetComponent<MoveController>();
+        rb = GetComponent<Rigidbody>();
     }
 
     private void OnEnable()
@@ -43,6 +51,7 @@ public class TestMoveAnimationController : MonoBehaviour
         InputManager.OnZoomPressed += OnZoomInput;
         InputManager.OnZoomCanceledPressed += OnZoomCanceledInput;
         InputManager.OnReloadPressed += OnReloadInput;
+        // InputManager.OnJumpPressed += OnJumpInput;
     }
 
     private void OnDisable()
@@ -52,14 +61,16 @@ public class TestMoveAnimationController : MonoBehaviour
         InputManager.OnZoomPressed -= OnZoomInput;
         InputManager.OnZoomCanceledPressed -= OnZoomCanceledInput;
         InputManager.OnReloadPressed -= OnReloadInput;
+        // InputManager.OnJumpPressed -= OnJumpInput;
     }
 
     private void Update()
     {
         HandleMovementAnimation();
-        HandleReloadAnimation();
+        //HandleReloadAnimation();
         HandleTurnAnimation();
         HandleAnimatorSpeed();
+        HandleJumpAnimation();
     }
 
     // 이동 입력 처리
@@ -84,12 +95,24 @@ public class TestMoveAnimationController : MonoBehaviour
     // 캐릭터 회전값을 받아 애니메이션 전달
     void HandleTurnAnimation()
     {
+        float currentRotationAmount = moveController.GetRotationAmount();
+
+        float rawTurn = Mathf.Clamp(currentRotationAmount * turnSensitivity, -1f, 1f);
+
+        if (Mathf.Abs(rawTurn) < 0.05f)
+            rawTurn = 0f;
+
+        bool isMoving = moveInput.magnitude > 0.1f;
         
-        float rotationAmount = moveController.GetRotationAmount();
+        float targetTurnX = isMoving ? 0f : rawTurn;
+        float targetMoveTurnX = isMoving ? rawTurn : 0f;
+        
+        smoothedTurnValue = Mathf.Lerp(0, targetTurnX, Time.deltaTime * turnLerpSpeed);
+        smoothedMoveTurnValue = Mathf.Lerp(0, targetMoveTurnX, Time.deltaTime * MoveturnLerpSpeed);
 
-        animator.SetFloat("TurnX", rotationAmount, 0.1f, Time.deltaTime);
+        animator.SetFloat("TurnX", smoothedTurnValue, 0.1f, Time.deltaTime);
+        animator.SetFloat("MoveTurnX", smoothedMoveTurnValue, 0.1f, Time.deltaTime);
     }
-
 
 
     // 재장전시 트리거 실행
@@ -98,20 +121,51 @@ public class TestMoveAnimationController : MonoBehaviour
         animator.SetTrigger("Reload");
     }
 
-    // 재장전 상태 확인 후 애니메이션 파라미터 반영
-    void HandleReloadAnimation()
-    {
-        if (testGun == null) return;
+    // // 재장전 상태 확인 후 애니메이션 파라미터 반영
+    // void HandleReloadAnimation()
+    // {
+    //     if (testGun == null) return;
 
-        bool isReloading = testGun.CurrentState == TestGun.GunState.Reloading;
-        animator.SetBool("IsReloading", isReloading);
-    }
+    //     bool isReloading = testGun.CurrentState == TestGun.GunState.Reloading;
+    //     animator.SetBool("IsReloading", isReloading);
+    // }
 
     // 조준 상태에 따른 애니메이션 속도 변경
     void HandleAnimatorSpeed()
     {
         animator.speed = isAiming ? aimingAnimSpeed : normalAnimSpeed;
     }
+
+    void HandleJumpAnimation()
+    {
+        bool grounded = moveController.IsGrounded();
+
+        Debug.Log($"isGrounded: {grounded}, velocityY: {rb.velocity.y}");
+        // 2. 낙하 중일 때
+        if (!moveController.IsGrounded() && rb.velocity.y > 0.1f)
+        {
+            animator.SetBool("JumpUp", true);
+        }
+        else
+        {
+            animator.SetBool("JumpUp", false);
+        }
+
+        // 2. 낙하 중일 때
+        if (!moveController.IsGrounded() && rb.velocity.y < -0.1f)
+        {
+            animator.SetBool("JumpDown", true);
+        }
+        else
+        {
+            animator.SetBool("JumpDown", false);
+        }
+    }
+    
+    // void OnJumpInput()
+    // {
+    //     animator.SetTrigger("JumpUp");
+    // }
 
     // 조준 시작 시 호출
     void OnZoomInput()
