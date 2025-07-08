@@ -307,7 +307,7 @@ public class MoveController : MonoBehaviour
     private bool CheckGrounded()
     {
         RaycastHit hit;
-        float groundCheckDistance = 1.1f;
+        float groundCheckDistance = 0.4f;
         
         return Physics.Raycast(transform.position, Vector3.down, out hit, groundCheckDistance);
     }
