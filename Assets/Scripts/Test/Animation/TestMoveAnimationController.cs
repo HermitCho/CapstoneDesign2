@@ -35,7 +35,7 @@ public class TestMoveAnimationController : MonoBehaviour
     private float smoothedMoveTurnValue = 0f; // 회전 방향 스무딩
     private float turnSensitivity = 0.1f;  // 민감도 조절
     private float MoveturnLerpSpeed = 5f; // Moveturn 부드러운 전환 속도
-    private float turnLerpSpeed = 5f;     // turn 부드러운 전환 속도
+    private float turnLerpSpeed = 15f;     // turn 부드러운 전환 속도
 
     private void Awake()
     {
@@ -99,7 +99,7 @@ public class TestMoveAnimationController : MonoBehaviour
 
         float rawTurn = Mathf.Clamp(currentRotationAmount * turnSensitivity, -1f, 1f);
 
-        if (Mathf.Abs(rawTurn) < 0.05f)
+        if (Mathf.Abs(rawTurn) < 0.1f)
             rawTurn = 0f;
 
         bool isMoving = moveInput.magnitude > 0.1f;
@@ -107,11 +107,14 @@ public class TestMoveAnimationController : MonoBehaviour
         float targetTurnX = isMoving ? 0f : rawTurn;
         float targetMoveTurnX = isMoving ? rawTurn : 0f;
         
-        smoothedTurnValue = Mathf.Lerp(0, targetTurnX, Time.deltaTime * turnLerpSpeed);
-        smoothedMoveTurnValue = Mathf.Lerp(0, targetMoveTurnX, Time.deltaTime * MoveturnLerpSpeed);
+        smoothedTurnValue = Mathf.Lerp(smoothedTurnValue, targetTurnX, Time.deltaTime * turnLerpSpeed);
+        if (Mathf.Abs(smoothedTurnValue) < 0.005f) smoothedTurnValue = 0f;
 
-        animator.SetFloat("TurnX", smoothedTurnValue, 0.1f, Time.deltaTime);
-        animator.SetFloat("MoveTurnX", smoothedMoveTurnValue, 0.1f, Time.deltaTime);
+        smoothedMoveTurnValue = Mathf.Lerp(smoothedMoveTurnValue, targetMoveTurnX, Time.deltaTime * MoveturnLerpSpeed);
+        if (Mathf.Abs(smoothedMoveTurnValue) < 0.005f) smoothedMoveTurnValue = 0f;
+
+        animator.SetFloat("TurnX", smoothedTurnValue, 0f, Time.deltaTime);
+        animator.SetFloat("MoveTurnX", smoothedMoveTurnValue, 0f, Time.deltaTime);
     }
 
 
