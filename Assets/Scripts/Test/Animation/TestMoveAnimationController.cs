@@ -33,9 +33,9 @@ public class TestMoveAnimationController : MonoBehaviour
     // 회전 관련 파라미터
     private float smoothedTurnValue = 0f;  // 회전 방향 스무딩
     private float smoothedMoveTurnValue = 0f; // 회전 방향 스무딩
-    private float turnSensitivity = 0.1f;  // 민감도 조절
+    private float turnSensitivity = 0.2f;  // 민감도 조절
     private float MoveturnLerpSpeed = 5f; // Moveturn 부드러운 전환 속도
-    private float turnLerpSpeed = 15f;     // turn 부드러운 전환 속도
+    private float turnLerpSpeed = 12f;     // turn 부드러운 전환 속도
 
     private void Awake()
     {
