@@ -21,7 +21,6 @@ public class MoveController : MonoBehaviour
     private DataBase.PlayerMoveData playerMoveData;
     private Rigidbody playerRigidbody;
     private Vector2 rawMoveInput; // 원본 입력값 저장
-    
 
     // ✅ DataBase 캐싱된 값들 (성능 최적화)
     private float cachedSpeed;
@@ -142,12 +141,6 @@ public class MoveController : MonoBehaviour
     void Update()
     {
         UpdateGroundedState();
-
-        {
-            HandleRotation(); // 사망 시에도 회전(마우스 입력)은 허용
-            return;
-        }
-
         HandleMovement();
         HandleRotation();
         UpdateJumpBuffer();
@@ -774,5 +767,4 @@ public class MoveController : MonoBehaviour
         Debug.Log($"스킬: {canUseSkill && !isStunned}");
         Debug.Log($"아이템: {canUseItem && !isStunned}");
     }
-
 }   

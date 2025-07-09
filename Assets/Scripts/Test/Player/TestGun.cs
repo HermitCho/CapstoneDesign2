@@ -37,6 +37,8 @@ public class TestGun : MonoBehaviour
     [SerializeField] private RectTransform aimPointUI;
     [SerializeField] private MuzzleDirectionController muzzleDirectionController;
 
+    [Header("스턴 제어")]
+    private MoveController moveController;
     #endregion
 
     #region Properties
@@ -161,6 +163,8 @@ public class TestGun : MonoBehaviour
         CurrentState = GunState.Ready;
         lastFireTime = 0f;
         IsShouldering = false;
+        moveController = GetComponentInParent<MoveController>();
+        Debug.Log("???" + moveController.gameObject);
     }
 
     #endregion
@@ -267,7 +271,7 @@ public class TestGun : MonoBehaviour
     /// <returns>발사 가능 여부</returns>
     private bool CanFire()
     {
-        return CurrentState == GunState.Ready &&
+        return CurrentState == GunState.Ready && !moveController.IsStunned() &&
                Time.time >= lastFireTime + gunData.fireRate;
     }
 
@@ -299,7 +303,7 @@ public class TestGun : MonoBehaviour
     {
         // 줌 상태에 따라 분산도 결정
         float currentSpreadAngle = GetCurrentSpreadAngle();
-        
+
         if (currentSpreadAngle <= 0f)
         {
             return baseDirection;
@@ -323,7 +327,7 @@ public class TestGun : MonoBehaviour
         {
             return 0f;
         }
-        
+
         // 일반 상태일 때는 설정된 분산도 사용
         return gunData.spreadAngle;
     }

@@ -11,7 +11,6 @@ public class LivingEntity : MonoBehaviour, IDamageable
 {
     [Header("Character Data")]
     [SerializeField] private CharacterData characterData;
-    
     // Health & Shield Properties
     public float StartingHealth { get; private set; }
     public float StartingShield { get; private set; }
@@ -19,6 +18,8 @@ public class LivingEntity : MonoBehaviour, IDamageable
     public float CurrentShield { get; private set; }
     public bool IsDead { get; private set; }
     
+    [Header("스턴 제어")]
+    private MoveController moveController;
     // Events
     public event Action OnDeath;
 
@@ -43,14 +44,16 @@ public class LivingEntity : MonoBehaviour, IDamageable
     private void InitializeEntity()
     {
         IsDead = false;
-        
+
         // 체력 초기화
         StartingHealth = characterData.startingHealth;
         CurrentHealth = StartingHealth;
-        
+
         // 방어막 초기화
         StartingShield = characterData.startingShield;
         CurrentShield = StartingShield;
+
+        moveController = GetComponent<MoveController>();
     }
 
     #endregion
@@ -98,8 +101,8 @@ public class LivingEntity : MonoBehaviour, IDamageable
 
         // 방어막이 부족한 경우
         float remainingDamage = damage;// - CurrentShield;
-        //CurrentShield = 0f;
-        
+                                       //CurrentShield = 0f;
+
         // 남은 데미지를 체력에 적용
         CurrentHealth = Mathf.Max(0f, CurrentHealth - remainingDamage);
         GameManager.Instance.ChangePlayerHealth(-remainingDamage);
@@ -158,13 +161,14 @@ public class LivingEntity : MonoBehaviour, IDamageable
         if (IsDead) return false;
 
         IsDead = true;
-        
+
         // 사망 이벤트 호출
         OnDeath?.Invoke();
-        
+
         // 10초 후 부활
+        moveController.SetStunned(true);
         StartCoroutine(ReviveAfterDelay(10f));
-        
+
         return true;
     }
 
@@ -190,6 +194,7 @@ public class LivingEntity : MonoBehaviour, IDamageable
     {
         IsDead = false;
         RestoreHealth(StartingHealth);
+        moveController.SetStunned(false);
         // 필요시 부활 이벤트 등 추가 가능
     }
 
