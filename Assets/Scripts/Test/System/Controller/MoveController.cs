@@ -767,5 +767,4 @@ public class MoveController : MonoBehaviour
         Debug.Log($"스킬: {canUseSkill && !isStunned}");
         Debug.Log($"아이템: {canUseItem && !isStunned}");
     }
-
 }   
