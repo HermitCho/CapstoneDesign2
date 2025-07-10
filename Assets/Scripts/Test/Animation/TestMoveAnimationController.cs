@@ -11,6 +11,7 @@ public class TestMoveAnimationController : MonoBehaviour
     // 애니메이터 컴포넌트
     private Animator animator;
     private Rigidbody rb;
+    private int upperBodyLayerIndex;
 
     // 입력값(WASD, 마우스 X)
     private Vector2 moveInput; 
@@ -42,6 +43,7 @@ public class TestMoveAnimationController : MonoBehaviour
         animator = GetComponent<Animator>();
         moveController = GetComponent<MoveController>();
         rb = GetComponent<Rigidbody>();
+        upperBodyLayerIndex = animator.GetLayerIndex("UpperBody");
     }
 
     private void OnEnable()
@@ -51,7 +53,7 @@ public class TestMoveAnimationController : MonoBehaviour
         InputManager.OnZoomPressed += OnZoomInput;
         InputManager.OnZoomCanceledPressed += OnZoomCanceledInput;
         InputManager.OnReloadPressed += OnReloadInput;
-        // InputManager.OnJumpPressed += OnJumpInput;
+        
     }
 
     private void OnDisable()
@@ -61,13 +63,12 @@ public class TestMoveAnimationController : MonoBehaviour
         InputManager.OnZoomPressed -= OnZoomInput;
         InputManager.OnZoomCanceledPressed -= OnZoomCanceledInput;
         InputManager.OnReloadPressed -= OnReloadInput;
-        // InputManager.OnJumpPressed -= OnJumpInput;
+        
     }
 
     private void Update()
     {
         HandleMovementAnimation();
-        //HandleReloadAnimation();
         HandleTurnAnimation();
         HandleAnimatorSpeed();
         HandleJumpAnimation();
@@ -121,17 +122,20 @@ public class TestMoveAnimationController : MonoBehaviour
     // 재장전시 트리거 실행
     void OnReloadInput()
     {
+        animator.SetLayerWeight(upperBodyLayerIndex, 1f);
         animator.SetTrigger("Reload");
     }
 
-    // // 재장전 상태 확인 후 애니메이션 파라미터 반영
-    // void HandleReloadAnimation()
-    // {
-    //     if (testGun == null) return;
+    // 재장전 이벤트
+    public void OnReloadStart()
+    {
+        
+    }
 
-    //     bool isReloading = testGun.CurrentState == TestGun.GunState.Reloading;
-    //     animator.SetBool("IsReloading", isReloading);
-    // }
+    public void OnReloadEnd()
+    {
+        animator.SetLayerWeight(upperBodyLayerIndex, 0f);
+    }
 
     // 조준 상태에 따른 애니메이션 속도 변경
     void HandleAnimatorSpeed()
@@ -144,7 +148,8 @@ public class TestMoveAnimationController : MonoBehaviour
         bool grounded = moveController.IsGrounded();
 
         Debug.Log($"isGrounded: {grounded}, velocityY: {rb.velocity.y}");
-        // 2. 낙하 중일 때
+
+        // 점프 모션 
         if (!moveController.IsGrounded() && rb.velocity.y > 0.1f)
         {
             animator.SetBool("JumpUp", true);
@@ -154,7 +159,7 @@ public class TestMoveAnimationController : MonoBehaviour
             animator.SetBool("JumpUp", false);
         }
 
-        // 2. 낙하 중일 때
+        // 낙하 모션
         if (!moveController.IsGrounded() && rb.velocity.y < -0.1f)
         {
             animator.SetBool("JumpDown", true);
@@ -165,15 +170,11 @@ public class TestMoveAnimationController : MonoBehaviour
         }
     }
     
-    // void OnJumpInput()
-    // {
-    //     animator.SetTrigger("JumpUp");
-    // }
-
     // 조준 시작 시 호출
     void OnZoomInput()
     {
         isAiming = true;
+        animator.SetLayerWeight(upperBodyLayerIndex, 1f);
         animator.SetBool("IsAiming", true);
     }
 
@@ -181,6 +182,7 @@ public class TestMoveAnimationController : MonoBehaviour
     void OnZoomCanceledInput()
     {
         isAiming = false;
+        animator.SetLayerWeight(upperBodyLayerIndex, 0f);
         animator.SetBool("IsAiming", false);
     }
 
