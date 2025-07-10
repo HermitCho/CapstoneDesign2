@@ -22,6 +22,7 @@ public class TestMoveAnimationController : MonoBehaviour
 
     // 캐릭터 이동 정보를 가져오는 컴포넌트
     private MoveController moveController;
+    private CameraController cameraController;
 
     // 애니메이션 속도 관련
     private float normalAnimSpeed = 1f;
@@ -35,13 +36,14 @@ public class TestMoveAnimationController : MonoBehaviour
     private float smoothedTurnValue = 0f;  // 회전 방향 스무딩
     private float smoothedMoveTurnValue = 0f; // 회전 방향 스무딩
     private float turnSensitivity = 0.2f;  // 민감도 조절
-    private float MoveturnLerpSpeed = 5f; // Moveturn 부드러운 전환 속도
-    private float turnLerpSpeed = 12f;     // turn 부드러운 전환 속도
+    private float MoveturnLerpSpeed = 10f; // Moveturn 부드러운 전환 속도
+    private float turnLerpSpeed = 10f;     // turn 부드러운 전환 속도
 
     private void Awake()
     {
         animator = GetComponent<Animator>();
         moveController = GetComponent<MoveController>();
+        cameraController = GetComponent<CameraController>();
         rb = GetComponent<Rigidbody>();
         upperBodyLayerIndex = animator.GetLayerIndex("UpperBody");
     }
@@ -72,6 +74,7 @@ public class TestMoveAnimationController : MonoBehaviour
         HandleTurnAnimation();
         HandleAnimatorSpeed();
         HandleJumpAnimation();
+        HandleLookAnimation();
     }
 
     // 이동 입력 처리
@@ -95,7 +98,9 @@ public class TestMoveAnimationController : MonoBehaviour
 
     // 캐릭터 회전값을 받아 애니메이션 전달
     void HandleTurnAnimation()
-    {
+    {   
+        if (moveController == null) return;
+
         float currentRotationAmount = moveController.GetRotationAmount();
 
         float rawTurn = Mathf.Clamp(currentRotationAmount * turnSensitivity, -1f, 1f);
@@ -118,6 +123,16 @@ public class TestMoveAnimationController : MonoBehaviour
         animator.SetFloat("MoveTurnX", smoothedMoveTurnValue, 0f, Time.deltaTime);
     }
 
+    // 카메라 회전값을 받아 애니메이션 전달
+    void HandleLookAnimation()
+    {
+        if (cameraController == null) return;
+
+        float verticalAngle = cameraController.GetTargetVerticalAngle(); // -60 ~ 60 기준 가정
+        float normalizedLookY = Mathf.InverseLerp(-60f, 60f, verticalAngle) * 2f - 1f; // -1 ~ 1로 정규화
+
+        animator.SetFloat("LookY", normalizedLookY);
+    }
 
     // 재장전시 트리거 실행
     void OnReloadInput()
