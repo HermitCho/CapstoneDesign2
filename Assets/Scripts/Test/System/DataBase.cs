@@ -11,6 +11,14 @@ using UnityEngine;
 
 public class DataBase : Singleton<DataBase>
 {
+    #region Unity Lifecycle
+    
+    public override void Awake()
+    {
+        base.Awake();
+    }
+    
+    #endregion
     [System.Serializable]
     public class CameraData
     {
@@ -463,6 +471,7 @@ public class DataBase : Singleton<DataBase>
 
     [Header("카메라 데이터")]
     public CameraData cameraData;
+    
 
     [Header("플레이어 움직임 데이터")]
     public PlayerMoveData playerMoveData;

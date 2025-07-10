@@ -76,7 +76,7 @@ public class HUDPanel : MonoBehaviour
         
     }
     
-    void Start()
+    void OnEnable()
     {
         SubscribeToEvents();
         SetInitialState();
