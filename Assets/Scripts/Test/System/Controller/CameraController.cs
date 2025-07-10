@@ -65,12 +65,14 @@ public class CameraController : MonoBehaviour
 
     void Awake()
     {
-        // DataBase 정보 안전하게 캐싱
-        CacheDataBaseInfo();
+        // Awake에서는 기본 초기화만 수행
     }
-
+    
     void Start()
     {
+        // DataBase 정보 안전하게 캐싱 (Start에서 지연 실행)
+        CacheDataBaseInfo();
+        
         // 메인 카메라 참조 얻기
         mainCamera = Camera.main;
         if (mainCamera == null)
@@ -84,6 +86,8 @@ public class CameraController : MonoBehaviour
         // 플레이어 찾기 시작
         StartCoroutine(FindPlayerRoutine());
     }
+
+
     
     /// <summary>
     /// DataBase 정보 안전하게 캐싱 (GameManager와 동일한 방식)
@@ -92,7 +96,15 @@ public class CameraController : MonoBehaviour
     {
         try
         {
-            if (DataBase.Instance != null && DataBase.Instance.cameraData != null)
+            // DataBase 인스턴스가 없으면 잠시 대기 후 재시도
+            if (DataBase.Instance == null)
+            {
+                Debug.LogWarning("⚠️ CameraController - DataBase 인스턴스가 아직 초기화되지 않음, 재시도 예정");
+                StartCoroutine(RetryCacheDataBaseInfo());
+                return;
+            }
+            
+            if (DataBase.Instance.cameraData != null)
             {
                 cameraData = DataBase.Instance.cameraData;
                 
@@ -126,6 +138,31 @@ public class CameraController : MonoBehaviour
             Debug.LogError($"❌ CameraController - DataBase 캐싱 중 오류: {e.Message}");
             dataBaseCached = false;
         }
+    }
+    
+    /// <summary>
+    /// DataBase 캐싱 재시도 코루틴
+    /// </summary>
+    IEnumerator RetryCacheDataBaseInfo()
+    {
+        int maxRetries = 10;
+        int currentRetry = 0;
+        
+        while (currentRetry < maxRetries)
+        {
+            yield return new WaitForSeconds(0.1f); // 0.1초 대기
+            
+            if (DataBase.Instance != null)
+            {
+                CacheDataBaseInfo(); // 재귀 호출로 다시 시도
+                yield break;
+            }
+            
+            currentRetry++;
+        }
+        
+        Debug.LogError("❌ CameraController - DataBase 캐싱 최대 재시도 횟수 초과, 기본값 사용");
+        dataBaseCached = false;
     }
     
     /// <summary>
@@ -222,7 +259,7 @@ public class CameraController : MonoBehaviour
     // 플레이어 찾기
     void FindPlayer()
     {
-        GameObject player = GameObject.FindGameObjectWithTag(cachedPlayerTag);
+        GameObject player = GameObject.FindGameObjectWithTag(cameraData.PlayerTag);
         if (player != null)
         {
             playerTransform = player.transform;

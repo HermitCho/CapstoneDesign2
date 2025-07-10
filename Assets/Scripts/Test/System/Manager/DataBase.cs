@@ -11,6 +11,7 @@ using UnityEngine;
 
 public class DataBase : Singleton<DataBase>
 {
+
     [System.Serializable]
     public class CameraData
     {
@@ -459,6 +460,239 @@ public class DataBase : Singleton<DataBase>
         }
     }
 
+    [System.Serializable]
+    public class UIData
+    {
+        [Header("HUD Panel 설정")]
+        [Space(5)]
+        [Header("조준점 설정")]
+        [Tooltip("기본 상태 조준점 색상 설정")]
+        [SerializeField] private Color crosshairNormalColor = Color.white;
+        public Color CrosshairNormalColor
+        {
+            set { crosshairNormalColor = value; }
+            get { return crosshairNormalColor; }
+        }
+        [Space(10)]
+        [Tooltip("타겟 상태 조준점 색상 설정")]
+        [SerializeField] private Color crosshairTargetColor = Color.red;
+        public Color CrosshairTargetColor
+        {
+            set { crosshairTargetColor = value; }
+            get { return crosshairTargetColor; }
+        }
+        [Space(10)]
+        [Tooltip("조준점 이미지 크기 설정")]
+        [Range(0.1f, 10f)]
+        [SerializeField] private float crosshairSize = 1f;
+        public float CrosshairSize
+        {
+            set { crosshairSize = value; }
+            get { return crosshairSize; }
+        }
+        [Space(10)]
+        [Header("체력바 설정")]
+        [Tooltip("건강 양호 상태 체력바 색상 설정")]
+        [SerializeField] private Color healthyColor = Color.green;
+        public Color HealthyColor
+        {
+            set { healthyColor = value; }
+            get { return healthyColor; }
+        }   
+        [Space(10)]
+        [Tooltip("건강 경고 상태 체력바 색상 설정")]
+        [SerializeField] private Color warningColor = Color.yellow;
+        public Color WarningColor
+        {
+            set { warningColor = value; }
+            get { return warningColor; }
+        }   
+        [Space(10)]
+        [Tooltip("건강 위험 상태 체력바 색상 설정")]
+        [SerializeField] private Color dangerColor = Color.red;
+        public Color DangerColor
+        {
+            set { dangerColor = value; }
+            get { return dangerColor; }
+        }   
+        [Space(10)]
+        [Tooltip("건강 경고 상태 체력바 임계값 설정")]
+        [Range(0f, 1f)]
+        [SerializeField] private float waringThreshold = 0.5f;
+        public float WaringThreshold
+        {
+            set { waringThreshold = value; }
+            get { return waringThreshold; }
+        }
+        [Space(10)]
+        [Tooltip("건강 위험 상태 체력바 임계값 설정")]
+        [Range(0f, 1f)]
+        [SerializeField] private float dangerThreshold = 0.2f;
+        public float DangerThreshold
+        {
+            set { dangerThreshold = value; }
+            get { return dangerThreshold; }
+        }
+
+        [Space(10)]
+        [Header("점수 및 시간 설정")]
+        [Tooltip("현재 점수 텍스트")]
+        [SerializeField] private string scoreText = "점수: {0:F0}";
+        public string ScoreText
+
+        {
+            set { scoreText = value; }
+            get { return scoreText; }
+        }
+        [Space(10)]
+        [Tooltip("점수 텍스트 색상 설정")]
+        [SerializeField] private Color scoreFormatColor = Color.black;
+        public Color ScoreFormatColor
+        {
+            set { scoreFormatColor = value; }
+            get { return scoreFormatColor; }
+        }
+        [Space(10)]
+        [Tooltip("기본 점수 배율 텍스트 설정")]
+        [SerializeField] private string generalMultiplierText = "점수 배율 {0:F0}x";
+        public string GeneralMultiplierText
+        {
+            set { generalMultiplierText = value; }
+            get { return generalMultiplierText; }
+        }
+        [Space(10)]
+        [Tooltip("기본 점수 배율 텍스트 색상 설정")]
+        [SerializeField] private Color generalMultiplierFormatColor = Color.black;
+        public Color GeneralMultiplierFormatColor
+        {
+            set { generalMultiplierFormatColor = value; }
+            get { return generalMultiplierFormatColor; }
+        }
+        [Space(10)]
+        [Tooltip("점수 배율 텍스트 설정")]
+        [SerializeField] private string multiplierText = "피버타임! {0:F0}x";
+        public string MultiplierText
+        {
+            set { multiplierText = value; }
+            get { return multiplierText; }
+        }
+        [Space(10)]
+        [Tooltip("점수 배율 텍스트 색상 설정")]
+        [SerializeField] private Color multiplierFormatColor = Color.black;
+        public Color MultiplierFormatColor
+        {
+            set { multiplierFormatColor = value; }
+            get { return multiplierFormatColor; }
+        }
+        [Space(10)] 
+        [Tooltip("게임 시간 텍스트 설정")]
+        [SerializeField] private string gameTimeText = "시간: {0:F0}초";
+        public string GameTimeText
+        {
+            set { gameTimeText = value; }
+            get { return gameTimeText; }
+        }   
+        [Space(10)]
+        [Tooltip("게임 시간 텍스트 색상 설정")]
+        [SerializeField] private Color gameTimeFormatColor = Color.black;
+        public Color GameTimeFormatColor
+        {
+            set { gameTimeFormatColor = value; }
+            get { return gameTimeFormatColor; }
+        }
+        [Space(10)]
+        [Tooltip("체력 상태 텍스트 설정")]
+        [SerializeField] private string healthText = "{0:F0} / {1:F0}";
+        public string HealthText
+        {
+            set { healthText = value; }
+            get { return healthText; }
+        }
+        [Space(10)]
+        [Tooltip("체력 상태 텍스트 색상 설정")]
+        [SerializeField] private Color healthFormatColor = Color.black;
+        public Color HealthFormatColor
+        {
+            set { healthFormatColor = value; }
+            get { return healthFormatColor; }
+        }
+
+        [Space(20)]
+        [Header("SelectCharacter Panel 설정")]
+        [Tooltip("최대 캐릭터 슬롯 수")]
+        [SerializeField] private int maxCharacterSlots = 4;
+        public int MaxCharacterSlots
+        {
+            set { maxCharacterSlots = value; }
+            get { return maxCharacterSlots; }
+        }
+        [Space(10)]
+        [Tooltip("현재 선택된 캐릭터 인덱스 - 초기 설정 용도")]
+        [SerializeField] private int currentSelectedIndex = 0;
+        public int CurrentSelectedIndex
+        {
+            set { currentSelectedIndex = value; }
+            get { return currentSelectedIndex; }
+        }
+        [Space(10)]
+        [Tooltip("캐릭터 선택 시간 텍스트 설정")]
+        [SerializeField] private string selectionTimeText = "남은 시간: {0:F0}초";
+        public string SelectionTimeText
+        {
+            set { selectionTimeText = value; }
+            get { return selectionTimeText; }
+        }
+        [Space(10)]
+        [Tooltip("캐릭터 선택 시간 설정 - 초기 상태태")]
+        [SerializeField] private float selectionTime = 10f;
+        public float SelectionTime
+        {
+            set { selectionTime = value; }
+            get { return selectionTime; }
+        }
+        [Space(10)]
+        [Tooltip("캐릭터 선택 시간 텍스트 색상 설정 - 정상 상태")]
+        [SerializeField] private Color selectionTimeNormalFormatColor = Color.black;
+        public Color SelectionTimeNormalFormatColor
+        {
+            set { selectionTimeNormalFormatColor = value; }
+            get { return selectionTimeNormalFormatColor; }
+        }
+        [Space(10)]
+        [Tooltip("캐릭터 선택 시간 설정 - 경고 상태")]
+        [SerializeField] private float selectionWarningTime = 5f;
+        public float SelectionWarningTime
+        {
+            set { selectionWarningTime = value; }
+            get { return selectionWarningTime; }
+        }
+        [Space(10)]
+        [Tooltip("캐릭터 선택 시간 텍스트 색상 설정 - 경고 상태")]
+        [SerializeField] private Color selectionTimeWarningFormatColor = Color.yellow;
+        public Color SelectionTimeWarningFormatColor
+        {
+            set { selectionTimeWarningFormatColor = value; }
+            get { return selectionTimeWarningFormatColor; }
+        }
+        [Space(10)]
+        [Tooltip("캐릭터 선택 시간 설정 - 위험 상태")]
+        [SerializeField] private float selectionDangerTime = 3f;
+        public float SelectionDangerTime
+        {
+            set { selectionDangerTime = value; }
+            get { return selectionDangerTime; }
+        }
+        [Space(10)]
+        [Tooltip("캐릭터 선택 시간 텍스트 색상 설정 - 위험 상태")]
+        [SerializeField] private Color selectionTimeDangerFormatColor = Color.red;
+        public Color SelectionTimeDangerFormatColor
+        {
+            set { selectionTimeDangerFormatColor = value; }
+            get { return selectionTimeDangerFormatColor; }
+        }
+
+    }
+
     
 
     [Header("카메라 데이터")]
@@ -472,4 +706,7 @@ public class DataBase : Singleton<DataBase>
 
     [Header("게임 데이터")]
     public GameData gameData;
+
+    [Header("UI 데이터")]
+    public UIData uiData;
 }

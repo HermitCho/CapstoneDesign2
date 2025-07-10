@@ -75,8 +75,7 @@ public class TestGun : MonoBehaviour
     /// </summary>
     protected virtual void Awake()
     {
-        InitializeComponents();
-
+    
     }
 
     /// <summary>
@@ -84,6 +83,7 @@ public class TestGun : MonoBehaviour
     /// </summary>
     protected virtual void OnEnable()
     {
+        InitializeComponents();
         InitializeGunState();
     }
 
@@ -150,7 +150,41 @@ public class TestGun : MonoBehaviour
     {
         gunAudioPlayer = GetComponent<AudioSource>();
         mainCamera = GameObject.FindGameObjectWithTag("MainCamera").GetComponent<Camera>();
-        aimPointUI = GameObject.FindGameObjectWithTag("Crosshair").GetComponent<RectTransform>();
+        
+        // ✅ Crosshair UI를 비동기로 찾기
+        StartCoroutine(FindCrosshairUI());
+    }
+    
+    /// <summary>
+    /// Crosshair UI를 찾는 코루틴
+    /// </summary>
+    private IEnumerator FindCrosshairUI()
+    {
+        int maxRetries = 100; // 최대 3초 대기 (30 * 0.1초)
+        int currentRetry = 0;
+        
+        while (aimPointUI == null && currentRetry < maxRetries)
+        {
+            // Crosshair 태그로 찾기
+            GameObject crosshairObj = GameObject.FindGameObjectWithTag("Crosshair");
+            if (crosshairObj != null)
+            {
+                aimPointUI = crosshairObj.GetComponent<RectTransform>();
+                if (aimPointUI != null)
+                {
+                    Debug.Log("✅ TestGun: Crosshair UI 찾기 성공!");
+                    break;
+                }
+            }
+            
+            currentRetry++;
+            yield return new WaitForSeconds(0.1f); // 0.1초마다 재시도
+        }
+        
+        if (aimPointUI == null)
+        {
+            Debug.LogWarning("⚠️ TestGun: Crosshair UI를 찾을 수 없습니다. 카메라 중앙을 사용합니다.");
+        }
     }
 
     /// <summary>

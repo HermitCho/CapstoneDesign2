@@ -63,10 +63,9 @@ public class GameManager : Singleton<GameManager>
         
         // 테디베어 찾기
         FindTeddyBear();
-        player = GameObject.FindGameObjectWithTag("Player").GetComponent<LivingEntity>();
-        playerHealth = player.CurrentHealth;
-        maxPlayerHealth = player.StartingHealth;
- 
+        FindPlayerAfterSpawn();
+        // 플레이어는 스폰 후에 찾기 (Start에서는 찾지 않음)
+        // FindPlayerAfterSpawn()에서 처리
     }
 
     // Update is called once per frame
@@ -395,6 +394,41 @@ public class GameManager : Singleton<GameManager>
     public void NotifySkillCooldownStarted(int skillIndex, float cooldownTime)
     {
         OnSkillCooldownStarted?.Invoke(skillIndex, cooldownTime);
-
     }
+    
+    /// <summary>
+    /// 스폰 후 플레이어 찾기 (SpawnController에서 호출)
+    /// </summary>
+    public void FindPlayerAfterSpawn()
+    {
+        try
+        {
+            // 플레이어 찾기
+            GameObject playerObject = GameObject.FindGameObjectWithTag("Player");
+            if (playerObject != null)
+            {
+                player = playerObject.GetComponent<LivingEntity>();
+                if (player != null)
+                {
+                    playerHealth = player.CurrentHealth;
+                    maxPlayerHealth = player.StartingHealth;
+                    
+                    Debug.Log($"✅ GameManager: 플레이어를 찾았습니다 - {playerObject.name}");
+                }
+                else
+                {
+                    Debug.LogError("❌ GameManager: 플레이어 오브젝트에 LivingEntity 컴포넌트가 없습니다!");
+                }
+            }
+            else
+            {
+                Debug.LogWarning("⚠️ GameManager: 'Player' 태그를 가진 오브젝트를 찾을 수 없습니다.");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ GameManager: 플레이어 찾기 중 오류 발생 - {e.Message}");
+        }
+    }
+
 }

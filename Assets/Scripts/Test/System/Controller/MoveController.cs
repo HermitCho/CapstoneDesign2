@@ -21,6 +21,7 @@ public class MoveController : MonoBehaviour
     private DataBase.PlayerMoveData playerMoveData;
     private Rigidbody playerRigidbody;
     private Vector2 rawMoveInput; // 원본 입력값 저장
+  
 
     // ✅ DataBase 캐싱된 값들 (성능 최적화)
     private float cachedSpeed;
@@ -83,19 +84,19 @@ public class MoveController : MonoBehaviour
         InputManager.OnItemPressed -= OnItemInput;
     }
 
-    void Awake()
+
+    
+    void Start()
     {
-        playerRigidbody = GetComponent<Rigidbody>();
-        
-        // DataBase 정보 안전하게 캐싱
-        CacheDataBaseInfo();
-        
-        // 메인 카메라 찾기
+                // 메인 카메라 찾기
         mainCamera = Camera.main;
         if (mainCamera == null)
         {
             mainCamera = FindObjectOfType<Camera>();
         }
+        playerRigidbody = GetComponent<Rigidbody>();
+        // DataBase 정보 안전하게 캐싱 (Start에서 지연 실행)
+        CacheDataBaseInfo();
     }
     
     /// <summary>
@@ -105,10 +106,19 @@ public class MoveController : MonoBehaviour
     {
         try
         {
-            if (DataBase.Instance != null && DataBase.Instance.playerMoveData != null)
+            // DataBase 인스턴스가 없으면 잠시 대기 후 재시도
+            if (DataBase.Instance == null)
+            {
+                Debug.LogWarning("⚠️ MoveController - DataBase 인스턴스가 아직 초기화되지 않음, 재시도 예정");
+                StartCoroutine(RetryCacheDataBaseInfo());
+                return;
+            }
+            
+            if (DataBase.Instance.playerMoveData != null)
             {
                 playerMoveData = DataBase.Instance.playerMoveData;
-                
+
+           
                 // 자주 사용되는 값들을 개별 변수로 캐싱
                 cachedSpeed = playerMoveData.Speed;
                 cachedRotationSpeed = playerMoveData.RotationSpeed;
@@ -136,6 +146,31 @@ public class MoveController : MonoBehaviour
             Debug.LogError($"❌ MoveController - DataBase 캐싱 중 오류: {e.Message}");
             dataBaseCached = false;
         }
+    }
+    
+    /// <summary>
+    /// DataBase 캐싱 재시도 코루틴
+    /// </summary>
+    IEnumerator RetryCacheDataBaseInfo()
+    {
+        int maxRetries = 10;
+        int currentRetry = 0;
+        
+        while (currentRetry < maxRetries)
+        {
+            yield return new WaitForSeconds(0.1f); // 0.1초 대기
+            
+            if (DataBase.Instance != null)
+            {
+                CacheDataBaseInfo(); // 재귀 호출로 다시 시도
+                yield break;
+            }
+            
+            currentRetry++;
+        }
+        
+        Debug.LogError("❌ MoveController - DataBase 캐싱 최대 재시도 횟수 초과, 기본값 사용");
+        dataBaseCached = false;
     }
 
     void Update()

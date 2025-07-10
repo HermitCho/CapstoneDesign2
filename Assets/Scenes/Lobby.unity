@@ -7806,6 +7806,100 @@ MonoBehaviour:
   m_FlexibleWidth: -1
   m_FlexibleHeight: -1
   m_LayoutPriority: 1
+--- !u!1 &1556508082
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1556508084}
+  - component: {fileID: 1556508083}
+  m_Layer: 0
+  m_Name: DataBase
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1556508083
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1556508082}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b97e77b1d869eab4db78872b0e9da83a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  cameraData:
+    playerTag: PlayerPosition
+    findPlayerInterval: 10
+    mouseSensitivityY: 5.8
+    zoomMouseSensitivityY: 4
+    minVerticalAngle: -20
+    maxVerticalAngle: 45
+    rotationSmoothTime: 0
+    zoomValue: 2
+    zoomDuration: 0.3
+    useWallCollisionAvoidance: 1
+    cameraFix: 1
+    wallAvoidanceSpeed: 5
+    maxCameraDistance: 12
+    pivotHeightOffset: 0.4
+  playerMoveData:
+    speed: 10
+    rotationSpeed: 8.6
+    zoomRotationSpeed: 5
+    mouseInputTimeout: 0
+    jumpCooldown: 0.2
+    groundCheckDistance: 1.1
+    landingFriction: 0.3
+    airControlForce: 15
+    maxAirSpeedMultiplier: 1
+    jumpHeight: 1
+    airAcceleration: 25
+    airMaxSpeed: 8
+    jumpBufferTime: 0.1
+    wallCollisionFallForce: 8
+    minHorizontalSpeedRatio: 0.7
+    maxHorizontalSpeedReduction: 0.2
+  teddyBearData:
+    attachOffset: {x: 0, y: 1, z: 1}
+    attachRotation: {x: 0, y: 0, z: 0}
+    detachReattachTime: 5
+    teddyBearScore: 0
+    initialScore: 1
+    scoreIncreaseRate: 2
+    scoreIncreaseTime: 20
+    scoreGetTick: 2
+    glowingIntensity: 0.5
+    glowingColor: {r: 1, g: 0, b: 0, a: 1}
+    glowingOutlineWidth: 7
+    glowingColorChangeTime: 1
+    canUseItem: 1
+    canUseSkill: 1
+    canUseGun: 0
+  gameData:
+    playTime: 360
+--- !u!4 &1556508084
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1556508082}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -4.600651, y: 3.1397288, z: 0.24370424}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1588425885
 GameObject:
   m_ObjectHideFlags: 0
@@ -10455,3 +10549,4 @@ SceneRoots:
   - {fileID: 488442619}
   - {fileID: 914688475}
   - {fileID: 538171734}
+  - {fileID: 1556508084}
