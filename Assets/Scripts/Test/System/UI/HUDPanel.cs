@@ -96,7 +96,7 @@ public class HUDPanel : MonoBehaviour
         // 패널이 비활성화될 때 정리 작업
     }
     
-    void Start()
+    void OnEnable()
     {
         SubscribeToEvents();
         SetInitialState();
