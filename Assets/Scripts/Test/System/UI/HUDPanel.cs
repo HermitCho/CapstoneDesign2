@@ -80,7 +80,6 @@ public class HUDPanel : MonoBehaviour
 
     private bool dataBaseCached = false;
     #region Unity 생명주기
-    
     void Awake()
     {
         InitializeHUD();
@@ -96,7 +95,7 @@ public class HUDPanel : MonoBehaviour
         // 패널이 비활성화될 때 정리 작업
     }
     
-    void OnEnable()
+    void Start()
     {
         SubscribeToEvents();
         SetInitialState();
