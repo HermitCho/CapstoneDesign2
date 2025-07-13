@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Animations.Rigging;
 
 /// <summary>
 /// 캐릭터의 이동/점프/조준/재장전 애니메이션을 제어하는 컨트롤러
@@ -32,12 +33,18 @@ public class TestMoveAnimationController : MonoBehaviour
     // 점프 관련
     
     
-    // 회전 관련 파라미터
+    // 좌우회전 관련
     private float smoothedTurnValue = 0f;  // 회전 방향 스무딩
     private float smoothedMoveTurnValue = 0f; // 회전 방향 스무딩
     private float turnSensitivity = 0.2f;  // 민감도 조절
     private float MoveturnLerpSpeed = 10f; // Moveturn 부드러운 전환 속도
     private float turnLerpSpeed = 10f;     // turn 부드러운 전환 속도
+
+    // 상하회전 관련
+    [SerializeField] MultiAimConstraint headLookConstraint;
+    [SerializeField] Transform aimTarget;
+    [SerializeField] private float maxLookUpAngle = 40f;
+    [SerializeField] private float maxLookDownAngle = -30f;
 
     private void Awake()
     {
@@ -77,6 +84,34 @@ public class TestMoveAnimationController : MonoBehaviour
         HandleLookAnimation();
     }
 
+    private void LateUpdate()
+    {
+        if (aimTarget != null)
+        {
+            Vector3 localEuler = aimTarget.localEulerAngles;
+
+            // 360도 → -180~180 변환
+            float pitch = (localEuler.x > 180f) ? localEuler.x - 360f : localEuler.x;
+
+            // 각도 제한
+            pitch = Mathf.Clamp(pitch, maxLookDownAngle, maxLookUpAngle);
+
+            aimTarget.localEulerAngles = new Vector3(pitch, localEuler.y, localEuler.z);
+
+            Debug.Log($"Head Rotation (X): {pitch}°");
+        }
+    }
+
+
+    void OnDrawGizmos()
+    {
+        if (aimTarget != null)
+        {
+            // Gizmos로 머리의 방향을 표시 (회전된 방향)
+            Gizmos.color = Color.red;
+            Gizmos.DrawRay(aimTarget.position, aimTarget.forward * 5); // 회전 방향을 2만큼 표시
+        }
+    }
     // 이동 입력 처리
     void OnMoveInput(Vector2 input)
     {
