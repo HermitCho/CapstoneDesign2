@@ -12,18 +12,12 @@ public class HUDPanel : MonoBehaviour
     [Header("🎯 크로스헤어 UI 컴포넌트들")]
     [SerializeField] private Image crosshairImage;
     [SerializeField] private RectTransform crosshairContainer;
-    [SerializeField] private Color crosshairNormalColor = Color.white;
-    [SerializeField] private Color crosshairTargetColor = Color.red;
-    [SerializeField] private float crosshairSize = 1f;
+
     
     [Header("❤️ 체력바 UI 컴포넌트들")]
     [SerializeField] private ProgressBar healthProgressBar; // HeatUI ProgressBar
     [SerializeField] private TextMeshProUGUI healthText;
-    [SerializeField] private Color healthyColor = Color.green;
-    [SerializeField] private Color warningColor = Color.yellow;
-    [SerializeField] private Color dangerColor = Color.red;
-    [SerializeField] private float warningThreshold = 0.6f;
-    [SerializeField] private float dangerThreshold = 0.3f;
+
     
     [Header("📊 점수 UI 컴포넌트들")]
     [SerializeField] private TextMeshProUGUI scoreText;
@@ -44,20 +38,6 @@ public class HUDPanel : MonoBehaviour
     [SerializeField] private ModalWindowManager itemModalWindow; // HeatUI Modal
     [SerializeField] private Button itemUIButton; // 아이템 UI 열기 버튼 (선택적)
     
-    [Header("🎨 UI 설정")]
-    [SerializeField] private string scoreFormat = "점수: {0:F0}";
-    [SerializeField] private string GeneralMultiplierFormat = "점수 배율 {0:F0}x";
-    [SerializeField] private string multiplierFormat = "배율: {0:F0}x";
-    [SerializeField] private string gameTimeFormat = "시간: {0:F0}초";
-    [SerializeField] private string healthFormat = "{0:F0} / {1:F0}";
-
-    [Header("🎨 UI 색상 설정")]
-    [SerializeField] private Color scoreFormatColor = Color.black;
-    [SerializeField] private Color GeneralMultiplierFormatColor = Color.black;
-    [SerializeField] private Color multiplierFormatColor = Color.black;
-    [SerializeField] private Color gameTimeFormatColor = Color.black;
-    [SerializeField] private Color healthFormatColor = Color.black;
-    
     // 내부 상태 변수들
     private float currentHealth = 100f;
     private float maxHealth = 100f;
@@ -67,19 +47,60 @@ public class HUDPanel : MonoBehaviour
     private float[] skillCooldowns;
     private float[] maxCooldowns;
     private bool[] skillAvailable;
-    
+
+
+    // 데이터베이스 참조
+    private DataBase.UIData uiData;
+
+    // ✅ DataBase 캐싱된 값들 (성능 최적화)
+    private Color cachedCrosshairNormalColor;
+    private Color cachedCrosshairTargetColor;
+    private float cachedCrosshairSize;
+
+    private Color cachedHealthNormalColor;
+    private Color cachedHealthWarningColor;
+    private Color cachedHealthDangerColor;
+    private float cachedHealthWarningThreshold;
+    private float cachedHealthDangerThreshold;
+
+    private string cachedScoreFormat;
+    private Color cachedScoreFormatColor;
+
+    private string cachedGeneralMultiplierFormat;
+    private Color cachedGeneralMultiplierFormatColor;
+
+    private string cachedMultiplierFormat;
+    private Color cachedMultiplierFormatColor;
+
+    private string cachedGameTimeFormat;
+    private Color cachedGameTimeFormatColor;
+
+    private string cachedHealthFormat;
+    private Color cachedHealthFormatColor;
+
+    private bool dataBaseCached = false;
     #region Unity 생명주기
-    
     void Awake()
     {
         InitializeHUD();
-        
     }
     
     void OnEnable()
     {
+       CacheDataBaseInfo();
+    }
+    
+    void OnDisable()
+    {
+        // 패널이 비활성화될 때 정리 작업
+    }
+    
+    void Start()
+    {
         SubscribeToEvents();
         SetInitialState();
+
+
     }
     
     void OnDestroy()
@@ -114,6 +135,8 @@ public class HUDPanel : MonoBehaviour
     /// </summary>
     void InitializeHUD()
     {
+        CacheDataBaseInfo();
+
         // 스킬 시스템 초기화
         InitializeSkillSystem();
         
@@ -129,6 +152,62 @@ public class HUDPanel : MonoBehaviour
 
     }
     
+    void CacheDataBaseInfo()
+    {
+        try
+        {
+            if (DataBase.Instance == null)
+            {   
+                Debug.LogWarning("DataBase 인스턴스가 없습니다.");
+                return;
+            }
+
+            if (DataBase.Instance.uiData != null)
+            {
+                uiData = DataBase.Instance.uiData;
+
+                cachedCrosshairNormalColor = uiData.CrosshairNormalColor;
+                cachedCrosshairTargetColor = uiData.CrosshairTargetColor;
+                cachedCrosshairSize = uiData.CrosshairSize;
+
+                cachedHealthNormalColor = uiData.HealthyColor;
+                cachedHealthWarningColor = uiData.WarningColor;
+                cachedHealthDangerColor = uiData.DangerColor;
+                cachedHealthWarningThreshold = uiData.WaringThreshold;
+                cachedHealthDangerThreshold = uiData.DangerThreshold;       
+
+                cachedScoreFormat = uiData.ScoreText;
+                cachedScoreFormatColor = uiData.ScoreFormatColor;
+
+                cachedGeneralMultiplierFormat = uiData.GeneralMultiplierText;
+                cachedGeneralMultiplierFormatColor = uiData.GeneralMultiplierFormatColor;
+
+                cachedMultiplierFormat = uiData.MultiplierText; 
+                cachedMultiplierFormatColor = uiData.MultiplierFormatColor;
+
+                cachedGameTimeFormat = uiData.GameTimeText;
+                cachedGameTimeFormatColor = uiData.GameTimeFormatColor;
+
+                cachedHealthFormat = uiData.HealthText;
+                cachedHealthFormatColor = uiData.HealthFormatColor; 
+
+                dataBaseCached = true;
+                Debug.Log("✅ HUDPanel - DataBase 정보 캐싱 완료");
+            }
+            else
+            {
+                Debug.LogWarning("⚠️ HUDPanel - DataBase 접근 실패, 기본값 사용");
+                dataBaseCached = false;
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ HUDPanel - DataBase 캐싱 중 오류: {e.Message}");
+            dataBaseCached = false;
+        }
+    }
+
+
     /// <summary>
     /// 스킬 시스템 초기화
     /// </summary>
@@ -243,7 +322,7 @@ public class HUDPanel : MonoBehaviour
         
         if (crosshairImage != null)
         {
-            crosshairImage.color = targeting ? crosshairTargetColor : crosshairNormalColor;
+            crosshairImage.color = targeting ? cachedCrosshairTargetColor : cachedCrosshairNormalColor;
         }
     }
     
@@ -252,11 +331,11 @@ public class HUDPanel : MonoBehaviour
     /// </summary>
     public void SetCrosshairSize(float size)
     {
-        crosshairSize = Mathf.Clamp(size, 0.1f, 3f);
+        cachedCrosshairSize = Mathf.Clamp(size, 0.1f, 3f);
         
         if (crosshairContainer != null)
         {
-            crosshairContainer.localScale = Vector3.one * crosshairSize;
+            crosshairContainer.localScale = Vector3.one * cachedCrosshairSize;
         }
     }
     
@@ -293,15 +372,15 @@ public class HUDPanel : MonoBehaviour
         // 체력 텍스트 업데이트
         if (healthText != null)
         {
-            healthText.text = string.Format(healthFormat, currentHealth, maxHealth);
+            healthText.text = string.Format(cachedHealthFormat, currentHealth, maxHealth);
             
             // 체력 비율에 따른 색상 변경
-            if (healthRatio <= dangerThreshold)
-                healthText.color = dangerColor;
-            else if (healthRatio <= warningThreshold)
-                healthText.color = warningColor;
+            if (healthRatio <= cachedHealthDangerThreshold)
+                healthText.color = cachedHealthDangerColor;
+            else if (healthRatio <= cachedHealthWarningThreshold)
+                healthText.color = cachedHealthWarningColor;
             else
-                healthText.color = healthyColor;
+                healthText.color = cachedHealthNormalColor;
         }
     }
     
@@ -321,8 +400,8 @@ public class HUDPanel : MonoBehaviour
     {
         if (scoreText != null)
         {
-            scoreText.text = string.Format(scoreFormat, score);
-            scoreText.color = scoreFormatColor;
+            scoreText.text = string.Format(cachedScoreFormat, score);
+            scoreText.color = cachedScoreFormatColor;
         }
     }
     
@@ -348,30 +427,31 @@ public class HUDPanel : MonoBehaviour
                 if (gameTime >= scoreIncreaseTime)
                 {
                     // 점수배율 적용 시점 이후: multiplierFormat 사용
-                    multiplierText.color = multiplier > 1f ? multiplierFormatColor : GeneralMultiplierFormatColor;
-                    multiplierText.text = string.Format(multiplierFormat, multiplier);
+                    multiplierText.color = multiplier > 1f ? cachedMultiplierFormatColor : cachedGeneralMultiplierFormatColor;
+                    multiplierText.text = string.Format(cachedMultiplierFormat, multiplier);
                 }
                 else
                 {
-                    multiplierText.color = GeneralMultiplierFormatColor;
+                    multiplierText.color = cachedGeneralMultiplierFormatColor;
                     // 점수배율 적용 전: GeneralMultiplierFormat 사용
-                    multiplierText.text = string.Format(GeneralMultiplierFormat, multiplier);
+                    multiplierText.text = string.Format(cachedGeneralMultiplierFormat, multiplier);
                    
                 }
             }
             else
             {
-                multiplierText.color = GeneralMultiplierFormatColor;
+                multiplierText.color = cachedGeneralMultiplierFormatColor;
+                
                 // GameManager가 없는 경우
-                multiplierText.text = string.Format(GeneralMultiplierFormat, multiplier);
+                multiplierText.text = string.Format(cachedGeneralMultiplierFormat, multiplier);
                 
             }
         }
         catch (System.Exception e)
         {
-            multiplierText.color = GeneralMultiplierFormatColor;
+            multiplierText.color = cachedGeneralMultiplierFormatColor;
             // 안전한 fallback
-            multiplierText.text = string.Format(GeneralMultiplierFormat, multiplier);
+            multiplierText.text = string.Format(cachedGeneralMultiplierFormat, multiplier);
             
         }
     }
@@ -383,8 +463,8 @@ public class HUDPanel : MonoBehaviour
     {
         if (gameTimeText != null)
         {
-            gameTimeText.text = string.Format(gameTimeFormat, time);
-            gameTimeText.color = gameTimeFormatColor;
+            gameTimeText.text = string.Format(cachedGameTimeFormat, time);
+            gameTimeText.color = cachedGameTimeFormatColor;
         }
     }
     
@@ -662,8 +742,8 @@ public class HUDPanel : MonoBehaviour
         // 게임 시간 UI 업데이트
         if (gameTimeText != null)
         {
-            gameTimeText.text = string.Format(gameTimeFormat, gameTime);
-            gameTimeText.color = gameTimeFormatColor;
+            gameTimeText.text = string.Format(cachedGameTimeFormat, gameTime);
+            gameTimeText.color = cachedGameTimeFormatColor;
         }
         
         // GameManager에 게임 시간 업데이트 알림
@@ -709,6 +789,7 @@ public class HUDPanel : MonoBehaviour
         if (skillIndex < 0 || skillIndex >= maxSkillSlots) return false;
         return skillAvailable[skillIndex] && skillCooldowns[skillIndex] <= 0f;
     }
+
     
     #endregion
 } 
