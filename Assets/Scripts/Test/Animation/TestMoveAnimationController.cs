@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Animations.Rigging;
 
 /// <summary>
 /// 캐릭터의 이동/점프/조준/재장전 애니메이션을 제어하는 컨트롤러
@@ -22,6 +23,7 @@ public class TestMoveAnimationController : MonoBehaviour
 
     // 캐릭터 이동 정보를 가져오는 컴포넌트
     private MoveController moveController;
+    private CameraController cameraController;
 
     // 애니메이션 속도 관련
     private float normalAnimSpeed = 1f;
@@ -31,17 +33,24 @@ public class TestMoveAnimationController : MonoBehaviour
     // 점프 관련
     
     
-    // 회전 관련 파라미터
+    // 좌우회전 관련
     private float smoothedTurnValue = 0f;  // 회전 방향 스무딩
     private float smoothedMoveTurnValue = 0f; // 회전 방향 스무딩
     private float turnSensitivity = 0.2f;  // 민감도 조절
-    private float MoveturnLerpSpeed = 5f; // Moveturn 부드러운 전환 속도
-    private float turnLerpSpeed = 12f;     // turn 부드러운 전환 속도
+    private float MoveturnLerpSpeed = 10f; // Moveturn 부드러운 전환 속도
+    private float turnLerpSpeed = 10f;     // turn 부드러운 전환 속도
+
+    // 상하회전 관련
+    [SerializeField] MultiAimConstraint headLookConstraint;
+    [SerializeField] Transform aimTarget;
+    [SerializeField] private float maxLookUpAngle = 40f;
+    [SerializeField] private float maxLookDownAngle = -30f;
 
     private void Awake()
     {
         animator = GetComponent<Animator>();
         moveController = GetComponent<MoveController>();
+        cameraController = GetComponent<CameraController>();
         rb = GetComponent<Rigidbody>();
         upperBodyLayerIndex = animator.GetLayerIndex("UpperBody");
     }
@@ -72,8 +81,37 @@ public class TestMoveAnimationController : MonoBehaviour
         HandleTurnAnimation();
         HandleAnimatorSpeed();
         HandleJumpAnimation();
+        HandleLookAnimation();
     }
 
+    private void LateUpdate()
+    {
+        if (aimTarget != null)
+        {
+            Vector3 localEuler = aimTarget.localEulerAngles;
+
+            // 360도 → -180~180 변환
+            float pitch = (localEuler.x > 180f) ? localEuler.x - 360f : localEuler.x;
+
+            // 각도 제한
+            pitch = Mathf.Clamp(pitch, maxLookDownAngle, maxLookUpAngle);
+
+            aimTarget.localEulerAngles = new Vector3(pitch, localEuler.y, localEuler.z);
+
+            Debug.Log($"Head Rotation (X): {pitch}°");
+        }
+    }
+
+
+    void OnDrawGizmos()
+    {
+        if (aimTarget != null)
+        {
+            // Gizmos로 머리의 방향을 표시 (회전된 방향)
+            Gizmos.color = Color.red;
+            Gizmos.DrawRay(aimTarget.position, aimTarget.forward * 5); // 회전 방향을 2만큼 표시
+        }
+    }
     // 이동 입력 처리
     void OnMoveInput(Vector2 input)
     {
@@ -95,7 +133,9 @@ public class TestMoveAnimationController : MonoBehaviour
 
     // 캐릭터 회전값을 받아 애니메이션 전달
     void HandleTurnAnimation()
-    {
+    {   
+        if (moveController == null) return;
+
         float currentRotationAmount = moveController.GetRotationAmount();
 
         float rawTurn = Mathf.Clamp(currentRotationAmount * turnSensitivity, -1f, 1f);
@@ -118,6 +158,16 @@ public class TestMoveAnimationController : MonoBehaviour
         animator.SetFloat("MoveTurnX", smoothedMoveTurnValue, 0f, Time.deltaTime);
     }
 
+    // 카메라 회전값을 받아 애니메이션 전달
+    void HandleLookAnimation()
+    {
+        if (cameraController == null) return;
+
+        float verticalAngle = cameraController.GetTargetVerticalAngle(); // -60 ~ 60 기준 가정
+        float normalizedLookY = Mathf.InverseLerp(-60f, 60f, verticalAngle) * 2f - 1f; // -1 ~ 1로 정규화
+
+        animator.SetFloat("LookY", normalizedLookY);
+    }
 
     // 재장전시 트리거 실행
     void OnReloadInput()

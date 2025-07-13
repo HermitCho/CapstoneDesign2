@@ -10,7 +10,7 @@ AnimatorStateTransition:
   m_Conditions:
   - m_ConditionMode: 4
     m_ConditionEvent: TurnX
-    m_EventTreshold: -0.1
+    m_EventTreshold: -0.2
   m_DstStateMachine: {fileID: 0}
   m_DstState: {fileID: 3499549504957015286}
   m_Solo: 0
@@ -35,7 +35,7 @@ AnimatorStateTransition:
   m_Conditions:
   - m_ConditionMode: 4
     m_ConditionEvent: TurnX
-    m_EventTreshold: 0.1
+    m_EventTreshold: 0.2
   m_DstStateMachine: {fileID: 0}
   m_DstState: {fileID: -8029360970400413859}
   m_Solo: 0
@@ -215,7 +215,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: 7400000, guid: a94cea29cb3cf6244b404e09ac85434b, type: 2}
+  m_Motion: {fileID: 7400000, guid: 51d299fa38684a34ea48aff8a3620bb5, type: 2}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 
@@ -335,10 +335,10 @@ AnimatorStateMachine:
     m_Position: {x: 310, y: 120, z: 0}
   - serializedVersion: 1
     m_State: {fileID: 159223896242243764}
-    m_Position: {x: -20, y: 300, z: 0}
+    m_Position: {x: 120, y: 310, z: 0}
   - serializedVersion: 1
     m_State: {fileID: -7339013336968063515}
-    m_Position: {x: 310, y: 300, z: 0}
+    m_Position: {x: 450, y: 310, z: 0}
   - serializedVersion: 1
     m_State: {fileID: -1571799082855616057}
     m_Position: {x: 670, y: 200, z: 0}
@@ -352,7 +352,7 @@ AnimatorStateMachine:
   m_StateMachineBehaviours: []
   m_AnyStatePosition: {x: 50, y: 20, z: 0}
   m_EntryPosition: {x: 50, y: 120, z: 0}
-  m_ExitPosition: {x: 280, y: -50, z: 0}
+  m_ExitPosition: {x: 190, y: -80, z: 0}
   m_ParentStateMachinePosition: {x: 800, y: 20, z: 0}
   m_DefaultState: {fileID: -8029360970400413859}
 --- !u!1101 &-4418501219401852756
@@ -414,7 +414,7 @@ BlendTree:
   m_Name: BackwardTurn
   m_Childs:
   - serializedVersion: 2
-    m_Motion: {fileID: 7400000, guid: 04077d1828a2c4c49a0d3b3470429c42, type: 2}
+    m_Motion: {fileID: 7400000, guid: 057dddae386368a4f92e2af8a87fa919, type: 2}
     m_Threshold: -1
     m_Position: {x: 0, y: 0}
     m_TimeScale: 1
@@ -430,7 +430,7 @@ BlendTree:
     m_DirectBlendParameter: MoveX
     m_Mirror: 0
   - serializedVersion: 2
-    m_Motion: {fileID: 7400000, guid: 1ae938c75d6812b4e8797929e51faa77, type: 2}
+    m_Motion: {fileID: 7400000, guid: 135a47a6890866a44827d3764235c0a9, type: 2}
     m_Threshold: 1
     m_Position: {x: 0, y: 0}
     m_TimeScale: 1
@@ -527,7 +527,7 @@ BlendTree:
   m_Name: ForwardTurn
   m_Childs:
   - serializedVersion: 2
-    m_Motion: {fileID: 7400000, guid: 04077d1828a2c4c49a0d3b3470429c42, type: 2}
+    m_Motion: {fileID: 7400000, guid: 057dddae386368a4f92e2af8a87fa919, type: 2}
     m_Threshold: -1
     m_Position: {x: 0, y: 0}
     m_TimeScale: 1
@@ -543,7 +543,7 @@ BlendTree:
     m_DirectBlendParameter: MoveX
     m_Mirror: 0
   - serializedVersion: 2
-    m_Motion: {fileID: 7400000, guid: 1ae938c75d6812b4e8797929e51faa77, type: 2}
+    m_Motion: {fileID: 7400000, guid: 135a47a6890866a44827d3764235c0a9, type: 2}
     m_Threshold: 1
     m_Position: {x: 0, y: 0}
     m_TimeScale: 1
@@ -638,6 +638,12 @@ AnimatorController:
     m_DefaultInt: 0
     m_DefaultBool: 0
     m_Controller: {fileID: 9100000}
+  - m_Name: LookY
+    m_Type: 1
+    m_DefaultFloat: 0
+    m_DefaultInt: 0
+    m_DefaultBool: 0
+    m_Controller: {fileID: 9100000}
   - m_Name: IsAiming
     m_Type: 4
     m_DefaultFloat: 0
@@ -708,7 +714,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: 7400000, guid: 245f41f2c8e51ff4db5b9de010ad4b18, type: 2}
+  m_Motion: {fileID: 7400000, guid: 54db30d6f4089fa47a1236a9860c2f43, type: 2}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 
@@ -724,7 +730,7 @@ AnimatorStateTransition:
   m_Conditions:
   - m_ConditionMode: 3
     m_ConditionEvent: TurnX
-    m_EventTreshold: 0.1
+    m_EventTreshold: 0.2
   m_DstStateMachine: {fileID: 0}
   m_DstState: {fileID: -1571799082855616057}
   m_Solo: 0
@@ -774,7 +780,7 @@ AnimatorStateTransition:
   m_Conditions:
   - m_ConditionMode: 3
     m_ConditionEvent: TurnX
-    m_EventTreshold: -0.1
+    m_EventTreshold: -0.2
   m_DstStateMachine: {fileID: 0}
   m_DstState: {fileID: -8029360970400413859}
   m_Solo: 0
@@ -950,9 +956,9 @@ AnimatorStateTransition:
   m_Mute: 0
   m_IsExit: 0
   serializedVersion: 3
-  m_TransitionDuration: 0.1
+  m_TransitionDuration: 0.100000024
   m_TransitionOffset: 0
-  m_ExitTime: 0.53125
+  m_ExitTime: 0.94505286
   m_HasExitTime: 0
   m_HasFixedDuration: 1
   m_InterruptionSource: 0
