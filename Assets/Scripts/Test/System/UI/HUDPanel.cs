@@ -28,11 +28,10 @@ public class HUDPanel : MonoBehaviour
     [SerializeField] private Image statusIcon;
     
     [Header("⚔️ 스킬 UI 컴포넌트들")]
-    [SerializeField] private Button[] skillButtons;
-    [SerializeField] private Image[] skillIcons;
-    [SerializeField] private Image[] skillCooldownOverlays;
-    [SerializeField] private TextMeshProUGUI[] skillCooldownTexts;
-    [SerializeField] private int maxSkillSlots = 4;
+    [SerializeField] private Button skillButton;
+    [SerializeField] private Image skillIcon;
+    [SerializeField] private Image skillCooldownOverlay;
+    [SerializeField] private TextMeshProUGUI skillCooldownText;
     
     [Header("📦 아이템 UI 컴포넌트들")]
     [SerializeField] private ModalWindowManager itemModalWindow; // HeatUI Modal
@@ -44,13 +43,16 @@ public class HUDPanel : MonoBehaviour
     private bool isTargeting = false;
     private bool isItemUIOpen = false;
     private float playTime = 360f;
-    private float[] skillCooldowns;
-    private float[] maxCooldowns;
-    private bool[] skillAvailable;
+    private float skillCooldown;
+    private float maxCooldown;
+    private bool skillAvailable;
+    private int currentSpawnedCharacterIndex = -1;
 
 
     // 데이터베이스 참조
     private DataBase.UIData uiData;
+    private DataBase.PlayerData playerData;
+    private DataBase.ItemData itemData;
 
     // ✅ DataBase 캐싱된 값들 (성능 최적화)
     private Color cachedCrosshairNormalColor;
@@ -78,6 +80,8 @@ public class HUDPanel : MonoBehaviour
     private string cachedHealthFormat;
     private Color cachedHealthFormatColor;
 
+    private Transform cachedPlayerPrefabData;
+
     private bool dataBaseCached = false;
     #region Unity 생명주기
     void Awake()
@@ -99,8 +103,9 @@ public class HUDPanel : MonoBehaviour
     {
         SubscribeToEvents();
         SetInitialState();
-
-
+        
+        // 스폰된 캐릭터의 스킬 데이터 업데이트
+        UpdateSkillDataFromSpawnedCharacter();
     }
     
     void OnDestroy()
@@ -191,6 +196,8 @@ public class HUDPanel : MonoBehaviour
                 cachedHealthFormat = uiData.HealthText;
                 cachedHealthFormatColor = uiData.HealthFormatColor; 
 
+                cachedPlayerPrefabData = DataBase.Instance.playerData.PlayerPrefabData[0];
+
                 dataBaseCached = true;
                 Debug.Log("✅ HUDPanel - DataBase 정보 캐싱 완료");
             }
@@ -213,18 +220,11 @@ public class HUDPanel : MonoBehaviour
     /// </summary>
     void InitializeSkillSystem()
     {
-        skillCooldowns = new float[maxSkillSlots];
-        maxCooldowns = new float[maxSkillSlots];
-        skillAvailable = new bool[maxSkillSlots];
+        skillCooldown = 0f;
+        maxCooldown = 10f;
+        skillAvailable = true;
         
-        for (int i = 0; i < maxSkillSlots; i++)
-        {
-            skillCooldowns[i] = 0f;
-            maxCooldowns[i] = 10f;
-            skillAvailable[i] = true;
-        }
-        
-        UpdateAllSkillUI();
+        UpdateSkillUI();
     }
     
     /// <summary>
@@ -536,12 +536,10 @@ public class HUDPanel : MonoBehaviour
     /// </summary>
     public void UseSkill(int skillIndex)
     {
-        if (skillIndex < 0 || skillIndex >= maxSkillSlots) return;
-        
-        if (skillAvailable[skillIndex] && skillCooldowns[skillIndex] <= 0f)
+        if (skillAvailable && skillCooldown <= 0f)
         {
-            skillCooldowns[skillIndex] = maxCooldowns[skillIndex];
-            UpdateSkillUI(skillIndex);
+            skillCooldown = maxCooldown;
+            UpdateSkillUI();
         }
     }
     
@@ -550,71 +548,56 @@ public class HUDPanel : MonoBehaviour
     /// </summary>
     public void SetSkillCooldown(int skillIndex, float cooldownTime)
     {
-        if (skillIndex < 0 || skillIndex >= maxSkillSlots) return;
-        
-        maxCooldowns[skillIndex] = cooldownTime;
+        maxCooldown = cooldownTime;
     }
     
     /// <summary>
-    /// 특정 스킬 UI 업데이트
+    /// 스킬 UI 업데이트
     /// </summary>
-    void UpdateSkillUI(int skillIndex)
+    void UpdateSkillUI()
     {
-        if (skillIndex < 0 || skillIndex >= maxSkillSlots) return;
-        
-        bool isOnCooldown = skillCooldowns[skillIndex] > 0f;
-        bool isAvailable = skillAvailable[skillIndex];
+        bool isOnCooldown = skillCooldown > 0f;
+        bool isAvailable = skillAvailable;
         
         // 버튼 상태 업데이트
-        if (skillIndex < skillButtons.Length && skillButtons[skillIndex] != null)
+        if (skillButton != null)
         {
-            skillButtons[skillIndex].interactable = isAvailable && !isOnCooldown;
+            skillButton.interactable = isAvailable && !isOnCooldown;
         }
         
         // 아이콘 색상 업데이트
-        if (skillIndex < skillIcons.Length && skillIcons[skillIndex] != null)
+        if (skillIcon != null)
         {
-            skillIcons[skillIndex].color = isOnCooldown ? Color.gray : Color.white;
+            skillIcon.color = isOnCooldown ? Color.gray : Color.white;
         }
         
         // 쿨다운 오버레이 업데이트
-        if (skillIndex < skillCooldownOverlays.Length && skillCooldownOverlays[skillIndex] != null)
+        if (skillCooldownOverlay != null)
         {
             if (isOnCooldown)
             {
-                float fillAmount = skillCooldowns[skillIndex] / maxCooldowns[skillIndex];
-                skillCooldownOverlays[skillIndex].fillAmount = fillAmount;
-                skillCooldownOverlays[skillIndex].gameObject.SetActive(true);
+                float fillAmount = skillCooldown / maxCooldown;
+                skillCooldownOverlay.fillAmount = fillAmount;
+                skillCooldownOverlay.gameObject.SetActive(true);
             }
             else
             {
-                skillCooldownOverlays[skillIndex].gameObject.SetActive(false);
+                skillCooldownOverlay.gameObject.SetActive(false);
             }
         }
         
         // 쿨다운 텍스트 업데이트
-        if (skillIndex < skillCooldownTexts.Length && skillCooldownTexts[skillIndex] != null)
+        if (skillCooldownText != null)
         {
             if (isOnCooldown)
             {
-                skillCooldownTexts[skillIndex].text = skillCooldowns[skillIndex].ToString("F1");
-                skillCooldownTexts[skillIndex].gameObject.SetActive(true);
+                skillCooldownText.text = skillCooldown.ToString("F1");
+                skillCooldownText.gameObject.SetActive(true);
             }
             else
             {
-                skillCooldownTexts[skillIndex].gameObject.SetActive(false);
+                skillCooldownText.gameObject.SetActive(false);
             }
-        }
-    }
-    
-    /// <summary>
-    /// 모든 스킬 UI 업데이트
-    /// </summary>
-    void UpdateAllSkillUI()
-    {
-        for (int i = 0; i < maxSkillSlots; i++)
-        {
-            UpdateSkillUI(i);
         }
     }
     
@@ -623,19 +606,16 @@ public class HUDPanel : MonoBehaviour
     /// </summary>
     public void UpdateSkillCooldowns()
     {
-        for (int i = 0; i < maxSkillSlots; i++)
+        if (skillCooldown > 0f)
         {
-            if (skillCooldowns[i] > 0f)
+            skillCooldown -= Time.deltaTime;
+            
+            if (skillCooldown <= 0f)
             {
-                skillCooldowns[i] -= Time.deltaTime;
-                
-                if (skillCooldowns[i] <= 0f)
-                {
-                    skillCooldowns[i] = 0f;
-                }
-                
-                UpdateSkillUI(i);
+                skillCooldown = 0f;
             }
+            
+            UpdateSkillUI();
         }
     }
     
@@ -786,10 +766,86 @@ public class HUDPanel : MonoBehaviour
     /// </summary>
     public bool IsSkillReady(int skillIndex)
     {
-        if (skillIndex < 0 || skillIndex >= maxSkillSlots) return false;
-        return skillAvailable[skillIndex] && skillCooldowns[skillIndex] <= 0f;
+        return skillAvailable && skillCooldown <= 0f;
     }
 
+    /// <summary>
+    /// 스폰된 캐릭터의 스킬 데이터를 가져와 HUD 업데이트
+    /// </summary>
+    public void UpdateSkillDataFromSpawnedCharacter()
+    {
+        SpawnController spawnController = FindObjectOfType<SpawnController>();
+        if (spawnController == null)    
+        {
+            Debug.LogWarning("⚠️ HUDPanel - SpawnController를 찾을 수 없습니다.");
+            return;
+        }
+
+        int currentSpawnedCharacterIndex = spawnController.NotifyHUDOfCharacterSpawn();
+        if (currentSpawnedCharacterIndex < 0)
+        {
+            Debug.LogWarning("⚠️ HUDPanel - 스폰된 캐릭터 인덱스가 유효하지 않습니다." + currentSpawnedCharacterIndex);
+            return;
+        }
+
+        UpdateSkillDataFromCharacterIndex(currentSpawnedCharacterIndex);
+    }
+
+    /// <summary>
+    /// 캐릭터 인덱스로부터 스킬 데이터를 가져와 HUD 업데이트
+    /// </summary>
+    public void UpdateSkillDataFromCharacterIndex(int currentSpawnedCharacterIndex)
+    {
+        if (!dataBaseCached || DataBase.Instance == null)
+        {
+            Debug.LogWarning("⚠️ HUDPanel - DataBase가 캐싱되지 않았습니다.");
+            return;
+        }
+
+        try
+        {
+            var playerPrefab = DataBase.Instance.playerData.PlayerPrefabData[currentSpawnedCharacterIndex];
+            if (playerPrefab == null)
+            {
+                Debug.LogError($"❌ HUDPanel - 캐릭터 인덱스 {currentSpawnedCharacterIndex}의 프리팹이 null입니다.");
+                return;
+            }
+
+            // 스킬 컴포넌트 찾기
+            CharacterSkill characterSkill = playerPrefab.GetComponent<CharacterSkill>();
+            if (characterSkill == null)
+            {
+                Debug.LogWarning($"⚠️ HUDPanel - 캐릭터 인덱스 {currentSpawnedCharacterIndex}에 CharacterSkill이 없습니다.");
+                return;
+            }
+
+            // 스킬 아이콘 업데이트
+            UpdateSkillIcon(characterSkill);
+            
+            // 스킬 쿨다운 설정
+            SetSkillCooldown(0, characterSkill.CooldownTime);
+            
+            Debug.Log($"✅ HUDPanel - 캐릭터 인덱스 {currentSpawnedCharacterIndex}의 스킬 데이터 업데이트 완료");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ HUDPanel - 스킬 데이터 업데이트 중 오류: {e.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 스킬 아이콘 업데이트
+    /// </summary>
+    private void UpdateSkillIcon(CharacterSkill characterSkill)
+    {
+        if (skillIcon == null) return;
+
+        // CharacterSkill에서 아이콘 정보 가져오기 (필요시 구현)
+        // 예: skillIcon.sprite = characterSkill.GetSkillIcon();
+        
+        // 임시로 기본 색상 설정
+        skillIcon.color = Color.white;
+    }
     
     #endregion
 } 

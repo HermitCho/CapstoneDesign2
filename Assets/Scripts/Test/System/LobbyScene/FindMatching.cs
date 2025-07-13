@@ -41,7 +41,7 @@ public class FindMatching : MonoBehaviourPunCallbacks
             modalWindow.closeOnCancel = false; // 직접 제어
         }
         
-        UpdateUI("매칭 찾기 버튼을 클릭하세요.");
+        UpdateUI("매칭 취소!");
     }
     
     public void StartMatching()
@@ -79,7 +79,7 @@ public class FindMatching : MonoBehaviourPunCallbacks
     {
         if (!isMatching) return;
         
-        Debug.Log("[매칭] 매칭 취소!");
+        Debug.Log("매칭 취소!");
         isMatching = false;
         
         // 타이머 정지
@@ -181,7 +181,7 @@ public class FindMatching : MonoBehaviourPunCallbacks
         if (modalWindow != null)
             modalWindow.CloseWindow();
         
-        UpdateUI("매칭 찾기 버튼을 클릭하세요.");
+        UpdateUI("매칭 취소");
     }
     
     private void UpdateUI(string message)

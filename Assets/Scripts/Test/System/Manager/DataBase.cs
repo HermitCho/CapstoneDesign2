@@ -691,6 +691,37 @@ public class DataBase : Singleton<DataBase>
             get { return selectionTimeDangerFormatColor; }
         }
 
+       
+    }
+
+
+    [System.Serializable]
+    public class PlayerData
+    {
+
+        [Space(20)]
+        [Header("플레이어 데이터")] 
+        [Tooltip("플레이어 프리팹 데이터 설정")]
+        [SerializeField] private List<Transform> playerPrefabData = new List<Transform>();
+        public List<Transform> PlayerPrefabData
+        {
+            set { playerPrefabData = value; }
+            get { return playerPrefabData; }
+        }        
+    }
+
+
+    [System.Serializable]
+    public class ItemData
+    {
+        [Header("아이템 데이터")]
+        [Tooltip("아이템 프리팹 데이터 설정")]
+        [SerializeField] private List<Transform> itemPrefabData = new List<Transform>();
+        public List<Transform> ItemPrefabData
+        {
+            set { itemPrefabData = value; }
+            get { return itemPrefabData; }
+        }
     }
 
     
@@ -709,4 +740,10 @@ public class DataBase : Singleton<DataBase>
 
     [Header("UI 데이터")]
     public UIData uiData;
+
+    [Header("플레이어 데이터")]
+    public PlayerData playerData;
+
+    [Header("아이템 데이터")]
+    public ItemData itemData;
 }

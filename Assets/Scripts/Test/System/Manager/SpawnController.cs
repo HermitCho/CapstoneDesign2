@@ -12,9 +12,6 @@ public class SpawnController : MonoBehaviour
     [SerializeField] private GameObject[] spawnPositions; // 스폰 가능한 위치들
     [SerializeField] private Transform spawnParent; // 스폰된 캐릭터들의 부모 오브젝트 (선택적)
     
-    [Header("📦 캐릭터 프리팹 데이터")]
-    [SerializeField] private GameObject[] characterPrefabs; // 사용 가능한 캐릭터 프리팹들
-    
     [Header("⚙️ 스폰 설정")]
     [SerializeField] private bool destroyPreviousCharacter = true; // 이전 캐릭터 제거 여부
     [SerializeField] private bool randomizeRotation = false; // 랜덤 회전 여부
@@ -26,11 +23,19 @@ public class SpawnController : MonoBehaviour
     [SerializeField] private bool showGizmos = true;
     [SerializeField] private Color gizmoColor = Color.green;
     [SerializeField] private float gizmoSize = 1f;
+
+    // 데이터베이스 참조
+    private DataBase.PlayerData playerData;
+
+    // ✅ DataBase 캐싱된 값들 (성능 최적화)
+    private Transform[] cachedPlayerPrefabData;
+    private bool dataBaseCached = false;
     
     // 내부 상태 변수들
     private GameObject currentSpawnedCharacter = null;
     private int lastUsedSpawnIndex = -1;
     private bool isSpawning = false;
+    private int currentSpawnedCharacterIndex = -1;
     
     #region Unity 생명주기
     
@@ -69,6 +74,27 @@ public class SpawnController : MonoBehaviour
     #endregion
     
     #region 초기화 및 검증
+
+
+
+    void CacheDataBaseInfo()
+    {
+        try
+        {
+            if (!dataBaseCached)
+            {
+                playerData = DataBase.Instance.playerData;
+                cachedPlayerPrefabData = playerData.PlayerPrefabData.ToArray();
+                dataBaseCached = true;
+                Debug.Log("✅ SpawnController - DataBase 정보 캐싱 완료");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ SpawnController: DataBase 캐싱 중 오류: {e.Message}");
+            dataBaseCached = false;
+        }
+    }
     
     /// <summary>
     /// 스폰 위치들 검증
@@ -146,8 +172,11 @@ public class SpawnController : MonoBehaviour
             return;
         }
         
-        GameObject prefab = characterPrefabs[characterIndex];
+        GameObject prefab = cachedPlayerPrefabData[characterIndex].gameObject;
         SpawnCharacterPrefab(prefab);
+        
+        // HUD에 캐릭터 인덱스 알림
+        currentSpawnedCharacterIndex = characterIndex;
     }
     
     IEnumerator SpawnCharacterPrefabCoroutine(GameObject prefab)
@@ -182,7 +211,7 @@ public class SpawnController : MonoBehaviour
     
     IEnumerator SpawnCharacterCoroutine(int characterIndex)
     {
-        GameObject prefab = characterPrefabs[characterIndex];
+        GameObject prefab = cachedPlayerPrefabData[characterIndex].gameObject;
         yield return StartCoroutine(SpawnCharacterPrefabCoroutine(prefab));
     }
     
@@ -254,10 +283,10 @@ public class SpawnController : MonoBehaviour
     /// </summary>
     bool IsValidCharacterIndex(int index)
     {
-        return characterPrefabs != null && 
+        return cachedPlayerPrefabData != null && 
                index >= 0 && 
-               index < characterPrefabs.Length && 
-               characterPrefabs[index] != null;
+               index < cachedPlayerPrefabData.Length && 
+               cachedPlayerPrefabData[index] != null;
     }
     
     /// <summary>
@@ -298,7 +327,7 @@ public class SpawnController : MonoBehaviour
         Vector3 spawnPosition = GetSpawnPosition(spawnIndex);
         Quaternion spawnRotation = GetSpawnRotation(spawnIndex);
         
-        GameObject prefab = characterPrefabs[characterIndex];
+        GameObject prefab = cachedPlayerPrefabData[characterIndex].gameObject;
         
         if (prefab != null)
         {
@@ -372,7 +401,7 @@ public class SpawnController : MonoBehaviour
     /// </summary>
     public int GetAvailableCharacterCount()
     {
-        return characterPrefabs?.Length ?? 0;
+        return cachedPlayerPrefabData?.Length ?? 0;
     }
     
     void NotifyGameManagerOfSpawnedCharacter()
@@ -385,6 +414,15 @@ public class SpawnController : MonoBehaviour
                 gameManager.FindPlayerAfterSpawn();
             }
         }
+    }
+    
+    /// <summary>
+    /// HUD에 캐릭터 스폰 알림
+    /// </summary>
+    public int NotifyHUDOfCharacterSpawn()
+    {
+        Debug.LogWarning("플레이어 프리팹 인덱스 번호 : " + currentSpawnedCharacterIndex);
+        return currentSpawnedCharacterIndex;
     }
     
     #endregion

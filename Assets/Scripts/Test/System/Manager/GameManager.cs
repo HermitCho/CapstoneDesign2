@@ -414,6 +414,9 @@ public class GameManager : Singleton<GameManager>
                     maxPlayerHealth = player.StartingHealth;
                     
                     Debug.Log($"✅ GameManager: 플레이어를 찾았습니다 - {playerObject.name}");
+                    
+                    // HUD에 스킬 데이터 업데이트 알림
+                    NotifyHUDToUpdateSkillData();
                 }
                 else
                 {
@@ -428,6 +431,24 @@ public class GameManager : Singleton<GameManager>
         catch (System.Exception e)
         {
             Debug.LogError($"❌ GameManager: 플레이어 찾기 중 오류 발생 - {e.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// HUD에 스킬 데이터 업데이트 알림
+    /// </summary>
+    private void NotifyHUDToUpdateSkillData()
+    {
+        HUDPanel hudPanel = FindObjectOfType<HUDPanel>();
+
+        if (hudPanel != null)
+        {
+            hudPanel.UpdateSkillDataFromSpawnedCharacter();
+            Debug.Log("HUDPanel을 찾았습니다!");
+        }
+        else
+        {
+            Debug.LogWarning("⚠️ GameManager: HUDPanel을 찾을 수 없습니다.");
         }
     }
 
