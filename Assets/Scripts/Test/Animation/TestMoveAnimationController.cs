@@ -46,6 +46,9 @@ public class TestMoveAnimationController : MonoBehaviour
     [SerializeField] private float maxLookUpAngle = 40f;
     [SerializeField] private float maxLookDownAngle = -20f;
 
+    // Rig설정
+    [SerializeField] private Rig armAimRig; // Rig3
+
     private void Awake()
     {
         animator = GetComponent<Animator>();
@@ -63,7 +66,8 @@ public class TestMoveAnimationController : MonoBehaviour
         InputManager.OnZoomCanceledPressed += OnZoomCanceledInput;
         InputManager.OnReloadPressed += OnReloadInput;
         InputManager.OnSkillPressed += OnDashInput;
-        
+        InputManager.OnItemPressed += OnItemInput;
+    
     }
 
     private void OnDisable()
@@ -74,6 +78,7 @@ public class TestMoveAnimationController : MonoBehaviour
         InputManager.OnZoomCanceledPressed -= OnZoomCanceledInput;
         InputManager.OnReloadPressed -= OnReloadInput;
         InputManager.OnSkillPressed -= OnDashInput;
+        InputManager.OnItemPressed -= OnItemInput;
 
     }
 
@@ -101,16 +106,6 @@ public class TestMoveAnimationController : MonoBehaviour
         }
     }
 
-
-    void OnDrawGizmos()
-    {
-        if (aimTarget != null)
-        {
-            // Gizmos로 머리의 방향을 표시 (회전된 방향)
-            Gizmos.color = Color.red;
-            Gizmos.DrawRay(aimTarget.position, aimTarget.forward * 5); // 회전 방향을 2만큼 표시
-        }
-    }
     // 이동 입력 처리
     void OnMoveInput(Vector2 input)
     {
@@ -232,6 +227,7 @@ public class TestMoveAnimationController : MonoBehaviour
         isAiming = true;
         animator.SetLayerWeight(upperBodyLayerIndex, 1f);
         animator.SetBool("IsAiming", true);
+        armAimRig.weight = 1f;
     }
 
     // 조준 해제 시 호출
@@ -240,12 +236,20 @@ public class TestMoveAnimationController : MonoBehaviour
         isAiming = false;
         animator.SetLayerWeight(upperBodyLayerIndex, 0f);
         animator.SetBool("IsAiming", false);
+        armAimRig.weight = 0f;
     }
 
     // 대쉬 스킬
     void OnDashInput()
     {
         animator.SetTrigger("Dash");
+        animator.SetLayerWeight(upperBodyLayerIndex, 0f);
+    }
+
+    // 아이템 스킬
+    void OnItemInput()
+    {
+        animator.SetTrigger("Item");
         animator.SetLayerWeight(upperBodyLayerIndex, 0f);
     }
 }
