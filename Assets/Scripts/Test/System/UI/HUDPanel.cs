@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using Michsky.UI.Heat;
+using System.Collections;
 
 /// <summary>
 /// 🎮 통합 HUD 패널
@@ -9,16 +10,16 @@ using Michsky.UI.Heat;
 /// </summary>
 public class HUDPanel : MonoBehaviour
 {
+    #region UI 컴포넌트들
+
     [Header("🎯 크로스헤어 UI 컴포넌트들")]
     [SerializeField] private Image crosshairImage;
     [SerializeField] private RectTransform crosshairContainer;
 
-    
     [Header("❤️ 체력바 UI 컴포넌트들")]
     [SerializeField] private ProgressBar healthProgressBar; // HeatUI ProgressBar
     [SerializeField] private TextMeshProUGUI healthText;
 
-    
     [Header("📊 점수 UI 컴포넌트들")]
     [SerializeField] private TextMeshProUGUI scoreText;
     [SerializeField] private TextMeshProUGUI multiplierText;
@@ -26,35 +27,49 @@ public class HUDPanel : MonoBehaviour
     [SerializeField] private TextMeshProUGUI attachStatusText;
     [SerializeField] private TextMeshProUGUI scoreStatusText;
     [SerializeField] private Image statusIcon;
-    
+
     [Header("⚔️ 스킬 UI 컴포넌트들")]
-    [SerializeField] private Button skillButton;
     [SerializeField] private Image skillIcon;
     [SerializeField] private Image skillCooldownOverlay;
     [SerializeField] private TextMeshProUGUI skillCooldownText;
-    
+
     [Header("📦 아이템 UI 컴포넌트들")]
     [SerializeField] private ModalWindowManager itemModalWindow; // HeatUI Modal
-    [SerializeField] private Button itemUIButton; // 아이템 UI 열기 버튼 (선택적)
-    
-    // 내부 상태 변수들
+    [SerializeField] private Image itemIcon1;
+    [SerializeField] private Image itemIcon2;
+
+
+   
+
+
+    #endregion
+
+    #region 내부 상태 변수들
+
     private float currentHealth = 100f;
     private float maxHealth = 100f;
     private bool isTargeting = false;
     private bool isItemUIOpen = false;
     private float playTime = 360f;
-    private float skillCooldown;
-    private float maxCooldown;
-    private bool skillAvailable;
     private int currentSpawnedCharacterIndex = -1;
+    private GameObject currentCharacterPrefab; // 현재 캐릭터 프리팹 정보 저장
+    private CharacterSkill currentCharacterSkill; // 현재 캐릭터 스킬 정보 저장
+    private Sprite currentSkillIcon; // 현재 스킬 아이콘 스프라이트 저장
+    private Sprite currentItemIcon1; // 현재 아이템1 아이콘 스프라이트 저장
+    private Sprite currentItemIcon2; // 현재 아이템2 아이콘 스프라이트 저장
+    private TestTeddyBear currentTeddyBear; // 현재 테디베어 컴포넌트 저장
+    #endregion
 
+    #region 데이터베이스 참조
 
-    // 데이터베이스 참조
     private DataBase.UIData uiData;
     private DataBase.PlayerData playerData;
     private DataBase.ItemData itemData;
 
-    // ✅ DataBase 캐싱된 값들 (성능 최적화)
+    #endregion
+
+    #region 캐싱된 값들 (성능 최적화)
+
     private Color cachedCrosshairNormalColor;
     private Color cachedCrosshairTargetColor;
     private float cachedCrosshairSize;
@@ -80,61 +95,67 @@ public class HUDPanel : MonoBehaviour
     private string cachedHealthFormat;
     private Color cachedHealthFormatColor;
 
-    private Transform cachedPlayerPrefabData;
+    private GameObject cachedPlayerPrefabData;
 
     private bool dataBaseCached = false;
+
+    #endregion
+
     #region Unity 생명주기
+
     void Awake()
     {
         InitializeHUD();
     }
-    
+
     void OnEnable()
     {
-       CacheDataBaseInfo();
+        CacheDataBaseInfo();
     }
-    
+
     void OnDisable()
     {
         // 패널이 비활성화될 때 정리 작업
     }
-    
+
     void Start()
     {
         SubscribeToEvents();
         SetInitialState();
-        
-        // 스폰된 캐릭터의 스킬 데이터 업데이트
-        UpdateSkillDataFromSpawnedCharacter();
+        FindTeddyBear();
+        Debug.Log("✅ HUDPanel - 초기화 완료, 이벤트 구독됨");
     }
-    
+
     void OnDestroy()
     {
         UnsubscribeFromEvents();
     }
-    
+
     void Update()
     {
-        // 스킬 쿨타임 업데이트
-        UpdateSkillCooldowns();
-        
+        // 스킬 쿨타임 업데이트 (스킬 데이터가 로드된 경우에만)
+        if (currentCharacterSkill != null)
+        {
+            UpdateSkillIconState();
+        }
+
         // 실시간 점수 상태 업데이트
         UpdateRealTimeScoreStatus();
-        
+
         // 실시간 게임 시간 업데이트
         UpdateRealTimeUI();
-        
+
         // 시간대별 배율 UI 실시간 업데이트
         if (GameManager.Instance != null)
         {
             UpdateMultiplier(GameManager.Instance.GetScoreMultiplier());
         }
     }
-    
+
     #endregion
-    
+
     #region 초기화
-    
+
     /// <summary>
     /// HUD 초기화
     /// </summary>
@@ -142,10 +163,8 @@ public class HUDPanel : MonoBehaviour
     {
         CacheDataBaseInfo();
 
-        // 스킬 시스템 초기화
-        InitializeSkillSystem();
-        
-        
+        // 스킬 시스템 초기화는 캐릭터 스폰 완료 후에 처리
+
         // 초기값 설정
         SetHealth(100f, 100f);
         SetPlayTime();
@@ -154,9 +173,11 @@ public class HUDPanel : MonoBehaviour
         UpdateMultiplier(1f);
         UpdateGameTime(0f);
         UpdateAttachStatus(false, 0f);
-
     }
-    
+
+    /// <summary>
+    /// DataBase 정보 캐싱
+    /// </summary>
     void CacheDataBaseInfo()
     {
         try
@@ -196,8 +217,6 @@ public class HUDPanel : MonoBehaviour
                 cachedHealthFormat = uiData.HealthText;
                 cachedHealthFormatColor = uiData.HealthFormatColor; 
 
-                cachedPlayerPrefabData = DataBase.Instance.playerData.PlayerPrefabData[0];
-
                 dataBaseCached = true;
                 Debug.Log("✅ HUDPanel - DataBase 정보 캐싱 완료");
             }
@@ -214,19 +233,6 @@ public class HUDPanel : MonoBehaviour
         }
     }
 
-
-    /// <summary>
-    /// 스킬 시스템 초기화
-    /// </summary>
-    void InitializeSkillSystem()
-    {
-        skillCooldown = 0f;
-        maxCooldown = 10f;
-        skillAvailable = true;
-        
-        UpdateSkillUI();
-    }
-    
     /// <summary>
     /// 초기 상태 설정
     /// </summary>
@@ -234,21 +240,20 @@ public class HUDPanel : MonoBehaviour
     {
         // 크로스헤어 표시
         ShowCrosshair(true);
-        
+
         // 아이템 UI 닫힌 상태로 시작
         CloseItemUI();
-        
-
     }
+
     void SetPlayTime()
     {
         playTime = GameManager.Instance.GetPlayTime();
     }
-    
+
     #endregion
-    
+
     #region 이벤트 구독/해제
-    
+
     void SubscribeToEvents()
     {
         if (GameManager.Instance != null)
@@ -257,28 +262,30 @@ public class HUDPanel : MonoBehaviour
             GameManager.OnScoreUpdated += UpdateScore;
             GameManager.OnScoreMultiplierUpdated += UpdateMultiplier;
             GameManager.OnGameTimeUpdated += UpdateGameTime;
-            
+
             // 테디베어 관련 이벤트
             GameManager.OnTeddyBearAttachmentChanged += OnTeddyBearAttachmentChanged;
             GameManager.OnTeddyBearReattachTimeChanged += OnTeddyBearReattachTimeChanged;
-            
+
             // 플레이어 체력 이벤트
             GameManager.OnPlayerHealthChanged += OnPlayerHealthChanged;
-            
+
             // 크로스헤어 이벤트
             GameManager.OnCrosshairTargetingChanged += SetCrosshairTargeting;
-            
+
             // 스킬 이벤트
-            GameManager.OnSkillUsed += UseSkill;
+            GameManager.OnSkillUsed += UpdateSkillUI;
             GameManager.OnSkillCooldownStarted += SetSkillCooldown;
+
+            // 캐릭터 스폰 이벤트
+            GameManager.OnCharacterSpawned += OnCharacterSpawned;
         }
-        
+
         // InputManager 이벤트
         InputManager.OnItemUIPressed += OpenItemUI;
         InputManager.OnItemUICanceledPressed += CloseItemUI;
-
     }
-    
+
     void UnsubscribeFromEvents()
     {
         if (GameManager.Instance != null)
@@ -290,18 +297,19 @@ public class HUDPanel : MonoBehaviour
             GameManager.OnTeddyBearReattachTimeChanged -= OnTeddyBearReattachTimeChanged;
             GameManager.OnPlayerHealthChanged -= OnPlayerHealthChanged;
             GameManager.OnCrosshairTargetingChanged -= SetCrosshairTargeting;
-            GameManager.OnSkillUsed -= UseSkill;
+            GameManager.OnSkillUsed -= UpdateSkillUI;
             GameManager.OnSkillCooldownStarted -= SetSkillCooldown;
+            GameManager.OnCharacterSpawned -= OnCharacterSpawned;
         }
-        
+
         InputManager.OnItemUIPressed -= OpenItemUI;
         InputManager.OnItemUICanceledPressed -= CloseItemUI;
     }
-    
+
     #endregion
-    
+
     #region 크로스헤어 UI
-    
+
     /// <summary>
     /// 크로스헤어 표시/숨김
     /// </summary>
@@ -312,37 +320,37 @@ public class HUDPanel : MonoBehaviour
             crosshairImage.gameObject.SetActive(show);
         }
     }
-    
+
     /// <summary>
     /// 크로스헤어 타겟팅 상태 설정
     /// </summary>
     public void SetCrosshairTargeting(bool targeting)
     {
         isTargeting = targeting;
-        
+
         if (crosshairImage != null)
         {
             crosshairImage.color = targeting ? cachedCrosshairTargetColor : cachedCrosshairNormalColor;
         }
     }
-    
+
     /// <summary>
     /// 크로스헤어 크기 설정 (줌 애니메이션용)
     /// </summary>
     public void SetCrosshairSize(float size)
     {
         cachedCrosshairSize = Mathf.Clamp(size, 0.1f, 3f);
-        
+
         if (crosshairContainer != null)
         {
             crosshairContainer.localScale = Vector3.one * cachedCrosshairSize;
         }
     }
-    
+
     #endregion
-    
+
     #region 체력바 UI
-    
+
     /// <summary>
     /// 체력 설정
     /// </summary>
@@ -350,17 +358,17 @@ public class HUDPanel : MonoBehaviour
     {
         currentHealth = Mathf.Clamp(current, 0f, max);
         maxHealth = Mathf.Max(max, 1f);
-        
+
         UpdateHealthDisplay();
     }
-    
+
     /// <summary>
     /// 체력 표시 업데이트
     /// </summary>
     void UpdateHealthDisplay()
     {
         float healthRatio = currentHealth / maxHealth;
-        
+
         // HeatUI ProgressBar 업데이트
         if (healthProgressBar != null)
         {
@@ -368,12 +376,12 @@ public class HUDPanel : MonoBehaviour
             healthProgressBar.maxValue = maxHealth;
             healthProgressBar.UpdateUI(); // 반드시 호출!
         }
-        
+
         // 체력 텍스트 업데이트
         if (healthText != null)
         {
             healthText.text = string.Format(cachedHealthFormat, currentHealth, maxHealth);
-            
+
             // 체력 비율에 따른 색상 변경
             if (healthRatio <= cachedHealthDangerThreshold)
                 healthText.color = cachedHealthDangerColor;
@@ -383,16 +391,16 @@ public class HUDPanel : MonoBehaviour
                 healthText.color = cachedHealthNormalColor;
         }
     }
-    
+
     void OnPlayerHealthChanged(float current, float max)
     {
         SetHealth(current, max);
     }
-    
+
     #endregion
-    
+
     #region 점수, 시간, 배율 UI
-    
+
     /// <summary>
     /// 점수 업데이트
     /// </summary>
@@ -404,26 +412,26 @@ public class HUDPanel : MonoBehaviour
             scoreText.color = cachedScoreFormatColor;
         }
     }
-    
+
     /// <summary>
     /// 배율 업데이트 (시간대별 포맷 적용)
     /// </summary>
     public void UpdateMultiplier(float multiplier)
     {
         if (multiplierText == null) return;
-        
+
         // 시간대에 따른 포맷 선택 - GameManager 기반 안전한 접근
         try
         {
             // GameManager 존재 여부만 체크
             bool hasGameManager = GameManager.Instance != null;
-            
+
             if (hasGameManager)
             {
                 float gameTime = GameManager.Instance.GetGameTime();
                 float scoreIncreaseTime = GameManager.Instance.GetScoreIncreaseTime();
                 bool dataBaseCached = GameManager.Instance.IsDataBaseCached();
-                
+
                 if (gameTime >= scoreIncreaseTime)
                 {
                     // 점수배율 적용 시점 이후: multiplierFormat 사용
@@ -435,16 +443,16 @@ public class HUDPanel : MonoBehaviour
                     multiplierText.color = cachedGeneralMultiplierFormatColor;
                     // 점수배율 적용 전: GeneralMultiplierFormat 사용
                     multiplierText.text = string.Format(cachedGeneralMultiplierFormat, multiplier);
-                   
+
                 }
             }
             else
             {
                 multiplierText.color = cachedGeneralMultiplierFormatColor;
-                
+
                 // GameManager가 없는 경우
                 multiplierText.text = string.Format(cachedGeneralMultiplierFormat, multiplier);
-                
+
             }
         }
         catch (System.Exception e)
@@ -452,10 +460,10 @@ public class HUDPanel : MonoBehaviour
             multiplierText.color = cachedGeneralMultiplierFormatColor;
             // 안전한 fallback
             multiplierText.text = string.Format(cachedGeneralMultiplierFormat, multiplier);
-            
+
         }
     }
-    
+
     /// <summary>
     /// 게임 시간 업데이트
     /// </summary>
@@ -467,14 +475,14 @@ public class HUDPanel : MonoBehaviour
             gameTimeText.color = cachedGameTimeFormatColor;
         }
     }
-    
+
     /// <summary>
     /// 테디베어 부착 상태 업데이트
     /// </summary>
     public void UpdateAttachStatus(bool isAttached, float timeUntilReattach = 0f)
     {
         if (attachStatusText == null) return;
-        
+
         if (isAttached)
         {
             attachStatusText.text = "테디베어 부착됨";
@@ -494,14 +502,14 @@ public class HUDPanel : MonoBehaviour
             if (statusIcon != null) statusIcon.color = Color.red;
         }
     }
-    
+
     /// <summary>
     /// 점수 상태 업데이트
     /// </summary>
     public void UpdateScoreStatus(string status, float timeRemaining)
     {
         if (scoreStatusText == null) return;
-        
+
         if (timeRemaining > 0f)
         {
             scoreStatusText.text = $"{status} - 증가까지 {timeRemaining:F1}초";
@@ -513,12 +521,12 @@ public class HUDPanel : MonoBehaviour
             scoreStatusText.color = Color.yellow;
         }
     }
-    
+
     void OnTeddyBearAttachmentChanged(bool isAttached)
     {
         UpdateAttachStatus(isAttached, 0f);
     }
-    
+
     void OnTeddyBearReattachTimeChanged(float timeRemaining)
     {
         if (!GameManager.Instance.IsTeddyBearAttached())
@@ -526,145 +534,125 @@ public class HUDPanel : MonoBehaviour
             UpdateAttachStatus(false, timeRemaining);
         }
     }
-    
+
     #endregion
-    
+
     #region 스킬 UI
-    
+
     /// <summary>
-    /// 스킬 사용
-    /// </summary>
-    public void UseSkill(int skillIndex)
-    {
-        if (skillAvailable && skillCooldown <= 0f)
-        {
-            skillCooldown = maxCooldown;
-            UpdateSkillUI();
-        }
-    }
-    
-    /// <summary>
-    /// 스킬 쿨다운 설정
+    /// 스킬 쿨다운 설정 (UI 업데이트용)
     /// </summary>
     public void SetSkillCooldown(int skillIndex, float cooldownTime)
     {
-        maxCooldown = cooldownTime;
+        // UI 업데이트에만 집중 - 실제 게임 조작은 하지 않음
+        UpdateSkillUI();
     }
-    
+
     /// <summary>
-    /// 스킬 UI 업데이트
+    /// 스킬 UI 업데이트 (기존 시스템 호환용)
     /// </summary>
     void UpdateSkillUI()
     {
-        bool isOnCooldown = skillCooldown > 0f;
-        bool isAvailable = skillAvailable;
-        
-        // 버튼 상태 업데이트
-        if (skillButton != null)
+        // 저장된 캐릭터 스킬 정보가 있으면 상태만 업데이트
+        if (currentCharacterSkill != null)
         {
-            skillButton.interactable = isAvailable && !isOnCooldown;
+            UpdateSkillIconState();
+            return;
         }
-        
-        // 아이콘 색상 업데이트
-        if (skillIcon != null)
-        {
-            skillIcon.color = isOnCooldown ? Color.gray : Color.white;
-        }
-        
-        // 쿨다운 오버레이 업데이트
-        if (skillCooldownOverlay != null)
-        {
-            if (isOnCooldown)
-            {
-                float fillAmount = skillCooldown / maxCooldown;
-                skillCooldownOverlay.fillAmount = fillAmount;
-                skillCooldownOverlay.gameObject.SetActive(true);
-            }
-            else
-            {
-                skillCooldownOverlay.gameObject.SetActive(false);
-            }
-        }
-        
-        // 쿨다운 텍스트 업데이트
-        if (skillCooldownText != null)
-        {
-            if (isOnCooldown)
-            {
-                skillCooldownText.text = skillCooldown.ToString("F1");
-                skillCooldownText.gameObject.SetActive(true);
-            }
-            else
-            {
-                skillCooldownText.gameObject.SetActive(false);
-            }
-        }
+
+        // 저장된 정보가 없으면 새로 로드
+        LoadCharacterPrefabData();
+        LoadSkillIconFromCharacterSkill();
+        ConnectSkillIconToHUD();
+        UpdateSkillIconState();
     }
-    
+
     /// <summary>
     /// 스킬 쿨타임 실시간 업데이트
     /// </summary>
     public void UpdateSkillCooldowns()
     {
-        if (skillCooldown > 0f)
+        // 저장된 캐릭터 스킬 정보가 있으면 상태만 업데이트
+        if (currentCharacterSkill != null)
         {
-            skillCooldown -= Time.deltaTime;
-            
-            if (skillCooldown <= 0f)
+            UpdateSkillIconState();
+            return;
+        }
+
+        // 스킬 데이터가 로드되지 않은 경우, 스폰된 캐릭터에서 다시 시도
+        SpawnController spawnController = FindObjectOfType<SpawnController>();
+        if (spawnController != null)
+        {
+            currentCharacterSkill = spawnController.GetCurrentSpawnedCharacterSkill();
+            if (currentCharacterSkill != null)
             {
-                skillCooldown = 0f;
+                // 스킬 아이콘도 함께 로드
+                currentSkillIcon = currentCharacterSkill.SkillIcon;
+                if (currentSkillIcon != null && skillIcon != null)
+                {
+                    skillIcon.sprite = currentSkillIcon;
+                    skillIcon.color = currentCharacterSkill.SkillColor;
+                }
+                UpdateSkillIconState();
             }
-            
-            UpdateSkillUI();
         }
     }
-    
+
     #endregion
-    
+
     #region 아이템 UI (모달창)
-    
+
     /// <summary>
     /// 아이템 UI 열기
     /// </summary>
     public void OpenItemUI()
     {
         if (itemModalWindow == null) return;
-        
+        if (!gameObject.activeSelf) return;
         if (!itemModalWindow.isOn)
         {
+
+            TestShoot.SetIsShooting(false);
+        
+        
             isItemUIOpen = true;
             itemModalWindow.OpenWindow();
-            
-            // 커서 해제
+
+            // 마우스 커서 보이게 하고 고정 해제
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
-            
-            // GameManager에 알림
-            GameManager.Instance?.NotifyItemUIToggled(true);
         }
     }
-    
+
     /// <summary>
     /// 아이템 UI 닫기
     /// </summary>
     public void CloseItemUI()
     {
         if (itemModalWindow == null) return;
-        
+
         if (itemModalWindow.isOn)
         {
+
+            if(!currentTeddyBear.IsAttached())
+            {
+                TestShoot.SetIsShooting(true);
+            }
+
             isItemUIOpen = false;
             itemModalWindow.CloseWindow();
-            
-            // 커서 잠금
+
+            // 마우스 커서 숨기고 중앙에 고정
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
-            
-            // GameManager에 알림
-            GameManager.Instance?.NotifyItemUIToggled(false);
+
+            if (!currentTeddyBear.IsAttached())
+            {
+                TestShoot.SetIsShooting(true);
+            }
         }
     }
-    
+
     /// <summary>
     /// 아이템 UI 토글
     /// </summary>
@@ -675,21 +663,21 @@ public class HUDPanel : MonoBehaviour
         else
             OpenItemUI();
     }
-    
+
     #endregion
-    
+
     #region 실시간 업데이트
-    
+
     /// <summary>
     /// 실시간 점수 상태 업데이트
     /// </summary>
     void UpdateRealTimeScoreStatus()
     {
         if (GameManager.Instance == null) return;
-        
+
         float gameTime = GameManager.Instance.GetGameTime();
         float scoreIncreaseTime = GameManager.Instance.GetScoreIncreaseTime();
-        
+
         if (gameTime >= scoreIncreaseTime)
         {
             UpdateScoreStatus("증가한 점수", 0f);
@@ -699,7 +687,7 @@ public class HUDPanel : MonoBehaviour
             float remaining = scoreIncreaseTime - gameTime;
             UpdateScoreStatus("기본 점수", remaining);
         }
-        
+
         // 재부착 시간 실시간 업데이트
         if (!GameManager.Instance.IsTeddyBearAttached())
         {
@@ -707,73 +695,69 @@ public class HUDPanel : MonoBehaviour
             UpdateAttachStatus(false, timeUntil);
         }
     }
-    
+
     /// <summary>
     /// 실시간 게임 시간 및 배율 업데이트
     /// </summary>
     void UpdateRealTimeUI()
     {
         if (GameManager.Instance == null) return;
-        
+
         // 게임 시간 가져오기
         float gameTime = GameManager.Instance.GetGameTime();
         gameTime = playTime - gameTime;
-        
+
         // 게임 시간 UI 업데이트
         if (gameTimeText != null)
         {
             gameTimeText.text = string.Format(cachedGameTimeFormat, gameTime);
             gameTimeText.color = cachedGameTimeFormatColor;
         }
-        
-        // GameManager에 게임 시간 업데이트 알림
-        GameManager.Instance.NotifyGameTimeUpdated(gameTime);
-        
+
         // 배율도 실시간으로 추가 업데이트 (더 빠른 반응을 위해)
         float currentMultiplier = GameManager.Instance.GetScoreMultiplier();
         UpdateMultiplier(currentMultiplier);
     }
 
+    #endregion
 
+    #region 캐릭터 스폰 이벤트 처리
 
+    /// <summary>
+    /// 캐릭터 스폰 완료 시 호출되는 이벤트 핸들러
+    /// </summary>
+    void OnCharacterSpawned()
+    {
+        Debug.Log("🎯 HUDPanel - 캐릭터 스폰 완료, 스킬 시스템 초기화 시작");
+
+        // 약간의 지연 후 스킬 시스템 초기화 (스폰 완료 보장)
+        StartCoroutine(InitializeSkillSystemAfterSpawn());
+    }
+
+    /// <summary>
+    /// 스폰 완료 후 스킬 시스템 초기화
+    /// </summary>
+    IEnumerator InitializeSkillSystemAfterSpawn()
+    {
+        // 스폰 완료를 확실히 보장하기 위한 짧은 지연
+        yield return new WaitForSeconds(0.1f);
+
+        // 스킬 데이터 업데이트
+        UpdateSkillDataFromSpawnedCharacter();
+
+        Debug.Log("✅ HUDPanel - 스킬 시스템 초기화 완료");
+    }
 
     #endregion
-    
-    #region 공개 메서드들
-    
-    /// <summary>
-    /// HUD 표시/숨김
-    /// </summary>
-    public void SetHUDVisible(bool visible)
-    {
-        gameObject.SetActive(visible);
-    }
-    
-    /// <summary>
-    /// 현재 체력 정보
-    /// </summary>
-    public float GetCurrentHealth() => currentHealth;
-    public float GetMaxHealth() => maxHealth;
-    public float GetHealthRatio() => currentHealth / maxHealth;
-    
-    /// <summary>
-    /// 아이템 UI 상태 확인
-    /// </summary>
-    public bool IsItemUIOpen() => isItemUIOpen;
-    
-    /// <summary>
-    /// 스킬 상태 확인
-    /// </summary>
-    public bool IsSkillReady(int skillIndex)
-    {
-        return skillAvailable && skillCooldown <= 0f;
-    }
+
+    #region 스킬 데이터 관리
 
     /// <summary>
-    /// 스폰된 캐릭터의 스킬 데이터를 가져와 HUD 업데이트
+    /// 스폰된 캐릭터 프리팹 정보 받아오기 (1단계)
     /// </summary>
-    public void UpdateSkillDataFromSpawnedCharacter()
+    public void LoadCharacterPrefabData()
     {
+        // SpawnController에서 현재 스폰된 캐릭터 인덱스 가져오기
         SpawnController spawnController = FindObjectOfType<SpawnController>();
         if (spawnController == null)    
         {
@@ -784,17 +768,183 @@ public class HUDPanel : MonoBehaviour
         int currentSpawnedCharacterIndex = spawnController.NotifyHUDOfCharacterSpawn();
         if (currentSpawnedCharacterIndex < 0)
         {
-            Debug.LogWarning("⚠️ HUDPanel - 스폰된 캐릭터 인덱스가 유효하지 않습니다." + currentSpawnedCharacterIndex);
+            Debug.LogWarning("⚠️ HUDPanel - 스폰된 캐릭터 인덱스가 유효하지 않습니다: " + currentSpawnedCharacterIndex);
             return;
         }
 
-        UpdateSkillDataFromCharacterIndex(currentSpawnedCharacterIndex);
+        // DataBase에서 해당 인덱스의 프리팹 정보 가져오기
+        if (!dataBaseCached || DataBase.Instance == null)
+        {
+            Debug.LogWarning("⚠️ HUDPanel - DataBase가 캐싱되지 않았습니다.");
+            return;
+        }
+
+        try
+        {
+            currentCharacterPrefab = DataBase.Instance.playerData.PlayerPrefabData[currentSpawnedCharacterIndex];
+            if (currentCharacterPrefab == null)
+            {
+                Debug.LogError($"❌ HUDPanel - 캐릭터 인덱스 {currentSpawnedCharacterIndex}의 프리팹이 null입니다.");
+                return;
+            }
+
+            this.currentSpawnedCharacterIndex = currentSpawnedCharacterIndex;
+            Debug.Log($"✅ HUDPanel - 캐릭터 프리팹 정보 로드 완료: 인덱스 {currentSpawnedCharacterIndex}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ HUDPanel - 프리팹 정보 로드 중 오류: {e.Message}");
+        }
     }
 
     /// <summary>
-    /// 캐릭터 인덱스로부터 스킬 데이터를 가져와 HUD 업데이트
+    /// CharacterSkill 정보에서 스킬 아이콘 스프라이트 받아오기 (2단계)
     /// </summary>
-    public void UpdateSkillDataFromCharacterIndex(int currentSpawnedCharacterIndex)
+    public void LoadSkillIconFromCharacterSkill()
+    {
+        if (currentCharacterPrefab == null)
+        {
+            Debug.LogWarning("⚠️ HUDPanel - 캐릭터 프리팹 정보가 없습니다. LoadCharacterPrefabData()를 먼저 호출하세요.");
+            return;
+        }
+
+        try
+        {
+            // SpawnController에서 실제 스폰된 캐릭터 인스턴스의 CharacterSkill 가져오기
+            SpawnController spawnController = FindObjectOfType<SpawnController>();
+            if (spawnController == null)
+            {
+                Debug.LogWarning("⚠️ HUDPanel - SpawnController를 찾을 수 없습니다.");
+                return;
+            }
+
+            currentCharacterSkill = spawnController.GetCurrentSpawnedCharacterSkill();
+            if (currentCharacterSkill == null)
+            {
+                Debug.LogWarning($"⚠️ HUDPanel - 스폰된 캐릭터에 CharacterSkill이 없습니다.");
+                return;
+            }
+
+            // 스킬 아이콘 스프라이트 가져오기
+            currentSkillIcon = currentCharacterSkill.SkillIcon;
+            if (currentSkillIcon == null)
+            {
+                Debug.LogWarning($"⚠️ HUDPanel - 스킬 '{currentCharacterSkill.SkillName}'의 아이콘이 null입니다.");
+                return;
+            }
+
+            Debug.Log($"✅ HUDPanel - 스킬 아이콘 로드 완료: {currentCharacterSkill.SkillName}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ HUDPanel - 스킬 아이콘 로드 중 오류: {e.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 받아온 스킬 아이콘을 HUDPanel에 연결하기 (3단계)
+    /// </summary>
+    public void ConnectSkillIconToHUD()
+    {
+        if (currentSkillIcon == null)
+        {
+            Debug.LogWarning("⚠️ HUDPanel - 스킬 아이콘이 없습니다. LoadSkillIconFromCharacterSkill()를 먼저 호출하세요.");
+            return;
+        }
+
+        if (skillIcon == null)
+        {
+            Debug.LogWarning("⚠️ HUDPanel - skillIcon UI 컴포넌트가 null입니다.");
+            return;
+        }
+
+        try
+        {
+            // 스킬 아이콘을 HUD에 연결
+            skillIcon.sprite = currentSkillIcon;
+            skillIcon.color = currentCharacterSkill.SkillColor;
+
+            Debug.Log($"✅ HUDPanel - 스킬 아이콘 HUD 연결 완료: {currentCharacterSkill.SkillName}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ HUDPanel - 스킬 아이콘 HUD 연결 중 오류: {e.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 스킬 아이콘 상태 업데이트 (4단계)
+    /// </summary>
+    public void UpdateSkillIconState()
+    {
+        if (currentCharacterSkill == null)
+        {
+            Debug.LogWarning("⚠️ HUDPanel - 캐릭터 스킬 정보가 없습니다.");
+            return;
+        }
+
+        if (skillIcon == null)
+        {
+            Debug.LogWarning("⚠️ HUDPanel - skillIcon UI 컴포넌트가 null입니다.");
+            return;
+        }
+
+        try
+        {
+            // 스킬 사용 가능 여부에 따른 아이콘 색상 업데이트
+            bool isOnCooldown = currentCharacterSkill.RemainingCooldown > 0f;
+            skillIcon.color = isOnCooldown ? Color.gray : Color.white;
+
+            // 쿨다운 오버레이 업데이트
+            if (skillCooldownOverlay != null)
+            {
+                if (isOnCooldown && currentCharacterSkill.CooldownTime > 0f)
+                {
+                    float fillAmount = currentCharacterSkill.RemainingCooldown / currentCharacterSkill.CooldownTime;
+                    skillCooldownOverlay.fillAmount = fillAmount;
+                    skillCooldownOverlay.gameObject.SetActive(true);
+                }
+                else
+                {
+                    skillCooldownOverlay.gameObject.SetActive(false);
+                }
+            }
+
+            // 쿨다운 텍스트 업데이트
+            if (skillCooldownText != null)
+            {
+                if (isOnCooldown)
+                {
+                    skillCooldownText.text = currentCharacterSkill.RemainingCooldown.ToString("F1");
+                    skillCooldownText.gameObject.SetActive(true);
+                }
+                else
+                {
+                    skillCooldownText.gameObject.SetActive(false);
+                }
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ HUDPanel - 스킬 아이콘 상태 업데이트 중 오류: {e.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 전체 스킬 데이터 업데이트 (모든 단계를 순차적으로 실행)
+    /// </summary>
+    public void UpdateSkillDataFromSpawnedCharacter()
+    {
+        LoadCharacterPrefabData();        // 1단계: 프리팹 정보 받아오기
+        LoadSkillIconFromCharacterSkill(); // 2단계: 스킬 아이콘 받아오기
+        ConnectSkillIconToHUD();          // 3단계: HUD에 연결
+        UpdateSkillIconState();           // 4단계: 상태 업데이트
+    }
+
+    /// <summary>
+    /// 캐릭터 인덱스로부터 스킬 데이터를 가져와 HUD 업데이트 (기존 호환성 유지)
+    /// </summary>
+    public void UpdateSkillDataFromCharacterIndex(int characterIndex)
     {
         if (!dataBaseCached || DataBase.Instance == null)
         {
@@ -804,28 +954,22 @@ public class HUDPanel : MonoBehaviour
 
         try
         {
-            var playerPrefab = DataBase.Instance.playerData.PlayerPrefabData[currentSpawnedCharacterIndex];
-            if (playerPrefab == null)
+            // playerData의 프리팹 데이터 배열에서 해당 인덱스의 프리팹 가져오기
+            currentCharacterPrefab = DataBase.Instance.playerData.PlayerPrefabData[characterIndex];
+            if (currentCharacterPrefab == null)
             {
-                Debug.LogError($"❌ HUDPanel - 캐릭터 인덱스 {currentSpawnedCharacterIndex}의 프리팹이 null입니다.");
+                Debug.LogError($"❌ HUDPanel - 캐릭터 인덱스 {characterIndex}의 프리팹이 null입니다.");
                 return;
             }
 
-            // 스킬 컴포넌트 찾기
-            CharacterSkill characterSkill = playerPrefab.GetComponent<CharacterSkill>();
-            if (characterSkill == null)
-            {
-                Debug.LogWarning($"⚠️ HUDPanel - 캐릭터 인덱스 {currentSpawnedCharacterIndex}에 CharacterSkill이 없습니다.");
-                return;
-            }
+            this.currentSpawnedCharacterIndex = characterIndex;
 
-            // 스킬 아이콘 업데이트
-            UpdateSkillIcon(characterSkill);
-            
-            // 스킬 쿨다운 설정
-            SetSkillCooldown(0, characterSkill.CooldownTime);
-            
-            Debug.Log($"✅ HUDPanel - 캐릭터 인덱스 {currentSpawnedCharacterIndex}의 스킬 데이터 업데이트 완료");
+            // 나머지 단계들 실행
+            LoadSkillIconFromCharacterSkill();
+            ConnectSkillIconToHUD();
+            UpdateSkillIconState();
+
+            Debug.Log($"✅ HUDPanel - 캐릭터 인덱스 {characterIndex}의 스킬 데이터 업데이트 완료");
         }
         catch (System.Exception e)
         {
@@ -834,18 +978,79 @@ public class HUDPanel : MonoBehaviour
     }
 
     /// <summary>
-    /// 스킬 아이콘 업데이트
+    /// 캐릭터 스킬로부터 스킬 데이터를 가져와 HUD 업데이트
     /// </summary>
-    private void UpdateSkillIcon(CharacterSkill characterSkill)
+    public void UpdateSkillDataFromCharacterSkill(CharacterSkill characterSkill)
     {
-        if (skillIcon == null) return;
+        if (characterSkill == null)
+        {
+            Debug.LogWarning("⚠️ HUDPanel - CharacterSkill이 null입니다.");
+            return;
+        }
 
-        // CharacterSkill에서 아이콘 정보 가져오기 (필요시 구현)
-        // 예: skillIcon.sprite = characterSkill.GetSkillIcon();
-        
-        // 임시로 기본 색상 설정
-        skillIcon.color = Color.white;
+        try
+        {
+            currentCharacterSkill = characterSkill;
+            currentSkillIcon = characterSkill.SkillIcon;
+
+            ConnectSkillIconToHUD();
+
+            Debug.Log($"✅ HUDPanel - 스킬 '{characterSkill.SkillName}' 데이터 업데이트 완료");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ HUDPanel - 스킬 데이터 업데이트 중 오류: {e.Message}");
+        }
     }
-    
+
+    #endregion
+
+    #region 공개 메서드들
+
+    /// <summary>
+    /// HUD 표시/숨김
+    /// </summary>
+    public void SetHUDVisible(bool visible)
+    {
+        gameObject.SetActive(visible);
+    }
+
+    /// <summary>
+    /// 현재 체력 정보
+    /// </summary>
+    public float GetCurrentHealth() => currentHealth;
+    public float GetMaxHealth() => maxHealth;
+    public float GetHealthRatio() => currentHealth / maxHealth;
+
+    /// <summary>
+    /// 아이템 UI 상태 확인
+    /// </summary>
+    public bool IsItemUIOpen() => isItemUIOpen;
+
+    /// <summary>
+    /// 스킬 상태 확인 (UI 표시용)
+    /// </summary>
+    public bool IsSkillReady(int skillIndex)
+    {
+        // UI 표시용으로만 사용 - 실제 게임 조작은 하지 않음
+        // 현재는 항상 true 반환 (실제 스킬 상태는 CharacterSkill에서 관리)
+        return true;
+    }
+
+    #endregion
+
+
+    #region 컴포넌트 찾기
+    void FindTeddyBear()
+    {
+        if (currentTeddyBear == null)
+        {
+            currentTeddyBear = FindObjectOfType<TestTeddyBear>();
+            if (currentTeddyBear != null)
+            {
+                Debug.Log("테디베어를 찾았습니다!");
+            }
+        }
+    }
     #endregion
 } 

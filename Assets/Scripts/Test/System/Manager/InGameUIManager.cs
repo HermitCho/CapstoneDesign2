@@ -30,7 +30,7 @@ public class InGameUIManager : MonoBehaviour
     [SerializeField] private bool autoStartWithHUD = false;
     
     [Header("📊 캐릭터 프리팹 데이터")]
-    [SerializeField] private GameObject[] characterPrefabs;
+    //[SerializeField] private GameObject[] characterPrefabs;
     [SerializeField] private float characterSelectionTime = 30f;
     
     [Header("🎯 현재 상태")]
@@ -205,10 +205,11 @@ public class InGameUIManager : MonoBehaviour
     
     void SpawnSelectedCharacter()
     {
-        if (spawnController != null && characterPrefabs != null && selectedCharacterIndex >= 0 && selectedCharacterIndex < characterPrefabs.Length)
+        if (spawnController != null && selectedCharacterIndex >= 0)
         {
-            GameObject prefabToSpawn = characterPrefabs[selectedCharacterIndex];
-            spawnController.SpawnCharacterPrefab(prefabToSpawn);
+            // GameObject prefabToSpawn = characterPrefabs[selectedCharacterIndex];
+            // spawnController.SpawnCharacterPrefab(prefabToSpawn);
+            spawnController.SpawnCharacter(selectedCharacterIndex);
         }
         
         isCharacterSelectionPending = false;
@@ -251,13 +252,13 @@ public class InGameUIManager : MonoBehaviour
         return selectedCharacterIndex;
     }
     
-    /// <summary>
-    /// 사용 가능한 캐릭터 프리팹 배열 반환
-    /// </summary>
-    public GameObject[] GetCharacterPrefabs()
-    {
-        return characterPrefabs;
-    }
+    // /// <summary>
+    // /// 사용 가능한 캐릭터 프리팹 배열 반환
+    // /// </summary>
+    // public GameObject[] GetCharacterPrefabs()
+    // {
+    //     return characterPrefabs;
+    // }
     
     /// <summary>
     /// 캐릭터 선택 시간 반환

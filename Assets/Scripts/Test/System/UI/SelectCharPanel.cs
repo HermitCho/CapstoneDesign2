@@ -144,8 +144,6 @@ public class SelectCharPanel : MonoBehaviour
         // UI 매니저 찾기
         FindUIManager();
         
-        // UI 매니저에서 캐릭터 데이터 가져오기
-        LoadCharacterDataFromUIManager();
         
         // 시간 초기화
         LoadSelectionTimeFromUIManager();
@@ -182,21 +180,6 @@ public class SelectCharPanel : MonoBehaviour
         }
     }
     
-    /// <summary>
-    /// UI 매니저에서 캐릭터 프리팹 로드
-    /// </summary>
-    void LoadCharacterDataFromUIManager()
-    {
-        if (uiManager != null)
-        {
-            GameObject[] managerPrefabs = uiManager.GetCharacterPrefabs();
-            if (managerPrefabs != null && managerPrefabs.Length > 0)
-            {
-                characterPrefabs = managerPrefabs;
-                cachedMaxCharacterSlots = characterPrefabs.Length;
-            }
-        }
-    }
     
     /// <summary>
     /// UI 매니저에서 선택 시간 로드

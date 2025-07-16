@@ -702,8 +702,8 @@ public class DataBase : Singleton<DataBase>
         [Space(20)]
         [Header("플레이어 데이터")] 
         [Tooltip("플레이어 프리팹 데이터 설정")]
-        [SerializeField] private List<Transform> playerPrefabData = new List<Transform>();
-        public List<Transform> PlayerPrefabData
+        [SerializeField] private List<GameObject> playerPrefabData = new List<GameObject>();
+        public List<GameObject> PlayerPrefabData
         {
             set { playerPrefabData = value; }
             get { return playerPrefabData; }

@@ -6,7 +6,7 @@ public class TestShoot : MonoBehaviour
 {
     [SerializeField] private TestGun gun;
 
-    private bool isShooting = true;
+    private static bool isShooting = true;
 
     //수정 사항 - 제거 예정
     void Awake()
@@ -58,4 +58,15 @@ public class TestShoot : MonoBehaviour
         Debug.Log("총 재장전");
         gun.Reload();
     }
+
+    public static void SetIsShooting(bool value)
+    {
+       isShooting = value;
+    }
+
+    public static bool GetIsShooting()
+    {
+        return isShooting;
+    }
+
 }

@@ -69,7 +69,7 @@ public class TestTeddyBear : MonoBehaviour
         if(Input.GetKeyDown(KeyCode.LeftShift))
         {
             DetachFromPlayer();
-        }
+        }  
     }
 
     void OnCollisionEnter(Collision collision)
@@ -97,6 +97,8 @@ public class TestTeddyBear : MonoBehaviour
         
         isAttached = true;
         playerTransform = player;
+
+        
         
         // 플레이어의 자식으로 설정
         transform.SetParent(player);
@@ -122,6 +124,9 @@ public class TestTeddyBear : MonoBehaviour
             colliderTeddyBear.enabled = false;
         }
         
+
+        #warning Static으로 선언되어 있음. 최적화를 위해 수정 필요
+        TestShoot.SetIsShooting(false);
         // 부착되면 점수 증가 시작
         StartScoreIncrease();
     }
@@ -326,7 +331,10 @@ public class TestTeddyBear : MonoBehaviour
 
     
 
-
+    void OnShootPressed()
+    {
+        Debug.Log("ShootPressed");
+    }
 
 
 
@@ -379,6 +387,10 @@ public class TestTeddyBear : MonoBehaviour
         lastDetachTime = Time.time;
         
         playerTransform = null;
+
+        #warning Static으로 선언되어 있음. 최적화를 위해 수정 필요
+        TestShoot.SetIsShooting(true);
+
         
         // 점수 증가 중지
         StopScoreIncrease();

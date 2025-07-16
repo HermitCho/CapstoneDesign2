@@ -5,6 +5,8 @@ using System;
 
 public class GameManager : Singleton<GameManager>
 {
+    #region 자동할당 변수
+
     [Header("테디베어 점수 관리 - 자동 할당")]
     [SerializeField] private float totalTeddyBearScore = 0f;
     private TestTeddyBear currentTeddyBear;
@@ -13,17 +15,31 @@ public class GameManager : Singleton<GameManager>
     [SerializeField] private float gameStartTime = 0f;
     [SerializeField] private bool useGameManagerTime = true; // GameManager에서 시간 관리 여부
 
-    private float cachedScoreIncreaseTime = 20f; // 기본값
-    private float cachedScoreIncreaseRate = 2f; // 기본
-    private float cachedPlayTime = 360f; // 기본
-    private bool dataBaseCached = false;
-    
-    
     [Header("플레이어 상태 관리 - 자동 할당")]
     [SerializeField] private float playerHealth = 100f;
     [SerializeField] private float maxPlayerHealth = 100f;
     [SerializeField] private LivingEntity player;
 
+    #endregion
+
+
+
+
+
+    #region 캐싱 변수
+
+    private float cachedScoreIncreaseTime = 20f; // 기본값
+    private float cachedScoreIncreaseRate = 2f; // 기본
+    private float cachedPlayTime = 360f; // 기본
+    private bool dataBaseCached = false;
+
+    #endregion
+    
+
+
+
+
+    #region 이벤트
     // ✅ UI 시스템을 위한 이벤트들
     // 점수 관련 이벤트
     public static event Action<float> OnScoreUpdated;
@@ -44,15 +60,20 @@ public class GameManager : Singleton<GameManager>
     public static event Action<bool> OnCrosshairTargetingChanged;
 
     // 스킬 이벤트 (구현 예정)
-    public static event Action<int> OnSkillUsed;
+    public static event Action OnSkillUsed;
     public static event Action<int, float> OnSkillCooldownStarted;
 
-    void Awake()
-    {
+    public static event Action OnCharacterSpawned;
 
-    }
+    #endregion
 
-    // Start is called before the first frame update
+
+
+
+
+
+    #region 생명주기
+
     void Start()
     {
         // 게임 시작 시간 기록
@@ -63,30 +84,15 @@ public class GameManager : Singleton<GameManager>
         
         // 테디베어 찾기
         FindTeddyBear();
-        FindPlayerAfterSpawn();
-        // 플레이어는 스폰 후에 찾기 (Start에서는 찾지 않음)
-        // FindPlayerAfterSpawn()에서 처리
     }
 
-    // Update is called once per frame
-    void Update()
-    {
+    #endregion
 
-    }
 
-    // 테디베어 찾기
-    void FindTeddyBear()
-    {
-        if (currentTeddyBear == null)
-        {
-            currentTeddyBear = FindObjectOfType<TestTeddyBear>();
-            if (currentTeddyBear != null)
-            {
-                Debug.Log("테디베어를 찾았습니다!");
-            }
-        }
-    }
-    
+
+
+
+    #region 데이터 받아오기 메서드
     // DataBase 정보 캐싱 (안전한 접근)
     void CacheDataBaseInfo()
     {
@@ -113,121 +119,13 @@ public class GameManager : Singleton<GameManager>
         }
     }
 
-    public float GetPlayTime()
-    {
-        return cachedPlayTime;
-    }
-    
-    // 테디베어 점수 업데이트 (TestTeddyBear에서 호출)
-    public void UpdateTeddyBearScore(float newScore)
-    {
-        totalTeddyBearScore = newScore;
+    #endregion
 
-        // HeatUI에 점수 업데이트 이벤트 발생
-        OnScoreUpdated?.Invoke(totalTeddyBearScore);
-        
-        // 점수 배율도 실시간 계산으로 업데이트
-        float currentMultiplier = GetScoreMultiplier();
-        OnScoreMultiplierUpdated?.Invoke(currentMultiplier);
-    }
 
-    // 현재 테디베어 점수 가져오기
-    public float GetTeddyBearScore()
-    {
-        if (currentTeddyBear != null)
-        {
-            return currentTeddyBear.GetCurrentScore();
-        }
-        return totalTeddyBearScore;
-    }
-    
-    // 현재 점수 배율 가져오기 (실시간 계산)
-    public float GetScoreMultiplier()
-    {
-        // 실시간 게임 시간 기반으로 배율 계산
-        float currentGameTime = GetGameTime();
-        float scoreIncreaseTime = GetScoreIncreaseTime();
-        
-        float multiplier;
-        if (currentGameTime >= scoreIncreaseTime)
-        {
-            // 점수 증가 시점 이후: 캐싱된 배율 사용
-            multiplier = cachedScoreIncreaseRate;
-        }
-        else
-        {
-            // 점수 증가 시점 이전: 기본 배율 1.0
-            multiplier = 1f;
-        }
-        
-        
-        return multiplier;
-    }
 
-    // 게임 시간 가져오기
-    public float GetGameTime()
-    {
-        if (useGameManagerTime)
-        {
-            // GameManager에서 관리하는 게임 시간 사용
-            return Time.time - gameStartTime;
-        }
-        else
-        {
-            // 기존 방식: 테디베어에서 시간 가져오기
-            if (currentTeddyBear != null)
-            {
-                return currentTeddyBear.GetGameTime();
-            }
-            return Time.time - gameStartTime;
-        }
-    }
 
-    // 테디베어가 부착되어 있는지 확인
-    public bool IsTeddyBearAttached()
-    {
-        if (currentTeddyBear != null)
-        {
-            return currentTeddyBear.IsAttached();
-        }
-        return false;
-    }
 
-    // 테디베어 재부착까지 남은 시간 가져오기
-    public float GetTimeUntilReattach()
-    {
-        if (currentTeddyBear != null)
-        {
-            return currentTeddyBear.GetTimeUntilReattach();
-        }
-        return 0f;
-    }
-
-    // 테디베어 재부착 가능 여부 확인
-    public bool CanTeddyBearReattach()
-    {
-        if (currentTeddyBear != null)
-        {
-            return currentTeddyBear.CanReattach();
-        }
-        return true;
-    }
-
-    // 점수 초기화 (개발자용)
-    public void ResetAllScores()
-    {
-        totalTeddyBearScore = 0f;
-        if (currentTeddyBear != null)
-        {
-            currentTeddyBear.ResetScore();
-        }
-        OnScoreUpdated?.Invoke(0f);
-        OnScoreMultiplierUpdated?.Invoke(1f);
-    }
-
-    // ====================================
-    // ✅ 안전한 DataBase 정보 접근 메서드들
-    // ====================================
+    #region 캐싱 데이터 받아오기 메서드
     
     /// <summary>
     /// 점수 증가 시간 가져오기 (캐싱된 값 사용)
@@ -274,11 +172,141 @@ public class GameManager : Singleton<GameManager>
     {
         CacheDataBaseInfo();
     }
-    
-    // ====================================
-    // ✅ 플레이어 체력 관리 메서드들
-    // ====================================
 
+    #endregion
+
+
+   
+
+
+    #region 테디베어 관련 메서드
+
+    // 테디베어 점수 업데이트 (TestTeddyBear에서 호출)
+    public void UpdateTeddyBearScore(float newScore)
+    {
+        totalTeddyBearScore = newScore;
+
+        // HeatUI에 점수 업데이트 이벤트 발생
+        OnScoreUpdated?.Invoke(totalTeddyBearScore);
+        
+        // 점수 배율도 실시간 계산으로 업데이트
+        float currentMultiplier = GetScoreMultiplier();
+        OnScoreMultiplierUpdated?.Invoke(currentMultiplier);
+    }
+
+    // 현재 테디베어 점수 가져오기
+    public float GetTeddyBearScore()
+    {
+        if (currentTeddyBear != null)
+        {
+            return currentTeddyBear.GetCurrentScore();
+        }
+        return totalTeddyBearScore;
+    }
+
+    // 테디베어가 부착되어 있는지 확인
+    public bool IsTeddyBearAttached()
+    {
+        if (currentTeddyBear != null)
+        {
+            return currentTeddyBear.IsAttached();
+        }
+        return false;
+    }
+
+    // 테디베어 재부착까지 남은 시간 가져오기
+    public float GetTimeUntilReattach()
+    {
+        if (currentTeddyBear != null)
+        {
+            return currentTeddyBear.GetTimeUntilReattach();
+        }
+        return 0f;
+    }
+
+    // 테디베어 재부착 가능 여부 확인
+    public bool CanTeddyBearReattach()
+    {
+        if (currentTeddyBear != null)
+        {
+            return currentTeddyBear.CanReattach();
+        }
+        return true;
+    }
+
+    #endregion
+
+
+
+
+
+    #region 점수 관련 메서드
+
+    // 점수 초기화 (개발자용)
+    public void ResetAllScores()
+    {
+        totalTeddyBearScore = 0f;
+        if (currentTeddyBear != null)
+        {
+            currentTeddyBear.ResetScore();
+        }
+        OnScoreUpdated?.Invoke(0f);
+        OnScoreMultiplierUpdated?.Invoke(1f);
+    }
+
+    public float GetPlayTime()
+    {
+        return cachedPlayTime;
+    }
+    
+    // 현재 점수 배율 가져오기 (실시간 계산)
+    public float GetScoreMultiplier()
+    {
+        // 실시간 게임 시간 기반으로 배율 계산
+        float currentGameTime = GetGameTime();
+        float scoreIncreaseTime = GetScoreIncreaseTime();
+        
+        float multiplier;
+        if (currentGameTime >= scoreIncreaseTime)
+        {
+            // 점수 증가 시점 이후: 캐싱된 배율 사용
+            multiplier = cachedScoreIncreaseRate;
+        }
+        else
+        {
+            // 점수 증가 시점 이전: 기본 배율 1.0
+            multiplier = 1f;
+        }      
+        return multiplier;
+    }
+
+    // 게임 시간 가져오기
+    public float GetGameTime()
+    {
+        if (useGameManagerTime)
+        {
+            // GameManager에서 관리하는 게임 시간 사용
+            return Time.time - gameStartTime;
+        }
+        else
+        {
+            // 기존 방식: 테디베어에서 시간 가져오기
+            if (currentTeddyBear != null)
+            {
+                return currentTeddyBear.GetGameTime();
+            }
+            return Time.time - gameStartTime;
+        }
+    }
+
+    #endregion
+
+
+
+
+
+    #region 플레이어 체력 관리 메서드
+    
     /// <summary>
     /// 플레이어 체력 설정
     /// </summary>
@@ -315,9 +343,13 @@ public class GameManager : Singleton<GameManager>
     public float GetMaxPlayerHealth() => maxPlayerHealth;
     public float GetPlayerHealthRatio() => playerHealth / maxPlayerHealth;
 
-    // ====================================
-    // ✅ 테디베어 상태 이벤트 발생 메서드들
-    // ====================================
+    #endregion
+
+
+
+
+
+    #region 이벤트 발생 메서드들
 
     /// <summary>
     /// 테디베어 부착 상태 변경 알림
@@ -352,10 +384,6 @@ public class GameManager : Singleton<GameManager>
         float currentMultiplier = GetScoreMultiplier();
         OnScoreMultiplierUpdated?.Invoke(currentMultiplier);
     }
-    
-    // ====================================
-    // ✅ UI 상태 관리 메서드들
-    // ====================================
 
     /// <summary>
     /// 아이템 UI 토글 알림
@@ -372,19 +400,14 @@ public class GameManager : Singleton<GameManager>
     public void NotifyCrosshairTargeting(bool isTargeting)
     {
         OnCrosshairTargetingChanged?.Invoke(isTargeting);
-
     }
-
-    // ====================================
-    // ✅ 스킬 시스템 메서드들 (구현 예정)
-    // ====================================
 
     /// <summary>
     /// 스킬 사용 알림
     /// </summary>
-    public void NotifySkillUsed(int skillIndex)
+    public void NotifySkillUsed()
     {
-        OnSkillUsed?.Invoke(skillIndex);
+        OnSkillUsed?.Invoke();
    
     }
 
@@ -395,7 +418,35 @@ public class GameManager : Singleton<GameManager>
     {
         OnSkillCooldownStarted?.Invoke(skillIndex, cooldownTime);
     }
-    
+
+    /// <summary>
+    /// 캐릭터 스폰 이벤트 알림
+    /// </summary>
+    public void NotifyCharacterSpawned()
+    {
+        OnCharacterSpawned?.Invoke();
+    }
+
+    #endregion
+
+
+
+
+    #region 컴포넌트 찾기 메서드
+
+    // 테디베어 찾기
+    void FindTeddyBear()
+    {
+        if (currentTeddyBear == null)
+        {
+            currentTeddyBear = FindObjectOfType<TestTeddyBear>();
+            if (currentTeddyBear != null)
+            {
+                Debug.Log("테디베어를 찾았습니다!");
+            }
+        }
+    }
+
     /// <summary>
     /// 스폰 후 플레이어 찾기 (SpawnController에서 호출)
     /// </summary>
@@ -433,7 +484,12 @@ public class GameManager : Singleton<GameManager>
             Debug.LogError($"❌ GameManager: 플레이어 찾기 중 오류 발생 - {e.Message}");
         }
     }
+
+    #endregion
     
+
+    #region HUD 업데이트 메서드
+
     /// <summary>
     /// HUD에 스킬 데이터 업데이트 알림
     /// </summary>
@@ -451,5 +507,7 @@ public class GameManager : Singleton<GameManager>
             Debug.LogWarning("⚠️ GameManager: HUDPanel을 찾을 수 없습니다.");
         }
     }
+
+    #endregion
 
 }
