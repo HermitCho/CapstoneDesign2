@@ -37,14 +37,17 @@ public class TestMoveAnimationController : MonoBehaviour
     private float smoothedTurnValue = 0f;  // 회전 방향 스무딩
     private float smoothedMoveTurnValue = 0f; // 회전 방향 스무딩
     private float turnSensitivity = 0.2f;  // 민감도 조절
-    private float MoveturnLerpSpeed = 10f; // Moveturn 부드러운 전환 속도
+    private float MoveturnLerpSpeed = 5f; // Moveturn 부드러운 전환 속도
     private float turnLerpSpeed = 10f;     // turn 부드러운 전환 속도
 
     // 상하회전 관련
     [SerializeField] MultiAimConstraint headLookConstraint;
     [SerializeField] Transform aimTarget;
     [SerializeField] private float maxLookUpAngle = 40f;
-    [SerializeField] private float maxLookDownAngle = -30f;
+    [SerializeField] private float maxLookDownAngle = -20f;
+
+    // Rig설정
+    [SerializeField] private Rig armAimRig; // Rig3
 
     private void Awake()
     {
@@ -62,7 +65,9 @@ public class TestMoveAnimationController : MonoBehaviour
         InputManager.OnZoomPressed += OnZoomInput;
         InputManager.OnZoomCanceledPressed += OnZoomCanceledInput;
         InputManager.OnReloadPressed += OnReloadInput;
-        
+        InputManager.OnSkillPressed += OnDashInput;
+        InputManager.OnItemPressed += OnItemInput;
+    
     }
 
     private void OnDisable()
@@ -72,7 +77,9 @@ public class TestMoveAnimationController : MonoBehaviour
         InputManager.OnZoomPressed -= OnZoomInput;
         InputManager.OnZoomCanceledPressed -= OnZoomCanceledInput;
         InputManager.OnReloadPressed -= OnReloadInput;
-        
+        InputManager.OnSkillPressed -= OnDashInput;
+        InputManager.OnItemPressed -= OnItemInput;
+
     }
 
     private void Update()
@@ -86,32 +93,19 @@ public class TestMoveAnimationController : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (aimTarget != null)
+        if (aimTarget != null && cameraController != null)
         {
-            Vector3 localEuler = aimTarget.localEulerAngles;
-
-            // 360도 → -180~180 변환
-            float pitch = (localEuler.x > 180f) ? localEuler.x - 360f : localEuler.x;
+            float pitch = cameraController.GetTargetVerticalAngle();
 
             // 각도 제한
             pitch = Mathf.Clamp(pitch, maxLookDownAngle, maxLookUpAngle);
 
-            aimTarget.localEulerAngles = new Vector3(pitch, localEuler.y, localEuler.z);
-
-            Debug.Log($"Head Rotation (X): {pitch}°");
+            // 현재 로컬 회전의 나머지 축은 유지
+            Vector3 currentEuler = aimTarget.localEulerAngles;
+            aimTarget.localEulerAngles = new Vector3(pitch, currentEuler.y, currentEuler.z);
         }
     }
 
-
-    void OnDrawGizmos()
-    {
-        if (aimTarget != null)
-        {
-            // Gizmos로 머리의 방향을 표시 (회전된 방향)
-            Gizmos.color = Color.red;
-            Gizmos.DrawRay(aimTarget.position, aimTarget.forward * 5); // 회전 방향을 2만큼 표시
-        }
-    }
     // 이동 입력 처리
     void OnMoveInput(Vector2 input)
     {
@@ -137,7 +131,6 @@ public class TestMoveAnimationController : MonoBehaviour
         if (moveController == null) return;
 
         float currentRotationAmount = moveController.GetRotationAmount();
-
         float rawTurn = Mathf.Clamp(currentRotationAmount * turnSensitivity, -1f, 1f);
 
         if (Mathf.Abs(rawTurn) < 0.1f)
@@ -174,6 +167,10 @@ public class TestMoveAnimationController : MonoBehaviour
     {
         animator.SetLayerWeight(upperBodyLayerIndex, 1f);
         animator.SetTrigger("Reload");
+
+        // 머리 고정
+        if (headLookConstraint != null)
+            headLookConstraint.weight = 0f;
     }
 
     // 재장전 이벤트
@@ -185,6 +182,10 @@ public class TestMoveAnimationController : MonoBehaviour
     public void OnReloadEnd()
     {
         animator.SetLayerWeight(upperBodyLayerIndex, 0f);
+
+        // // 머리 회전 다시 켜기
+        // if (headLookConstraint != null)
+        //     headLookConstraint.weight = 1f;
     }
 
     // 조준 상태에 따른 애니메이션 속도 변경
@@ -226,6 +227,7 @@ public class TestMoveAnimationController : MonoBehaviour
         isAiming = true;
         animator.SetLayerWeight(upperBodyLayerIndex, 1f);
         animator.SetBool("IsAiming", true);
+        armAimRig.weight = 1f;
     }
 
     // 조준 해제 시 호출
@@ -234,6 +236,20 @@ public class TestMoveAnimationController : MonoBehaviour
         isAiming = false;
         animator.SetLayerWeight(upperBodyLayerIndex, 0f);
         animator.SetBool("IsAiming", false);
+        armAimRig.weight = 0f;
     }
 
+    // 대쉬 스킬
+    void OnDashInput()
+    {
+        animator.SetTrigger("Dash");
+        animator.SetLayerWeight(upperBodyLayerIndex, 0f);
+    }
+
+    // 아이템 스킬
+    void OnItemInput()
+    {
+        animator.SetTrigger("Item");
+        animator.SetLayerWeight(upperBodyLayerIndex, 0f);
+    }
 }
