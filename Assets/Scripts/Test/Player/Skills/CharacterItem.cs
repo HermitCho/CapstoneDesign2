@@ -10,11 +10,17 @@ public class CharacterItem : Skill
 {
     #region Serialized Fields
 
+    [Header("아이템 사용 후 삭제 유예 시간 설정")]
+    [SerializeField] private float destroyDelay = 20f;
+
     [Header("아이템 구매 여부 설정")]
     [SerializeField] private bool isPurchased = false; // 아이템(스킬) 구매 여부
 
     [Header("입력 설정")]
     [SerializeField] private bool useItemInput = true; // 아이템 입력 사용 여부
+
+    [Header("애니메이션 클립 트리거 설정")]
+    [SerializeField] private string animationTrigger;
     #endregion
 
     #region Private Fields
@@ -40,6 +46,11 @@ public class CharacterItem : Skill
     /// 최대 사용 횟수
     /// </summary>
     public int MaxUseCount => maxUseCount;
+
+    /// <summary>
+    /// 애니메이션 클립 트리거 설정
+    /// </summary>
+    public string AnimationTrigger => animationTrigger;
 
     /// <summary>
     /// 스킬 사용 가능 여부 (구매 & 1회 미만 사용)
@@ -141,6 +152,7 @@ public class CharacterItem : Skill
             useCount++;
             Debug.Log($"아이템 스킬 '{skillName}' 사용됨 (총 {useCount}/{maxUseCount}회)");
             OnItemSkillUsed();
+            
         }
         return success;
     }
@@ -188,6 +200,7 @@ public class CharacterItem : Skill
         if (useCount >= maxUseCount)
         {
             Debug.Log($"아이템 스킬 '{skillName}'은(는) 더 이상 사용할 수 없습니다.");
+            Destroy(gameObject, destroyDelay);
         }
     }
 

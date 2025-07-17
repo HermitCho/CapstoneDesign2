@@ -54,8 +54,8 @@ public class DashItem : CharacterItem
     private void InitializeDashSkill()
     {
         // 컴포넌트 참조 가져오기
-        playerRigidbody = GetComponent<Rigidbody>();
-        playerTransform = transform;
+        playerRigidbody = GameObject.FindGameObjectWithTag("Player").GetComponent<Rigidbody>();
+        playerTransform = GameObject.FindGameObjectWithTag("Player").transform;
 
         // 대시 궤적 초기화
         if (dashTrail != null)

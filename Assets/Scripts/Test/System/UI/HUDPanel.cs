@@ -663,6 +663,11 @@ public class HUDPanel : MonoBehaviour
         else
             OpenItemUI();
     }
+    #endregion
+
+    #region 아이템 아이콘 업데이트
+
+  
 
     #endregion
 
