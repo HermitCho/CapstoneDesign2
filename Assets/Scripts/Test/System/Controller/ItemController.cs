@@ -4,21 +4,14 @@ using UnityEngine;
 
 public class ItemController : MonoBehaviour
 {
-    #region 아이템 프리팹 참조
-    private Transform[] itemPrefabs;
-
-    [Header("최대 아이템 슬롯 수")]
-    [SerializeField] private int maxItemSlot = 2;
-    #endregion
-
-
     #region 데이터베이스 참조
     private DataBase.ItemData itemData;
     #endregion
 
 
     #region 캐싱된 값들 (성능 최적화)
-    private Transform[] cachedItemPrefab;
+    private GameObject[] cachedItemPrefab;
+    private int cachedMaxItemSlot;
     private bool dataBaseCached = false;
     #endregion
 
@@ -26,7 +19,7 @@ public class ItemController : MonoBehaviour
     #region 내부 상태 변수
     private int currentItemIndex = -1;
     private int currentItemSlotIndex = -1;
-    private Transform itemSlot;
+    private GameObject itemSlot;
     #endregion
 
 
@@ -52,6 +45,7 @@ public class ItemController : MonoBehaviour
             {
                 itemData = DataBase.Instance.itemData;
                 cachedItemPrefab = itemData.ItemPrefabData.ToArray();
+                cachedMaxItemSlot = itemData.MaxItemSlot;
                 dataBaseCached = true;
             }
         }
@@ -63,7 +57,7 @@ public class ItemController : MonoBehaviour
 
     private void FindItemSlot()
     {
-        itemSlot = GameObject.FindGameObjectWithTag("ItemSlot").transform;
+        itemSlot = GameObject.FindGameObjectWithTag("ItemSlot");
         
     }
     #endregion
@@ -71,11 +65,11 @@ public class ItemController : MonoBehaviour
 
     #region 아이템 컨트롤
 
-    private void AttachItem()
+    public void AttachItem(GameObject itemPrefab)
     {
-        if(currentItemSlotIndex >= maxItemSlot -1) return;
+        if(currentItemSlotIndex >= cachedMaxItemSlot) return;
 
-        itemPrefabs[currentItemSlotIndex].transform.parent = itemSlot;
+        itemPrefab.transform.parent = itemSlot.transform;
         currentItemSlotIndex++;
     }
 
@@ -83,18 +77,27 @@ public class ItemController : MonoBehaviour
     {
         if(currentItemSlotIndex <= 0) return;
         currentItemSlotIndex--;
-        
     }
 
 
-    private int GetItemIndex()
+    public int GetItemIndex()
     {
         return currentItemIndex;
     }
 
-    private Transform GetItemPrefab(int index)
+    public GameObject GetItemPrefab(int index)
     {
         return cachedItemPrefab[index];
+    }
+
+    public int GetItemSlotIndex()
+    {
+        return currentItemSlotIndex;
+    }
+
+    public int GetMaxItemSlot()
+    {
+        return cachedMaxItemSlot;
     }
 
     #endregion

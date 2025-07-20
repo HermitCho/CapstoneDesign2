@@ -21,6 +21,9 @@ public class CharacterItem : Skill
 
     [Header("애니메이션 클립 트리거 설정")]
     [SerializeField] private string animationTrigger;
+
+    [Header("아이템 가격 설정")]
+    [SerializeField] private int price = 3;
     #endregion
 
     #region Private Fields
@@ -125,6 +128,14 @@ public class CharacterItem : Skill
     {
         if (useItemInput && CanUse)
         {
+            // 상점이 열려있으면 아이템 사용 차단
+            ShopController shopController = FindObjectOfType<ShopController>();
+            if (shopController != null && shopController.IsShopOpen())
+            {
+                Debug.Log("⚠️ CharacterItem - 상점이 열려있어 아이템을 사용할 수 없습니다.");
+                return;
+            }
+            
             Debug.Log($"스킬 입력으로 캐릭터 스킬 '{skillName}' 실행");
             UseSkill();
         }
@@ -221,6 +232,15 @@ public class CharacterItem : Skill
     {
         base.OnSkillCancelled();
         Debug.Log($"아이템 스킬 '{skillName}' 중단됨");
+    }
+
+    /// <summary>
+    /// 아이템 가격 가져오기
+    /// </summary>
+    /// <returns>아이템 가격</returns>
+    public int GetPrice()
+    {
+        return price;
     }
 
     #endregion

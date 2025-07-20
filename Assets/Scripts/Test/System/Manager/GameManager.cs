@@ -7,18 +7,23 @@ public class GameManager : Singleton<GameManager>
 {
     #region 자동할당 변수
 
-    [Header("테디베어 점수 관리 - 자동 할당")]
-    [SerializeField] private float totalTeddyBearScore = 0f;
-    private TestTeddyBear currentTeddyBear;
-    
-    [Header("게임 시간 관리 - 자동 할당")]
-    [SerializeField] private float gameStartTime = 0f;
-    [SerializeField] private bool useGameManagerTime = true; // GameManager에서 시간 관리 여부
+    // 플레이어 관리
+    private LivingEntity player;
 
-    [Header("플레이어 상태 관리 - 자동 할당")]
-    [SerializeField] private float playerHealth = 100f;
-    [SerializeField] private float maxPlayerHealth = 100f;
-    [SerializeField] private LivingEntity player;
+    // 테디베어 점수 관리
+    private float totalTeddyBearScore = 0f;
+    private TestTeddyBear currentTeddyBear;
+
+    // 게임 시간 관리
+    private float gameStartTime = 0f;
+    private bool useGameManagerTime = true; // GameManager에서 시간 관리 여부
+
+    // 플레이어 상태 관리
+    private float playerHealth = 100f;
+    private float maxPlayerHealth = 100f;
+
+    // 코인 컨트롤러 관리
+    private CoinController currentPlayerCoinController;
 
     #endregion
 
@@ -346,9 +351,6 @@ public class GameManager : Singleton<GameManager>
     #endregion
 
 
-
-
-
     #region 이벤트 발생 메서드들
 
     /// <summary>
@@ -427,6 +429,7 @@ public class GameManager : Singleton<GameManager>
         OnCharacterSpawned?.Invoke();
     }
 
+   
     #endregion
 
 
@@ -464,6 +467,9 @@ public class GameManager : Singleton<GameManager>
                     playerHealth = player.CurrentHealth;
                     maxPlayerHealth = player.StartingHealth;
                     
+                    // 플레이어의 CoinController 찾기
+                    FindPlayerCoinController(playerObject);
+                    
                     Debug.Log($"✅ GameManager: 플레이어를 찾았습니다 - {playerObject.name}");
                     
                     // HUD에 스킬 데이터 업데이트 알림
@@ -479,11 +485,61 @@ public class GameManager : Singleton<GameManager>
                 Debug.LogWarning("⚠️ GameManager: 'Player' 태그를 가진 오브젝트를 찾을 수 없습니다.");
             }
         }
-        catch (System.Exception e)
+        catch (System.Exception e)  
         {
             Debug.LogError($"❌ GameManager: 플레이어 찾기 중 오류 발생 - {e.Message}");
         }
     }
+
+    /// <summary>
+    /// 플레이어의 CoinController 찾기
+    /// </summary>
+    /// <param name="playerObject">플레이어 오브젝트</param>
+    private void FindPlayerCoinController(GameObject playerObject)
+    {
+        if (playerObject == null) return;
+
+        // 플레이어 오브젝트에서 CoinController 찾기
+        currentPlayerCoinController = playerObject.GetComponent<CoinController>();
+        
+        // 직접 찾지 못한 경우 자식 오브젝트에서 찾기
+        if (currentPlayerCoinController == null)
+        {
+            currentPlayerCoinController = playerObject.GetComponentInChildren<CoinController>();
+        }
+
+        if (currentPlayerCoinController != null)
+        {
+            Debug.Log($"✅ GameManager: 플레이어의 CoinController를 찾았습니다 - {currentPlayerCoinController.name}");
+        }
+        else
+        {
+            Debug.LogWarning("⚠️ GameManager: 플레이어에서 CoinController를 찾을 수 없습니다.");
+        }
+    }
+
+    /// <summary>
+    /// 현재 플레이어의 CoinController 가져오기
+    /// </summary>
+    /// <returns>현재 플레이어의 CoinController</returns>
+    public CoinController GetCurrentPlayerCoinController()
+    {
+        return currentPlayerCoinController;
+    }
+
+    /// <summary>
+    /// 플레이어의 CoinController 설정 (외부에서 호출)
+    /// </summary>
+    /// <param name="coinController">설정할 CoinController</param>
+    public void SetCurrentPlayerCoinController(CoinController coinController)
+    {
+        currentPlayerCoinController = coinController;
+        if (coinController != null)
+        {
+            Debug.Log($"✅ GameManager: CoinController가 설정되었습니다 - {coinController.name}");
+        }
+    }
+
 
     #endregion
     

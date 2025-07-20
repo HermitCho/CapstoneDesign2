@@ -37,7 +37,7 @@ public class CameraController : MonoBehaviour
     private float originalFOV;
     [HideInInspector] public static bool isZoomed = false;
     private Tween zoomTween;
-    
+    private Animator zoomAnimator;
 
     // 카메라 제어용
     private Camera mainCamera;

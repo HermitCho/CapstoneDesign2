@@ -24,10 +24,13 @@ public class Coin : MonoBehaviour
     private bool isCollected = false;
     private float limitBobbingHeight;
 
+    private CoinController coinController;
+
     void Start()
     {
         Init();
     }
+
 
     void Update()
     {
@@ -41,6 +44,7 @@ public class Coin : MonoBehaviour
     {
         originalPosition = transform.position;
         coinRenderer = GetComponent<Renderer>();
+        coinController = FindObjectOfType<CoinController>();
     }
 
     private void RotateCoin()
@@ -60,6 +64,24 @@ public class Coin : MonoBehaviour
         if (other.CompareTag("Player") && !isCollected)
         {
             CollectCoin();
+            
+            // 플레이어의 CoinController에 직접 코인 추가
+            CoinController playerCoinController = other.GetComponent<CoinController>();
+            if (playerCoinController == null)
+            {
+                // 플레이어에 CoinController가 없으면 자식에서 찾기
+                playerCoinController = other.GetComponentInChildren<CoinController>();
+            }
+            
+            if (playerCoinController != null)
+            {
+                playerCoinController.AddCoin(1);
+                Debug.Log("✅ Coin - 플레이어의 CoinController에 코인 추가 완료");
+            }
+            else
+            {
+                Debug.LogWarning("⚠️ Coin - 플레이어에 CoinController를 찾을 수 없습니다.");
+            }
         }
     }
 

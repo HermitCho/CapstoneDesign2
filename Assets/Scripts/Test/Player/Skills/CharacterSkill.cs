@@ -132,6 +132,14 @@ public class CharacterSkill : Skill
     {
         if (useSkillInput && CanUse)
         {
+            // 상점이 열려있으면 스킬 사용 차단
+            ShopController shopController = FindObjectOfType<ShopController>();
+            if (shopController != null && shopController.IsShopOpen())
+            {
+                Debug.Log("⚠️ CharacterSkill - 상점이 열려있어 스킬을 사용할 수 없습니다.");
+                return;
+            }
+            
             Debug.Log($"스킬 입력으로 캐릭터 스킬 '{skillName}' 실행");
             UseSkill();
         }

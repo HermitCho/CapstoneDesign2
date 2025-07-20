@@ -16,10 +16,11 @@ public class InGameUIManager : MonoBehaviour
     [SerializeField] private SelectCharPanel selectCharPanel;
     
     [Header("🎯 패널 이름 설정")]
-    [SerializeField] private string hudPanelName = "HUD Panel";
-    [SerializeField] private string selectCharPanelName = "SelectChar Panel";
+    [SerializeField] private string hudPanelName = "HUD";
+    [SerializeField] private string selectCharPanelName = "Select Character";
+    [SerializeField] private string shopPanelName = "Shop";
     [SerializeField] private string pausePanelName = "Pause";
-    [SerializeField] private string gameStartPanelName = "GameStart";
+    [SerializeField] private string gameOverPanelName = "GameOver";
     
     [Header("🎯 스폰 컨트롤러")]
     [SerializeField] private SpawnController spawnController;
@@ -121,7 +122,10 @@ public class InGameUIManager : MonoBehaviour
         
         SetSelectionMouseCursor();
     }
-    
+
+    /// <summary>
+    /// 일시정지 패널 표시
+    /// </summary>
     public void ShowPausePanel()
     {
         if (panelManager != null)
@@ -134,14 +138,14 @@ public class InGameUIManager : MonoBehaviour
     }
     
     /// <summary>
-    /// 이전 패널로 되돌리기
+    /// 상점 패널 표시
     /// </summary>
-    public void GoToPreviousPanel()
+    public void ShowShopPanel()
     {
         if (panelManager != null)
         {
-            panelManager.OpenPanel(gameStartPanelName);
-            currentPanel = gameStartPanelName;
+            panelManager.OpenPanel(shopPanelName);
+            currentPanel = shopPanelName;
         }
         
         SetMenuMouseCursor();
@@ -151,19 +155,19 @@ public class InGameUIManager : MonoBehaviour
     
     #region 마우스 커서 관리
     
-    void SetGameplayMouseCursor()
+    public void SetGameplayMouseCursor()
     {
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Locked;
     }
     
-    void SetSelectionMouseCursor()
+    public void SetSelectionMouseCursor()
     {
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
     }
     
-    void SetMenuMouseCursor()
+    public void SetMenuMouseCursor()
     {
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;

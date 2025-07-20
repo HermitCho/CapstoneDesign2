@@ -691,7 +691,25 @@ public class DataBase : Singleton<DataBase>
             get { return selectionTimeDangerFormatColor; }
         }
 
-       
+
+        [Space(10)]
+        [Header("코인 설정")]
+        [Tooltip("코인 텍스트 설정")]
+        [SerializeField] private string coinText = "코인: {0:F0}";
+        public string CoinText
+        {
+            set { coinText = value; }
+            get { return coinText; }
+        }
+        [Space(10)]
+        [Tooltip("코인 텍스트 색상 설정")]
+        [SerializeField] private Color coinFormatColor = Color.black;
+        public Color CoinFormatColor
+        {
+            set { coinFormatColor = value; }    
+            get { return coinFormatColor; }
+        }
+
     }
 
 
@@ -716,11 +734,20 @@ public class DataBase : Singleton<DataBase>
     {
         [Header("아이템 데이터")]
         [Tooltip("아이템 프리팹 데이터 설정")]
-        [SerializeField] private List<Transform> itemPrefabData = new List<Transform>();
-        public List<Transform> ItemPrefabData
+        [SerializeField] private List<GameObject> itemPrefabData = new List<GameObject>();
+        public List<GameObject> ItemPrefabData
         {
             set { itemPrefabData = value; }
             get { return itemPrefabData; }
+        }
+
+        [Space(10)]
+        [Tooltip("최대 아이템 슬롯 수")]
+        [SerializeField] private int maxItemSlot = 2;
+        public int MaxItemSlot
+        {
+            set { maxItemSlot = value; }
+            get { return maxItemSlot; }
         }
     }
 

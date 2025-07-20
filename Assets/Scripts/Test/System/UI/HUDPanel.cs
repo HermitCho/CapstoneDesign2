@@ -12,15 +12,15 @@ public class HUDPanel : MonoBehaviour
 {
     #region UI 컴포넌트들
 
-    [Header("🎯 크로스헤어 UI 컴포넌트들")]
+    [Header("크로스헤어 UI 컴포넌트들")]
     [SerializeField] private Image crosshairImage;
     [SerializeField] private RectTransform crosshairContainer;
 
-    [Header("❤️ 체력바 UI 컴포넌트들")]
+    [Header("체력바 UI 컴포넌트들")]
     [SerializeField] private ProgressBar healthProgressBar; // HeatUI ProgressBar
     [SerializeField] private TextMeshProUGUI healthText;
 
-    [Header("📊 점수 UI 컴포넌트들")]
+    [Header("점수 UI 컴포넌트들")]
     [SerializeField] private TextMeshProUGUI scoreText;
     [SerializeField] private TextMeshProUGUI multiplierText;
     [SerializeField] private TextMeshProUGUI gameTimeText;
@@ -28,16 +28,18 @@ public class HUDPanel : MonoBehaviour
     [SerializeField] private TextMeshProUGUI scoreStatusText;
     [SerializeField] private Image statusIcon;
 
-    [Header("⚔️ 스킬 UI 컴포넌트들")]
+    [Header("스킬 UI 컴포넌트들")]
     [SerializeField] private Image skillIcon;
     [SerializeField] private Image skillCooldownOverlay;
     [SerializeField] private TextMeshProUGUI skillCooldownText;
 
-    [Header("📦 아이템 UI 컴포넌트들")]
+    [Header("아이템 UI 컴포넌트들")]
     [SerializeField] private ModalWindowManager itemModalWindow; // HeatUI Modal
     [SerializeField] private Image itemIcon1;
     [SerializeField] private Image itemIcon2;
 
+    [Header("코인 UI 컴포넌트들")]
+    [SerializeField] private TextMeshProUGUI coinText;
 
    
 
@@ -58,6 +60,9 @@ public class HUDPanel : MonoBehaviour
     private Sprite currentItemIcon1; // 현재 아이템1 아이콘 스프라이트 저장
     private Sprite currentItemIcon2; // 현재 아이템2 아이콘 스프라이트 저장
     private TestTeddyBear currentTeddyBear; // 현재 테디베어 컴포넌트 저장
+    private int currentCoin = 0; // 현재 코인 저장
+    
+
     #endregion
 
     #region 데이터베이스 참조
@@ -97,6 +102,9 @@ public class HUDPanel : MonoBehaviour
 
     private GameObject cachedPlayerPrefabData;
 
+    private string cachedCoinFormat;
+    private Color cachedCoinFormatColor;
+
     private bool dataBaseCached = false;
 
     #endregion
@@ -111,6 +119,9 @@ public class HUDPanel : MonoBehaviour
     void OnEnable()
     {
         CacheDataBaseInfo();
+        
+        // HUD 패널이 활성화될 때 현재 플레이어의 CoinController에서 코인 상태 가져오기
+        UpdateCoinFromCurrentPlayer();
     }
 
     void OnDisable()
@@ -173,6 +184,10 @@ public class HUDPanel : MonoBehaviour
         UpdateMultiplier(1f);
         UpdateGameTime(0f);
         UpdateAttachStatus(false, 0f);
+        
+        // 로컬 CoinController 찾기 및 코인 초기화
+        
+        UpdateCoin(0);
     }
 
     /// <summary>
@@ -216,6 +231,9 @@ public class HUDPanel : MonoBehaviour
 
                 cachedHealthFormat = uiData.HealthText;
                 cachedHealthFormatColor = uiData.HealthFormatColor; 
+
+                cachedCoinFormat = uiData.CoinText;
+                cachedCoinFormatColor = uiData.CoinFormatColor;
 
                 dataBaseCached = true;
                 Debug.Log("✅ HUDPanel - DataBase 정보 캐싱 완료");
@@ -1055,6 +1073,48 @@ public class HUDPanel : MonoBehaviour
             {
                 Debug.Log("테디베어를 찾았습니다!");
             }
+        }
+    }
+
+    #endregion
+
+    #region 코인 UI 관리
+    /// <summary>
+    /// 코인 UI 업데이트 (CoinController로부터 받은 값 사용)
+    /// </summary>
+    /// <param name="coinAmount">표시할 코인 수</param>
+    public void UpdateCoin(int coinAmount)
+    {
+        if (coinText == null) return;
+
+        currentCoin = coinAmount;
+        coinText.text = string.Format(cachedCoinFormat, currentCoin);
+        coinText.color = cachedCoinFormatColor;
+        
+        Debug.Log($"✅ HUDPanel - 코인 UI 업데이트: {currentCoin}");
+    }
+
+    /// <summary>
+    /// 현재 플레이어의 CoinController에서 코인 상태를 가져와 HUD에 업데이트
+    /// </summary>
+    private void UpdateCoinFromCurrentPlayer()
+    {
+        if (GameManager.Instance == null)
+        {
+            Debug.LogWarning("⚠️ HUDPanel - GameManager가 없어 현재 플레이어의 CoinController를 찾을 수 없습니다.");
+            return;
+        }
+
+        CoinController coinController = GameManager.Instance.GetCurrentPlayerCoinController();
+        if (coinController != null)
+        {
+            UpdateCoin(coinController.GetCurrentCoin());
+            Debug.Log($"✅ HUDPanel - 현재 플레이어의 CoinController에서 코인 상태 업데이트: {coinController.GetCurrentCoin()}");
+        }
+        else
+        {
+            Debug.LogWarning("⚠️ HUDPanel - 현재 플레이어의 CoinController를 찾을 수 없습니다.");
+            UpdateCoin(0); // 기본값 설정
         }
     }
     #endregion
