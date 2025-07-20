@@ -250,6 +250,9 @@ public class TestMoveAnimationController : MonoBehaviour
     void OnItemInput()
     {
         animator.SetTrigger("Item");
+        animator.SetTrigger("PowerUP");
+        animator.SetTrigger("Debuff 1");
+        animator.SetTrigger("Throw");
         animator.SetLayerWeight(upperBodyLayerIndex, 0f);
     }
 }
