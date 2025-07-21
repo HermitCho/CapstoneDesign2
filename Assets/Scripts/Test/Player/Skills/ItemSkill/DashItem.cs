@@ -40,8 +40,6 @@ public class DashItem : CharacterItem
         
         // 테스트용: 대시 스킬을 자동으로 구매 상태로 설정
         PurchaseItemSkill();
-        Debug.Log("(테스트용)(테스트용)(테스트용 대시 스킬이 자동으로 구매되었습니다. (테스트용)(테스트용)(테스트용)");
-        Debug.Log($"DashSkill 초기화 완료 - CanUse: {CanUse}, IsPurchased: {IsPurchased}");
     }
 
     #endregion
@@ -168,7 +166,6 @@ public class DashItem : CharacterItem
     /// </summary>
     private void OnDashStart()
     {
-        Debug.Log($"대시 스킬 시작: {dashDistance}m 거리로 이동");
     }
 
     /// <summary>
@@ -187,8 +184,6 @@ public class DashItem : CharacterItem
         {
             dashParticles.Stop();
         }
-        
-        Debug.Log($"대시 스킬 완료: {dashDistance}m 이동 완료");
     }
 
     /// <summary>
@@ -197,7 +192,6 @@ public class DashItem : CharacterItem
     protected override void OnItemSkillUsed()
     {
         base.OnItemSkillUsed();
-        Debug.Log($"대시 스킬 사용됨 - 거리: {dashDistance}m, 지속시간: {dashDuration}s");
     }
 
     #endregion

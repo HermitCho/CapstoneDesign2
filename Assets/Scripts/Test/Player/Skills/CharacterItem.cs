@@ -30,6 +30,7 @@ public class CharacterItem : Skill
 
     private int useCount = 0; // 현재 사용 횟수
     private const int maxUseCount = 1; // 최대 사용 횟수(1회)
+    private ItemController itemController; // ItemController 참조
 
     #endregion
 
@@ -68,18 +69,14 @@ public class CharacterItem : Skill
     {
         base.Start();
         InitializeItemSkill();
+        FindItemController();
         SubscribeToInputEvents();
-    }
-    protected virtual void OnDisable()
-    {
-        UnsubscribeFromInputEvents();
     }
 
     protected virtual void OnDestroy()
     {
         UnsubscribeFromInputEvents();
     }
-
 
     #endregion
 
@@ -94,6 +91,29 @@ public class CharacterItem : Skill
     }
 
     /// <summary>
+    /// ItemController 찾기 (부모에서 찾기)
+    /// </summary>
+    private void FindItemController()
+    {
+        // 부모 오브젝트에서 ItemController 찾기
+        Transform parent = transform.parent;
+        while (parent != null)
+        {
+            itemController = parent.GetComponent<ItemController>();
+            if (itemController != null)
+            {
+                break;
+            }
+            parent = parent.parent;
+        }
+
+        if (itemController == null)
+        {
+            Debug.LogWarning($"⚠️ CharacterItem - ItemController를 찾을 수 없습니다: {gameObject.name}");
+        }
+    }
+
+    /// <summary>
     /// 입력 이벤트 구독
     /// </summary>
     private void SubscribeToInputEvents()
@@ -101,7 +121,6 @@ public class CharacterItem : Skill
         if (useItemInput)
         {
             InputManager.OnItemPressed += OnItemInputPressed;
-            Debug.Log($"아이템 스킬 '{skillName}' 아이템 입력 이벤트 구독");
         }
     }
 
@@ -113,7 +132,6 @@ public class CharacterItem : Skill
         if (useItemInput)
         {
             InputManager.OnItemPressed -= OnItemInputPressed;
-            Debug.Log($"아이템 스킬 '{skillName}' 아이템 입력 이벤트 구독 해제");
         }
     }
 
@@ -136,7 +154,21 @@ public class CharacterItem : Skill
                 return;
             }
             
-            Debug.Log($"스킬 입력으로 캐릭터 스킬 '{skillName}' 실행");
+            // ItemController에서 첫 번째 아이템인지 확인
+            if (itemController != null)
+            {
+                if (!itemController.IsFirstActiveItem(this))
+                {
+                    Debug.Log($"⚠️ CharacterItem - '{skillName}'은 첫 번째 아이템이 아니므로 사용되지 않습니다.");
+                    return;
+                }
+            }
+            else
+            {
+                Debug.LogWarning($"⚠️ CharacterItem - ItemController가 null입니다: {skillName}");
+                return;
+            }
+            Debug.Log($"아이템 스킬 사용");
             UseSkill();
         }
     }
@@ -161,9 +193,7 @@ public class CharacterItem : Skill
         if (success)
         {
             useCount++;
-            Debug.Log($"아이템 스킬 '{skillName}' 사용됨 (총 {useCount}/{maxUseCount}회)");
             OnItemSkillUsed();
-            
         }
         return success;
     }
@@ -175,7 +205,6 @@ public class CharacterItem : Skill
     {
         isPurchased = true;
         useCount = 0;
-        Debug.Log($"아이템 스킬 '{skillName}' 구매 완료");
     }
 
     /// <summary>
@@ -185,7 +214,6 @@ public class CharacterItem : Skill
     {
         useCount = 0;
         isPurchased = false;
-        Debug.Log($"아이템 스킬 '{skillName}' 상태 리셋");
     }
 
     #endregion
@@ -206,11 +234,22 @@ public class CharacterItem : Skill
     /// 아이템 스킬 사용 시 호출
     /// </summary>
     protected virtual void OnItemSkillUsed()
-    {
-        // 1회 사용 후 추가 처리 필요시 구현
+    {     
+        // 1회 사용 후 ItemController를 통해 쓰레기통으로 이동
         if (useCount >= maxUseCount)
         {
-            Debug.Log($"아이템 스킬 '{skillName}'은(는) 더 이상 사용할 수 없습니다.");
+            
+            // ItemController를 통해 쓰레기통으로 이동
+            if (itemController != null)
+            {
+                itemController.MoveUsedItemToTemp(gameObject);
+            }
+            else
+            {
+                Debug.LogError($"❌ CharacterItem - ItemController가 null입니다: {skillName}");
+            }
+            
+            // 20초 후 파괴 (기존 딜레이 유지)
             Destroy(gameObject, destroyDelay);
         }
     }
@@ -221,7 +260,6 @@ public class CharacterItem : Skill
     protected override void OnSkillExecuted()
     {
         base.OnSkillExecuted();
-        Debug.Log($"아이템 스킬 '{skillName}' 실행 완료");
         ResetItemSkill();
     }
 
@@ -231,7 +269,6 @@ public class CharacterItem : Skill
     protected override void OnSkillCancelled()
     {
         base.OnSkillCancelled();
-        Debug.Log($"아이템 스킬 '{skillName}' 중단됨");
     }
 
     /// <summary>

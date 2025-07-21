@@ -181,7 +181,6 @@ public class MoveController : MonoBehaviour
         UpdateJumpBuffer();
         HandleLanding();
 
-        Debug.Log("isGrounded: " + isGrounded);
     }
 
     // 지면 상태 업데이트
@@ -499,8 +498,6 @@ public class MoveController : MonoBehaviour
         {
             return;
         }
-        
-        Debug.Log("E키가 눌렸습니다 - 스킬 사용");
     }
 
     // InputManager에서 아이템 입력 받기
@@ -511,8 +508,6 @@ public class MoveController : MonoBehaviour
         {
             return;
         }
-        
-        Debug.Log("Q키가 눌렸습니다 - 아이템 사용");
     }
 
     // 플레이어 기준 이동 방향 계산
