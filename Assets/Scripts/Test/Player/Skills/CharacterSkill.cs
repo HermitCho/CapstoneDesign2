@@ -139,8 +139,6 @@ public class CharacterSkill : Skill
                 Debug.Log("⚠️ CharacterSkill - 상점이 열려있어 스킬을 사용할 수 없습니다.");
                 return;
             }
-            
-            Debug.Log($"스킬 입력으로 캐릭터 스킬 '{skillName}' 실행");
             UseSkill();
         }
     }
@@ -207,7 +205,6 @@ public class CharacterSkill : Skill
         isOnCooldown = true;
         StartCoroutine(CooldownRoutine());
         
-        Debug.Log($"캐릭터 스킬 '{skillName}' 대기시간 시작 ({cooldownTime}초)");
     }
 
     /// <summary>
@@ -241,7 +238,6 @@ public class CharacterSkill : Skill
     /// </summary>
     protected virtual void OnCooldownFinished()
     {
-        Debug.Log($"캐릭터 스킬 '{skillName}' 대기시간 완료");
         
         // UI 업데이트가 필요한 경우 여기서 처리
         if (showCooldownUI)
@@ -256,7 +252,6 @@ public class CharacterSkill : Skill
     protected override void OnSkillExecuted()
     {
         base.OnSkillExecuted();
-        Debug.Log($"캐릭터 스킬 '{skillName}' 실행 완료");
     }
 
     /// <summary>
@@ -265,7 +260,6 @@ public class CharacterSkill : Skill
     protected override void OnSkillCancelled()
     {
         base.OnSkillCancelled();
-        Debug.Log($"캐릭터 스킬 '{skillName}' 중단됨");
     }
 
     #endregion

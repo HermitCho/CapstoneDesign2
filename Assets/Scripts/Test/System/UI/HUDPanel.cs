@@ -618,6 +618,18 @@ public class HUDPanel : MonoBehaviour
 
     #endregion
 
+    #region 아이템 UI
+
+    public void UpdateItemUI()  
+    {
+
+
+    }
+
+
+    #endregion
+
+
     #region 아이템 UI (모달창)
 
     /// <summary>
@@ -1090,8 +1102,6 @@ public class HUDPanel : MonoBehaviour
         currentCoin = coinAmount;
         coinText.text = string.Format(cachedCoinFormat, currentCoin);
         coinText.color = cachedCoinFormatColor;
-        
-        Debug.Log($"✅ HUDPanel - 코인 UI 업데이트: {currentCoin}");
     }
 
     /// <summary>
@@ -1109,7 +1119,6 @@ public class HUDPanel : MonoBehaviour
         if (coinController != null)
         {
             UpdateCoin(coinController.GetCurrentCoin());
-            Debug.Log($"✅ HUDPanel - 현재 플레이어의 CoinController에서 코인 상태 업데이트: {coinController.GetCurrentCoin()}");
         }
         else
         {

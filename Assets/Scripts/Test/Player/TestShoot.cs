@@ -42,20 +42,17 @@ public class TestShoot : MonoBehaviour
 
     void OnShootInput()
     {
-        Debug.Log("총 발사");
         if (isShooting)
             gun.InputFire(true);
     }
 
     void OnShootCanceledInput()
     {
-        Debug.Log("총 발사 취소");
         gun.InputFire(false);
     }
 
     void OnReloadInput()
     {
-        Debug.Log("총 재장전");
         gun.Reload();
     }
 

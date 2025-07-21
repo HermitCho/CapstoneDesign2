@@ -76,7 +76,6 @@ public class Coin : MonoBehaviour
             if (playerCoinController != null)
             {
                 playerCoinController.AddCoin(1);
-                Debug.Log("✅ Coin - 플레이어의 CoinController에 코인 추가 완료");
             }
             else
             {

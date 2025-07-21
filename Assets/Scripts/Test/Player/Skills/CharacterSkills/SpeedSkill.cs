@@ -33,7 +33,6 @@ public class SpeedSkill : CharacterSkill
             float buffedSpeed = originalSpeed * speedMultiplier;
             speedField.SetValue(moveController, buffedSpeed);
             isBuffActive = true;
-            Debug.Log($"SpeedSkill: 속도 {originalSpeed} -> {buffedSpeed} (for {duration}s)");
         }
         else
         {
@@ -50,7 +49,6 @@ public class SpeedSkill : CharacterSkill
         if (speedField != null && originalSpeed > 0f)
         {
             speedField.SetValue(moveController, originalSpeed);
-            Debug.Log($"SpeedSkill: 속도 원래대로 복구 {originalSpeed}");
         }
         isBuffActive = false;
     }

@@ -92,12 +92,6 @@ public class CoinController : MonoBehaviour
         {
             hudPanel.UpdateCoin(currentCoin);
         }
-        else
-        {
-            // HUD 패널을 찾을 수 없는 경우, 나중에 HUD가 활성화될 때 업데이트하기 위해
-            // GameManager나 다른 방법으로 코인 상태를 저장할 수 있음
-            Debug.LogWarning("⚠️ CoinController - HUDPanel을 찾을 수 없습니다. HUD가 활성화될 때 업데이트됩니다.");
-        }
     }
 
     #endregion
