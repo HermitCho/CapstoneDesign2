@@ -3,51 +3,68 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
-using TMPro; // 추가
+using TMPro;
 
 public class LoadingController : MonoBehaviour
 {
     public Slider progressBar;
-    public TMP_Text progressText; // TMP_Text로 변경
-    public string nextSceneName; // 인게임씬 이름
+    public TMP_Text progressText;
+    public static string nextSceneName;
+    public static bool usePhotonSync = false;
 
-    // Start is called before the first frame update
+    private static bool isLoadingNextScene = false;
+
     void Start()
     {
+        isLoadingNextScene = false; // 씬 진입 시 항상 리셋
+        Debug.Log("LoadingController Start() 진입");
+        Debug.Log("nextSceneName: " + nextSceneName);
+        Debug.Log("usePhotonSync: " + usePhotonSync);
         StartCoroutine(LoadSceneAsync());
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
     }
 
     IEnumerator LoadSceneAsync()
     {
-        AsyncOperation operation = SceneManager.LoadSceneAsync(nextSceneName);
-        operation.allowSceneActivation = false;
+        // 로딩 UI 표시(가짜)
+        float timer = 0f;
+        float fakeLoadTime = 2f;
 
-        while (!operation.isDone)
+        while (timer < fakeLoadTime)
         {
-            float progress = Mathf.Clamp01(operation.progress / 0.9f);
+            timer += Time.deltaTime;
+            float progress = Mathf.Clamp01(timer / fakeLoadTime);
             if (progressBar != null)
                 progressBar.value = progress;
             if (progressText != null)
                 progressText.text = $"{(progress * 100):0}%";
-
-            // 로딩이 끝나면 자동으로 씬 전환
-            if (operation.progress >= 0.9f)
-            {
-                if (progressBar != null)
-                    progressBar.value = 1f;
-                if (progressText != null)
-                    progressText.text = "100%";
-                yield return new WaitForSeconds(0.5f); // 잠깐 대기
-                operation.allowSceneActivation = true;
-            }
-
             yield return null;
         }
+
+        if (progressBar != null)
+            progressBar.value = 1f;
+        if (progressText != null)
+            progressText.text = "100%";
+        yield return new WaitForSeconds(0.5f);
+
+        if (isLoadingNextScene) yield break;
+        isLoadingNextScene = true;
+
+        if (usePhotonSync)
+        {
+            Debug.Log("PhotonNetwork.LoadLevel 호출: " + nextSceneName);
+            Photon.Pun.PhotonNetwork.LoadLevel(nextSceneName);
+        }
+        else
+        {
+            Debug.Log("SceneManager.LoadScene 호출: " + nextSceneName);
+            SceneManager.LoadScene(nextSceneName);
+        }
+    }
+
+    public static void LoadWithLoadingScene(string nextScene, bool usePhotonSync)
+    {
+        LoadingController.nextSceneName = nextScene;
+        LoadingController.usePhotonSync = usePhotonSync;
+        SceneManager.LoadScene("Loading");
     }
 }
