@@ -24,6 +24,7 @@ public class CharacterItem : Skill
 
     [Header("아이템 가격 설정")]
     [SerializeField] private int price = 3;
+    
     #endregion
 
     #region Private Fields
@@ -63,7 +64,7 @@ public class CharacterItem : Skill
 
     #endregion
 
-    #region Unity Lifecycle
+    #region Unity 생명주기
 
     protected override void Start()
     {
@@ -71,6 +72,17 @@ public class CharacterItem : Skill
         InitializeItemSkill();
         FindItemController();
         SubscribeToInputEvents();
+    }
+
+    protected virtual void OnEnable()
+    {
+        SubscribeToInputEvents();
+    }
+
+    protected virtual void OnDisable()
+    {
+        // 비활성화된 아이템은 입력 이벤트 구독 해제
+        UnsubscribeFromInputEvents();
     }
 
     protected virtual void OnDestroy()
@@ -118,10 +130,11 @@ public class CharacterItem : Skill
     /// </summary>
     private void SubscribeToInputEvents()
     {
-        if (useItemInput)
-        {
-            InputManager.OnItemPressed += OnItemInputPressed;
-        }
+        // MoveController에서 중앙 집중식으로 아이템 사용을 관리하므로 이벤트 구독 제거
+        // if (useItemInput)
+        // {
+        //     InputManager.OnItemPressed += OnItemInputPressed;
+        // }
     }
 
     /// <summary>
@@ -129,10 +142,11 @@ public class CharacterItem : Skill
     /// </summary>
     private void UnsubscribeFromInputEvents()
     {
-        if (useItemInput)
-        {
-            InputManager.OnItemPressed -= OnItemInputPressed;
-        }
+        // MoveController에서 중앙 집중식으로 아이템 사용을 관리하므로 이벤트 구독 해제 제거
+        // if (useItemInput)
+        // {
+        //     InputManager.OnItemPressed -= OnItemInputPressed;
+        // }
     }
 
     #endregion
@@ -146,6 +160,12 @@ public class CharacterItem : Skill
     {
         if (useItemInput && CanUse)
         {
+            // 아이템이 실제로 활성화되어 있는지 확인
+            if (!gameObject.activeInHierarchy)
+            {
+                return;
+            }
+
             // 상점이 열려있으면 아이템 사용 차단
             ShopController shopController = FindObjectOfType<ShopController>();
             if (shopController != null && shopController.IsShopOpen())
@@ -165,10 +185,8 @@ public class CharacterItem : Skill
             }
             else
             {
-                Debug.LogWarning($"⚠️ CharacterItem - ItemController가 null입니다: {skillName}");
                 return;
             }
-            Debug.Log($"아이템 스킬 사용");
             UseSkill();
         }
     }
@@ -243,6 +261,9 @@ public class CharacterItem : Skill
             if (itemController != null)
             {
                 itemController.MoveUsedItemToTemp(gameObject);
+                
+                // HUD 패널 업데이트 요청
+                itemController.RequestHUDPanelUpdate();
             }
             else
             {

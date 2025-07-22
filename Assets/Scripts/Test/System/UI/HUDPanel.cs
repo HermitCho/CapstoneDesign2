@@ -10,7 +10,7 @@ using System.Collections;
 /// </summary>
 public class HUDPanel : MonoBehaviour
 {
-    #region UI 컴포넌트들
+    #region 인스펙터 할당 변수
 
     [Header("크로스헤어 UI 컴포넌트들")]
     [SerializeField] private Image crosshairImage;
@@ -34,14 +34,15 @@ public class HUDPanel : MonoBehaviour
     [SerializeField] private TextMeshProUGUI skillCooldownText;
 
     [Header("아이템 UI 컴포넌트들")]
-    [SerializeField] private ModalWindowManager itemModalWindow; // HeatUI Modal
     [SerializeField] private Image itemIcon1;
     [SerializeField] private Image itemIcon2;
+    [SerializeField] private Sprite emptyItemIcon;
+
+    [Header("아이템 모달 UI 컴포넌트들")]
+    [SerializeField] private ModalWindowManager itemModalWindow; // HeatUI Modal
 
     [Header("코인 UI 컴포넌트들")]
     [SerializeField] private TextMeshProUGUI coinText;
-
-   
 
 
     #endregion
@@ -122,6 +123,7 @@ public class HUDPanel : MonoBehaviour
         
         // HUD 패널이 활성화될 때 현재 플레이어의 CoinController에서 코인 상태 가져오기
         UpdateCoinFromCurrentPlayer();
+        UpdateItemUI(); // OnEnable 시점에 아이템 아이콘 업데이트
     }
 
     void OnDisable()
@@ -620,12 +622,159 @@ public class HUDPanel : MonoBehaviour
 
     #region 아이템 UI
 
-    public void UpdateItemUI()  
+    /// <summary>
+    /// 아이템 UI 업데이트
+    /// </summary>
+    public void UpdateItemUI()
     {
-
-
+        UpdateItemIcons();
     }
 
+    /// <summary>
+    /// 아이템 아이콘 업데이트
+    /// </summary>
+    private void UpdateItemIcons()
+    {
+        // 현재 플레이어의 ItemController 찾기
+        ItemController itemController = FindCurrentPlayerItemController();
+        if (itemController == null)
+        {
+            Debug.LogWarning("⚠️ HUDPanel - 현재 플레이어의 ItemController를 찾을 수 없습니다.");
+            ClearItemIcons();
+            return;
+        }
+
+        try
+        {
+            // ItemSlot1의 모든 아이템 가져오기
+            Transform itemSlot = itemController.GetItemSlot1();
+            if (itemSlot == null)
+            {
+                Debug.LogWarning("⚠️ HUDPanel - ItemSlot을 찾을 수 없습니다.");
+                ClearItemIcons();
+                return;
+            }
+
+            int itemCount = itemSlot.childCount;
+            Debug.Log($"📊 HUDPanel - ItemSlot 자식 개수: {itemCount}");
+
+            if (itemCount == 0)
+            {
+                // 아이템이 없으면 아이콘 초기화
+                ClearItemIcons();
+                return;
+            }
+
+            // 첫 번째 아이템 (itemIcon1에 표시) - 활성화된 아이템
+            if (itemCount >= 1)
+            {
+                Transform firstChild = itemSlot.GetChild(itemSlot.childCount - 1); // 마지막 자식이 활성화된 아이템
+                if (firstChild != null)
+                {
+                    CharacterItem firstItem = firstChild.GetComponent<CharacterItem>();
+                    if (firstItem != null)
+                    {
+                        bool isActive = firstChild.gameObject.activeInHierarchy;
+                        UpdateItemIcon(itemIcon1, firstItem.SkillIcon, firstItem.SkillColor, isActive);
+                    }
+                    else
+                    {
+                        ClearItemIcon(itemIcon1);
+                    }
+                }
+                else
+                {
+                    ClearItemIcon(itemIcon1);
+                }
+            }
+
+            // 두 번째 아이템 (itemIcon2에 표시) - 비활성화된 아이템
+            if (itemCount >= 2)
+            {
+                Transform secondChild = itemSlot.GetChild(itemSlot.childCount - 2); // 두 번째 마지막 자식
+                if (secondChild != null)
+                {
+                    CharacterItem secondItem = secondChild.GetComponent<CharacterItem>();
+                    if (secondItem != null)
+                    {
+                        bool isActive = secondChild.gameObject.activeInHierarchy;
+                        UpdateItemIcon(itemIcon2, secondItem.SkillIcon, secondItem.SkillColor, isActive);
+                    }
+                    else
+                    {
+                        ClearItemIcon(itemIcon2);
+                    }
+                }
+                else
+                {
+                    ClearItemIcon(itemIcon2);
+                }
+            }
+            else
+            {
+                // 두 번째 아이템이 없으면 아이콘 초기화
+                ClearItemIcon(itemIcon2);
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ HUDPanel - 아이템 아이콘 업데이트 중 오류: {e.Message}");
+            ClearItemIcons();
+        }
+    }
+
+    /// <summary>
+    /// 아이템 아이콘 업데이트
+    /// </summary>
+    /// <param name="iconImage">업데이트할 아이콘 이미지</param>
+    /// <param name="skillIcon">스킬 아이콘 스프라이트</param>
+    /// <param name="skillColor">스킬 색상</param>
+    /// <param name="isActive">활성화 상태</param>
+    private void UpdateItemIcon(Image iconImage, Sprite skillIcon, Color skillColor, bool isActive)
+    {
+        if (iconImage == null)
+        {
+            Debug.LogWarning("⚠️ HUDPanel - 아이콘 이미지가 null입니다.");
+            return;
+        }
+
+        if (skillIcon == null)
+        {
+            Debug.LogWarning("⚠️ HUDPanel - 스킬 아이콘이 null입니다.");
+            iconImage.gameObject.SetActive(false);
+            return;
+        }
+
+        // 아이콘 설정 (비활성화되어 있어도 아이콘은 표시)
+        iconImage.sprite = skillIcon;
+        iconImage.color = isActive ? skillColor : Color.gray; // 비활성화된 아이템은 회색
+        iconImage.gameObject.SetActive(true); // 항상 활성화
+
+        Debug.Log($"✅ HUDPanel - 아이템 아이콘 업데이트 완료 (활성화: {isActive})");
+    }
+
+    /// <summary>
+    /// 특정 아이템 아이콘 초기화
+    /// </summary>
+    /// <param name="iconImage">초기화할 아이콘 이미지</param>
+    private void ClearItemIcon(Image iconImage)
+    {
+        if (iconImage != null)
+        {
+            iconImage.sprite = emptyItemIcon;
+            iconImage.gameObject.SetActive(false);
+        }
+    }
+
+    /// <summary>
+    /// 모든 아이템 아이콘 초기화
+    /// </summary>
+    private void ClearItemIcons()
+    {
+        ClearItemIcon(itemIcon1);
+        ClearItemIcon(itemIcon2);
+        Debug.Log("🔄 HUDPanel - 모든 아이템 아이콘 초기화");
+    }
 
     #endregion
 
@@ -1127,4 +1276,74 @@ public class HUDPanel : MonoBehaviour
         }
     }
     #endregion
+
+    /// <summary>
+    /// 현재 플레이어의 ItemController 찾기 (싱글 기반, Photon2 확장 고려)
+    /// </summary>
+    /// <returns>현재 플레이어의 ItemController</returns>
+    private ItemController FindCurrentPlayerItemController()
+    {
+        // 캐릭터가 스폰되기 전에는 ItemController가 존재하지 않음
+        if (GameManager.Instance == null)
+        {
+            Debug.Log("⚠️ HUDPanel - GameManager가 없어 ItemController를 찾을 수 없습니다.");
+            return null;
+        }
+
+        // 플레이어 태그로 찾기 (싱글 환경에서는 안전)
+        // 나중에 Photon2 환경에서는 PhotonNetwork.LocalPlayer 사용
+        GameObject currentPlayer = GameObject.FindGameObjectWithTag("Player");
+        if (currentPlayer == null)
+        {
+            Debug.Log("⚠️ HUDPanel - 플레이어가 아직 스폰되지 않았습니다.");
+            return null;
+        }
+
+        // ItemController 찾기
+        ItemController itemController = currentPlayer.GetComponent<ItemController>();
+        if (itemController == null)
+        {
+            // 플레이어에 직접 ItemController가 없으면 자식에서 찾기
+            itemController = currentPlayer.GetComponentInChildren<ItemController>();
+        }
+
+        if (itemController == null)
+        {
+            Debug.Log("⚠️ HUDPanel - 플레이어에 ItemController가 없습니다.");
+            return null;
+        }
+
+        return itemController;
+    }
+
+    /// <summary>
+    /// Photon2 환경에서 로컬 플레이어의 ItemController 찾기 (미래 확장용)
+    /// </summary>
+    /// <returns>로컬 플레이어의 ItemController</returns>
+    private ItemController FindLocalPlayerItemControllerPhoton()
+    {
+        // Photon2 환경에서만 사용
+        // 현재는 주석 처리, 나중에 Photon2 추가 시 활성화
+        /*
+        if (PhotonNetwork.LocalPlayer != null)
+        {
+            // PhotonView를 통해 로컬 플레이어 찾기
+            PhotonView[] photonViews = FindObjectsOfType<PhotonView>();
+            foreach (PhotonView pv in photonViews)
+            {
+                if (pv.IsMine)
+                {
+                    ItemController itemController = pv.GetComponent<ItemController>();
+                    if (itemController != null)
+                    {
+                        return itemController;
+                    }
+                }
+            }
+        }
+        */
+        
+        // 현재는 싱글 환경이므로 기본 방법 사용
+        return FindCurrentPlayerItemController();
+    }
 } 

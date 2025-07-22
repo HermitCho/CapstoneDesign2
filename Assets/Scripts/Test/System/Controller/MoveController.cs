@@ -61,6 +61,10 @@ public class MoveController : MonoBehaviour
     private bool canUseSkill = true;
     private bool canUseItem = true;
 
+    // 아이템 사용 쿨타임 관련 변수
+    private float lastItemUseTime = 0f; // 마지막 아이템 사용 시간
+    private const float itemUseCooldown = 0.5f; // 아이템 사용 쿨타임 (0.5초)
+
     // InputManager 이벤트 구독
     void OnEnable()
     {
@@ -69,7 +73,7 @@ public class MoveController : MonoBehaviour
         InputManager.OnXMouseInput += OnMouseInput;
         InputManager.OnJumpPressed += OnJumpInput;
         InputManager.OnSkillPressed += OnSkillInput;
-        InputManager.OnItemPressed += OnItemInput;
+        InputManager.OnItemPressed += OnItemInput; // 아이템 사용 중앙 관리
 
         MouseLock();
     }
@@ -81,7 +85,7 @@ public class MoveController : MonoBehaviour
         InputManager.OnXMouseInput -= OnMouseInput;
         InputManager.OnJumpPressed -= OnJumpInput;
         InputManager.OnSkillPressed -= OnSkillInput;
-        InputManager.OnItemPressed -= OnItemInput;
+        InputManager.OnItemPressed -= OnItemInput; // 아이템 사용 중앙 관리
     }
 
 
@@ -508,6 +512,68 @@ public class MoveController : MonoBehaviour
         {
             return;
         }
+
+        // 쿨타임 체크 (중복 실행 방지)
+        if (Time.time - lastItemUseTime < itemUseCooldown)
+        {
+            Debug.Log($"⚠️ MoveController - 아이템 사용 쿨타임 중입니다. ({(itemUseCooldown - (Time.time - lastItemUseTime)):F2}초 남음)");
+            return;
+        }
+
+        // 상점이 열려있으면 아이템 사용 차단
+        ShopController shopController = FindObjectOfType<ShopController>();
+        if (shopController != null && shopController.IsShopOpen())
+        {
+            Debug.Log("⚠️ MoveController - 상점이 열려있어 아이템을 사용할 수 없습니다.");
+            return;
+        }
+
+        // 현재 플레이어의 활성화된 아이템 찾기
+        ItemController itemController = FindCurrentPlayerItemController();
+        if (itemController == null)
+        {
+            Debug.LogWarning("⚠️ MoveController - ItemController를 찾을 수 없습니다.");
+            return;
+        }
+
+        // 활성화된 아이템 가져오기
+        CharacterItem activeItem = itemController.GetFirstActiveItem();
+        if (activeItem == null)
+        {
+            Debug.LogWarning("⚠️ MoveController - 활성화된 아이템이 없습니다.");
+            return;
+        }
+
+        // 쿨타임 업데이트
+        lastItemUseTime = Time.time;
+
+        // 아이템 사용
+        Debug.Log($"✅ MoveController - 아이템 사용: {activeItem.SkillName}");
+        activeItem.UseSkill();
+    }
+
+    /// <summary>
+    /// 현재 플레이어의 ItemController 찾기
+    /// </summary>
+    /// <returns>현재 플레이어의 ItemController</returns>
+    private ItemController FindCurrentPlayerItemController()
+    {
+        // 플레이어 태그로 찾기
+        GameObject currentPlayer = GameObject.FindGameObjectWithTag("Player");
+        if (currentPlayer != null)
+        {
+            ItemController itemController = currentPlayer.GetComponent<ItemController>();
+            if (itemController == null)
+            {
+                itemController = currentPlayer.GetComponentInChildren<ItemController>();
+            }
+            if (itemController != null)
+            {
+                return itemController;
+            }
+        }
+        Debug.LogWarning("⚠️ MoveController - 플레이어의 ItemController를 찾을 수 없습니다.");
+        return null;
     }
 
     // 플레이어 기준 이동 방향 계산

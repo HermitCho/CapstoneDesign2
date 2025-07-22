@@ -14,7 +14,7 @@ public class GameManager : Singleton<GameManager>
     // 테디베어 점수 관리
     private float totalTeddyBearScore = 0f;
     private TestTeddyBear currentTeddyBear;
-
+    
     // 게임 시간 관리
     private float gameStartTime = 0f;
     private bool useGameManagerTime = true; // GameManager에서 시간 관리 여부
@@ -22,7 +22,7 @@ public class GameManager : Singleton<GameManager>
     // 플레이어 상태 관리
     private float playerHealth = 100f;
     private float maxPlayerHealth = 100f;
-
+    
     // 코인 컨트롤러 관리
     private CoinController currentPlayerCoinController;
 
@@ -569,22 +569,14 @@ public class GameManager : Singleton<GameManager>
     /// <returns>현재 플레이어의 CoinController</returns>
     public CoinController GetCurrentPlayerCoinController()
     {
+        if (currentPlayerCoinController == null)
+        {
+            Debug.LogWarning("⚠️ GameManager - 현재 플레이어의 CoinController가 null입니다.");
+            return null;
+        }
+
         return currentPlayerCoinController;
     }
-
-    /// <summary>
-    /// 플레이어의 CoinController 설정 (외부에서 호출)
-    /// </summary>
-    /// <param name="coinController">설정할 CoinController</param>
-    public void SetCurrentPlayerCoinController(CoinController coinController)
-    {
-        currentPlayerCoinController = coinController;
-        if (coinController != null)
-        {
-            Debug.Log($"✅ GameManager: CoinController가 설정되었습니다 - {coinController.name}");
-        }
-    }
-
 
     #endregion
 

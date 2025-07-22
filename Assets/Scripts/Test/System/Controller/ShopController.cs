@@ -158,20 +158,27 @@ public class ShopController : MonoBehaviour
     /// </summary>
     void CloseShop()
     {
-        isShopOpen = false;
-        
-        // 플레이어 참조 초기화
-        playerCoinController = null;
-        playerItemController = null;
-        
-        // HUD 패널 표시
-        if (inGameUIManager != null)
+        if (isShopOpen)
         {
-            inGameUIManager.ShowHUDPanel();
+            isShopOpen = false;
+            EnableGameInput();
+            
+            if (playerItemController != null)
+            {
+                playerItemController.RequestHUDPanelUpdate();
+            }
+
+            playerCoinController = null;
+            playerItemController = null;
+                
+            if (inGameUIManager != null)
+            {
+                inGameUIManager.ShowHUDPanel();
+            }
+            
+            
+            Debug.Log("✅ ShopController - 상점이 닫혔습니다.");
         }
-        
-        // 게임 입력 복원
-        EnableGameInput();
     }
 
     #endregion
