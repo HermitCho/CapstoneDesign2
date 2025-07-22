@@ -24,6 +24,8 @@ public class ItemController : MonoBehaviour
     [SerializeField] private GameObject itemSlot1;
     [Header("아이템 쓰레기통 할당")]
     [SerializeField] private GameObject itemTemp;
+    [Header("UI 참조")]
+    [SerializeField] private HUDPanel hudPanel; // HUDPanel 직접 참조
     #endregion
 
     #region Unity 생명주기
@@ -34,6 +36,8 @@ public class ItemController : MonoBehaviour
 
     void Start()
     {
+        // HUDPanel 찾아서 캐싱
+        FindAndCacheHUDPanel();
     }
     #endregion
 
@@ -84,12 +88,19 @@ public class ItemController : MonoBehaviour
             // 프리팹을 인스턴스화하여 새로운 게임오브젝트 생성
             GameObject itemInstance = Instantiate(itemPrefab, itemSlot1.transform);
             
+            // 새로 구매한 아이템을 첫 번째 자식(가장 위)으로 배치
+            itemInstance.transform.SetAsFirstSibling();
+            
             // 아이템 슬롯 인덱스 증가
             currentItemSlotIndex++;
             
-            // 아이템 순서 재정렬 및 활성화 상태 업데이트
+            // 아이템 순서 재정렬 및 활성화 상태 업데이트 (HUDPanel 업데이트 포함)
             UpdateItemOrderAndActivation();
             
+            // HUD 패널 즉시 업데이트
+            UpdateHUDPanelSafely();
+            
+            Debug.Log($"✅ ItemController - 아이템 부착 완료: {itemPrefab.name} -> {itemInstance.name} (첫 번째 자식으로 배치)");
         }
         catch (System.Exception e)
         {
@@ -100,12 +111,14 @@ public class ItemController : MonoBehaviour
     /// <summary>
     /// 아이템 순서 재정렬 및 활성화 상태 업데이트
     /// </summary>
-    private void UpdateItemOrderAndActivation()
+    public void UpdateItemOrderAndActivation()
     {
         if (itemSlot1 == null) return;
 
         int childCount = itemSlot1.transform.childCount;
         if (childCount == 0) return;
+
+        Debug.Log($"🔄 ItemController - 아이템 순서 재정렬 시작: {childCount}개 아이템");
 
         // 모든 자식을 비활성화
         for (int i = 0; i < childCount; i++)
@@ -123,36 +136,66 @@ public class ItemController : MonoBehaviour
         {
             lastChild.gameObject.SetActive(true);
         }
+        
+        // HUDPanel 안전하게 업데이트
+        UpdateHUDPanelSafely();
     }
 
     /// <summary>
-    /// 첫 번째 아이템 사용 처리
+    /// HUDPanel을 찾아서 캐싱
     /// </summary>
-    public void UseFirstItem()
+    private void FindAndCacheHUDPanel()
     {
-        if (itemSlot1 == null || itemSlot1.transform.childCount == 0)
+        if (hudPanel == null)
         {
-            Debug.LogWarning("⚠️ ItemController - 사용 가능한 아이템이 없습니다.");
-            return;
+            hudPanel = FindObjectOfType<HUDPanel>();
+            if (hudPanel != null)
+            {
+                Debug.Log("✅ ItemController - HUDPanel 찾기 및 캐싱 완료");
+            }
+            else
+            {
+                Debug.LogWarning("⚠️ ItemController - HUDPanel을 찾을 수 없습니다.");
+            }
+        }
+    }
+
+    /// <summary>
+    /// HUDPanel을 안전하게 업데이트
+    /// </summary>
+    private void UpdateHUDPanelSafely()
+    {
+        // 캐싱된 HUDPanel이 없으면 다시 찾기
+        if (hudPanel == null)
+        {
+            FindAndCacheHUDPanel();
         }
 
-        // 마지막 자식(가장 아래)을 첫 번째 아이템으로 처리
-        Transform lastChild = itemSlot1.transform.GetChild(itemSlot1.transform.childCount - 1);
-        if (lastChild == null || !lastChild.gameObject.activeInHierarchy)
+        // HUDPanel이 할당되어 있고 활성화되어 있는 경우에만 업데이트
+        if (hudPanel != null && hudPanel.gameObject.activeInHierarchy)
         {
-            Debug.LogWarning("⚠️ ItemController - 첫 번째 아이템이 활성화되지 않았습니다.");
-            return;
+            hudPanel.UpdateItemUI();
+            Debug.Log("✅ ItemController - HUDPanel 아이템 UI 업데이트 완료");
         }
-
-        CharacterItem characterItem = lastChild.GetComponent<CharacterItem>();
-        if (characterItem == null)
+        else
         {
-            Debug.LogError("❌ ItemController - 첫 번째 아이템에 CharacterItem 컴포넌트가 없습니다.");
-            return;
+            // HUDPanel이 비활성화되어 있으면 나중에 OnEnable에서 업데이트됨
+            Debug.Log("⚠️ ItemController - HUDPanel이 비활성화되어 있어 업데이트를 건너뜁니다.");
         }
+    }
 
-        Debug.Log($"✅ ItemController - 첫 번째 아이템 사용: {characterItem.SkillName}");
-        characterItem.UseSkill();
+    /// <summary>
+    /// 외부에서 HUD 패널 업데이트 요청 (상점에서 나갈 때 등)
+    /// </summary>
+    public void RequestHUDPanelUpdate()
+    {
+        // 캐싱된 HUDPanel이 없으면 다시 찾기
+        if (hudPanel == null)
+        {
+            FindAndCacheHUDPanel();
+        }
+        
+        UpdateHUDPanelSafely();
     }
 
     /// <summary>
@@ -175,18 +218,69 @@ public class ItemController : MonoBehaviour
 
         try
         {
+            // 사용된 아이템이 실제로 itemSlot1의 자식인지 확인
+            if (usedItem.transform.parent != itemSlot1.transform)
+            {
+                Debug.LogWarning($"⚠️ ItemController - 사용된 아이템이 ItemSlot1의 자식이 아닙니다: {usedItem.name}");
+                return;
+            }
+
+            // 사용된 아이템이 실제로 활성화되어 있는지 확인
+            if (!usedItem.activeInHierarchy)
+            {
+                Debug.LogWarning($"⚠️ ItemController - 사용된 아이템이 비활성화되어 있습니다: {usedItem.name}");
+                return;
+            }
+
             // 아이템을 쓰레기통으로 이동
             usedItem.transform.SetParent(itemTemp.transform);
             currentItemSlotIndex--;
-        
-            Debug.Log($"ItemSlot1 자식 수: {itemSlot1.transform.childCount}");
             
-            // 아이템 순서 재정렬 및 활성화 상태 업데이트
-            UpdateItemOrderAndActivation();
+            // 아이템 순서 재정렬 및 활성화 상태 업데이트 (남은 아이템들만)
+            if (itemSlot1.transform.childCount > 0)
+            {
+                UpdateItemOrderAndActivation();
+            }
         }
         catch (System.Exception e)
         {
             Debug.LogError($"❌ ItemController - 아이템 이동 중 오류: {e.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 첫 번째와 두 번째 아이템의 위치를 바꿉니다.
+    /// </summary>
+    public void SwapFirstAndSecondItems()
+    {
+        if (itemSlot1 == null || itemSlot1.transform.childCount < 2)
+        {
+            Debug.LogWarning("⚠️ ItemController - 아이템이 2개 미만이어서 위치를 바꿀 수 없습니다.");
+            return;
+        }
+
+        try
+        {
+            // 첫 번째 아이템(활성화된 아이템)과 두 번째 아이템(비활성화된 아이템) 찾기
+            Transform firstChild = itemSlot1.transform.GetChild(itemSlot1.transform.childCount - 1); // 활성화된 아이템
+            Transform secondChild = itemSlot1.transform.GetChild(itemSlot1.transform.childCount - 2); // 비활성화된 아이템
+
+            if (firstChild == null || secondChild == null)
+            {
+                return;
+            }
+
+            // 위치 변경
+            firstChild.SetAsFirstSibling();
+
+            // 아이템 순서 재정렬 및 활성화 상태 업데이트
+            UpdateItemOrderAndActivation();
+
+            Debug.Log("✅ ItemController - 아이템 위치 변경 완료");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ ItemController - 아이템 위치 변경 중 오류: {e.Message}");
         }
     }
 
@@ -244,8 +338,23 @@ public class ItemController : MonoBehaviour
     {
         if (characterItem == null) return false;
         
-        CharacterItem firstItem = GetFirstActiveItem();
-        return firstItem == characterItem;
+        // 실제 활성화된 아이템을 찾기
+        if (itemSlot1 == null) return false;
+        
+        for (int i = 0; i < itemSlot1.transform.childCount; i++)
+        {
+            Transform child = itemSlot1.transform.GetChild(i);
+            if (child != null && child.gameObject.activeInHierarchy)
+            {
+                CharacterItem activeItem = child.GetComponent<CharacterItem>();
+                if (activeItem == characterItem)
+                {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
     }
 
     #endregion
@@ -270,6 +379,15 @@ public class ItemController : MonoBehaviour
     public int GetMaxItemSlot()
     {
         return cachedMaxItemSlot;
+    }
+
+    /// <summary>
+    /// ItemSlot1 가져오기
+    /// </summary>
+    /// <returns>ItemSlot1 Transform</returns>
+    public Transform GetItemSlot1()
+    {
+        return itemSlot1 != null ? itemSlot1.transform : null;
     }
 
     #endregion
