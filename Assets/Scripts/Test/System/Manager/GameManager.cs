@@ -2,13 +2,14 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System;
+using Photon.Pun;
 
 public class GameManager : Singleton<GameManager>
 {
     #region 자동할당 변수
 
     // 플레이어 관리
-    private LivingEntity player;
+    private LivingEntity localPlayerLivingEntity;
 
     // 테디베어 점수 관리
     private float totalTeddyBearScore = 0f;
@@ -39,7 +40,7 @@ public class GameManager : Singleton<GameManager>
     private bool dataBaseCached = false;
 
     #endregion
-    
+
 
 
 
@@ -83,13 +84,21 @@ public class GameManager : Singleton<GameManager>
     {
         // 게임 시작 시간 기록
         gameStartTime = Time.time;
-        
+
         // DataBase 정보 캐싱
         CacheDataBaseInfo();
-        
+
         // 테디베어 찾기
         FindTeddyBear();
     }
+
+    void OnDestroy() // ✅ 수정: 오류 해결
+    {
+        LivingEntity.OnAnyLivingEntityHealthChanged -= HandleAnyLivingEntityHealthChanged;
+
+        Debug.Log("❌ GameManager - OnDestroy: 이벤트 구독 해제");
+    }
+
 
     #endregion
 
@@ -131,7 +140,7 @@ public class GameManager : Singleton<GameManager>
 
 
     #region 캐싱 데이터 받아오기 메서드
-    
+
     /// <summary>
     /// 점수 증가 시간 가져오기 (캐싱된 값 사용)
     /// </summary>
@@ -141,12 +150,12 @@ public class GameManager : Singleton<GameManager>
         {
             return cachedScoreIncreaseTime;
         }
-        
+
         // 캐싱되지 않았다면 재시도
         CacheDataBaseInfo();
         return cachedScoreIncreaseTime;
     }
-    
+
     /// <summary>
     /// 점수 증가 배율 가져오기 (캐싱된 값 사용)
     /// </summary>
@@ -156,12 +165,12 @@ public class GameManager : Singleton<GameManager>
         {
             return cachedScoreIncreaseRate;
         }
-        
+
         // 캐싱되지 않았다면 재시도
         CacheDataBaseInfo();
         return cachedScoreIncreaseRate;
     }
-    
+
     /// <summary>
     /// DataBase가 성공적으로 캐싱되었는지 확인
     /// </summary>
@@ -169,7 +178,7 @@ public class GameManager : Singleton<GameManager>
     {
         return dataBaseCached;
     }
-    
+
     /// <summary>
     /// DataBase 정보 강제 새로고침
     /// </summary>
@@ -181,7 +190,7 @@ public class GameManager : Singleton<GameManager>
     #endregion
 
 
-   
+
 
 
     #region 테디베어 관련 메서드
@@ -193,7 +202,7 @@ public class GameManager : Singleton<GameManager>
 
         // HeatUI에 점수 업데이트 이벤트 발생
         OnScoreUpdated?.Invoke(totalTeddyBearScore);
-        
+
         // 점수 배율도 실시간 계산으로 업데이트
         float currentMultiplier = GetScoreMultiplier();
         OnScoreMultiplierUpdated?.Invoke(currentMultiplier);
@@ -263,14 +272,14 @@ public class GameManager : Singleton<GameManager>
     {
         return cachedPlayTime;
     }
-    
+
     // 현재 점수 배율 가져오기 (실시간 계산)
     public float GetScoreMultiplier()
     {
         // 실시간 게임 시간 기반으로 배율 계산
         float currentGameTime = GetGameTime();
         float scoreIncreaseTime = GetScoreIncreaseTime();
-        
+
         float multiplier;
         if (currentGameTime >= scoreIncreaseTime)
         {
@@ -281,7 +290,7 @@ public class GameManager : Singleton<GameManager>
         {
             // 점수 증가 시점 이전: 기본 배율 1.0
             multiplier = 1f;
-        }      
+        }
         return multiplier;
     }
 
@@ -311,7 +320,7 @@ public class GameManager : Singleton<GameManager>
 
 
     #region 플레이어 체력 관리 메서드
-    
+
     /// <summary>
     /// 플레이어 체력 설정
     /// </summary>
@@ -319,7 +328,7 @@ public class GameManager : Singleton<GameManager>
     {
         playerHealth = Mathf.Clamp(current, 0f, max);
         maxPlayerHealth = Mathf.Max(max, 1f);
-        
+
         OnPlayerHealthChanged?.Invoke(playerHealth, maxPlayerHealth);
 
     }
@@ -359,7 +368,7 @@ public class GameManager : Singleton<GameManager>
     public void NotifyTeddyBearAttachmentChanged(bool isAttached)
     {
         OnTeddyBearAttachmentChanged?.Invoke(isAttached);
- 
+
     }
 
     /// <summary>
@@ -377,7 +386,7 @@ public class GameManager : Singleton<GameManager>
     {
         OnGameTimeUpdated?.Invoke(gameTime);
     }
-    
+
     /// <summary>
     /// 점수 배율 업데이트 알림 (외부에서 호출용)
     /// </summary>
@@ -410,7 +419,7 @@ public class GameManager : Singleton<GameManager>
     public void NotifySkillUsed()
     {
         OnSkillUsed?.Invoke();
-   
+
     }
 
     /// <summary>
@@ -429,7 +438,7 @@ public class GameManager : Singleton<GameManager>
         OnCharacterSpawned?.Invoke();
     }
 
-   
+
     #endregion
 
 
@@ -450,34 +459,50 @@ public class GameManager : Singleton<GameManager>
         }
     }
 
-    /// <summary>
     /// 스폰 후 플레이어 찾기 (SpawnController에서 호출)
-    /// </summary>
-    public void FindPlayerAfterSpawn()
+    public void FindPlayerAfterSpawn() // ✅ 기존 메서드명 유지 (내부 로직 변경)
     {
         try
         {
-            // 플레이어 찾기
             GameObject playerObject = GameObject.FindGameObjectWithTag("Player");
             if (playerObject != null)
             {
-                player = playerObject.GetComponent<LivingEntity>();
-                if (player != null)
+                PhotonView pv = playerObject.GetComponent<PhotonView>(); // ✅ PhotonView 가져오기
+                // ✅ 로컬 플레이어의 오브젝트인지 확인하는 조건 추가
+                if (pv != null && pv.IsMine)
                 {
-                    playerHealth = player.CurrentHealth;
-                    maxPlayerHealth = player.StartingHealth;
-                    
-                    // 플레이어의 CoinController 찾기
-                    FindPlayerCoinController(playerObject);
-                    
-                    Debug.Log($"✅ GameManager: 플레이어를 찾았습니다 - {playerObject.name}");
-                    
-                    // HUD에 스킬 데이터 업데이트 알림
-                    NotifyHUDToUpdateSkillData();
+                    // 기존에 구독되어 있었다면 해제 (중복 구독 방지)
+                    if (localPlayerLivingEntity != null)
+                    {
+                        LivingEntity.OnAnyLivingEntityHealthChanged -= HandleAnyLivingEntityHealthChanged;
+                    }
+
+                    localPlayerLivingEntity = playerObject.GetComponent<LivingEntity>(); // ✅ localPlayerLivingEntity에 할당
+                    if (localPlayerLivingEntity != null)
+                    {
+                        // ✅ 이곳에서 이벤트 구독: 로컬 플레이어의 LivingEntity가 확정되었을 때!
+                        LivingEntity.OnAnyLivingEntityHealthChanged += HandleAnyLivingEntityHealthChanged;
+
+                        // player = playerObject.GetComponent<LivingEntity>(); // ❌ 삭제: 더 이상 사용하지 않음
+                        playerHealth = localPlayerLivingEntity.CurrentHealth; // ✅ localPlayerLivingEntity 사용
+                        maxPlayerHealth = localPlayerLivingEntity.StartingHealth; // ✅ localPlayerLivingEntity 사용
+
+                        // 플레이어의 CoinController 찾기
+                        FindPlayerCoinController(playerObject);
+
+                        Debug.Log($"✅ GameManager: 로컬 플레이어를 찾았고 이벤트 구독 완료 - {playerObject.name}");
+
+                        // HUD에 스킬 데이터 업데이트 알림
+                        NotifyHUDToUpdateSkillData();
+                    }
+                    else
+                    {
+                        Debug.LogError("❌ GameManager: 플레이어 오브젝트에 LivingEntity 컴포넌트가 없습니다!");
+                    }
                 }
                 else
                 {
-                    Debug.LogError("❌ GameManager: 플레이어 오브젝트에 LivingEntity 컴포넌트가 없습니다!");
+                    Debug.Log($"⚠️ GameManager: 'Player' 태그를 가진 오브젝트를 찾았지만 로컬 플레이어가 아닙니다: {playerObject.name}");
                 }
             }
             else
@@ -485,9 +510,29 @@ public class GameManager : Singleton<GameManager>
                 Debug.LogWarning("⚠️ GameManager: 'Player' 태그를 가진 오브젝트를 찾을 수 없습니다.");
             }
         }
-        catch (System.Exception e)  
+        catch (System.Exception e)
         {
             Debug.LogError($"❌ GameManager: 플레이어 찾기 중 오류 발생 - {e.Message}");
+        }
+    }
+
+
+    // ✅ 추가: LivingEntity의 체력 변경 이벤트를 처리하는 핸들러
+    private void HandleAnyLivingEntityHealthChanged(float current, float max, LivingEntity changedEntity)
+    {
+        // 변경된 LivingEntity가 로컬 플레이어의 LivingEntity와 동일한지 확인
+        if (localPlayerLivingEntity != null && changedEntity == localPlayerLivingEntity)
+        {
+            // 로컬 플레이어의 체력이므로 HUD에 업데이트 이벤트를 발생시킵니다.
+            playerHealth = current;
+            maxPlayerHealth = max;
+            OnPlayerHealthChanged?.Invoke(playerHealth, maxPlayerHealth);
+            Debug.Log($"[GameManager] 로컬 플레이어 체력 업데이트: {playerHealth}/{maxPlayerHealth}");
+        }
+        else
+        {
+            // 로컬 플레이어의 체력 변화가 아니므로 HUD에 알리지 않습니다. (예: 적의 체력 변화)
+            Debug.Log($"[GameManager] 비-로컬 LivingEntity 체력 변화 감지: {changedEntity?.gameObject.name} -> {current}/{max}");
         }
     }
 
@@ -501,7 +546,7 @@ public class GameManager : Singleton<GameManager>
 
         // 플레이어 오브젝트에서 CoinController 찾기
         currentPlayerCoinController = playerObject.GetComponent<CoinController>();
-        
+
         // 직접 찾지 못한 경우 자식 오브젝트에서 찾기
         if (currentPlayerCoinController == null)
         {
@@ -542,7 +587,7 @@ public class GameManager : Singleton<GameManager>
 
 
     #endregion
-    
+
 
     #region HUD 업데이트 메서드
 

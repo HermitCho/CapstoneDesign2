@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Photon.Pun;
 
 /// <summary>
 /// 🎯 캐릭터 스폰 컨트롤러
@@ -11,13 +12,13 @@ public class SpawnController : MonoBehaviour
     [Header("🎯 스폰 위치 설정")]
     [SerializeField] private GameObject[] spawnPositions; // 스폰 가능한 위치들
     [SerializeField] private Transform spawnParent; // 스폰된 캐릭터들의 부모 오브젝트 (선택적)
-    
+
     [Header("⚙️ 스폰 설정")]
     [SerializeField] private bool destroyPreviousCharacter = true; // 이전 캐릭터 제거 여부
     [SerializeField] private bool randomizeRotation = false; // 랜덤 회전 여부
     [SerializeField] private Vector3 spawnOffset = Vector3.zero; // 스폰 위치 오프셋
     [SerializeField] private float spawnDelay = 0.1f; // 스폰 딜레이
-    
+
     [Header("🎮 디버그 설정")]
     [SerializeField] private bool debugMode = false;
     [SerializeField] private bool showGizmos = true;
@@ -30,49 +31,49 @@ public class SpawnController : MonoBehaviour
     // ✅ DataBase 캐싱된 값들 (성능 최적화)
     private GameObject[] cachedPlayerPrefabData;
     private bool dataBaseCached = false;
-    
+
     // 내부 상태 변수들
     private GameObject currentSpawnedCharacter = null;
     private int lastUsedSpawnIndex = -1;
     private bool isSpawning = false;
     private int currentSpawnedCharacterIndex = -1;
-    
+
     #region Unity 생명주기
-    
+
     void Awake()
     {
         ValidateSpawnPositions();
     }
-    
+
     void Start()
     {
         if (debugMode)
             Debug.Log("🎯 SpawnController 초기화 완료");
     }
-    
+
     void OnDrawGizmos()
     {
         if (!showGizmos || spawnPositions == null) return;
-        
+
         Gizmos.color = gizmoColor;
-        
+
         for (int i = 0; i < spawnPositions.Length; i++)
         {
             if (spawnPositions[i] != null)
             {
                 Vector3 position = spawnPositions[i].transform.position + spawnOffset;
                 Gizmos.DrawWireSphere(position, gizmoSize);
-                
+
                 // 스폰 포인트 번호 표시 (Scene 뷰에서)
-                #if UNITY_EDITOR
+#if UNITY_EDITOR
                 UnityEditor.Handles.Label(position + Vector3.up * (gizmoSize + 0.5f), $"Spawn {i}");
-                #endif
+#endif
             }
         }
     }
-    
+
     #endregion
-    
+
     #region 초기화 및 검증
 
 
@@ -95,7 +96,7 @@ public class SpawnController : MonoBehaviour
             dataBaseCached = false;
         }
     }
-    
+
     /// <summary>
     /// 스폰 위치들 검증
     /// </summary>
@@ -106,7 +107,7 @@ public class SpawnController : MonoBehaviour
             Debug.LogError("❌ SpawnController: 스폰 위치가 설정되지 않았습니다!");
             return;
         }
-        
+
         // null 위치 제거
         List<GameObject> validPositions = new List<GameObject>();
         for (int i = 0; i < spawnPositions.Length; i++)
@@ -120,94 +121,121 @@ public class SpawnController : MonoBehaviour
                 Debug.LogWarning($"⚠️ SpawnController: 스폰 위치 {i}번이 null입니다.");
             }
         }
-        
+
         spawnPositions = validPositions.ToArray();
-        
+
         if (debugMode)
             Debug.Log($"✅ SpawnController: {spawnPositions.Length}개의 유효한 스폰 위치 확인됨");
     }
-    
+
     #endregion
-    
+
     #region 캐릭터 스폰 메서드들
-    
+
     public void SpawnCharacterPrefab(GameObject prefab)
     {
         if (isSpawning)
         {
             return;
         }
-        
+
         if (prefab == null)
         {
             Debug.LogError("❌ SpawnController: 프리팹이 null입니다!");
             return;
         }
-        
+
         if (spawnPositions.Length == 0)
         {
             Debug.LogError("❌ SpawnController: 스폰 위치가 없습니다!");
             return;
         }
-        
+
         StartCoroutine(SpawnCharacterPrefabCoroutine(prefab));
     }
-    
+
     public void SpawnCharacter(int characterIndex)
     {
         if (isSpawning)
         {
             return;
         }
-        
+
         // DataBase 캐싱 확인
         CacheDataBaseInfo();
-        
+
         if (!IsValidCharacterIndex(characterIndex))
         {
             Debug.LogError($"❌ SpawnController: 잘못된 캐릭터 인덱스: {characterIndex}");
             return;
         }
-        
+
         if (spawnPositions.Length == 0)
         {
             Debug.LogError("❌ SpawnController: 스폰 위치가 없습니다!");
             return;
         }
-        
+
         GameObject prefab = cachedPlayerPrefabData[characterIndex];
         SpawnCharacterPrefab(prefab);
-        
+
         // HUD에 캐릭터 인덱스 알림
         currentSpawnedCharacterIndex = characterIndex;
-        
+
         Debug.Log($"✅ SpawnController: 캐릭터 인덱스 {characterIndex} 스폰 시작");
     }
-    
+
+    // SpawnController 클래스 내부 (나머지 코드는 생략)
+
     IEnumerator SpawnCharacterPrefabCoroutine(GameObject prefab)
     {
         isSpawning = true;
-        
+
         if (spawnDelay > 0f)
             yield return new WaitForSeconds(spawnDelay);
-        
 
         if (destroyPreviousCharacter && currentSpawnedCharacter != null)
         {
-            DestroyCurrentCharacter();
+            // PhotonNetwork.Destroy를 사용하여 네트워크 오브젝트를 파괴합니다.
+            // 일반 Destroy()를 사용하면 로컬에서만 파괴되고 다른 클라이언트에는 남아있게 됩니다.
+            if (currentSpawnedCharacter.GetComponent<PhotonView>() != null)
+            {
+                PhotonNetwork.Destroy(currentSpawnedCharacter);
+                Debug.Log($"[SpawnController] 이전 캐릭터 {currentSpawnedCharacter.name}을(를) PhotonNetwork.Destroy로 제거.");
+            }
+            else
+            {
+                Destroy(currentSpawnedCharacter);
+                Debug.LogWarning($"[SpawnController] 이전 캐릭터 {currentSpawnedCharacter.name}에 PhotonView가 없어 일반 Destroy로 제거.");
+            }
+            currentSpawnedCharacter = null;
         }
-        
+
         int spawnIndex = GetRandomSpawnIndex();
         Vector3 spawnPosition = GetSpawnPosition(spawnIndex);
         Quaternion spawnRotation = GetSpawnRotation(spawnIndex);
-        
+
         try
         {
-            Debug.Log($"🔍 SpawnController - prefab 타입: {prefab?.GetType()}");
-            
-            // Object로 받아서 안전하게 캐스팅
-            Object instantiatedObject = Instantiate(prefab, spawnPosition, spawnRotation);
-            currentSpawnedCharacter = instantiatedObject as GameObject;
+            Debug.Log($"🔍 SpawnController - 스폰할 프리팹: {prefab?.name}");
+
+            // PhotonNetwork.Instantiate는 GameObject를 반환합니다.
+            // ✅ 수정된 부분: GetPrefabResourcePath 헬퍼 메서드를 통해 Resources 경로를 얻어 사용합니다.
+            string prefabPath = GetPrefabResourcePath(prefab);
+
+            if (string.IsNullOrEmpty(prefabPath))
+            {
+                Debug.LogError($"❌ SpawnController: 프리팹 {prefab.name}의 Resources 경로를 찾을 수 없습니다. Resources 폴더 안에 있는지 확인하세요.");
+                isSpawning = false;
+                yield break;
+            }
+
+            currentSpawnedCharacter = PhotonNetwork.Instantiate(prefabPath, spawnPosition, spawnRotation);
+
+            if (spawnParent != null)
+            {
+                currentSpawnedCharacter.transform.SetParent(spawnParent);
+            }
         }
         catch (System.Exception e)
         {
@@ -215,28 +243,53 @@ public class SpawnController : MonoBehaviour
             isSpawning = false;
             yield break;
         }
-        
-        if (spawnParent != null)
-        {
-            currentSpawnedCharacter.transform.SetParent(spawnParent);
-        }
-        
-        currentSpawnedCharacter.name = $"{prefab.name}_Spawned";
-        
-        Debug.Log($"✅ SpawnController - 캐릭터 스폰 완료: {currentSpawnedCharacter.name}");
-        
-        // 스폰 완료 후 GameManager에 알림
-        NotifyGameManagerOfSpawnedCharacter();
-        
+
+        // PhotonNetwork.Instantiate는 이미 네트워크 이름을 가지므로, 로컬 이름 설정은 선택적입니다.
+        // currentSpawnedCharacter.name = $"{prefab.name}_Spawned"; 
+
+        Debug.Log($"✅ SpawnController - 네트워크 캐릭터 스폰 완료: {currentSpawnedCharacter.name}, PhotonViewID: {currentSpawnedCharacter.GetComponent<PhotonView>()?.ViewID}");
+
+        NotifyGameManagerOfSpawnedCharacter(); // GameManager 알림 로직은 기존과 동일
+
         isSpawning = false;
     }
-    
+
+    // ✅ 새로 추가되거나 수정되는 헬퍼 메서드
+    private string GetPrefabResourcePath(GameObject prefab)
+    {
+#if UNITY_EDITOR
+        string path = UnityEditor.AssetDatabase.GetAssetPath(prefab);
+        if (path.Contains("Resources/"))
+        {
+            int startIndex = path.IndexOf("Resources/") + "Resources/".Length;
+            int endIndex = path.LastIndexOf(".");
+            if (startIndex < path.Length && endIndex > startIndex)
+            {
+                return path.Substring(startIndex, endIndex - startIndex);
+            }
+        }
+#endif
+        // ✅ 이 부분이 빌드 시 사용될 하드코딩된 경로입니다.
+        // Test Player 1.prefab이 "Assets/Resources/Prefabs/" 경로에 있다고 가정합니다.
+        if (prefab.name == "Test Player 1") // DataBase에 등록된 프리팹 이름과 일치해야 합니다.
+        {
+            return "Prefabs/Test Player 1"; // Resources 폴더 내부의 상대 경로
+        }
+        // 다른 캐릭터 프리팹이 있다면 여기에 'else if'로 추가하거나,
+        // DataBase에 프리팹 경로 문자열 자체를 저장하여 사용하는 것이 좋습니다.
+
+        Debug.LogError($"[SpawnController] {prefab.name}은(는) Resources 폴더에 없거나 경로를 찾을 수 없습니다! PhotonNetwork.Instantiate를 사용하려면 Resources 폴더에 있어야 합니다.");
+        return null;
+    }
+
+    // SpawnController 클래스 나머지 코드 (생략)
+
     IEnumerator SpawnCharacterCoroutine(int characterIndex)
     {
         GameObject prefab = cachedPlayerPrefabData[characterIndex].gameObject;
         yield return StartCoroutine(SpawnCharacterPrefabCoroutine(prefab));
     }
-    
+
     public void DestroyCurrentCharacter()
     {
         if (currentSpawnedCharacter != null)
@@ -245,33 +298,33 @@ public class SpawnController : MonoBehaviour
             currentSpawnedCharacter = null;
         }
     }
-    
+
     #endregion
-    
+
     #region 스폰 위치 관리
-    
+
     int GetRandomSpawnIndex()
     {
         if (spawnPositions.Length == 1)
             return 0;
-        
+
         int randomIndex;
         int attempts = 0;
-        
+
         do
         {
             randomIndex = Random.Range(0, spawnPositions.Length);
             attempts++;
-            
+
             if (attempts > 10)
                 break;
-                
+
         } while (randomIndex == lastUsedSpawnIndex);
-        
+
         lastUsedSpawnIndex = randomIndex;
         return randomIndex;
     }
-    
+
     /// <summary>
     /// 스폰 위치 계산
     /// </summary>
@@ -280,7 +333,7 @@ public class SpawnController : MonoBehaviour
         Vector3 basePosition = spawnPositions[spawnIndex].transform.position;
         return basePosition + spawnOffset;
     }
-    
+
     /// <summary>
     /// 스폰 회전 계산
     /// </summary>
@@ -295,22 +348,22 @@ public class SpawnController : MonoBehaviour
             return spawnPositions[spawnIndex].transform.rotation;
         }
     }
-    
+
     #endregion
-    
+
     #region 유틸리티 메서드들
-    
+
     /// <summary>
     /// 유효한 캐릭터 인덱스인지 확인
     /// </summary>
     bool IsValidCharacterIndex(int index)
     {
-        return cachedPlayerPrefabData != null && 
-               index >= 0 && 
-               index < cachedPlayerPrefabData.Length && 
+        return cachedPlayerPrefabData != null &&
+               index >= 0 &&
+               index < cachedPlayerPrefabData.Length &&
                cachedPlayerPrefabData[index] != null;
     }
-    
+
     /// <summary>
     /// 특정 스폰 위치에 캐릭터 스폰 (디버그용)
     /// </summary>
@@ -321,79 +374,79 @@ public class SpawnController : MonoBehaviour
             Debug.LogError($"❌ SpawnController: 잘못된 캐릭터 인덱스: {characterIndex}");
             return;
         }
-        
+
         if (spawnIndex < 0 || spawnIndex >= spawnPositions.Length)
         {
             Debug.LogError($"❌ SpawnController: 잘못된 스폰 인덱스: {spawnIndex}");
             return;
         }
-        
+
         StartCoroutine(SpawnCharacterAtPositionCoroutine(characterIndex, spawnIndex));
     }
-    
+
     /// <summary>
     /// 특정 위치 스폰 코루틴
     /// </summary>
     IEnumerator SpawnCharacterAtPositionCoroutine(int characterIndex, int spawnIndex)
     {
         isSpawning = true;
-        
+
         if (spawnDelay > 0f)
             yield return new WaitForSeconds(spawnDelay);
-        
+
         if (destroyPreviousCharacter && currentSpawnedCharacter != null)
         {
             DestroyCurrentCharacter();
         }
-        
+
         Vector3 spawnPosition = GetSpawnPosition(spawnIndex);
         Quaternion spawnRotation = GetSpawnRotation(spawnIndex);
-        
+
         GameObject prefab = cachedPlayerPrefabData[characterIndex].gameObject;
-        
+
         if (prefab != null)
         {
             currentSpawnedCharacter = Instantiate(prefab, spawnPosition, spawnRotation);
-            
+
             if (spawnParent != null)
             {
                 currentSpawnedCharacter.transform.SetParent(spawnParent);
             }
-            
+
             currentSpawnedCharacter.name = $"{prefab.name}_Spawned_At_{spawnIndex}";
         }
-        
+
         isSpawning = false;
     }
-    
+
     #endregion
-    
+
     #region 공개 메서드들
-    
+
     /// <summary>
     /// 스폰 위치 추가
     /// </summary>
     public void AddSpawnPosition(GameObject newPosition)
     {
         if (newPosition == null) return;
-        
+
         List<GameObject> positions = new List<GameObject>(spawnPositions);
         positions.Add(newPosition);
         spawnPositions = positions.ToArray();
     }
-    
+
     /// <summary>
     /// 스폰 위치 제거
     /// </summary>
     public void RemoveSpawnPosition(GameObject position)
     {
         if (position == null) return;
-        
+
         List<GameObject> positions = new List<GameObject>(spawnPositions);
         positions.Remove(position);
         spawnPositions = positions.ToArray();
     }
-    
+
     /// <summary>
     /// 현재 스폰된 캐릭터 반환
     /// </summary>
@@ -413,7 +466,7 @@ public class SpawnController : MonoBehaviour
         }
         return null;
     }
-    
+
     /// <summary>
     /// 스폰 중인지 확인
     /// </summary>
@@ -421,7 +474,7 @@ public class SpawnController : MonoBehaviour
     {
         return isSpawning;
     }
-    
+
     /// <summary>
     /// 스폰 위치 개수 반환
     /// </summary>
@@ -429,7 +482,7 @@ public class SpawnController : MonoBehaviour
     {
         return spawnPositions?.Length ?? 0;
     }
-    
+
     /// <summary>
     /// 사용 가능한 캐릭터 프리팹 개수 반환
     /// </summary>
@@ -437,7 +490,7 @@ public class SpawnController : MonoBehaviour
     {
         return cachedPlayerPrefabData?.Length ?? 0;
     }
-    
+
     void NotifyGameManagerOfSpawnedCharacter()
     {
         if (currentSpawnedCharacter != null)
@@ -446,14 +499,14 @@ public class SpawnController : MonoBehaviour
             if (gameManager != null)
             {
                 gameManager.FindPlayerAfterSpawn();
-                
+
                 // 캐릭터 스폰 완료 이벤트 발생
                 gameManager.NotifyCharacterSpawned();
                 Debug.Log("✅ SpawnController - 캐릭터 스폰 완료, GameManager에 알림");
             }
         }
     }
-    
+
     /// <summary>
     /// HUD에 캐릭터 스폰 알림
     /// </summary>
@@ -462,6 +515,6 @@ public class SpawnController : MonoBehaviour
         Debug.LogWarning("플레이어 프리팹 인덱스 번호 : " + currentSpawnedCharacterIndex);
         return currentSpawnedCharacterIndex;
     }
-    
+
     #endregion
-} 
+}
