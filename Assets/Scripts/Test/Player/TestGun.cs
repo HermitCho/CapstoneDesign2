@@ -244,7 +244,6 @@ public class TestGun : MonoBehaviour
 
         if (Physics.Raycast(cameraRay, out RaycastHit hit, gunData.range, layerMask))
         {
-            Debug.Log("Ray hit: " + hit.collider.gameObject.name + " (Layer: " + LayerMask.LayerToName(hit.collider.gameObject.layer) + ")");
             return hit.point;
         }
         else
@@ -274,21 +273,14 @@ public class TestGun : MonoBehaviour
                     ~0, // 모든 레이어
                     QueryTriggerInteraction.Collide
                 );
-                Debug.Log($"OverlapBox hits: {hits.Length}");
-                foreach (var hit in hits)
-                {
-                    Debug.Log($"Hit: {hit.name}, Layer: {LayerMask.LayerToName(hit.gameObject.layer)}");
-                }
             }
 
             if (isBlocked)
             {
-                Debug.Log("Blocked");
                 direction = fireTransform.forward;
             }
             else
             {
-                Debug.Log("Not Blocked");
                 direction = (worldPoint - fireTransform.position).normalized;
             }
 

@@ -151,8 +151,6 @@ public class ShopController : MonoBehaviour
         
         // 게임 입력 차단
         DisableGameInput();
-        
-        Debug.Log("✅ ShopController - 상점 열림");
     }
 
     /// <summary>
@@ -174,8 +172,6 @@ public class ShopController : MonoBehaviour
         
         // 게임 입력 복원
         EnableGameInput();
-        
-        Debug.Log("✅ ShopController - 상점 닫힘");
     }
 
     #endregion
@@ -234,10 +230,15 @@ public class ShopController : MonoBehaviour
             // 아이템 스킬 적용
             itemComponent.PurchaseItemSkill();
             
-            // 아이템 슬롯에 추가
-            playerItemController.AttachItem(cachedItemData[itemIndex]);
-            
-            Debug.Log($"✅ ShopController - 아이템 구매 완료: 인덱스 {itemIndex}, 가격 {itemPrice}");
+            // 아이템 슬롯에 추가 (프리팹 인스턴스화)
+            if (cachedItemData[itemIndex] != null)
+            {
+                playerItemController.AttachItem(cachedItemData[itemIndex]);
+            }
+            else
+            {
+                Debug.LogError($"❌ ShopController - 아이템 인덱스 {itemIndex}의 프리팹이 null입니다.");
+            }
         }
         catch (System.Exception e)
         {
@@ -255,8 +256,6 @@ public class ShopController : MonoBehaviour
     void DisableGameInput()
     {
         TestShoot.SetIsShooting(false);
-        
-        Debug.Log("✅ ShopController - 게임 입력 차단됨");
     }
 
     /// <summary>
@@ -265,8 +264,6 @@ public class ShopController : MonoBehaviour
     void EnableGameInput()
     {
         TestShoot.SetIsShooting(true);
-        
-        Debug.Log("✅ ShopController - 게임 입력 복원됨");
     }
 
     #endregion
