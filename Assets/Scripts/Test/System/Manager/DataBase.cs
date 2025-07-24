@@ -164,6 +164,16 @@ public class DataBase : Singleton<DataBase>
             set { speed = value; }
             get { return speed; }
         }
+
+        [Space(10)]
+        [Tooltip("캐릭터 프레임 당 최대 이동 거리 설정 - 높을수록 한번에 이동 가능한 거리 증가")]
+        [Range(0, 10)]
+        [SerializeField] private float maxMoveDistance = 2f;
+        public float MaxMoveDistance
+        {
+            set { maxMoveDistance = value; }
+            get { return maxMoveDistance; }
+        }
        
         [Space(10)]
         [Header("캐릭터 감도 관련 설정")]
@@ -279,7 +289,7 @@ public class DataBase : Singleton<DataBase>
             get { return jumpBufferTime; }
         }
         [Space(10)]
-        [Tooltip("벽 충돌 낙하 힘 설정정- 벽에 부딪혔을 때 아래로 가하는 힘")]
+        [Tooltip("벽 충돌 낙하 힘 설정- 벽에 부딪혔을 때 아래로 가하는 힘")]
         [Range(3f, 15f)]
         [SerializeField] private float wallCollisionFallForce = 8f;
         public float WallCollisionFallForce

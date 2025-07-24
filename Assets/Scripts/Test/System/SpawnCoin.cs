@@ -41,5 +41,8 @@ public class SpawnCoin : MonoBehaviour
         // 코인 생성
         GameObject spawnedCoin = Instantiate(coinPrefab, spawnPosition, Quaternion.identity);
         
+        // 생성된 코인을 현재 오브젝트의 자식으로 설정
+        spawnedCoin.transform.SetParent(transform);
+        
     }
 }

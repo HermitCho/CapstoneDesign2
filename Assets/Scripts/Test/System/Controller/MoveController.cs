@@ -23,6 +23,10 @@ public class MoveController : MonoBehaviour
     private Vector2 rawMoveInput; // 원본 입력값 저장
   
 
+    // 벽 통과 방지를 위한 변수 추가
+    private LayerMask wallLayerMask = -1; // 벽으로 인식할 레이어
+    private Vector3 lastValidPosition; // 마지막 유효한 위치 저장
+
     // ✅ DataBase 캐싱된 값들 (성능 최적화)
     private float cachedSpeed;
     private float cachedRotationSpeed;
@@ -35,7 +39,9 @@ public class MoveController : MonoBehaviour
     private float cachedAirAcceleration;
     private float cachedAirMaxSpeed;
     private float cachedLandingFriction;
+    private float cachedMaxMoveDistance;
     private bool dataBaseCached = false;
+
 
     private float rotationAmount;
     
@@ -99,6 +105,10 @@ public class MoveController : MonoBehaviour
             mainCamera = FindObjectOfType<Camera>();
         }
         playerRigidbody = GetComponent<Rigidbody>();
+        
+        // 마지막 유효한 위치 초기화
+        lastValidPosition = transform.position;
+        
         // DataBase 정보 안전하게 캐싱 (Start에서 지연 실행)
         CacheDataBaseInfo();
     }
@@ -135,7 +145,8 @@ public class MoveController : MonoBehaviour
                 cachedAirAcceleration = playerMoveData.AirAcceleration;
                 cachedAirMaxSpeed = playerMoveData.AirMaxSpeed;
                 cachedLandingFriction = playerMoveData.LandingFriction;
-                
+                cachedMaxMoveDistance = playerMoveData.MaxMoveDistance;
+
                 dataBaseCached = true;
                 Debug.Log("✅ MoveController - DataBase 정보 캐싱 완료");
             }
@@ -184,7 +195,19 @@ public class MoveController : MonoBehaviour
         HandleRotation();
         UpdateJumpBuffer();
         HandleLanding();
+        
+        // 벽 통과 방지 체크 (HandleMovement 이후에 실행)
+        CheckWallPenetration();
+    }
 
+    void FixedUpdate()
+    {
+        //HandleMovement();
+    }
+
+    void LateUpdate()
+    {
+       // HandleRotation();
     }
 
     // 지면 상태 업데이트
@@ -386,6 +409,51 @@ public class MoveController : MonoBehaviour
         RaycastHit hit;
         
         return Physics.Raycast(transform.position, Vector3.down, out hit, cachedGroundCheckDistance);
+    }
+
+    /// <summary>
+    /// 벽 통과 방지 체크 메서드
+    /// </summary>
+    private void CheckWallPenetration()
+    {
+        Vector3 currentPosition = transform.position;
+        Vector3 moveVector = currentPosition - lastValidPosition;
+        float moveDistance = moveVector.magnitude;
+        
+        // 이동 거리가 임계값을 초과하거나 빠른 이동이 감지되면 체크
+        if (moveDistance > cachedMaxMoveDistance * Time.deltaTime || moveDistance > 0.1f)
+        {
+            // 이전 위치에서 현재 위치로의 레이캐스트
+            Vector3 direction = moveVector.normalized;
+            RaycastHit hit;
+            
+            if (Physics.Raycast(lastValidPosition, direction, out hit, moveDistance, wallLayerMask))
+            {
+                // 벽과 충돌이 감지되면 플레이어를 충돌 지점 직전으로 이동
+                // 단, 플레이어 자신이거나 Trigger 콜라이더는 무시
+                if (!hit.collider.CompareTag("Player") && !hit.collider.isTrigger)
+                {
+                    Vector3 safePosition = hit.point - direction * 0.1f; // 벽에서 약간 떨어진 위치
+                    transform.position = safePosition;
+                    
+                    // Rigidbody 속도도 리셋하여 관성 제거
+                    if (playerRigidbody != null)
+                    {
+                        Vector3 currentVelocity = playerRigidbody.velocity;
+                        // 벽 법선 방향의 속도 성분만 제거
+                        Vector3 velocityAlongNormal = Vector3.Project(currentVelocity, hit.normal);
+                        playerRigidbody.velocity = currentVelocity - velocityAlongNormal;
+                    }
+                    
+                    Debug.Log($"⚠️ 벽 통과 방지: 플레이어를 안전한 위치로 이동 {safePosition}");
+                    lastValidPosition = safePosition;
+                    return;
+                }
+            }
+        }
+        
+        // 유효한 이동이면 마지막 위치 업데이트
+        lastValidPosition = currentPosition;
     }
 
     public void MouseLock()

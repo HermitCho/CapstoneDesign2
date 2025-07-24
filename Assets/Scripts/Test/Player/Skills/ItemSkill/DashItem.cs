@@ -62,8 +62,8 @@ public class DashItem : CharacterItem
         }
 
         // 스킬 기본 정보 설정
-        skillName = "대시";
-        skillDescription = "앞방향으로 빠르게 도약합니다.";
+        //skillName = "대시";
+        //skillDescription = "앞방향으로 빠르게 도약합니다.";
         duration = dashDuration;
         castTime = 0f; // 즉시 발동
     }
