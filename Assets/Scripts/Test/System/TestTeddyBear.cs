@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System;
 
 public class TestTeddyBear : MonoBehaviour
 {
@@ -34,6 +35,9 @@ public class TestTeddyBear : MonoBehaviour
     private bool isGlowing = false;
     //테디베어 부착 상태 확인 변수
     private bool isAttached = false;
+
+    //테디베어 분리 이벤트
+    public static event Action OnTeddyBearDetached;
     
     void Awake()
     {
@@ -43,6 +47,18 @@ public class TestTeddyBear : MonoBehaviour
         
         // Outline 컴포넌트 초기화
         InitializeOutline();
+    }
+
+    void OnEnable()
+    {
+        // ✅ 플레이어 사망 이벤트 구독
+        LivingEntity.OnPlayerDied += OnPlayerDied;
+    }
+
+    void OnDisable()
+    {
+        // ✅ 플레이어 사망 이벤트 구독 해제
+        LivingEntity.OnPlayerDied -= OnPlayerDied;
     }
 
     // Start is called before the first frame update
@@ -70,6 +86,7 @@ public class TestTeddyBear : MonoBehaviour
         {
             DetachFromPlayer();
         }  
+        
     }
 
     void OnCollisionEnter(Collision collision)
@@ -397,7 +414,6 @@ public class TestTeddyBear : MonoBehaviour
         
         // 분리되면 다시 발광 시작
         StartGlowing();
-
     }
     
     // 아이템 사용 시 원래 위치로 되돌아가는 부착 해제 기능
@@ -519,6 +535,34 @@ public class TestTeddyBear : MonoBehaviour
     {
         float timeSinceDetach = Time.time - lastDetachTime;
         return timeSinceDetach >= teddyBearData.DetachReattachTime;
+    }
+
+    #endregion
+
+    #region 이벤트 핸들러
+
+    /// <summary>
+    /// 플레이어 사망 시 호출되는 이벤트 핸들러
+    /// </summary>
+    /// <param name="deadPlayer">사망한 플레이어의 LivingEntity</param>
+    private void OnPlayerDied(LivingEntity deadPlayer)
+    {
+        // 테디베어가 부착되지 않은 상태면 무시
+        if (!isAttached)
+        {
+            return;
+        }
+
+        // 현재 테디베어를 들고 있는 플레이어와 사망한 플레이어가 같은지 확인
+        if (playerTransform != null && deadPlayer != null)
+        {
+            // 사망한 플레이어의 Transform과 현재 부착된 플레이어의 Transform이 같은지 확인
+            if (playerTransform == deadPlayer.transform)
+            {
+                Debug.Log($"✅ TestTeddyBear - 플레이어 사망으로 인한 테디베어 자동 분리: {deadPlayer.name}");
+                DetachFromPlayer();
+            }
+        }
     }
 
     #endregion

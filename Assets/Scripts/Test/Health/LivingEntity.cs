@@ -27,6 +27,9 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
     
     // ✅ LivingEntity의 체력 변화를 알리는 static 이벤트. GameManager가 구독합니다.
     public static event Action<float, float, LivingEntity> OnAnyLivingEntityHealthChanged;
+    
+    // ✅ 플레이어 사망을 알리는 static 이벤트. TestTeddyBear 등이 구독할 수 있습니다.
+    public static event Action<LivingEntity> OnPlayerDied;
 
 
     [Header("스턴 제어")]
@@ -50,6 +53,8 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
     {
         InitializeEntity();
     }
+
+
 
     #endregion
 
@@ -219,6 +224,9 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
             moveController.SetStunned(true);
         }
         
+        // ✅ 플레이어 사망 이벤트 발생 (TestTeddyBear 등이 반응할 수 있도록)
+        OnPlayerDied?.Invoke(this);
+        
         // 플레이어가 죽었을 때 GameManager에 알릴 수 있습니다 (예: 게임 오버 처리)
         // if (photonView.IsMine && GameManager.Instance != null)
         // {
@@ -230,7 +238,7 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
         StartCoroutine(ReviveAfterDelay(10f));
 
         if (photonView.IsMine) // 소유자 클라이언트에게만 메시지
-            Debug.Log($"[LivingEntity] {gameObject.name} 사망!");
+            Debug.Log($"[LivingEntity] {gameObject.name} 사망! - 플레이어 사망 이벤트 발생");
 
         return true;
     }

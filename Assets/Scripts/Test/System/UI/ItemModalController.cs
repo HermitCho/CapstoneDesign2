@@ -25,6 +25,7 @@ public class ItemModalController : MonoBehaviour
     [SerializeField] private Image selectedItemIcon;
     [SerializeField] private TextMeshProUGUI selectedItemName;
     [SerializeField] private TextMeshProUGUI selectedItemDescription;
+    [SerializeField] private Sprite emptyItemIcon;
     #endregion
 
     #region 내부 상태 변수
@@ -275,6 +276,7 @@ public class ItemModalController : MonoBehaviour
         if (cachedPlayerItemController == null) 
         {
             Debug.LogWarning("⚠️ ItemModalController - playerItemController가 null입니다.");
+            ClearSelectedItemInfo();
             return;
         }
 
@@ -283,6 +285,7 @@ public class ItemModalController : MonoBehaviour
         if (itemSlot == null) 
         {
             Debug.LogWarning("⚠️ ItemModalController - ItemSlot1이 null입니다.");
+            ClearSelectedItemInfo();
             return;
         }
         
@@ -298,6 +301,7 @@ public class ItemModalController : MonoBehaviour
         if (activeItemTransform == null) 
         {
             Debug.LogWarning("⚠️ ItemModalController - 활성화된 아이템 Transform이 null입니다.");
+            ClearSelectedItemInfo();
             return;
         }
 
@@ -305,14 +309,33 @@ public class ItemModalController : MonoBehaviour
         if (activeItem == null) 
         {
             Debug.LogWarning("⚠️ ItemModalController - 활성화된 아이템에 CharacterItem 컴포넌트가 없습니다.");
+            ClearSelectedItemInfo();
             return;
         }
 
         // 선택된 아이템 정보 업데이트
         if (selectedItemIcon != null)
         {
-            selectedItemIcon.sprite = activeItem.SkillIcon;
-            selectedItemIcon.color = activeItem.SkillColor;
+            // 아이템 아이콘이 있으면 해당 아이콘, 없으면 빈 아이콘 표시
+            if (activeItem.SkillIcon != null)
+            {
+                selectedItemIcon.sprite = activeItem.SkillIcon;
+                selectedItemIcon.color = activeItem.SkillColor;
+                // 알파값을 1로 설정 (완전 불투명)
+                Color iconColor = selectedItemIcon.color;
+                iconColor.a = 1f;
+                selectedItemIcon.color = iconColor;
+            }
+            else
+            {
+                selectedItemIcon.sprite = emptyItemIcon;
+                selectedItemIcon.color = Color.white;
+                // 알파값을 0으로 설정 (완전 투명)
+                Color iconColor = selectedItemIcon.color;
+                iconColor.a = 0f;
+                selectedItemIcon.color = iconColor;
+                Debug.LogWarning("⚠️ ItemModalController - 아이템 아이콘이 null이므로 빈 아이콘을 표시합니다.");
+            }
         }
         else
         {
@@ -321,7 +344,7 @@ public class ItemModalController : MonoBehaviour
 
         if (selectedItemName != null)
         {
-            selectedItemName.text = activeItem.SkillName;
+            selectedItemName.text = !string.IsNullOrEmpty(activeItem.SkillName) ? activeItem.SkillName : "이름 없는 아이템";
             Debug.Log($"✅ ItemModalController - selectedItemName 업데이트: {activeItem.SkillName}");
         }
         else
@@ -331,7 +354,7 @@ public class ItemModalController : MonoBehaviour
 
         if (selectedItemDescription != null)
         {
-            selectedItemDescription.text = activeItem.SkillDescription;
+            selectedItemDescription.text = !string.IsNullOrEmpty(activeItem.SkillDescription) ? activeItem.SkillDescription : "설명이 없습니다.";
             Debug.Log($"✅ ItemModalController - selectedItemDescription 업데이트: {activeItem.SkillDescription}");
         }
         else
@@ -391,9 +414,27 @@ public class ItemModalController : MonoBehaviour
         }
 
         // 버튼 정보 업데이트 (비활성화된 아이템 정보 표시)
-        itemButton1.SetBackground(inactiveItem.SkillIcon);
-        itemButton1.SetText(inactiveItem.SkillName);
-        itemButton1.SetDescription(inactiveItem.SkillDescription);
+        if (inactiveItem.SkillIcon != null)
+        {
+            itemButton1.SetBackground(inactiveItem.SkillIcon);
+            // 알파값을 1로 설정 (완전 불투명)
+            Color bgColor = itemButton1.backgroundObj.color;
+            bgColor.a = 1f;
+            itemButton1.backgroundObj.color = bgColor;
+        }
+        else
+        {
+            itemButton1.SetBackground(emptyItemIcon); // 아이콘이 없으면 빈 아이콘 표시
+            // 알파값을 0으로 설정 (완전 투명)
+            Color bgColor = itemButton1.backgroundObj.color;
+            bgColor.a = 0f;
+            itemButton1.backgroundObj.color = bgColor;
+            itemButton1.SetText("아이템이 없습니다.");
+            itemButton1.SetDescription("아이템을 구매하세요.");
+        }
+        
+        itemButton1.SetText(!string.IsNullOrEmpty(inactiveItem.SkillName) ? inactiveItem.SkillName : "이름 없는 아이템");
+        itemButton1.SetDescription(!string.IsNullOrEmpty(inactiveItem.SkillDescription) ? inactiveItem.SkillDescription : "설명이 없습니다.");
         itemButton1.UpdateUI();
 
         Debug.Log($"✅ ItemModalController - 버튼 정보 업데이트 완료: {inactiveItem.SkillName} (비활성화됨)");
@@ -472,7 +513,12 @@ public class ItemModalController : MonoBehaviour
     {
         if (selectedItemIcon != null)
         {
-            selectedItemIcon.sprite = null;
+            selectedItemIcon.sprite = emptyItemIcon; // 빈 아이콘 표시
+            selectedItemIcon.color = Color.white; // 빈 아이콘은 흰색으로 표시
+            // 알파값을 0으로 설정 (완전 투명)
+            Color iconColor = selectedItemIcon.color;
+            iconColor.a = 0f;
+            selectedItemIcon.color = iconColor;
         }
 
         if (selectedItemName != null)
@@ -505,11 +551,18 @@ public class ItemModalController : MonoBehaviour
     private void ClearItemButton(BoxButtonManager button)
     {
         if (button == null) return;
+        
+        button.SetBackground(emptyItemIcon); // 빈 아이콘 표시
 
-        button.SetBackground(null);
-        button.SetText("변경 가능한 아이템이 존재하지 않습니다.");
-        button.SetDescription("다른 아이템으로 변경하려면 아이템을 구매하세요요.");
+        Color bgColor = itemButton1.backgroundObj.color;
+        bgColor.a = 0f;
+        itemButton1.backgroundObj.color = bgColor;
+
+        button.SetText("  ");
+        button.SetDescription("아이템 구매 필요");
         button.UpdateUI();
+        
+        Debug.Log("🔄 ItemModalController - 아이템 버튼을 빈 아이콘으로 초기화");
     }
 
     #endregion

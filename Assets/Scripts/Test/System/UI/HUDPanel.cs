@@ -187,8 +187,10 @@ public class HUDPanel : MonoBehaviour
         UpdateGameTime(0f);
         UpdateAttachStatus(false, 0f);
         
-        // 로컬 CoinController 찾기 및 코인 초기화
+        // 아이템 아이콘 초기화 (빈 아이콘으로 표시)
+        ClearItemIcons();
         
+        // 로컬 CoinController 찾기 및 코인 초기화
         UpdateCoin(0);
     }
 
@@ -740,8 +742,11 @@ public class HUDPanel : MonoBehaviour
 
         if (skillIcon == null)
         {
-            Debug.LogWarning("⚠️ HUDPanel - 스킬 아이콘이 null입니다.");
-            iconImage.gameObject.SetActive(false);
+            Debug.LogWarning("⚠️ HUDPanel - 스킬 아이콘이 null입니다. 빈 아이콘으로 표시합니다.");
+            // 스킬 아이콘이 없으면 빈 아이콘 표시
+            iconImage.sprite = emptyItemIcon;
+            iconImage.color = Color.white;
+            iconImage.gameObject.SetActive(true);
             return;
         }
 
@@ -762,7 +767,8 @@ public class HUDPanel : MonoBehaviour
         if (iconImage != null)
         {
             iconImage.sprite = emptyItemIcon;
-            iconImage.gameObject.SetActive(false);
+            iconImage.color = Color.white; // 빈 아이콘은 흰색으로 표시
+            iconImage.gameObject.SetActive(true); // 빈 아이콘도 표시
         }
     }
 
@@ -773,7 +779,7 @@ public class HUDPanel : MonoBehaviour
     {
         ClearItemIcon(itemIcon1);
         ClearItemIcon(itemIcon2);
-        Debug.Log("🔄 HUDPanel - 모든 아이템 아이콘 초기화");
+        Debug.Log("🔄 HUDPanel - 모든 아이템 아이콘을 빈 아이콘으로 설정");
     }
 
     #endregion
