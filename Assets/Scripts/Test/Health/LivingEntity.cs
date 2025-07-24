@@ -22,6 +22,7 @@ public class LivingEntity : MonoBehaviour, IDamageable
     private MoveController moveController;
     // Events
     public event Action OnDeath;
+    public event Action OnRevive;
 
     #region Unity Lifecycle
 
@@ -195,6 +196,7 @@ public class LivingEntity : MonoBehaviour, IDamageable
         IsDead = false;
         RestoreHealth(StartingHealth);
         moveController.SetStunned(false);
+        OnRevive?.Invoke();
         // 필요시 부활 이벤트 등 추가 가능
     }
 
