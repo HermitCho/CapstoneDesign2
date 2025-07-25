@@ -153,6 +153,7 @@ public class TestGun : MonoBehaviour
         
         // ✅ Crosshair UI를 비동기로 찾기
         StartCoroutine(FindCrosshairUI());
+        muzzleDirectionController = GetComponentInChildren<MuzzleDirectionController>();
     }
     
     /// <summary>

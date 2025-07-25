@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Animations.Rigging;
+using RootMotion.FinalIK;
 
 /// <summary>
 /// 캐릭터의 이동/점프/조준/재장전 애니메이션을 제어하는 컨트롤러
@@ -40,14 +41,17 @@ public class TestMoveAnimationController : MonoBehaviour
     private float MoveturnLerpSpeed = 5f; // Moveturn 부드러운 전환 속도
     private float turnLerpSpeed = 10f;     // turn 부드러운 전환 속도
 
-    // 상하회전 관련
-    [SerializeField] MultiAimConstraint headLookConstraint;
-    [SerializeField] Transform aimTarget;
-    [SerializeField] private float maxLookUpAngle = 40f;
-    [SerializeField] private float maxLookDownAngle = -20f;
+    // // 상하회전 관련
+    // [SerializeField] MultiAimConstraint headLookConstraint;
+    // [SerializeField] Transform aimTarget;
+    // [SerializeField] private float maxLookUpAngle = 40f;
+    // [SerializeField] private float maxLookDownAngle = -20f;
 
-    // Rig설정
-    [SerializeField] private Rig armAimRig; // Rig3
+    // // Rig설정
+    // [SerializeField] private Rig armAimRig; // Rig3
+
+    private GunIK gunIK;
+    private LivingEntity livingEntity;
 
     private void Awake()
     {
@@ -56,6 +60,8 @@ public class TestMoveAnimationController : MonoBehaviour
         cameraController = GetComponent<CameraController>();
         rb = GetComponent<Rigidbody>();
         upperBodyLayerIndex = animator.GetLayerIndex("UpperBody");
+        gunIK = GetComponent<GunIK>();
+        livingEntity = GetComponent<LivingEntity>();
     }
 
     private void OnEnable()
@@ -67,7 +73,11 @@ public class TestMoveAnimationController : MonoBehaviour
         InputManager.OnReloadPressed += OnReloadInput;
         InputManager.OnSkillPressed += OnDashInput;
         InputManager.OnItemPressed += OnItemInput;
-    
+        if (livingEntity != null)
+        {
+            livingEntity.OnDeath += OnStunned;
+            livingEntity.OnRevive += OnRevive;
+        }
     }
 
     private void OnDisable()
@@ -79,32 +89,36 @@ public class TestMoveAnimationController : MonoBehaviour
         InputManager.OnReloadPressed -= OnReloadInput;
         InputManager.OnSkillPressed -= OnDashInput;
         InputManager.OnItemPressed -= OnItemInput;
-
+        if (livingEntity != null)
+        {
+            livingEntity.OnDeath -= OnStunned;
+            livingEntity.OnRevive -= OnRevive;
+        }
     }
-
     private void Update()
     {
         HandleMovementAnimation();
         HandleTurnAnimation();
         HandleAnimatorSpeed();
         HandleJumpAnimation();
-        HandleLookAnimation();
+        // HandleLookAnimation();
+
     }
 
-    private void LateUpdate()
-    {
-        if (aimTarget != null && cameraController != null)
-        {
-            float pitch = cameraController.GetTargetVerticalAngle();
+    // private void LateUpdate()
+    // {
+    //     if (aimTarget != null && cameraController != null)
+    //     {
+    //         float pitch = cameraController.GetTargetVerticalAngle();
 
-            // 각도 제한
-            pitch = Mathf.Clamp(pitch, maxLookDownAngle, maxLookUpAngle);
+    //         // 각도 제한
+    //         pitch = Mathf.Clamp(pitch, maxLookDownAngle, maxLookUpAngle);
 
-            // 현재 로컬 회전의 나머지 축은 유지
-            Vector3 currentEuler = aimTarget.localEulerAngles;
-            aimTarget.localEulerAngles = new Vector3(pitch, currentEuler.y, currentEuler.z);
-        }
-    }
+    //         // 현재 로컬 회전의 나머지 축은 유지
+    //         Vector3 currentEuler = aimTarget.localEulerAngles;
+    //         aimTarget.localEulerAngles = new Vector3(pitch, currentEuler.y, currentEuler.z);
+    //     }
+    // }
 
     // 이동 입력 처리
     void OnMoveInput(Vector2 input)
@@ -123,6 +137,16 @@ public class TestMoveAnimationController : MonoBehaviour
     {
         animator.SetFloat("MoveX", moveInput.x, 0.1f, Time.deltaTime);
         animator.SetFloat("MoveY", moveInput.y, 0.1f, Time.deltaTime);
+    }
+
+    private void OnStunned()
+    {
+        animator.SetTrigger("Death");
+    }
+
+    private void OnRevive()
+    {
+        animator.SetTrigger("Revive");
     }
 
     // 캐릭터 회전값을 받아 애니메이션 전달
@@ -151,41 +175,38 @@ public class TestMoveAnimationController : MonoBehaviour
         animator.SetFloat("MoveTurnX", smoothedMoveTurnValue, 0f, Time.deltaTime);
     }
 
-    // 카메라 회전값을 받아 애니메이션 전달
-    void HandleLookAnimation()
-    {
-        if (cameraController == null) return;
+    // // 카메라 회전값을 받아 애니메이션 전달
+    // void HandleLookAnimation()
+    // {
+    //     if (cameraController == null) return;
 
-        float verticalAngle = cameraController.GetTargetVerticalAngle(); // -60 ~ 60 기준 가정
-        float normalizedLookY = Mathf.InverseLerp(-60f, 60f, verticalAngle) * 2f - 1f; // -1 ~ 1로 정규화
+    //     float verticalAngle = cameraController.GetTargetVerticalAngle(); // -60 ~ 60 기준 가정
+    //     float normalizedLookY = Mathf.InverseLerp(-60f, 60f, verticalAngle) * 2f - 1f; // -1 ~ 1로 정규화
 
-        animator.SetFloat("LookY", normalizedLookY);
-    }
+    //     animator.SetFloat("LookY", normalizedLookY);
+    // }
 
     // 재장전시 트리거 실행
     void OnReloadInput()
     {
         animator.SetLayerWeight(upperBodyLayerIndex, 1f);
+        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 0f, 0f);
         animator.SetTrigger("Reload");
 
-        // 머리 고정
-        if (headLookConstraint != null)
-            headLookConstraint.weight = 0f;
     }
 
-    // 재장전 이벤트
-    public void OnReloadStart()
+    // 재장전 시작
+    void OnReloadStart()
     {
         
     }
 
-    public void OnReloadEnd()
+    // 재장전 종료
+    void OnReloadEnd()
     {
+        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 1f, 1f);
         animator.SetLayerWeight(upperBodyLayerIndex, 0f);
 
-        // // 머리 회전 다시 켜기
-        // if (headLookConstraint != null)
-        //     headLookConstraint.weight = 1f;
     }
 
     // 조준 상태에 따른 애니메이션 속도 변경
@@ -227,7 +248,10 @@ public class TestMoveAnimationController : MonoBehaviour
         isAiming = true;
         animator.SetLayerWeight(upperBodyLayerIndex, 1f);
         animator.SetBool("IsAiming", true);
-        armAimRig.weight = 1f;
+        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.Body, gunIK.bodyTarget, 0.04f);
+        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.RightFoot, gunIK.rightLegTarget, 0.3f);
+        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftFoot, gunIK.leftLegTarget, 0.3f);
+        
     }
 
     // 조준 해제 시 호출
@@ -236,7 +260,10 @@ public class TestMoveAnimationController : MonoBehaviour
         isAiming = false;
         animator.SetLayerWeight(upperBodyLayerIndex, 0f);
         animator.SetBool("IsAiming", false);
-        armAimRig.weight = 0f;
+        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.Body, gunIK.bodyTarget, 0.01f);
+        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.RightFoot, gunIK.rightLegTarget, 0.2f);
+        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftFoot, gunIK.leftLegTarget, 0.2f);
+        
     }
 
     // 대쉬 스킬
