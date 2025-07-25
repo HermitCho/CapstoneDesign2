@@ -26,6 +26,11 @@ public class MoveController : MonoBehaviour
     // 벽 통과 방지를 위한 변수 추가
     private LayerMask wallLayerMask = -1; // 벽으로 인식할 레이어
     private Vector3 lastValidPosition; // 마지막 유효한 위치 저장
+    
+    // 🎯 Wall Penetration Ray 개선을 위한 변수들
+    private float rayHeightOffset = 1.0f; // 캐릭터 허리 높이 (발 기준 +1m)
+    private float capsuleRadius = 0.5f; // 캐릭터 반지름
+    private LayerMask groundLayerMask = 1; // 땅바닥 레이어 (기본: Default)
 
     // ✅ DataBase 캐싱된 값들 (성능 최적화)
     private float cachedSpeed;
@@ -412,7 +417,7 @@ public class MoveController : MonoBehaviour
     }
 
     /// <summary>
-    /// 벽 통과 방지 체크 메서드
+    /// 벽 통과 방지 체크 메서드 (개선된 버전)
     /// </summary>
     private void CheckWallPenetration()
     {
@@ -423,32 +428,76 @@ public class MoveController : MonoBehaviour
         // 이동 거리가 임계값을 초과하거나 빠른 이동이 감지되면 체크
         if (moveDistance > cachedMaxMoveDistance * Time.deltaTime || moveDistance > 0.1f)
         {
-            // 이전 위치에서 현재 위치로의 레이캐스트
-            Vector3 direction = moveVector.normalized;
-            RaycastHit hit;
+            // 🎯 수평 방향으로만 이동 벡터 계산 (Y축 제거)
+            Vector3 horizontalMoveVector = new Vector3(moveVector.x, 0f, moveVector.z);
+            float horizontalDistance = horizontalMoveVector.magnitude;
             
-            if (Physics.Raycast(lastValidPosition, direction, out hit, moveDistance, wallLayerMask))
+            // 수평 이동이 거의 없으면 체크하지 않음
+            if (horizontalDistance < 0.01f)
             {
-                // 벽과 충돌이 감지되면 플레이어를 충돌 지점 직전으로 이동
-                // 단, 플레이어 자신이거나 Trigger 콜라이더는 무시
-                if (!hit.collider.CompareTag("Player") && !hit.collider.isTrigger)
+                lastValidPosition = currentPosition;
+                return;
+            }
+            
+            Vector3 horizontalDirection = horizontalMoveVector.normalized;
+            
+            // 🎯 여러 높이에서 수평 Ray 체크 (발목, 허리, 가슴)
+            float[] checkHeights = { 0.2f, rayHeightOffset, rayHeightOffset * 1.5f };
+            bool hitDetected = false;
+            RaycastHit closestHit = new RaycastHit();
+            float closestDistance = float.MaxValue;
+            
+            foreach (float height in checkHeights)
+            {
+                Vector3 rayStart = lastValidPosition + Vector3.up * height;
+                RaycastHit hit;
+                
+                // 땅바닥 제외하고 벽만 감지하도록 LayerMask 조정
+                LayerMask effectiveWallMask = wallLayerMask & ~groundLayerMask;
+                
+                if (Physics.Raycast(rayStart, horizontalDirection, out hit, horizontalDistance + capsuleRadius, effectiveWallMask))
                 {
-                    Vector3 safePosition = hit.point - direction * 0.1f; // 벽에서 약간 떨어진 위치
-                    transform.position = safePosition;
-                    
-                    // Rigidbody 속도도 리셋하여 관성 제거
-                    if (playerRigidbody != null)
+                    // 플레이어 자신이거나 Trigger 콜라이더는 무시
+                    if (!hit.collider.CompareTag("Player") && !hit.collider.isTrigger)
                     {
-                        Vector3 currentVelocity = playerRigidbody.velocity;
-                        // 벽 법선 방향의 속도 성분만 제거
-                        Vector3 velocityAlongNormal = Vector3.Project(currentVelocity, hit.normal);
-                        playerRigidbody.velocity = currentVelocity - velocityAlongNormal;
+                        // 가장 가까운 충돌점 찾기
+                        float hitDistance = Vector3.Distance(rayStart, hit.point);
+                        if (hitDistance < closestDistance)
+                        {
+                            closestDistance = hitDistance;
+                            closestHit = hit;
+                            hitDetected = true;
+                        }
                     }
-                    
-                    Debug.Log($"⚠️ 벽 통과 방지: 플레이어를 안전한 위치로 이동 {safePosition}");
-                    lastValidPosition = safePosition;
-                    return;
                 }
+            }
+            
+            // 충돌이 감지되면 안전한 위치로 이동
+            if (hitDetected)
+            {
+                // 🎯 안전한 위치 계산 (캐릭터 반지름 + 여유 공간 확보)
+                Vector3 safePosition = closestHit.point - horizontalDirection * (capsuleRadius + 0.1f);
+                safePosition.y = currentPosition.y; // Y 좌표는 현재 위치 유지
+                
+                transform.position = safePosition;
+                
+                // Rigidbody 속도 조정 (수평 방향만)
+                if (playerRigidbody != null)
+                {
+                    Vector3 currentVelocity = playerRigidbody.velocity;
+                    // 벽 법선의 수평 성분만 사용
+                    Vector3 horizontalNormal = new Vector3(closestHit.normal.x, 0f, closestHit.normal.z).normalized;
+                    Vector3 horizontalVelocity = new Vector3(currentVelocity.x, 0f, currentVelocity.z);
+                    Vector3 velocityAlongNormal = Vector3.Project(horizontalVelocity, horizontalNormal);
+                    
+                    // 수정된 수평 속도 적용 (Y 속도는 유지)
+                    Vector3 correctedHorizontalVelocity = horizontalVelocity - velocityAlongNormal;
+                    playerRigidbody.velocity = new Vector3(correctedHorizontalVelocity.x, currentVelocity.y, correctedHorizontalVelocity.z);
+                }
+                
+                Debug.Log($"⚠️ 벽 통과 방지: 플레이어를 안전한 위치로 이동 {safePosition} (충돌 객체: {closestHit.collider.name})");
+                lastValidPosition = safePosition;
+                return;
             }
         }
         
