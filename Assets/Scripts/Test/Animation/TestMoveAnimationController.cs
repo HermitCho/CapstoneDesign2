@@ -190,7 +190,7 @@ public class TestMoveAnimationController : MonoBehaviour
     void OnReloadInput()
     {
         animator.SetLayerWeight(upperBodyLayerIndex, 1f);
-        gunIK.SetLeftHandIK(false);
+        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 0f, 0f);
         animator.SetTrigger("Reload");
 
     }
@@ -204,7 +204,7 @@ public class TestMoveAnimationController : MonoBehaviour
     // 재장전 종료
     void OnReloadEnd()
     {
-        gunIK.SetLeftHandIK(true);
+        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 1f, 1f);
         animator.SetLayerWeight(upperBodyLayerIndex, 0f);
 
     }
@@ -248,7 +248,10 @@ public class TestMoveAnimationController : MonoBehaviour
         isAiming = true;
         animator.SetLayerWeight(upperBodyLayerIndex, 1f);
         animator.SetBool("IsAiming", true);
-        // armAimRig.weight = 1f;
+        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.Body, gunIK.bodyTarget, 0.04f);
+        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.RightFoot, gunIK.rightLegTarget, 0.3f);
+        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftFoot, gunIK.leftLegTarget, 0.3f);
+        
     }
 
     // 조준 해제 시 호출
@@ -257,7 +260,10 @@ public class TestMoveAnimationController : MonoBehaviour
         isAiming = false;
         animator.SetLayerWeight(upperBodyLayerIndex, 0f);
         animator.SetBool("IsAiming", false);
-        // armAimRig.weight = 0f;
+        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.Body, gunIK.bodyTarget, 0.01f);
+        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.RightFoot, gunIK.rightLegTarget, 0.2f);
+        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftFoot, gunIK.leftLegTarget, 0.2f);
+        
     }
 
     // 대쉬 스킬

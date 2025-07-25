@@ -7,14 +7,19 @@ public class GunIK : MonoBehaviour
 {
     public FullBodyBipedIK ik;
     public Transform leftHandTarget;
+    public Transform rightHandTarget;
+    public Transform bodyTarget;
+    public Transform rightLegTarget;
+    public Transform leftLegTarget;
+    public Transform headTarget;
 
-    // 왼손 IK On/Off 함수
-    public void SetLeftHandIK(bool enable)
+    // 통합 Effector 제어 메서드
+    public void SetEffectorPositionWeight(FullBodyBipedEffector effector, Transform target, float positionWeight, float rotationWeight = -1f)
     {
-        float weight = enable ? 1f : 0f;
-        ik.solver.leftHandEffector.target = leftHandTarget;
-        ik.solver.leftHandEffector.positionWeight = weight;
-        ik.solver.leftHandEffector.rotationWeight = weight;
+        var e = ik.solver.GetEffector(effector);
+        e.target = target;
+        e.positionWeight = positionWeight;
+        if (rotationWeight >= 0f) e.rotationWeight = rotationWeight;
     }
 
     void LateUpdate()
