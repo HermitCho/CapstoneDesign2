@@ -42,6 +42,9 @@ public class CameraController : MonoBehaviour
     // 카메라 제어용
     private Camera mainCamera;
     
+    // 카메라 조작 제어
+    private bool cameraControlEnabled = true;
+    
     // 데이터베이스 참조
     private DataBase.CameraData cameraData;
     
@@ -198,45 +201,53 @@ public class CameraController : MonoBehaviour
     // InputManager에서 Y축 마우스 입력 받기 (상하 시점만 처리)
     void OnYMouseInput(Vector2 mouseInput)
     {
-        if (isPlayerFound)
+        // 카메라 조작이 비활성화되어 있으면 무시
+        if (!cameraControlEnabled || !isPlayerFound)
         {
-            if(isZoomed)
-            {
-                mouseY = mouseInput.y * cachedZoomMouseSensitivityY * Time.deltaTime;
-            }
-            else
-            {
-                mouseY = mouseInput.y * cachedMouseSensitivityY * Time.deltaTime;
-            }
-
-            //사용 X
-            // 거리 기반 감도 계산
-            // float currentSensitivity = GetDistanceBasedSensitivity();    
-            // Y축 처리 (수직 회전만)
-            // float mouseY = mouseInput.y * currentSensitivity * Time.deltaTime;
-
-            targetVerticalAngle -= mouseY; // Y축은 반전
-            targetVerticalAngle = Mathf.Clamp(targetVerticalAngle, cachedMinVerticalAngle, cachedMaxVerticalAngle);
-            
+            return;
         }
+        
+        if(isZoomed)
+        {
+            mouseY = mouseInput.y * cachedZoomMouseSensitivityY * Time.deltaTime;
+        }
+        else
+        {
+            mouseY = mouseInput.y * cachedMouseSensitivityY * Time.deltaTime;
+        }
+
+        //사용 X
+        // 거리 기반 감도 계산
+        // float currentSensitivity = GetDistanceBasedSensitivity();    
+        // Y축 처리 (수직 회전만)
+        // float mouseY = mouseInput.y * currentSensitivity * Time.deltaTime;
+
+        targetVerticalAngle -= mouseY; // Y축은 반전
+        targetVerticalAngle = Mathf.Clamp(targetVerticalAngle, cachedMinVerticalAngle, cachedMaxVerticalAngle);
     }
 
     void OnZoomPressed()
     {
-        if (isPlayerFound)
+        // 카메라 조작이 비활성화되어 있으면 무시
+        if (!cameraControlEnabled || !isPlayerFound)
         {
-            // 카메라 확대(줌) 적용
-            ApplyCameraZoom();
+            return;
         }
+        
+        // 카메라 확대(줌) 적용
+        ApplyCameraZoom();
     }
 
     void OnZoomPressedCanceled()
     {
-        if (isPlayerFound)
+        // 카메라 조작이 비활성화되어 있으면 무시
+        if (!cameraControlEnabled || !isPlayerFound)
         {
-            // 카메라 확대(줌) 되돌리기 적용
-            ApplyCameraZoomCanceled();
+            return;
         }
+        
+        // 카메라 확대(줌) 되돌리기 적용
+        ApplyCameraZoomCanceled();
     }
     
     // 플레이어를 주기적으로 찾는 코루틴
@@ -442,6 +453,33 @@ public class CameraController : MonoBehaviour
         isPlayerFound = false;
         playerTransform = null;
         StartCoroutine(FindPlayerRoutine());
+    }
+    
+    /// <summary>
+    /// 카메라 조작 활성화
+    /// </summary>
+    public void EnableCameraControl()
+    {
+        cameraControlEnabled = true;
+        Debug.Log("✅ CameraController: 카메라 조작 활성화");
+    }
+    
+    /// <summary>
+    /// 카메라 조작 비활성화
+    /// </summary>
+    public void DisableCameraControl()
+    {
+        cameraControlEnabled = false;
+        Debug.Log("❌ CameraController: 카메라 조작 비활성화");
+    }
+    
+    /// <summary>
+    /// 카메라 조작 상태 확인
+    /// </summary>
+    /// <returns>카메라 조작 활성화 여부</returns>
+    public bool IsCameraControlEnabled()
+    {
+        return cameraControlEnabled;
     }
     
     // 거리 기반 감도 계산

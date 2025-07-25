@@ -150,6 +150,19 @@ public class InGameUIManager : MonoBehaviour
         
         SetMenuMouseCursor();
     }
+    /// <summary>
+    /// 게임 오버 패널 표시 (점수 포함)
+    /// </summary>
+    public void ShowGameOverPanel(float finalScore)
+    {
+        if (panelManager != null)
+        {
+            panelManager.OpenPanel(gameOverPanelName);
+            currentPanel = gameOverPanelName;
+            SetMenuMouseCursor();
+            Debug.Log($"✅ InGameUIManager: 게임 오버 패널 표시 - 최종 점수: {finalScore}");
+        }
+    }
     
     #endregion
     
