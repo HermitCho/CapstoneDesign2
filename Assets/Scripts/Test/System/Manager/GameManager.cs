@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using System;
 using Photon.Pun;
 
@@ -29,6 +30,9 @@ public class GameManager : Singleton<GameManager>
     // 게임 오버 관리
     private bool isGameOver = false;
     private InGameUIManager inGameUIManager;
+    
+    // 씬 전환 감지를 위한 변수
+    private string lastSceneName = "";
 
     #endregion
 
@@ -87,19 +91,27 @@ public class GameManager : Singleton<GameManager>
 
     #region 생명주기
 
+    void Awake()
+    {
+        // 씬 로드 이벤트 구독 (싱글톤이므로 한번만 구독됨)
+        SceneManager.sceneLoaded += OnSceneLoaded;
+        
+        // 현재 씬이 게임 씬이라면 즉시 초기화
+        string currentSceneName = SceneManager.GetActiveScene().name;
+        if (IsGameScene(currentSceneName))
+        {
+            Debug.Log($"🔄 GameManager: Awake에서 게임 씬 감지 ({currentSceneName}) - 즉시 초기화");
+            ResetGameState();
+            lastSceneName = currentSceneName;
+        }
+    }
+
     void Start()
     {
-        // 게임 시작 시간 기록
-        gameStartTime = Time.time;
-
-        // DataBase 정보 캐싱
+        // DataBase 정보 캐싱 (항상 수행)
         CacheDataBaseInfo();
-
-        // 테디베어 찾기
-        FindTeddyBear();
         
-        // InGameUIManager 찾기
-        FindInGameUIManager();
+        Debug.Log($"🔧 GameManager: Start 완료 - PlayTime: {GetPlayTime()}초");
     }
     
     void Update()
@@ -107,18 +119,260 @@ public class GameManager : Singleton<GameManager>
         // 게임 오버 상태가 아닐 때만 시간 체크
         if (!isGameOver)
         {
+            // 게임 씬에서 필요한 컴포넌트들이 null인지 주기적으로 체크
+            CheckAndFindMissingComponents();
+            
             CheckGameTimeForGameOver();
+        }
+    }
+    
+    /// <summary>
+    /// 누락된 컴포넌트들을 주기적으로 체크하고 찾기
+    /// </summary>
+    void CheckAndFindMissingComponents()
+    {
+        string currentSceneName = SceneManager.GetActiveScene().name;
+        if (!IsGameScene(currentSceneName)) return;
+        
+        // InGameUIManager 체크 (가장 중요)
+        if (inGameUIManager == null)
+        {
+            FindInGameUIManager();
+        }
+        
+        // 테디베어 체크
+        if (currentTeddyBear == null)
+        {
+            FindTeddyBear();
         }
     }
 
     void OnDestroy() // ✅ 수정: 오류 해결
     {
+        // 씬 로드 이벤트 구독 해제
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+        
         LivingEntity.OnAnyLivingEntityHealthChanged -= HandleAnyLivingEntityHealthChanged;
 
         Debug.Log("❌ GameManager - OnDestroy: 이벤트 구독 해제");
     }
 
 
+    #endregion
+
+
+
+
+
+    #region 씬 전환 및 게임 상태 초기화 메서드
+    
+    /// <summary>
+    /// 씬 로드 이벤트 콜백 (씬이 로드될 때마다 호출됨)
+    /// </summary>
+    /// <param name="scene">로드된 씬</param>
+    /// <param name="mode">씬 로드 모드</param>
+    void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        string currentSceneName = scene.name;
+        
+        Debug.Log($"🔍 GameManager: 씬 로드 감지 - 이전:{lastSceneName}, 현재:{currentSceneName}, 게임씬여부:{IsGameScene(currentSceneName)}");
+        
+        // 씬이 바뀌었고, 게임 씬인 경우
+        if (lastSceneName != currentSceneName && IsGameScene(currentSceneName))
+        {
+            Debug.Log($"🔄 GameManager: 게임 씬 전환 감지 - {lastSceneName} → {currentSceneName}");
+            
+            // 게임 상태 초기화
+            ResetGameState();
+            
+            // 약간의 지연 후 컴포넌트 찾기 (씬 로드 완료 대기)
+            StartCoroutine(FindComponentsAfterSceneLoad());
+            
+            Debug.Log("✅ GameManager: 게임 상태 초기화 완료");
+        }
+        
+        // 현재 씬 이름 저장
+        lastSceneName = currentSceneName;
+    }
+    
+    /// <summary>
+    /// 씬 로드 후 컴포넌트 찾기 (지연 호출)
+    /// </summary>
+    IEnumerator FindComponentsAfterSceneLoad()
+    {
+        // 씬 로드 완료 대기
+        yield return new WaitForEndOfFrame();
+        yield return new WaitForEndOfFrame(); // 추가 대기로 안전성 확보
+        
+        // 컴포넌트 찾기
+        FindInGameUIManager();
+        FindTeddyBear();
+        
+        Debug.Log("✅ GameManager: 씬 로드 후 컴포넌트 찾기 완료");
+        
+        // 필수 컴포넌트 확인 시작
+        StartCoroutine(VerifyEssentialComponents());
+    }
+    
+    /// <summary>
+    /// 필수 컴포넌트들이 모두 찾아졌는지 확인 (안전장치)
+    /// </summary>
+    IEnumerator VerifyEssentialComponents()
+    {
+        float checkTime = 0f;
+        float maxCheckTime = 5f; // 최대 5초간 체크
+        
+        while (checkTime < maxCheckTime)
+        {
+            yield return new WaitForSeconds(0.5f); // 0.5초마다 체크
+            checkTime += 0.5f;
+            
+            // 필수 컴포넌트 체크
+            bool allFound = true;
+            
+            if (inGameUIManager == null)
+            {
+                Debug.LogWarning($"⚠️ GameManager: {checkTime:F1}초 경과 - InGameUIManager 여전히 null");
+                FindInGameUIManager();
+                allFound = false;
+            }
+            
+            if (currentTeddyBear == null)
+            {
+                Debug.LogWarning($"⚠️ GameManager: {checkTime:F1}초 경과 - TeddyBear 여전히 null");
+                FindTeddyBear();
+                allFound = false;
+            }
+            
+            // 모든 컴포넌트를 찾았다면 종료
+            if (allFound)
+            {
+                Debug.Log($"✅ GameManager: 모든 필수 컴포넌트 확인 완료 ({checkTime:F1}초)");
+                break;
+            }
+        }
+        
+        // 최종 체크
+        if (inGameUIManager == null)
+        {
+            Debug.LogError("❌ GameManager: InGameUIManager를 찾지 못했습니다! 게임 오버 시 문제가 발생할 수 있습니다.");
+        }
+        if (currentTeddyBear == null)
+        {
+            Debug.LogError("❌ GameManager: TeddyBear를 찾지 못했습니다! 점수 시스템에 문제가 발생할 수 있습니다.");
+        }
+    }
+    
+    /// <summary>
+    /// 게임 씬인지 확인
+    /// </summary>
+    /// <param name="sceneName">씬 이름</param>
+    /// <returns>게임 씬 여부</returns>
+    bool IsGameScene(string sceneName)
+    {
+        // 게임 씬 목록 (프로젝트에 맞게 수정)
+        string[] gameScenes = { "InGame", "Prototype", "GameScene", "Main" };
+        
+        foreach (string gameScene in gameScenes)
+        {
+            if (sceneName.Contains(gameScene))
+            {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    /// <summary>
+    /// 게임 상태 초기화 (새 게임 시작)
+    /// </summary>
+    void ResetGameState()
+    {
+        Debug.Log("🔄 GameManager: 게임 상태 초기화 시작");
+        
+        // 1. DataBase 정보 먼저 캐싱 (PlayTime 확보)
+        CacheDataBaseInfo();
+        Debug.Log($"📋 GameManager: DataBase 재캐싱 완료 - cachedPlayTime: {cachedPlayTime}");
+        
+        // 2. 게임 시간 완전 초기화
+        gameStartTime = Time.time;
+        isGameOver = false;
+        useGameManagerTime = true;
+        
+        Debug.Log($"📅 GameManager: 게임 시간 초기화 - gameStartTime: {gameStartTime:F2}, PlayTime: {GetPlayTime()}초");
+        
+        // 3. 점수 완전 초기화
+        totalTeddyBearScore = 0f;
+        ResetAllScores(); // 테디베어 점수도 함께 초기화
+        
+        // 4. 플레이어 상태 초기화
+        playerHealth = 100f;
+        maxPlayerHealth = 100f;
+        
+        // 5. 이벤트 구독 해제 (컴포넌트 참조 초기화 전에 수행)
+        if (localPlayerLivingEntity != null)
+        {
+            LivingEntity.OnAnyLivingEntityHealthChanged -= HandleAnyLivingEntityHealthChanged;
+        }
+        
+        // 6. 컴포넌트 참조 초기화 (새로 찾아야 함)
+        localPlayerLivingEntity = null;
+        currentPlayerCoinController = null;
+        currentTeddyBear = null;
+        inGameUIManager = null;
+        
+        Debug.Log($"💯 GameManager: 점수 초기화 완료 - totalTeddyBearScore: {totalTeddyBearScore}");
+        Debug.Log($"❤️ GameManager: 플레이어 상태 초기화 완료 - Health: {playerHealth}/{maxPlayerHealth}");
+        Debug.Log($"🕐 GameManager: 최종 시간 확인 - 현재게임시간: {GetGameTime():F2}초, 남은시간: {(GetPlayTime() - GetGameTime()):F2}초");
+        
+        // 7. UI 이벤트 발생 (초기값으로) - 약간의 지연을 두어 확실히 적용
+        StartCoroutine(SendInitialUIEvents());
+        
+        Debug.Log("✅ GameManager: 게임 상태 초기화 완료");
+    }
+    
+    /// <summary>
+    /// 초기 UI 이벤트 발생 (약간의 지연으로 확실한 적용)
+    /// </summary>
+    System.Collections.IEnumerator SendInitialUIEvents()
+    {
+        yield return new WaitForEndOfFrame();
+        
+        // UI 이벤트 발생 전 최종 상태 확인
+        float currentPlayTime = GetPlayTime();
+        float currentGameTime = GetGameTime();
+        float remainingTime = currentPlayTime - currentGameTime;
+        
+        Debug.Log($"📡 GameManager: UI 이벤트 발생 전 최종 확인 - PlayTime:{currentPlayTime}, GameTime:{currentGameTime:F2}, 남은시간:{remainingTime:F2}");
+        
+        // UI 이벤트 발생 (초기값으로)
+        OnScoreUpdated?.Invoke(0f);
+        OnScoreMultiplierUpdated?.Invoke(1f);
+        OnGameTimeUpdated?.Invoke(remainingTime); // 남은 시간으로 초기화
+        
+        Debug.Log($"📡 GameManager: UI 이벤트 발생 완료 - 점수:0, 배율:1, 남은시간:{remainingTime:F2}초");
+    }
+    
+    /// <summary>
+    /// 외부에서 호출 가능한 강제 게임 상태 초기화 (디버그용)
+    /// </summary>
+    public void ForceResetGameState()
+    {
+        Debug.Log("🚨 GameManager: 강제 게임 상태 초기화 호출됨");
+        ResetGameState();
+        
+        // 테디베어 다시 찾기 및 초기화
+        currentTeddyBear = null;
+        FindTeddyBear();
+        
+        // InGameUIManager 다시 찾기
+        inGameUIManager = null;
+        FindInGameUIManager();
+        
+        Debug.Log("✅ GameManager: 강제 게임 상태 초기화 완료");
+    }
+    
     #endregion
 
 
@@ -374,12 +628,13 @@ public class GameManager : Singleton<GameManager>
         
         // 플레이어 조작 비활성화
         DisablePlayerControls();
+        // UI 표시
+        ShowGameOverUI(finalScore);
         
         // 게임 오버 이벤트 발생 (최종 점수와 함께)
         OnGameOver?.Invoke(finalScore);
         
-        // UI 표시
-        ShowGameOverUI(finalScore);
+
     }
     
     /// <summary>
@@ -433,13 +688,34 @@ public class GameManager : Singleton<GameManager>
     /// <param name="finalScore">최종 점수</param>
     void ShowGameOverUI(float finalScore)
     {
+        // InGameUIManager가 null이면 즉시 찾기 시도
+        if (inGameUIManager == null)
+        {
+            Debug.LogWarning("⚠️ GameManager: InGameUIManager가 null - 즉시 찾기 시도");
+            FindInGameUIManager();
+        }
+        
         if (inGameUIManager != null)
         {
             inGameUIManager.ShowGameOverPanel(finalScore);
+            Debug.Log($"✅ GameManager: 게임 오버 UI 표시 완료 - 점수: {finalScore}");
         }
         else
         {
-            Debug.LogError("❌ GameManager: InGameUIManager가 null입니다. 게임 오버 UI를 표시할 수 없습니다.");
+            Debug.LogError("❌ GameManager: InGameUIManager를 찾을 수 없습니다. 게임 오버 UI를 표시할 수 없습니다.");
+            
+            // 마지막 시도: 강제로 모든 InGameUIManager 찾기
+            InGameUIManager[] allManagers = FindObjectsOfType<InGameUIManager>();
+            if (allManagers.Length > 0)
+            {
+                inGameUIManager = allManagers[0];
+                Debug.Log($"🔍 GameManager: 강제 검색으로 InGameUIManager 발견 - {inGameUIManager.name}");
+                inGameUIManager.ShowGameOverPanel(finalScore);
+            }
+            else
+            {
+                Debug.LogError("❌ GameManager: 씬에 InGameUIManager가 존재하지 않습니다!");
+            }
         }
     }
     
@@ -589,27 +865,52 @@ public class GameManager : Singleton<GameManager>
             currentTeddyBear = FindObjectOfType<TestTeddyBear>();
             if (currentTeddyBear != null)
             {
-                Debug.Log("테디베어를 찾았습니다!");
+                Debug.Log("✅ GameManager: 테디베어를 찾았습니다!");
+                
+                // 게임 씬에서는 항상 점수 초기화
+                currentTeddyBear.ResetScore();
+                Debug.Log($"🔄 GameManager: 테디베어 점수 초기화 완료 - 현재 점수: {currentTeddyBear.GetCurrentScore()}");
             }
         }
     }
     
     /// <summary>
-    /// InGameUIManager 찾기
+    /// InGameUIManager 찾기 (강화된 버전)
     /// </summary>
     void FindInGameUIManager()
     {
         if (inGameUIManager == null)
         {
+            // 1차 시도: 기본 FindObjectOfType
             inGameUIManager = FindObjectOfType<InGameUIManager>();
+            
             if (inGameUIManager != null)
             {
                 Debug.Log("✅ GameManager: InGameUIManager를 찾았습니다!");
+                return;
             }
-            else
+            
+            // 2차 시도: 비활성화된 오브젝트까지 포함해서 찾기
+            InGameUIManager[] allManagers = Resources.FindObjectsOfTypeAll<InGameUIManager>();
+            foreach (var manager in allManagers)
             {
-                Debug.LogWarning("⚠️ GameManager: InGameUIManager를 찾을 수 없습니다.");
+                // 씬에 있는 오브젝트인지 확인 (프리팹이나 삭제된 오브젝트 제외)
+                if (manager.gameObject.scene.isLoaded)
+                {
+                    inGameUIManager = manager;
+                    Debug.Log($"✅ GameManager: 비활성화된 InGameUIManager를 찾았습니다! - {manager.name}");
+                    
+                    // 비활성화되어 있다면 활성화
+                    if (!manager.gameObject.activeInHierarchy)
+                    {
+                        Debug.LogWarning("⚠️ GameManager: InGameUIManager가 비활성화되어 있어서 활성화합니다.");
+                        manager.gameObject.SetActive(true);
+                    }
+                    return;
+                }
             }
+            
+            Debug.LogWarning("⚠️ GameManager: InGameUIManager를 찾을 수 없습니다.");
         }
     }
 
