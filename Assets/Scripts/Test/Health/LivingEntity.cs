@@ -31,6 +31,8 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
     // ✅ 플레이어 사망을 알리는 static 이벤트. TestTeddyBear 등이 구독할 수 있습니다.
     public static event Action<LivingEntity> OnPlayerDied;
 
+    public event Action OnRevive;
+
 
     [Header("스턴 제어")]
     private MoveController moveController;
@@ -286,6 +288,8 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
             Debug.Log($"[LivingEntity] {gameObject.name} 부활!");
             // 부활 시 UI 업데이트 (GameManager에 알림)
             OnAnyLivingEntityHealthChanged?.Invoke(CurrentHealth, StartingHealth, this);
+
+            OnRevive?.Invoke();
         }
     }
 
@@ -325,6 +329,8 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
             OnAnyLivingEntityHealthChanged?.Invoke(this.CurrentHealth, this.StartingHealth, this);
         }
     }
+
+    
 
     #endregion
 }

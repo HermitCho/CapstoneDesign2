@@ -24,6 +24,8 @@ public class TestShoot : MonoBehaviour
                 Debug.LogError("TestShoot: TestGun 컴포넌트를 찾을 수 없습니다. Inspector에서 직접 할당하거나 같은 GameObject나 자식 GameObject에 TestGun 컴포넌트를 추가하세요.");
             }
         }
+
+        SetIsShooting(true);
     }
 
     void OnEnable()
@@ -39,6 +41,7 @@ public class TestShoot : MonoBehaviour
         InputManager.OnShootCanceledPressed -= OnShootCanceledInput;
         InputManager.OnReloadPressed -= OnReloadInput;
     }
+
 
     void OnShootInput()
     {
