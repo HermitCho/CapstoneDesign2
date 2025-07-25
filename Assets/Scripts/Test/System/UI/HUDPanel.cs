@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using TMPro;
 using Michsky.UI.Heat;
 using System.Collections;
+using Febucci.UI;
 
 /// <summary>
 /// 🎮 통합 HUD 패널
@@ -53,7 +54,6 @@ public class HUDPanel : MonoBehaviour
     private float maxHealth = 100f;
     private bool isTargeting = false;
     private bool isItemUIOpen = false;
-    private float playTime = 360f;
     private int currentSpawnedCharacterIndex = -1;
     private GameObject currentCharacterPrefab; // 현재 캐릭터 프리팹 정보 저장
     private CharacterSkill currentCharacterSkill; // 현재 캐릭터 스킬 정보 저장
@@ -63,6 +63,24 @@ public class HUDPanel : MonoBehaviour
     private TestTeddyBear currentTeddyBear; // 현재 테디베어 컴포넌트 저장
     private int currentCoin = 0; // 현재 코인 저장
     
+    // TextAnimator 관련 변수들
+    private float lastMultiplier = -1f; // 마지막 배율 값 
+    private TextAnimator_TMP multiplierTextAnimator; // TextAnimator 컴포넌트 참조
+    private string lastMultiplierText = ""; // 마지막 설정된 텍스트 (중복 설정 방지)
+    private float lastMultiplierUpdateTime = 0f; // 마지막 업데이트 시간 (애니메이션 보호)
+
+    // 추가 TextAnimator 컴포넌트들
+    private TextAnimator_TMP scoreTextAnimator;
+    private TextAnimator_TMP gameTimeTextAnimator;
+    private TextAnimator_TMP coinTextAnimator;
+    
+    // 각 텍스트의 마지막 상태 추적
+    private string lastScoreText = "";
+    private string lastGameTimeText = "";
+    private string lastCoinText = "";
+    private float lastScoreUpdateTime = 0f;
+    private float lastGameTimeUpdateTime = 0f;
+    private float lastCoinUpdateTime = 0f;
 
     #endregion
 
@@ -158,10 +176,15 @@ public class HUDPanel : MonoBehaviour
         // 실시간 게임 시간 업데이트
         UpdateRealTimeUI();
 
-        // 시간대별 배율 UI 실시간 업데이트
+        // 시간대별 배율 UI 실시간 업데이트 (값이 변경된 경우에만)
         if (GameManager.Instance != null)
         {
-            UpdateMultiplier(GameManager.Instance.GetScoreMultiplier());
+            float currentMultiplier = GameManager.Instance.GetScoreMultiplier();
+            if (Mathf.Abs(currentMultiplier - lastMultiplier) > 0.01f) // 값이 변경된 경우에만 업데이트
+            {
+                UpdateMultiplier(currentMultiplier);
+                lastMultiplier = currentMultiplier;
+            }
         }
     }
 
@@ -176,11 +199,13 @@ public class HUDPanel : MonoBehaviour
     {
         CacheDataBaseInfo();
 
+        // TextAnimator 컴포넌트 초기화 (Best Practices 적용)
+        InitializeTextAnimator();
+
         // 스킬 시스템 초기화는 캐릭터 스폰 완료 후에 처리
 
         // 초기값 설정
         SetHealth(100f, 100f);
-        SetPlayTime();
         SetCrosshairTargeting(false);
         UpdateScore(0f);
         UpdateMultiplier(1f);
@@ -265,11 +290,6 @@ public class HUDPanel : MonoBehaviour
 
         // 아이템 UI 닫힌 상태로 시작
         CloseItemUI();
-    }
-
-    void SetPlayTime()
-    {
-        playTime = GameManager.Instance.GetPlayTime();
     }
 
     #endregion
@@ -428,10 +448,41 @@ public class HUDPanel : MonoBehaviour
     /// </summary>
     public void UpdateScore(float score)
     {
-        if (scoreText != null)
+        if (scoreText == null) return;
+
+        // 너무 빠른 연속 호출 방지 (TextAnimator 애니메이션 보호)
+        float currentTime = Time.time;
+        float timeSinceLastUpdate = currentTime - lastScoreUpdateTime;
+        
+        // 0.1초 이내의 연속 호출은 무시 (애니메이션 중단 방지)
+        if (timeSinceLastUpdate < 0.1f && lastScoreUpdateTime > 0f)
         {
-            scoreText.text = string.Format(cachedScoreFormat, score);
+            return;
+        }
+
+        string formattedText = string.Format(cachedScoreFormat, score);
+
+        // 텍스트 내용이 실제로 변경되었을 때만 업데이트 (TextAnimator 애니메이션 보호)
+        if (formattedText != lastScoreText)
+        {
             scoreText.color = cachedScoreFormatColor;
+
+            // TextAnimator SetText 메서드 사용 (Best Practices 적용)
+            if (scoreTextAnimator != null)
+            {
+                scoreTextAnimator.SetText(formattedText);
+                
+                // 마지막 설정된 텍스트와 시간 저장
+                lastScoreText = formattedText;
+                lastScoreUpdateTime = currentTime;
+            }
+            else
+            {
+                // Fallback: 일반 텍스트 설정
+                scoreText.text = formattedText;
+                lastScoreText = formattedText;
+                lastScoreUpdateTime = currentTime;
+            }
         }
     }
 
@@ -441,6 +492,19 @@ public class HUDPanel : MonoBehaviour
     public void UpdateMultiplier(float multiplier)
     {
         if (multiplierText == null) return;
+
+        // 너무 빠른 연속 호출 방지 (TextAnimator 애니메이션 보호)
+        float currentTime = Time.time;
+        float timeSinceLastUpdate = currentTime - lastMultiplierUpdateTime;
+        
+        // 0.1초 이내의 연속 호출은 무시 (애니메이션 중단 방지)
+        if (timeSinceLastUpdate < 0.1f && lastMultiplierUpdateTime > 0f)
+        {
+            return;
+        }
+
+        string formattedText = "";
+        Color textColor = Color.white;
 
         // 시간대에 따른 포맷 선택 - GameManager 기반 안전한 접근
         try
@@ -457,32 +521,54 @@ public class HUDPanel : MonoBehaviour
                 if (gameTime >= scoreIncreaseTime)
                 {
                     // 점수배율 적용 시점 이후: multiplierFormat 사용
-                    multiplierText.color = multiplier > 1f ? cachedMultiplierFormatColor : cachedGeneralMultiplierFormatColor;
-                    multiplierText.text = string.Format(cachedMultiplierFormat, multiplier);
+                    textColor = multiplier > 1f ? cachedMultiplierFormatColor : cachedGeneralMultiplierFormatColor;
+                    formattedText = string.Format(cachedMultiplierFormat, multiplier);
                 }
                 else
                 {
-                    multiplierText.color = cachedGeneralMultiplierFormatColor;
+                    textColor = cachedGeneralMultiplierFormatColor;
                     // 점수배율 적용 전: GeneralMultiplierFormat 사용
-                    multiplierText.text = string.Format(cachedGeneralMultiplierFormat, multiplier);
-
+                    formattedText = string.Format(cachedGeneralMultiplierFormat, multiplier);
                 }
             }
             else
             {
-                multiplierText.color = cachedGeneralMultiplierFormatColor;
-
+                textColor = cachedGeneralMultiplierFormatColor;
                 // GameManager가 없는 경우
-                multiplierText.text = string.Format(cachedGeneralMultiplierFormat, multiplier);
-
+                formattedText = string.Format(cachedGeneralMultiplierFormat, multiplier);
             }
         }
         catch (System.Exception e)
         {
-            multiplierText.color = cachedGeneralMultiplierFormatColor;
+            textColor = cachedGeneralMultiplierFormatColor;
             // 안전한 fallback
-            multiplierText.text = string.Format(cachedGeneralMultiplierFormat, multiplier);
+            formattedText = string.Format(cachedGeneralMultiplierFormat, multiplier);
+        }
 
+        // 텍스트 내용이 실제로 변경되었을 때만 업데이트 (TextAnimator 애니메이션 보호)
+        if (formattedText != lastMultiplierText)
+        {
+            // 색상 설정
+            multiplierText.color = textColor;
+
+            // TextAnimator SetText 메서드 사용 (Best Practices 적용)
+            if (multiplierTextAnimator != null)
+            {
+                // 공식 문서 권장: textAnimator.SetText() 사용
+                multiplierTextAnimator.SetText(formattedText);
+                
+                // 마지막 설정된 텍스트와 시간 저장
+                lastMultiplierText = formattedText;
+                lastMultiplierUpdateTime = currentTime;
+            }
+            else
+            {
+                // Fallback: 일반 텍스트 설정 (TextAnimator 없을 경우에만)
+                multiplierText.text = formattedText;
+                lastMultiplierText = formattedText;
+                lastMultiplierUpdateTime = currentTime;
+                Debug.LogWarning("⚠️ HUDPanel - TextAnimator가 없어 일반 텍스트로 업데이트: " + formattedText);
+            }
         }
     }
 
@@ -491,10 +577,41 @@ public class HUDPanel : MonoBehaviour
     /// </summary>
     public void UpdateGameTime(float time)
     {
-        if (gameTimeText != null)
+        if (gameTimeText == null) return;
+
+        // 너무 빠른 연속 호출 방지 (TextAnimator 애니메이션 보호)
+        float currentTime = Time.time;
+        float timeSinceLastUpdate = currentTime - lastGameTimeUpdateTime;
+        
+        // 0.1초 이내의 연속 호출은 무시 (애니메이션 중단 방지)
+        if (timeSinceLastUpdate < 0.1f && lastGameTimeUpdateTime > 0f)
         {
-            gameTimeText.text = string.Format(cachedGameTimeFormat, time);
+            return;
+        }
+
+        string formattedText = string.Format(cachedGameTimeFormat, time);
+
+        // 텍스트 내용이 실제로 변경되었을 때만 업데이트 (TextAnimator 애니메이션 보호)
+        if (formattedText != lastGameTimeText)
+        {
             gameTimeText.color = cachedGameTimeFormatColor;
+
+            // TextAnimator SetText 메서드 사용 (Best Practices 적용)
+            if (gameTimeTextAnimator != null)
+            {
+                gameTimeTextAnimator.SetText(formattedText);
+                
+                // 마지막 설정된 텍스트와 시간 저장
+                lastGameTimeText = formattedText;
+                lastGameTimeUpdateTime = currentTime;
+            }
+            else
+            {
+                // Fallback: 일반 텍스트 설정
+                gameTimeText.text = formattedText;
+                lastGameTimeText = formattedText;
+                lastGameTimeUpdateTime = currentTime;
+            }
         }
     }
 
@@ -658,8 +775,6 @@ public class HUDPanel : MonoBehaviour
             }
 
             int itemCount = itemSlot.childCount;
-            Debug.Log($"📊 HUDPanel - ItemSlot 자식 개수: {itemCount}");
-
             if (itemCount == 0)
             {
                 // 아이템이 없으면 아이콘 초기화
@@ -754,8 +869,6 @@ public class HUDPanel : MonoBehaviour
         iconImage.sprite = skillIcon;
         iconImage.color = isActive ? skillColor : Color.gray; // 비활성화된 아이템은 회색
         iconImage.gameObject.SetActive(true); // 항상 활성화
-
-        Debug.Log($"✅ HUDPanel - 아이템 아이콘 업데이트 완료 (활성화: {isActive})");
     }
 
     /// <summary>
@@ -779,7 +892,6 @@ public class HUDPanel : MonoBehaviour
     {
         ClearItemIcon(itemIcon1);
         ClearItemIcon(itemIcon2);
-        Debug.Log("🔄 HUDPanel - 모든 아이템 아이콘을 빈 아이콘으로 설정");
     }
 
     #endregion
@@ -887,24 +999,13 @@ public class HUDPanel : MonoBehaviour
     }
 
     /// <summary>
-    /// 실시간 게임 시간 및 배율 업데이트
+    /// 실시간 배율 업데이트 (게임 시간은 이벤트로 처리)
     /// </summary>
     void UpdateRealTimeUI()
     {
         if (GameManager.Instance == null) return;
 
-        // 게임 시간 가져오기
-        float gameTime = GameManager.Instance.GetGameTime();
-        gameTime = playTime - gameTime;
-
-        // 게임 시간 UI 업데이트
-        if (gameTimeText != null)
-        {
-            gameTimeText.text = string.Format(cachedGameTimeFormat, gameTime);
-            gameTimeText.color = cachedGameTimeFormatColor;
-        }
-
-        // 배율도 실시간으로 추가 업데이트 (더 빠른 반응을 위해)
+        // 배율만 실시간으로 업데이트 (게임 시간은 OnGameTimeUpdated 이벤트로 처리)
         float currentMultiplier = GameManager.Instance.GetScoreMultiplier();
         UpdateMultiplier(currentMultiplier);
     }
@@ -1254,9 +1355,41 @@ public class HUDPanel : MonoBehaviour
     {
         if (coinText == null) return;
 
+        // 너무 빠른 연속 호출 방지 (TextAnimator 애니메이션 보호)
+        float currentTime = Time.time;
+        float timeSinceLastUpdate = currentTime - lastCoinUpdateTime;
+        
+        // 0.1초 이내의 연속 호출은 무시 (애니메이션 중단 방지)
+        if (timeSinceLastUpdate < 0.1f && lastCoinUpdateTime > 0f)
+        {
+            return;
+        }
+
         currentCoin = coinAmount;
-        coinText.text = string.Format(cachedCoinFormat, currentCoin);
-        coinText.color = cachedCoinFormatColor;
+        string formattedText = string.Format(cachedCoinFormat, currentCoin);
+
+        // 텍스트 내용이 실제로 변경되었을 때만 업데이트 (TextAnimator 애니메이션 보호)
+        if (formattedText != lastCoinText)
+        {
+            coinText.color = cachedCoinFormatColor;
+
+            // TextAnimator SetText 메서드 사용 (Best Practices 적용)
+            if (coinTextAnimator != null)
+            {
+                coinTextAnimator.SetText(formattedText);
+                
+                // 마지막 설정된 텍스트와 시간 저장
+                lastCoinText = formattedText;
+                lastCoinUpdateTime = currentTime;
+            }
+            else
+            {
+                // Fallback: 일반 텍스트 설정
+                coinText.text = formattedText;
+                lastCoinText = formattedText;
+                lastCoinUpdateTime = currentTime;
+            }
+        }
     }
 
     /// <summary>
@@ -1352,4 +1485,204 @@ public class HUDPanel : MonoBehaviour
         // 현재는 싱글 환경이므로 기본 방법 사용
         return FindCurrentPlayerItemController();
     }
+
+    /// <summary>
+    /// TextAnimator 컴포넌트 초기화 (Best Practices 적용)
+    /// </summary>
+    private void InitializeTextAnimator()
+    {
+        // multiplierText TextAnimator 초기화
+        if (multiplierText != null)
+        {
+            multiplierTextAnimator = multiplierText.GetComponent<TextAnimator_TMP>();
+            if (multiplierTextAnimator == null)
+            {
+                multiplierTextAnimator = multiplierText.gameObject.AddComponent<TextAnimator_TMP>();
+                Debug.Log("✅ HUDPanel - TextAnimator_TMP 컴포넌트를 multiplierText에 추가했습니다.");
+            }
+            else
+            {
+                Debug.Log("✅ HUDPanel - multiplierText 기존 TextAnimator_TMP 컴포넌트를 찾았습니다.");
+            }
+        }
+
+        // scoreText TextAnimator 초기화
+        if (scoreText != null)
+        {
+            scoreTextAnimator = scoreText.GetComponent<TextAnimator_TMP>();
+            if (scoreTextAnimator == null)
+            {
+                scoreTextAnimator = scoreText.gameObject.AddComponent<TextAnimator_TMP>();
+                Debug.Log("✅ HUDPanel - TextAnimator_TMP 컴포넌트를 scoreText에 추가했습니다.");
+            }
+            else
+            {
+                Debug.Log("✅ HUDPanel - scoreText 기존 TextAnimator_TMP 컴포넌트를 찾았습니다.");
+            }
+        }
+
+        // gameTimeText TextAnimator 초기화
+        if (gameTimeText != null)
+        {
+            gameTimeTextAnimator = gameTimeText.GetComponent<TextAnimator_TMP>();
+            if (gameTimeTextAnimator == null)
+            {
+                gameTimeTextAnimator = gameTimeText.gameObject.AddComponent<TextAnimator_TMP>();
+                Debug.Log("✅ HUDPanel - TextAnimator_TMP 컴포넌트를 gameTimeText에 추가했습니다.");
+            }
+            else
+            {
+                Debug.Log("✅ HUDPanel - gameTimeText 기존 TextAnimator_TMP 컴포넌트를 찾았습니다.");
+            }
+        }
+
+        // coinText TextAnimator 초기화
+        if (coinText != null)
+        {
+            coinTextAnimator = coinText.GetComponent<TextAnimator_TMP>();
+            if (coinTextAnimator == null)
+            {
+                coinTextAnimator = coinText.gameObject.AddComponent<TextAnimator_TMP>();
+                Debug.Log("✅ HUDPanel - TextAnimator_TMP 컴포넌트를 coinText에 추가했습니다.");
+            }
+            else
+            {
+                Debug.Log("✅ HUDPanel - coinText 기존 TextAnimator_TMP 컴포넌트를 찾았습니다.");
+            }
+        }
+
+        Debug.Log("🎨 HUDPanel - 모든 TextAnimator 초기화 완료. <shake>, <wave>, <bounce> 등 태그 사용 가능");
+    }
+
+    /// <summary>
+    /// 모든 TextAnimator 메시 새로고침 (Best Practices 권장)
+    /// TMPro.ForceMeshUpdate() 대신 사용
+    /// </summary>
+    public void RefreshAllTextMeshes()
+    {
+        RefreshMultiplierTextMesh();
+        RefreshScoreTextMesh();
+        RefreshGameTimeTextMesh();
+        RefreshCoinTextMesh();
+    }
+
+    /// <summary>
+    /// Multiplier TextAnimator 메시 새로고침
+    /// </summary>
+    public void RefreshMultiplierTextMesh()
+    {
+        if (multiplierTextAnimator != null)
+        {
+            multiplierTextAnimator.ScheduleMeshRefresh();
+        }
+    }
+
+    /// <summary>
+    /// Score TextAnimator 메시 새로고침
+    /// </summary>
+    public void RefreshScoreTextMesh()
+    {
+        if (scoreTextAnimator != null)
+        {
+            scoreTextAnimator.ScheduleMeshRefresh();
+        }
+    }
+
+    /// <summary>
+    /// GameTime TextAnimator 메시 새로고침
+    /// </summary>
+    public void RefreshGameTimeTextMesh()
+    {
+        if (gameTimeTextAnimator != null)
+        {
+            gameTimeTextAnimator.ScheduleMeshRefresh();
+        }
+    }
+
+    /// <summary>
+    /// Coin TextAnimator 메시 새로고침
+    /// </summary>
+    public void RefreshCoinTextMesh()
+    {
+        if (coinTextAnimator != null)
+        {
+            coinTextAnimator.ScheduleMeshRefresh();
+        }
+    }
+
+    #region TextAnimator 테스트 메서드들 (에디터 전용)
+
+    /// <summary>
+    /// 모든 TextAnimator 테스트 메서드 실행
+    /// </summary>
+    [System.Diagnostics.Conditional("UNITY_EDITOR")]
+    public void TestAllTextAnimations()
+    {
+        TestMultiplierAnimation();
+        TestScoreAnimation();
+        TestGameTimeAnimation();
+        TestCoinAnimation();
+    }
+
+    /// <summary>
+    /// Multiplier TextAnimator 테스트 메서드
+    /// </summary>
+    [System.Diagnostics.Conditional("UNITY_EDITOR")]
+    public void TestMultiplierAnimation()
+    {
+        if (multiplierTextAnimator != null)
+        {
+            string testText = "<shake>×2.5</shake>";
+            multiplierTextAnimator.SetText(testText);
+            lastMultiplierText = testText;
+            Debug.Log("🎭 HUDPanel - Multiplier Shake 애니메이션 테스트: " + testText);
+        }
+    }
+
+    /// <summary>
+    /// Score TextAnimator 테스트 메서드
+    /// </summary>
+    [System.Diagnostics.Conditional("UNITY_EDITOR")]
+    public void TestScoreAnimation()
+    {
+        if (scoreTextAnimator != null)
+        {
+            string testText = "<bounce>SCORE: 1,500</bounce>";
+            scoreTextAnimator.SetText(testText);
+            lastScoreText = testText;
+            Debug.Log("🎭 HUDPanel - Score Bounce 애니메이션 테스트: " + testText);
+        }
+    }
+
+    /// <summary>
+    /// GameTime TextAnimator 테스트 메서드
+    /// </summary>
+    [System.Diagnostics.Conditional("UNITY_EDITOR")]
+    public void TestGameTimeAnimation()
+    {
+        if (gameTimeTextAnimator != null)
+        {
+            string testText = "<wave>TIME: 03:45</wave>";
+            gameTimeTextAnimator.SetText(testText);
+            lastGameTimeText = testText;
+            Debug.Log("🎭 HUDPanel - GameTime Wave 애니메이션 테스트: " + testText);
+        }
+    }
+
+    /// <summary>
+    /// Coin TextAnimator 테스트 메서드
+    /// </summary>
+    [System.Diagnostics.Conditional("UNITY_EDITOR")]
+    public void TestCoinAnimation()
+    {
+        if (coinTextAnimator != null)
+        {
+            string testText = "<shake><color=yellow>💰 999</color></shake>";
+            coinTextAnimator.SetText(testText);
+            lastCoinText = testText;
+            Debug.Log("🎭 HUDPanel - Coin Shake 애니메이션 테스트: " + testText);
+        }
+    }
+
+    #endregion
 } 

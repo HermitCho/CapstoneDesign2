@@ -25,6 +25,10 @@ public class GameManager : Singleton<GameManager>
     
     // 코인 컨트롤러 관리
     private CoinController currentPlayerCoinController;
+    
+    // 게임 오버 관리
+    private bool isGameOver = false;
+    private InGameUIManager inGameUIManager;
 
     #endregion
 
@@ -70,6 +74,9 @@ public class GameManager : Singleton<GameManager>
     public static event Action<int, float> OnSkillCooldownStarted;
 
     public static event Action OnCharacterSpawned;
+    
+    // 게임 오버 이벤트
+    public static event Action<float> OnGameOver; // 최종 점수와 함께 게임 오버 알림
 
     #endregion
 
@@ -90,6 +97,18 @@ public class GameManager : Singleton<GameManager>
 
         // 테디베어 찾기
         FindTeddyBear();
+        
+        // InGameUIManager 찾기
+        FindInGameUIManager();
+    }
+    
+    void Update()
+    {
+        // 게임 오버 상태가 아닐 때만 시간 체크
+        if (!isGameOver)
+        {
+            CheckGameTimeForGameOver();
+        }
     }
 
     void OnDestroy() // ✅ 수정: 오류 해결
@@ -122,13 +141,13 @@ public class GameManager : Singleton<GameManager>
             }
             else
             {
-                Debug.LogWarning("⚠️ DataBase 접근 실패 - 기본값 사용");
+                Debug.LogWarning("⚠️ GameManager: DataBase 접근 실패 - 기본값 사용");
                 dataBaseCached = false;
             }
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"❌ DataBase 캐싱 중 오류: {e.Message} - 기본값 사용");
+            Debug.LogError($"❌ GameManager: DataBase 캐싱 중 오류: {e.Message} - 기본값 사용");
             dataBaseCached = false;
         }
     }
@@ -314,6 +333,122 @@ public class GameManager : Singleton<GameManager>
     }
 
     #endregion
+    
+    
+    
+    
+    
+    #region 게임 오버 관리 메서드
+    
+    /// <summary>
+    /// 게임 시간을 체크하여 게임 오버 조건 확인
+    /// </summary>
+    void CheckGameTimeForGameOver()
+    {
+        float currentGameTime = GetGameTime();
+        float remainingTime = cachedPlayTime - currentGameTime;
+        
+        // 시간이 0 이하가 되면 게임 오버
+        if (remainingTime <= 0f && !isGameOver)
+        {
+            TriggerGameOver();
+        }
+        
+        // 게임 시간 업데이트 이벤트 (남은 시간으로 전달)
+        OnGameTimeUpdated?.Invoke(Mathf.Max(0f, remainingTime));
+    }
+    
+    /// <summary>
+    /// 게임 오버 트리거
+    /// </summary>
+    public void TriggerGameOver()
+    {
+        if (isGameOver) return; // 이미 게임 오버 상태라면 중복 실행 방지
+        
+        isGameOver = true;
+        
+        // 최종 점수 가져오기
+        float finalScore = GetTeddyBearScore();
+        
+        Debug.Log($"🎮 게임 오버! 최종 점수: {finalScore}");
+        
+        // 플레이어 조작 비활성화
+        DisablePlayerControls();
+        
+        // 게임 오버 이벤트 발생 (최종 점수와 함께)
+        OnGameOver?.Invoke(finalScore);
+        
+        // UI 표시
+        ShowGameOverUI(finalScore);
+    }
+    
+    /// <summary>
+    /// 플레이어 조작 비활성화
+    /// </summary>
+    void DisablePlayerControls()
+    {
+        try
+        {
+            // MoveController의 모든 조작 비활성화
+            if (localPlayerLivingEntity != null)
+            {
+                MoveController moveController = localPlayerLivingEntity.GetComponent<MoveController>();
+                if (moveController != null)
+                {
+                    moveController.DisableAllControls();
+                    Debug.Log("✅ GameManager: 플레이어 모든 조작 비활성화");
+                }
+            }
+            
+            // 총 발사 비활성화
+            TestShoot.SetIsShooting(false);
+            Debug.Log("✅ GameManager: 총 발사 비활성화");
+            
+            // 카메라 조작 비활성화
+            CameraController cameraController = localPlayerLivingEntity.GetComponent<CameraController>();
+            if (cameraController != null)
+            {
+                cameraController.DisableCameraControl();
+                Debug.Log("✅ GameManager: 카메라 조작 비활성화");
+            }
+            else
+            {
+                Debug.LogWarning("⚠️ GameManager: CameraController를 찾을 수 없습니다.");
+            }
+            
+            // 마우스 커서 표시
+            Cursor.visible = true;
+            Cursor.lockState = CursorLockMode.None;
+            
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ GameManager: 플레이어 조작 비활성화 중 오류 - {e.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// 게임 오버 UI 표시
+    /// </summary>
+    /// <param name="finalScore">최종 점수</param>
+    void ShowGameOverUI(float finalScore)
+    {
+        if (inGameUIManager != null)
+        {
+            inGameUIManager.ShowGameOverPanel(finalScore);
+        }
+        else
+        {
+            Debug.LogError("❌ GameManager: InGameUIManager가 null입니다. 게임 오버 UI를 표시할 수 없습니다.");
+        }
+    }
+    
+    /// <summary>
+    /// 게임 오버 상태 확인
+    /// </summary>
+    public bool IsGameOver() => isGameOver;
+    
+    #endregion
 
 
 
@@ -455,6 +590,25 @@ public class GameManager : Singleton<GameManager>
             if (currentTeddyBear != null)
             {
                 Debug.Log("테디베어를 찾았습니다!");
+            }
+        }
+    }
+    
+    /// <summary>
+    /// InGameUIManager 찾기
+    /// </summary>
+    void FindInGameUIManager()
+    {
+        if (inGameUIManager == null)
+        {
+            inGameUIManager = FindObjectOfType<InGameUIManager>();
+            if (inGameUIManager != null)
+            {
+                Debug.Log("✅ GameManager: InGameUIManager를 찾았습니다!");
+            }
+            else
+            {
+                Debug.LogWarning("⚠️ GameManager: InGameUIManager를 찾을 수 없습니다.");
             }
         }
     }
