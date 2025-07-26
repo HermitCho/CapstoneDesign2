@@ -17581,7 +17581,7 @@ MonoBehaviour:
     useWallCollisionAvoidance: 1
     cameraFix: 1
     wallAvoidanceSpeed: 5
-    maxCameraDistance: 12
+    maxCameraDistance: 6
     pivotHeightOffset: 0.4
   playerMoveData:
     speed: 10
@@ -17618,29 +17618,29 @@ MonoBehaviour:
     canUseSkill: 1
     canUseGun: 0
   gameData:
-    playTime: 360
+    playTime: 70
   uiData:
     crosshairNormalColor: {r: 1, g: 1, b: 1, a: 1}
     crosshairTargetColor: {r: 1, g: 0, b: 0, a: 1}
     crosshairSize: 1
-    healthyColor: {r: 0, g: 1, b: 0, a: 1}
-    warningColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
-    dangerColor: {r: 1, g: 0, b: 0, a: 1}
+    healthyColor: {r: 0, g: 0, b: 0, a: 1}
+    warningColor: {r: 0.54901963, g: 0.3529412, b: 0, a: 1}
+    dangerColor: {r: 0.5686275, g: 0, b: 0, a: 1}
     waringThreshold: 0.5
     dangerThreshold: 0.2
-    scoreText: "\uC810\uC218: {0:F0}"
-    scoreFormatColor: {r: 1, g: 1, b: 1, a: 1}
-    generalMultiplierText: "\uC810\uC218 \uBC30\uC728 {0:F0}x"
+    scoreText: '{0:F0}'
+    scoreFormatColor: {r: 0, g: 0, b: 0, a: 1}
+    generalMultiplierText: 
     generalMultiplierFormatColor: {r: 0, g: 0.49172926, b: 1, a: 1}
-    multiplierText: "\uD53C\uBC84\uD0C0\uC784! {0:F0}x"
-    multiplierFormatColor: {r: 1, g: 0.8835707, b: 0, a: 1}
-    gameTimeText: "\uC2DC\uAC04: {0:F0}\uCD08"
+    multiplierText: "<shake>\uD53C\uBC84\uD0C0\uC784! {0:F0}x</shake>"
+    multiplierFormatColor: {r: 0, g: 0, b: 0, a: 1}
+    gameTimeText: "{0:F0}\uCD08"
     gameTimeFormatColor: {r: 0, g: 0, b: 0, a: 1}
     healthText: '{0:F0} / {1:F0}'
     healthFormatColor: {r: 0, g: 0, b: 0, a: 1}
     maxCharacterSlots: 4
     currentSelectedIndex: 0
-    selectionTimeText: "\uB0A8\uC740 \uC2DC\uAC04: {0:F0}\uCD08"
+    selectionTimeText: '{0:F0}'
     selectionTime: 10
     selectionTimeNormalFormatColor: {r: 1, g: 1, b: 1, a: 1}
     selectionWarningTime: 5
@@ -17648,10 +17648,10 @@ MonoBehaviour:
     selectionDangerTime: 3
     selectionTimeDangerFormatColor: {r: 1, g: 0, b: 0, a: 1}
     coinText: '{0:F0}'
-    coinFormatColor: {r: 1, g: 1, b: 1, a: 1}
+    coinFormatColor: {r: 0, g: 0, b: 0, a: 1}
   playerData:
     playerPrefabData:
-    - {fileID: 1474873403730597998, guid: 309ffc9e0a9cb3043ac8dec7d8d69bbf, type: 3}
+    - {fileID: 5977901166455454402, guid: 062d7261204a38547b27ebd00f9b65f9, type: 3}
   itemData:
     itemPrefabData:
     - {fileID: 7300657394447749002, guid: 72cde045b08994740bf0b51619eb1321, type: 3}
