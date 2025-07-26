@@ -219,8 +219,6 @@ public class TestMoveAnimationController : MonoBehaviour
     {
         bool grounded = moveController.IsGrounded();
 
-        Debug.Log($"isGrounded: {grounded}, velocityY: {rb.velocity.y}");
-
         // 점프 모션 
         if (!moveController.IsGrounded() && rb.velocity.y > 0.1f)
         {
