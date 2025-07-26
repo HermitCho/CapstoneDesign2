@@ -11,8 +11,8 @@ public class DashItem : CharacterItem
     #region Serialized Fields
 
     [Header("대시 설정")]
-    [SerializeField] private float dashDistance = 30f; // 대시 거리
-    [SerializeField] private float dashDuration = 0.3f; // 대시 지속시간
+    [SerializeField] private float dashDuration = 0.3f; // 대시 지속시간\
+    [SerializeField] private float dashForce = 3f; // 대시 힘
     [SerializeField] private AnimationCurve dashCurve = AnimationCurve.EaseInOut(0, 0, 1, 1); // 대시 곡선
 
     [Header("대시 효과")]
@@ -27,6 +27,7 @@ public class DashItem : CharacterItem
     private Transform playerTransform;
     private Vector3 dashDirection;
     private bool isDashing = false;
+
 
     #endregion
 
@@ -52,8 +53,9 @@ public class DashItem : CharacterItem
     private void InitializeDashSkill()
     {
         // 컴포넌트 참조 가져오기
-        playerRigidbody = GameObject.FindGameObjectWithTag("Player").GetComponent<Rigidbody>();
-        playerTransform = GameObject.FindGameObjectWithTag("Player").transform;
+        GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
+        playerRigidbody = playerObj.GetComponent<Rigidbody>();
+        playerTransform = playerObj.transform;
 
         // 대시 궤적 초기화
         if (dashTrail != null)
@@ -62,8 +64,6 @@ public class DashItem : CharacterItem
         }
 
         // 스킬 기본 정보 설정
-        //skillName = "대시";
-        //skillDescription = "앞방향으로 빠르게 도약합니다.";
         duration = dashDuration;
         castTime = 0f; // 즉시 발동
     }
@@ -98,66 +98,34 @@ public class DashItem : CharacterItem
     private IEnumerator DashRoutine()
     {
         isDashing = true;
-        
-        // 대시 방향 설정 (캐릭터가 바라보는 방향)
         dashDirection = playerTransform.forward;
-        
-        // 대시 시작 효과
         OnDashStart();
-        
-        float elapsedTime = 0f;
-        Vector3 startPosition = playerTransform.position;
-        Vector3 targetPosition = startPosition + (dashDirection * dashDistance);
-        
-        // 대시 궤적 활성화
-        if (dashTrail != null)
-        {
-            dashTrail.enabled = true;
-        }
-        
-        // 대시 파티클 재생
-        if (dashParticles != null)
-        {
-            dashParticles.Play();
-        }
-        
-        // 대시 이동
-        while (elapsedTime < dashDuration)
-        {
-            float progress = elapsedTime / dashDuration;
-            float curveValue = dashCurve.Evaluate(progress);
-            
-            Vector3 newPosition = Vector3.Lerp(startPosition, targetPosition, curveValue);
-            
-            // Rigidbody를 사용한 이동
-            if (playerRigidbody != null)
-            {
-                Vector3 moveVector = newPosition - playerTransform.position;
-                playerRigidbody.MovePosition(newPosition);
-            }
-            else
-            {
-                // Rigidbody가 없으면 Transform으로 이동
-                playerTransform.position = newPosition;
-            }
-            
-            elapsedTime += Time.deltaTime;
-            yield return null;
-        }
-        
-        // 최종 위치로 이동
+
+
+        // 대시 궤적/파티클
+        if (dashTrail != null) dashTrail.enabled = true;
+        if (dashParticles != null) dashParticles.Play();
+
+        // 기존 속도 제거 후 힘 가하기
         if (playerRigidbody != null)
         {
-            playerRigidbody.MovePosition(targetPosition);
+            playerRigidbody.velocity = Vector3.zero;
+            float elapsedTime = 0f;
+            while (elapsedTime < dashDuration)
+            {
+                float progress = elapsedTime / dashDuration;
+                float curveValue = dashCurve.Evaluate(progress);
+                // 힘을 곡선에 따라 가중치로 적용
+                playerRigidbody.AddForce(dashDirection * dashForce * curveValue, ForceMode.VelocityChange);
+                elapsedTime += Time.fixedDeltaTime;
+                yield return new WaitForFixedUpdate();
+            }
+            // 대시 종료 후 속도 0으로
+            playerRigidbody.velocity = Vector3.zero;
         }
-        else
-        {
-            playerTransform.position = targetPosition;
-        }
-        
-        // 대시 종료 효과
+
+        // 대시 궤적/파티클 종료
         OnDashEnd();
-        
         isDashing = false;
     }
 
@@ -198,14 +166,7 @@ public class DashItem : CharacterItem
 
     #region Public Methods
 
-    /// <summary>
-    /// 대시 거리를 설정합니다.
-    /// </summary>
-    /// <param name="distance">대시 거리</param>
-    public void SetDashDistance(float distance)
-    {
-        dashDistance = Mathf.Max(0f, distance);
-    }
+
 
     /// <summary>
     /// 대시 지속시간을 설정합니다.
@@ -220,15 +181,6 @@ public class DashItem : CharacterItem
 
     #region Utility Methods
 
-    /// <summary>
-    /// 스킬 정보를 문자열로 반환합니다.
-    /// </summary>
-    /// <returns>스킬 정보 문자열</returns>
-    public override string ToString()
-    {
-        string baseInfo = base.ToString();
-        return $"{baseInfo} (대시 거리: {dashDistance}m, 지속시간: {dashDuration}s)";
-    }
 
     #endregion
 }

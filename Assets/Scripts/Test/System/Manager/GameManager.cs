@@ -110,7 +110,7 @@ public class GameManager : Singleton<GameManager>
     {
         // DataBase 정보 캐싱 (항상 수행)
         CacheDataBaseInfo();
-        
+
         Debug.Log($"🔧 GameManager: Start 완료 - PlayTime: {GetPlayTime()}초");
     }
     
@@ -143,7 +143,7 @@ public class GameManager : Singleton<GameManager>
         // 테디베어 체크
         if (currentTeddyBear == null)
         {
-            FindTeddyBear();
+        FindTeddyBear();
         }
     }
 
@@ -372,7 +372,7 @@ public class GameManager : Singleton<GameManager>
         
         Debug.Log("✅ GameManager: 강제 게임 상태 초기화 완료");
     }
-    
+
     #endregion
 
 
@@ -723,7 +723,7 @@ public class GameManager : Singleton<GameManager>
     /// 게임 오버 상태 확인
     /// </summary>
     public bool IsGameOver() => isGameOver;
-    
+
     #endregion
 
 

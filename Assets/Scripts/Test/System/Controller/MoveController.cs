@@ -495,7 +495,6 @@ public class MoveController : MonoBehaviour
                     playerRigidbody.velocity = new Vector3(correctedHorizontalVelocity.x, currentVelocity.y, correctedHorizontalVelocity.z);
                 }
                 
-                Debug.Log($"⚠️ 벽 통과 방지: 플레이어를 안전한 위치로 이동 {safePosition} (충돌 객체: {closestHit.collider.name})");
                 lastValidPosition = safePosition;
                 return;
             }
