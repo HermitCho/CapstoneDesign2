@@ -31,24 +31,14 @@ public class TestMoveAnimationController : MonoBehaviour
     private float aimingAnimSpeed = 0.5f;
     private bool isAiming = false;
 
-    // 점프 관련
-    
-    
-    // 좌우회전 관련
-    private float smoothedTurnValue = 0f;  // 회전 방향 스무딩
-    private float smoothedMoveTurnValue = 0f; // 회전 방향 스무딩
-    private float turnSensitivity = 0.2f;  // 민감도 조절
-    private float MoveturnLerpSpeed = 5f; // Moveturn 부드러운 전환 속도
-    private float turnLerpSpeed = 10f;     // turn 부드러운 전환 속도
+    // 테디베어 총기 부착 관련
+    [SerializeField] private TestTeddyBear teddyBear;
+    [SerializeField] private GameObject gunObject;
+    private bool previousAttachState = false;
 
-    // // 상하회전 관련
-    // [SerializeField] MultiAimConstraint headLookConstraint;
-    // [SerializeField] Transform aimTarget;
-    // [SerializeField] private float maxLookUpAngle = 40f;
-    // [SerializeField] private float maxLookDownAngle = -20f;
+    // 발소리 관련
+    private FootstepSoundPlayer footstepSoundPlayer;
 
-    // // Rig설정
-    // [SerializeField] private Rig armAimRig; // Rig3
 
     private GunIK gunIK;
     private LivingEntity livingEntity;
@@ -62,6 +52,8 @@ public class TestMoveAnimationController : MonoBehaviour
         upperBodyLayerIndex = animator.GetLayerIndex("UpperBody");
         gunIK = GetComponent<GunIK>();
         livingEntity = GetComponent<LivingEntity>();
+        footstepSoundPlayer = GetComponent<FootstepSoundPlayer>();
+
     }
 
     private void OnEnable()
@@ -98,27 +90,13 @@ public class TestMoveAnimationController : MonoBehaviour
     private void Update()
     {
         HandleMovementAnimation();
-        HandleTurnAnimation();
+        // HandleTurnAnimation();
         HandleAnimatorSpeed();
         HandleJumpAnimation();
         // HandleLookAnimation();
+        HandleTeddyBearWeaponState();
 
     }
-
-    // private void LateUpdate()
-    // {
-    //     if (aimTarget != null && cameraController != null)
-    //     {
-    //         float pitch = cameraController.GetTargetVerticalAngle();
-
-    //         // 각도 제한
-    //         pitch = Mathf.Clamp(pitch, maxLookDownAngle, maxLookUpAngle);
-
-    //         // 현재 로컬 회전의 나머지 축은 유지
-    //         Vector3 currentEuler = aimTarget.localEulerAngles;
-    //         aimTarget.localEulerAngles = new Vector3(pitch, currentEuler.y, currentEuler.z);
-    //     }
-    // }
 
     // 이동 입력 처리
     void OnMoveInput(Vector2 input)
@@ -135,8 +113,12 @@ public class TestMoveAnimationController : MonoBehaviour
     // 이동 애니메이션 처리
     void HandleMovementAnimation()
     {
+        bool isMoving = moveInput.magnitude > 0.1f;
+
         animator.SetFloat("MoveX", moveInput.x, 0.1f, Time.deltaTime);
         animator.SetFloat("MoveY", moveInput.y, 0.1f, Time.deltaTime);
+
+        footstepSoundPlayer.SetIsMoving(isMoving);
     }
 
     private void OnStunned()
@@ -149,41 +131,30 @@ public class TestMoveAnimationController : MonoBehaviour
         animator.SetTrigger("Revive");
     }
 
-    // 캐릭터 회전값을 받아 애니메이션 전달
-    void HandleTurnAnimation()
-    {   
-        if (moveController == null) return;
+    // // 캐릭터 회전값을 받아 애니메이션 전달
+    // void HandleTurnAnimation()
+    // {   
+    //     if (moveController == null) return;
 
-        float currentRotationAmount = moveController.GetRotationAmount();
-        float rawTurn = Mathf.Clamp(currentRotationAmount * turnSensitivity, -1f, 1f);
+    //     float currentRotationAmount = moveController.GetRotationAmount();
+    //     float rawTurn = Mathf.Clamp(currentRotationAmount * turnSensitivity, -1f, 1f);
 
-        if (Mathf.Abs(rawTurn) < 0.1f)
-            rawTurn = 0f;
+    //     if (Mathf.Abs(rawTurn) < 0.1f)
+    //         rawTurn = 0f;
 
-        bool isMoving = moveInput.magnitude > 0.1f;
+    //     bool isMoving = moveInput.magnitude > 0.1f;
         
-        float targetTurnX = isMoving ? 0f : rawTurn;
-        float targetMoveTurnX = isMoving ? rawTurn : 0f;
+    //     float targetTurnX = isMoving ? 0f : rawTurn;
+    //     float targetMoveTurnX = isMoving ? rawTurn : 0f;
         
-        smoothedTurnValue = Mathf.Lerp(smoothedTurnValue, targetTurnX, Time.deltaTime * turnLerpSpeed);
-        if (Mathf.Abs(smoothedTurnValue) < 0.005f) smoothedTurnValue = 0f;
+    //     smoothedTurnValue = Mathf.Lerp(smoothedTurnValue, targetTurnX, Time.deltaTime * turnLerpSpeed);
+    //     if (Mathf.Abs(smoothedTurnValue) < 0.005f) smoothedTurnValue = 0f;
 
-        smoothedMoveTurnValue = Mathf.Lerp(smoothedMoveTurnValue, targetMoveTurnX, Time.deltaTime * MoveturnLerpSpeed);
-        if (Mathf.Abs(smoothedMoveTurnValue) < 0.005f) smoothedMoveTurnValue = 0f;
+    //     smoothedMoveTurnValue = Mathf.Lerp(smoothedMoveTurnValue, targetMoveTurnX, Time.deltaTime * MoveturnLerpSpeed);
+    //     if (Mathf.Abs(smoothedMoveTurnValue) < 0.005f) smoothedMoveTurnValue = 0f;
 
-        animator.SetFloat("TurnX", smoothedTurnValue, 0f, Time.deltaTime);
-        animator.SetFloat("MoveTurnX", smoothedMoveTurnValue, 0f, Time.deltaTime);
-    }
-
-    // // 카메라 회전값을 받아 애니메이션 전달
-    // void HandleLookAnimation()
-    // {
-    //     if (cameraController == null) return;
-
-    //     float verticalAngle = cameraController.GetTargetVerticalAngle(); // -60 ~ 60 기준 가정
-    //     float normalizedLookY = Mathf.InverseLerp(-60f, 60f, verticalAngle) * 2f - 1f; // -1 ~ 1로 정규화
-
-    //     animator.SetFloat("LookY", normalizedLookY);
+    //     animator.SetFloat("TurnX", smoothedTurnValue, 0f, Time.deltaTime);
+    //     animator.SetFloat("MoveTurnX", smoothedMoveTurnValue, 0f, Time.deltaTime);
     // }
 
     // 재장전시 트리거 실행
@@ -219,23 +190,24 @@ public class TestMoveAnimationController : MonoBehaviour
     {
         bool grounded = moveController.IsGrounded();
 
-        // 점프 모션 
-        if (!moveController.IsGrounded() && rb.velocity.y > 0.1f)
+        Debug.Log($"isGrounded: {grounded}, velocityY: {rb.velocity.y}");
+
+        if (!moveController.IsGrounded())
         {
-            animator.SetBool("JumpUp", true);
+            if (rb.velocity.y > 0.05f)
+            {
+                animator.SetBool("JumpUp", true);
+                animator.SetBool("JumpDown", false);
+            }
+            else if (rb.velocity.y < -0.05f)
+            {
+                animator.SetBool("JumpUp", false);
+                animator.SetBool("JumpDown", true);
+            }
         }
         else
         {
             animator.SetBool("JumpUp", false);
-        }
-
-        // 낙하 모션
-        if (!moveController.IsGrounded() && rb.velocity.y < -0.1f)
-        {
-            animator.SetBool("JumpDown", true);
-        }
-        else
-        {
             animator.SetBool("JumpDown", false);
         }
     }
@@ -279,5 +251,21 @@ public class TestMoveAnimationController : MonoBehaviour
         animator.SetTrigger("Debuff 1");
         animator.SetTrigger("Throw");
         animator.SetLayerWeight(upperBodyLayerIndex, 0f);
+    }
+
+    // 테디베어 총기 부착
+    private void HandleTeddyBearWeaponState()
+    {
+        if (teddyBear == null || gunObject == null) return;
+
+        bool isAttached = teddyBear.IsAttached();
+
+        if (previousAttachState != isAttached)
+        {
+            gunObject.SetActive(!isAttached); // 곰인형 들고 있으면 false
+            previousAttachState = isAttached;
+
+            Debug.Log($"총기 {(isAttached ? "숨김" : "표시")} 상태로 변경됨");
+        }
     }
 }
