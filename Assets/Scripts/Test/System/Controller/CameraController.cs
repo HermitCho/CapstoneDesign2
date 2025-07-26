@@ -207,23 +207,23 @@ public class CameraController : MonoBehaviour
             return;
         }
         
-        if(isZoomed)
-        {
-            mouseY = mouseInput.y * cachedZoomMouseSensitivityY * Time.deltaTime;
-        }
-        else
-        {
-            mouseY = mouseInput.y * cachedMouseSensitivityY * Time.deltaTime;
-        }
+            if(isZoomed)
+            {
+                mouseY = mouseInput.y * cachedZoomMouseSensitivityY * Time.deltaTime;
+            }
+            else
+            {
+                mouseY = mouseInput.y * cachedMouseSensitivityY * Time.deltaTime;
+            }
 
-        //사용 X
-        // 거리 기반 감도 계산
-        // float currentSensitivity = GetDistanceBasedSensitivity();    
-        // Y축 처리 (수직 회전만)
-        // float mouseY = mouseInput.y * currentSensitivity * Time.deltaTime;
+            //사용 X
+            // 거리 기반 감도 계산
+            // float currentSensitivity = GetDistanceBasedSensitivity();    
+            // Y축 처리 (수직 회전만)
+            // float mouseY = mouseInput.y * currentSensitivity * Time.deltaTime;
 
-        targetVerticalAngle -= mouseY; // Y축은 반전
-        targetVerticalAngle = Mathf.Clamp(targetVerticalAngle, cachedMinVerticalAngle, cachedMaxVerticalAngle);
+            targetVerticalAngle -= mouseY; // Y축은 반전
+            targetVerticalAngle = Mathf.Clamp(targetVerticalAngle, cachedMinVerticalAngle, cachedMaxVerticalAngle);
     }
 
     void OnZoomPressed()
