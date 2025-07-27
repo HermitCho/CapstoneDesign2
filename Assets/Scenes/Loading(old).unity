@@ -632,6 +632,140 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4f1b0230409caac4f9f20893cc3812f3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!1 &1427550641
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1427550643}
+  - component: {fileID: 1427550642}
+  m_Layer: 0
+  m_Name: DataBase
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1427550642
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1427550641}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b97e77b1d869eab4db78872b0e9da83a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  cameraData:
+    playerTag: PlayerPosition
+    findPlayerInterval: 10
+    mouseSensitivityY: 5.8
+    zoomMouseSensitivityY: 4
+    minVerticalAngle: -20
+    maxVerticalAngle: 45
+    rotationSmoothTime: 0
+    zoomValue: 2
+    zoomDuration: 0.3
+    useWallCollisionAvoidance: 1
+    cameraFix: 1
+    wallAvoidanceSpeed: 5
+    maxCameraDistance: 12
+    pivotHeightOffset: 0.4
+  playerMoveData:
+    speed: 10
+    maxMoveDistance: 5
+    rotationSpeed: 8.6
+    zoomRotationSpeed: 5
+    mouseInputTimeout: 0
+    jumpCooldown: 0.2
+    groundCheckDistance: 1.1
+    landingFriction: 0.3
+    airControlForce: 15
+    maxAirSpeedMultiplier: 1
+    jumpHeight: 1
+    airAcceleration: 25
+    airMaxSpeed: 8
+    jumpBufferTime: 0.1
+    wallCollisionFallForce: 8
+    minHorizontalSpeedRatio: 0.7
+    maxHorizontalSpeedReduction: 0.2
+  teddyBearData:
+    attachOffset: {x: 0, y: 1, z: 1}
+    attachRotation: {x: 0, y: 0, z: 0}
+    detachReattachTime: 5
+    teddyBearScore: 0
+    initialScore: 1
+    scoreIncreaseRate: 2
+    scoreIncreaseTime: 20
+    scoreGetTick: 2
+    glowingIntensity: 0.5
+    glowingColor: {r: 1, g: 0, b: 0, a: 1}
+    glowingOutlineWidth: 7
+    glowingColorChangeTime: 1
+    canUseItem: 1
+    canUseSkill: 1
+    canUseGun: 0
+  gameData:
+    playTime: 30
+  uiData:
+    crosshairNormalColor: {r: 1, g: 1, b: 1, a: 1}
+    crosshairTargetColor: {r: 1, g: 0, b: 0, a: 1}
+    crosshairSize: 1
+    healthyColor: {r: 0, g: 0, b: 0, a: 1}
+    warningColor: {r: 0.7735849, g: 0.4569026, b: 0, a: 1}
+    dangerColor: {r: 0.6981132, g: 0, b: 0, a: 1}
+    waringThreshold: 0.5
+    dangerThreshold: 0.2
+    scoreText: '{0:F0}'
+    scoreFormatColor: {r: 0, g: 0, b: 0, a: 1}
+    generalMultiplierText: 
+    generalMultiplierFormatColor: {r: 0, g: 0, b: 0, a: 1}
+    multiplierText: "<shake>\uD53C\uBC84\uD0C0\uC784! {0:F0}x</shake>"
+    multiplierFormatColor: {r: 0, g: 0, b: 0, a: 1}
+    gameTimeText: "{0:F0}\uCD08"
+    gameTimeFormatColor: {r: 0, g: 0, b: 0, a: 1}
+    healthText: '{0:F0} / {1:F0}'
+    healthFormatColor: {r: 0, g: 0, b: 0, a: 1}
+    maxCharacterSlots: 4
+    currentSelectedIndex: 0
+    selectionTimeText: "{0:F0}\uCD08"
+    selectionTime: 10
+    selectionTimeNormalFormatColor: {r: 1, g: 1, b: 1, a: 1}
+    selectionWarningTime: 5
+    selectionTimeWarningFormatColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+    selectionDangerTime: 3
+    selectionTimeDangerFormatColor: {r: 1, g: 0, b: 0, a: 1}
+    coinText: '{0:F0}'
+    coinFormatColor: {r: 0, g: 0, b: 0, a: 1}
+  playerData:
+    playerPrefabData:
+    - {fileID: 1474873403730597998, guid: 309ffc9e0a9cb3043ac8dec7d8d69bbf, type: 3}
+    - {fileID: 5977901166455454402, guid: 062d7261204a38547b27ebd00f9b65f9, type: 3}
+  itemData:
+    itemPrefabData:
+    - {fileID: 7300657394447749002, guid: 72cde045b08994740bf0b51619eb1321, type: 3}
+    - {fileID: 7300657394447749002, guid: 2fbf516d15ca7e34d8eec5a81829081f, type: 3}
+    maxItemSlot: 2
+--- !u!4 &1427550643
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1427550641}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -4.600651, y: 3.1397288, z: 0.24370424}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1564375525
 GameObject:
   m_ObjectHideFlags: 0
@@ -990,6 +1124,7 @@ SceneRoots:
   - {fileID: 1716948810}
   - {fileID: 1564375527}
   - {fileID: 520633937}
+  - {fileID: 1427550643}
   - {fileID: 728897884}
   - {fileID: 241662430}
   - {fileID: 699474789}

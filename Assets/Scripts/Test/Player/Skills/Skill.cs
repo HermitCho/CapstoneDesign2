@@ -218,6 +218,7 @@ public abstract class Skill : MonoBehaviour
         // 파티클 이펙트 재생
         if (skillEffect != null)
         {
+            Debug.Log(skillEffect);
             skillEffect.Play();
         }
 
