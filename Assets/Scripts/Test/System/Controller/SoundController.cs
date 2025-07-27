@@ -8,6 +8,7 @@ public class SoundController : MonoBehaviour
     public void OnClick()
     {
         AudioManager.Inst.PlayOneShot("SFX_UI_Click");
+
     }
 
     public void OnClickMatching()
@@ -19,10 +20,28 @@ public class SoundController : MonoBehaviour
     {
         AudioManager.Inst.PlayOneShot("SFX_UI_ClickCancel");
     }
+
+    public void OnClickMini()
+    {
+        AudioManager.Inst.PlayOneShot("SFX_UI_ClickMini");
+    }
+
+    public void OnSlider()
+    {
+        AudioManager.Inst.PlayOneShot("SFX_UI_Slider");
+    }
+
+
+    public void OnHotKey()
+    {
+        AudioManager.Inst.PlayOneShot("SFX_UI_Hotkey");
+    }
+
     public void OnClickError()
     {
         AudioManager.Inst.PlayOneShot("SFX_UI_ClickError");
     }
+    
     public void OnClickSelectCharacter()
     {
         AudioManager.Inst.PlayOneShot("SFX_UI_SelectCharacter");
