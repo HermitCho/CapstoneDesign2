@@ -75,7 +75,7 @@ public class SelectCamController : MonoBehaviour
     private Vector3 velocity = Vector3.zero;
 
     // Start is called before the first frame update
-    void Start()
+    void Awake()
     {
         // 메인 카메라가 할당되지 않았으면 자동으로 찾기
         if (mainCam == null)

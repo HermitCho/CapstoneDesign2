@@ -1448,7 +1448,7 @@ public class HUDPanel : MonoBehaviour
 
         if (itemController == null)
         {
-            Debug.Log("⚠️ HUDPanel - 플레이어에 ItemController가 없습니다.");
+            Debug.LogWarning("⚠️ HUDPanel - 플레이어에 ItemController가 없습니다.");
             return null;
         }
 

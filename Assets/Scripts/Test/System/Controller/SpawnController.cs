@@ -257,29 +257,32 @@ public class SpawnController : MonoBehaviour
     // ✅ 새로 추가되거나 수정되는 헬퍼 메서드
     private string GetPrefabResourcePath(GameObject prefab)
     {
-#if UNITY_EDITOR
-        string path = UnityEditor.AssetDatabase.GetAssetPath(prefab);
-        if (path.Contains("Resources/"))
-        {
-            int startIndex = path.IndexOf("Resources/") + "Resources/".Length;
-            int endIndex = path.LastIndexOf(".");
-            if (startIndex < path.Length && endIndex > startIndex)
-            {
-                return path.Substring(startIndex, endIndex - startIndex);
-            }
-        }
-#endif
-        // ✅ 이 부분이 빌드 시 사용될 하드코딩된 경로입니다.
-        // Test Player 1.prefab이 "Assets/Resources/Prefabs/" 경로에 있다고 가정합니다.
-        if (prefab.name == "Test Player 1") // DataBase에 등록된 프리팹 이름과 일치해야 합니다.
-        {
-            return "Prefabs/Test Player 1"; // Resources 폴더 내부의 상대 경로
-        }
-        // 다른 캐릭터 프리팹이 있다면 여기에 'else if'로 추가하거나,
-        // DataBase에 프리팹 경로 문자열 자체를 저장하여 사용하는 것이 좋습니다.
+        if (prefab == null) return null;
 
-        Debug.LogError($"[SpawnController] {prefab.name}은(는) Resources 폴더에 없거나 경로를 찾을 수 없습니다! PhotonNetwork.Instantiate를 사용하려면 Resources 폴더에 있어야 합니다.");
-        return null;
+// #if UNITY_EDITOR
+//         string path = UnityEditor.AssetDatabase.GetAssetPath(prefab);
+//         if (path.Contains("Resources/"))
+//         {
+//             int startIndex = path.IndexOf("Resources/") + "Resources/".Length;
+//             int endIndex = path.LastIndexOf(".");
+//             if (startIndex < path.Length && endIndex > startIndex)
+//             {
+//                 return path.Substring(startIndex, endIndex - startIndex);
+//             }
+//         }
+// #endif
+        // 빌드 시 사용되는 동적 경로 생성
+        // 프리팹 이름을 기반으로 Resources 폴더 내의 경로를 생성
+        string prefabName = prefab.name;
+        
+        // 프리팹 이름에 따라 경로 결정
+        if (prefabName.Contains("Player") || prefabName.Contains("Test"))
+        {
+            return $"Prefabs/{prefabName}";
+        }
+        
+        // 기본적으로 Prefabs 폴더에 있다고 가정
+        return $"Prefabs/{prefabName}";
     }
 
     // SpawnController 클래스 나머지 코드 (생략)

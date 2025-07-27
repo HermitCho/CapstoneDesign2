@@ -243,7 +243,7 @@ public class TestGun : MonoBehaviour
         // IgnoreRaycast 레이어를 무시하는 마스크 생성
         int layerMask = ~LayerMask.GetMask("PlayerPosition");
 
-        if (Physics.Raycast(cameraRay, out RaycastHit hit, gunData.range, layerMask))
+        if (Physics.Raycast(cameraRay, out RaycastHit hit, gunData.range, layerMask, QueryTriggerInteraction.Ignore))
         {
             return hit.point;
         }
@@ -368,7 +368,8 @@ public class TestGun : MonoBehaviour
     /// <returns>충돌 위치</returns>
     private Vector3 CalculatePelletHitPosition(Vector3 direction, Vector3 defaultHitPosition, int pelletIndex)
     {
-        if (Physics.Raycast(fireTransform.position, direction, out RaycastHit hit, gunData.range))
+        int layerMask = ~LayerMask.GetMask("PlayerPosition");
+        if (Physics.Raycast(fireTransform.position, direction, out RaycastHit hit, gunData.range, layerMask, QueryTriggerInteraction.Ignore))
         {
             return hit.point;
         }
@@ -383,7 +384,8 @@ public class TestGun : MonoBehaviour
     /// <param name="direction">펠릿 방향</param>
     private void ProcessPelletHit(Vector3 direction)
     {
-        if (Physics.Raycast(fireTransform.position, direction, out RaycastHit hit, gunData.range))
+        int layerMask = ~LayerMask.GetMask("PlayerPosition");
+        if (Physics.Raycast(fireTransform.position, direction, out RaycastHit hit, gunData.range, layerMask, QueryTriggerInteraction.Ignore))
         {
             IDamageable target = hit.collider.GetComponent<IDamageable>();
             target?.OnDamage(gunData.damage, hit.point, hit.normal);
