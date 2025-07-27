@@ -38,10 +38,31 @@ public class TestTeddyBear : MonoBehaviour
 
     //테디베어 분리 이벤트
     public static event Action OnTeddyBearDetached;
+
+    //TeddyBear 캐시 변수
+    private Vector3 cachedAttachOffset;
+    private Vector3 cachedAttachRotation;
+    private float cachedDetachReattachTime;
+    private float cachedTeddyBearScore;
+    private float cachedInitialScore;
+    private float cachedScoreIncreaseRate;
+    private float cachedScoreIncreaseTime;
+    private float cachedScoreGetTick;
+    private float cachedGlowingIntensity;
+    private Color cachedGlowingColor;
+    private float cachedGlowingOutlineWidth;
+    private float cachedGlowingColorChangeTime;
+    private bool cachedCanUseItem;
+    private bool cachedCanUseSkill;
+    private bool cachedCanUseGun;
+
+    private bool dataBaseCached = false;
+
     
     void Awake()
-    {
-        teddyBearData = DataBase.Instance.teddyBearData;
+    {   
+        CacheDataBaseInfo();
+
         colliderTeddyBear = GetComponent<Collider>();
         teddyRigidbody = GetComponent<Rigidbody>();
         
@@ -73,7 +94,7 @@ public class TestTeddyBear : MonoBehaviour
         gameStartTime = Time.time;
         
         // 초기 점수 설정
-        currentScore = teddyBearData.TeddyBearScore;
+        currentScore = cachedTeddyBearScore;
         
         // 게임 시작 시 발광 시작
         StartGlowing();
@@ -95,19 +116,69 @@ public class TestTeddyBear : MonoBehaviour
         {
             // 재부착 방지 시간 확인
             float timeSinceDetach = Time.time - lastDetachTime;
-            if (timeSinceDetach >= teddyBearData.DetachReattachTime)
+            if (timeSinceDetach >= cachedDetachReattachTime)
             {
                 AttachToPlayer(collision.transform);
             }
             else
             {
                 // 재부착 방지 시간 동안은 부착하지 않음
-                float remainingTime = teddyBearData.DetachReattachTime - timeSinceDetach;
+                float remainingTime = cachedDetachReattachTime - timeSinceDetach;
                 Debug.Log($"재부착 방지 중... 남은 시간: {remainingTime:F1}초");
             }
         }
     }
     
+
+    void CacheDataBaseInfo()
+    {
+        try
+        {
+            if(DataBase.Instance == null)
+            {
+                Debug.LogWarning("TestTeddyBear - DataBase 인스턴스가 없습니다.");
+                return;
+            }
+
+            if(DataBase.Instance.teddyBearData != null)
+            {
+                teddyBearData = DataBase.Instance.teddyBearData;
+
+                cachedAttachOffset = teddyBearData.AttachOffset;
+                cachedAttachRotation = teddyBearData.AttachRotation;
+                cachedDetachReattachTime = teddyBearData.DetachReattachTime;
+                cachedTeddyBearScore = teddyBearData.TeddyBearScore;
+                cachedInitialScore = teddyBearData.InitialScore;
+                cachedScoreIncreaseRate = teddyBearData.ScoreIncreaseRate;
+                cachedScoreIncreaseTime = teddyBearData.ScoreIncreaseTime;
+                cachedScoreGetTick = teddyBearData.ScoreGetTick;
+                cachedGlowingIntensity = teddyBearData.GlowingIntensity;
+                cachedGlowingColor = teddyBearData.GlowingColor;
+                cachedGlowingOutlineWidth = teddyBearData.GlowingOutlineWidth;
+                cachedGlowingColorChangeTime = teddyBearData.GlowingColorChangeTime;
+                cachedCanUseItem = teddyBearData.CanUseItem;
+                cachedCanUseSkill = teddyBearData.CanUseSkill;
+                cachedCanUseGun = teddyBearData.CanUseGun;
+
+                dataBaseCached = true;
+            }
+
+            else
+            {
+                Debug.LogWarning("TestTeddyBear - DataBase 접근 실패, 기본값 사용");
+                dataBaseCached = false;
+            }
+
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ TestTeddyBear - DataBase 캐싱 중 오류: {e.Message}");
+            dataBaseCached = false;
+        }
+
+    }
+
+
     void AttachToPlayer(Transform player)
     {
         if (isAttached) return;
@@ -121,8 +192,8 @@ public class TestTeddyBear : MonoBehaviour
         transform.SetParent(player);
         
         // 플레이어 앞에 즉시 부착
-        Vector3 targetPosition = player.position + player.forward * teddyBearData.AttachOffset.z + player.up * teddyBearData.AttachOffset.y + player.right * teddyBearData.AttachOffset.x;
-        Quaternion targetRotation = player.rotation * Quaternion.Euler(teddyBearData.AttachRotation);
+        Vector3 targetPosition = player.position + player.forward * cachedAttachOffset.z + player.up * cachedAttachOffset.y + player.right * cachedAttachOffset.x;
+        Quaternion targetRotation = player.rotation * Quaternion.Euler(cachedAttachRotation);
         
         // 즉시 위치와 회전 설정
         transform.position = targetPosition;
@@ -152,19 +223,19 @@ public class TestTeddyBear : MonoBehaviour
     void InitializeOutline()
     {
         // Outline 컴포넌트가 없으면 추가
-        outlineComponent = GetComponent<Outline>();
+        outlineComponent = gameObject.GetComponent<Outline>();
         if (outlineComponent == null)
         {
             outlineComponent = gameObject.AddComponent<Outline>();
         }
         
         // 초기 설정
-        outlineComponent.OutlineMode = Outline.Mode.OutlineAll; // 벽을 통과해서도 보이게 설정
-        outlineComponent.OutlineColor = teddyBearData.GlowingColor;
-        outlineComponent.OutlineWidth = teddyBearData.GlowingOutlineWidth; // 외곽선 두께
+        outlineComponent.OutlineMode = Outline.Mode.SilhouetteOnly; // 벽을 통과해서 보이게 설정
+        outlineComponent.OutlineColor = cachedGlowingColor;
+        outlineComponent.OutlineWidth = cachedGlowingOutlineWidth; // 외곽선 두께
         
         // 원본 색상 저장
-        originalOutlineColor = teddyBearData.GlowingColor;
+        originalOutlineColor = cachedGlowingColor;
         originalOutlineAlpha = originalOutlineColor.a;
         
         // 처음에는 비활성화
@@ -211,10 +282,10 @@ public class TestTeddyBear : MonoBehaviour
         while (isGlowing)
         {
             // 발광 색상으로 페이드 인
-            yield return StartCoroutine(FadeOutlineAlpha(0f, teddyBearData.GlowingIntensity, teddyBearData.GlowingColorChangeTime * 0.5f));
+            yield return StartCoroutine(FadeOutlineAlpha(0f, cachedGlowingIntensity, cachedGlowingColorChangeTime * 0.5f));
             
             // 발광 색상에서 페이드 아웃
-            yield return StartCoroutine(FadeOutlineAlpha(teddyBearData.GlowingIntensity, 0.2f, teddyBearData.GlowingColorChangeTime * 0.5f));
+            yield return StartCoroutine(FadeOutlineAlpha(cachedGlowingIntensity, 0.2f, cachedGlowingColorChangeTime * 0.5f));
             
             yield return null;
         }
@@ -230,7 +301,7 @@ public class TestTeddyBear : MonoBehaviour
             elapsedTime += Time.deltaTime;
             float alpha = Mathf.Lerp(fromAlpha, toAlpha, elapsedTime / duration);
             
-            Color newColor = teddyBearData.GlowingColor;
+            Color newColor = cachedGlowingColor;
             newColor.a = alpha;
             
             if (outlineComponent != null)
@@ -242,7 +313,7 @@ public class TestTeddyBear : MonoBehaviour
         }
         
         // 최종 알파값 설정
-        Color finalColor = teddyBearData.GlowingColor;
+        Color finalColor = cachedGlowingColor;
         finalColor.a = toAlpha;
         if (outlineComponent != null)
         {
@@ -283,13 +354,13 @@ public class TestTeddyBear : MonoBehaviour
             currentScore += scoreToAdd;
             
             // DataBase의 점수도 업데이트
-            teddyBearData.TeddyBearScore = currentScore;
+            cachedTeddyBearScore = currentScore;
             
             // HeatUI에 점수 업데이트 알림 (게임매니저를 통해)
             NotifyScoreUpdate();
             
             // 설정된 틱만큼 대기
-            yield return new WaitForSeconds(teddyBearData.ScoreGetTick);
+            yield return new WaitForSeconds(cachedScoreGetTick);
         }
     }
     
@@ -307,7 +378,7 @@ public class TestTeddyBear : MonoBehaviour
         currentScoreMultiplier = currentMultiplier;
         
         // 초기 점수에 배율 적용
-        return teddyBearData.InitialScore * currentMultiplier;
+        return cachedInitialScore * currentMultiplier;
     }
     
     // 점수 업데이트 알림 (게임매니저나 UI 시스템에 전달)
@@ -330,7 +401,7 @@ public class TestTeddyBear : MonoBehaviour
             float currentGameTime = Time.time - gameStartTime;
             float scoreToAdd = CalculateScoreToAdd(currentGameTime);
             currentScore += scoreToAdd;
-            teddyBearData.TeddyBearScore = currentScore;
+            cachedTeddyBearScore = currentScore;
             NotifyScoreUpdate();
         }
     }
@@ -340,7 +411,7 @@ public class TestTeddyBear : MonoBehaviour
     {
         currentScore = 0f;
         currentScoreMultiplier = 1f;
-        teddyBearData.TeddyBearScore = 0f;
+        cachedTeddyBearScore = 0f;
         gameStartTime = Time.time; // 게임 시작 시간도 리셋
         lastDetachTime = -999f; // 재부착 방지 시간도 리셋
 
@@ -512,7 +583,7 @@ public class TestTeddyBear : MonoBehaviour
     public void AddScore(float additionalScore)
     {
         currentScore += additionalScore;
-        teddyBearData.TeddyBearScore = currentScore;
+        cachedTeddyBearScore = currentScore;
         NotifyScoreUpdate();
     }
     
@@ -526,7 +597,7 @@ public class TestTeddyBear : MonoBehaviour
     public float GetTimeUntilReattach()
     {
         float timeSinceDetach = Time.time - lastDetachTime;
-        float remainingTime = teddyBearData.DetachReattachTime - timeSinceDetach;
+        float remainingTime = cachedDetachReattachTime - timeSinceDetach;
         return Mathf.Max(0f, remainingTime);
     }
     
@@ -534,7 +605,7 @@ public class TestTeddyBear : MonoBehaviour
     public bool CanReattach()
     {
         float timeSinceDetach = Time.time - lastDetachTime;
-        return timeSinceDetach >= teddyBearData.DetachReattachTime;
+        return timeSinceDetach >= cachedDetachReattachTime;
     }
 
     #endregion
