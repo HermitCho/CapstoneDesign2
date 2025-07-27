@@ -64,7 +64,13 @@ public class FindMatching : MonoBehaviourPunCallbacks
         // 포톤 서버 연결 및 매칭 시작
         if (!PhotonNetwork.IsConnected)
         {
+            Debug.Log("[매칭] Photon 서버에 연결 중...");
             PhotonNetwork.ConnectUsingSettings();
+        }
+        else if (!PhotonNetwork.InLobby)
+        {
+            Debug.Log("[매칭] 로비에 입장 중...");
+            PhotonNetwork.JoinLobby();
         }
         else
         {
@@ -79,7 +85,7 @@ public class FindMatching : MonoBehaviourPunCallbacks
     {
         if (!isMatching) return;
 
-        Debug.Log("매칭 취소!");
+        Debug.Log("[매칭] 매칭 취소!");
         isMatching = false;
 
         // 타이머 정지
@@ -91,13 +97,31 @@ public class FindMatching : MonoBehaviourPunCallbacks
 
         // 방에서 나가기
         if (PhotonNetwork.InRoom)
+        {
             PhotonNetwork.LeaveRoom();
+            Debug.Log("[매칭] 방에서 나갔습니다.");
+        }
+
+        // 로비에서 나가기 (선택적)
+        if (PhotonNetwork.InLobby)
+        {
+            PhotonNetwork.LeaveLobby();
+            Debug.Log("[매칭] 로비에서 나갔습니다.");
+        }
 
         ResetUI();
     }
 
     private void JoinOrCreateRoom()
     {
+        // Photon 연결 상태 확인
+        if (!PhotonNetwork.IsConnected || !PhotonNetwork.InLobby)
+        {
+            Debug.LogWarning("[매칭] Photon이 아직 준비되지 않았습니다. 연결을 기다립니다.");
+            UpdateUI("네트워크 연결 중...");
+            return;
+        }
+
         UpdateUI("방을 찾는 중...");
         PhotonNetwork.JoinRandomRoom();
     }
@@ -237,8 +261,18 @@ public class FindMatching : MonoBehaviourPunCallbacks
         if (isMatching)
         {
             Debug.Log("[매칭] 매칭 중이므로 방 찾기 시작");
-            JoinOrCreateRoom();
+            // 약간의 지연을 두어 상태가 안정화되도록 함
+            StartCoroutine(DelayedJoinRoom());
         }
+    }
+
+    /// <summary>
+    /// 지연된 방 입장 (상태 안정화를 위해)
+    /// </summary>
+    private IEnumerator DelayedJoinRoom()
+    {
+        yield return new WaitForSeconds(0.1f); // 0.1초 지연
+        JoinOrCreateRoom();
     }
 
     public override void OnJoinRandomFailed(short returnCode, string message)
@@ -328,7 +362,12 @@ public class FindMatching : MonoBehaviourPunCallbacks
             StopCoroutine(matchingCoroutine);
             matchingCoroutine = null;
         }
+        
+        // 연결이 끊어졌을 때 UI 리셋
         ResetUI();
+        
+        // 연결 끊김 상태를 사용자에게 알림
+        UpdateUI("네트워크 연결이 끊어졌습니다.");
     }
 
     public override void OnCreateRoomFailed(short returnCode, string message)

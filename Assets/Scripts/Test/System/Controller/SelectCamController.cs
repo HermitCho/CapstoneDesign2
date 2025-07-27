@@ -73,6 +73,7 @@ public class SelectCamController : MonoBehaviour
 
     // Private variables
     private Vector3 velocity = Vector3.zero;
+    private int currentHoveredCharacter = -1; // 현재 호버된 캐릭터 인덱스 (-1 = 호버 없음)
 
     // Start is called before the first frame update
     void Awake()
@@ -107,6 +108,7 @@ public class SelectCamController : MonoBehaviour
     {
         if (character1CamPosition != null)
         {
+            currentHoveredCharacter = 0;
             StopAllCoroutines();
             StartCoroutine(MoveCameraToCharacter(character1CamPosition, character1CamRotation, character1Animator, character1AnimationTrigger));
         }
@@ -117,8 +119,12 @@ public class SelectCamController : MonoBehaviour
     /// </summary>
     public void OnHoverCharacter1()
     {
+        // 이미 캐릭터 1이 호버된 상태라면 애니메이션 실행하지 않음
+        if (currentHoveredCharacter == 0) return;
+        
         if (character1CamPosition != null)
         {
+            currentHoveredCharacter = 0;
             StopAllCoroutines();
             StartCoroutine(MoveCameraToCharacter(character1CamPosition, character1CamRotation, character1Animator, character1AnimationTrigger));
         }
@@ -131,6 +137,7 @@ public class SelectCamController : MonoBehaviour
     {
         if (character2CamPosition != null)
         {
+            currentHoveredCharacter = 1;
             StopAllCoroutines();
             StartCoroutine(MoveCameraToCharacter(character2CamPosition, character2CamRotation, character2Animator, character2AnimationTrigger));
         }
@@ -141,8 +148,12 @@ public class SelectCamController : MonoBehaviour
     /// </summary>
     public void OnHoverCharacter2()
     {
+        // 이미 캐릭터 2가 호버된 상태라면 애니메이션 실행하지 않음
+        if (currentHoveredCharacter == 1) return;
+        
         if (character2CamPosition != null)
         {
+            currentHoveredCharacter = 1;
             StopAllCoroutines();
             StartCoroutine(MoveCameraToCharacter(character2CamPosition, character2CamRotation, character2Animator, character2AnimationTrigger));
         }
@@ -155,6 +166,7 @@ public class SelectCamController : MonoBehaviour
     {
         if (character3CamPosition != null)
         {
+            currentHoveredCharacter = 2;
             StopAllCoroutines();
             StartCoroutine(MoveCameraToCharacter(character3CamPosition, character3CamRotation, character3Animator, character3AnimationTrigger));
         }
@@ -165,8 +177,12 @@ public class SelectCamController : MonoBehaviour
     /// </summary>
     public void OnHoverCharacter3()
     {
+        // 이미 캐릭터 3이 호버된 상태라면 애니메이션 실행하지 않음
+        if (currentHoveredCharacter == 2) return;
+        
         if (character3CamPosition != null)
         {
+            currentHoveredCharacter = 2;
             StopAllCoroutines();
             StartCoroutine(MoveCameraToCharacter(character3CamPosition, character3CamRotation, character3Animator, character3AnimationTrigger));
         }
@@ -179,6 +195,7 @@ public class SelectCamController : MonoBehaviour
     {
         if (character4CamPosition != null)
         {
+            currentHoveredCharacter = 3;
             StopAllCoroutines();
             StartCoroutine(MoveCameraToCharacter(character4CamPosition, character4CamRotation, character4Animator, character4AnimationTrigger));
         }
@@ -189,8 +206,12 @@ public class SelectCamController : MonoBehaviour
     /// </summary>
     public void OnHoverCharacter4()
     {
+        // 이미 캐릭터 4가 호버된 상태라면 애니메이션 실행하지 않음
+        if (currentHoveredCharacter == 3) return;
+        
         if (character4CamPosition != null)
         {
+            currentHoveredCharacter = 3;
             StopAllCoroutines();
             StartCoroutine(MoveCameraToCharacter(character4CamPosition, character4CamRotation, character4Animator, character4AnimationTrigger));
         }
@@ -213,7 +234,7 @@ public class SelectCamController : MonoBehaviour
         Quaternion targetQuaternion = Quaternion.Euler(targetRotation);
 
         // 카메라 이동 시작과 동시에 애니메이션 트리거
-        if (animator != null && !string.IsNullOrEmpty(animationTrigger))
+        if (animator != null && !string.IsNullOrEmpty(animationTrigger) )
         {
             animator.SetTrigger(animationTrigger);
         }
