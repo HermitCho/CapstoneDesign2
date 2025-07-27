@@ -2,30 +2,39 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// 애니메이션 이벤트에서 호출되어 발소리를 재생하는 컴포넌트
-/// </summary>
 [RequireComponent(typeof(AudioSource))]
 public class FootstepSoundPlayer : MonoBehaviour
 {
-    [Tooltip("재생할 발소리 오디오 클립")]
+    [Header("발소리 클립")]
     [SerializeField] private AudioClip footstepClip;
 
-    [Tooltip("발소리 재생용 AudioSource (비워두면 자동 할당)")]
-    [SerializeField] private AudioSource audioSource;
-
+    [Header("재장전 소리 클립")]
     [SerializeField] private AudioClip reloadClip;
 
+    private AudioSource audioSource;
     private bool isMoving = false;
 
     private void Awake()
     {
-        if (audioSource == null)
-            audioSource = GetComponent<AudioSource>();
+        audioSource = GetComponent<AudioSource>();
     }
 
     /// <summary>
-    /// 애니메이션 이벤트에서 호출 (이벤트 이름과 동일해야 함)
+    /// 외부에서 이동 여부 설정 (TestMoveAnimationController에서 호출)
+    /// </summary>
+    public void SetIsMoving(bool moving)
+    {
+        isMoving = moving;
+
+        // 이동 멈추면 현재 소리도 정지
+        if (!isMoving)
+        {
+            StopFootstepSound();
+        }
+    }
+
+    /// <summary>
+    /// 애니메이션 이벤트에서 호출됨
     /// </summary>
     public void FootStepSound()
     {
@@ -37,19 +46,13 @@ public class FootstepSoundPlayer : MonoBehaviour
         if (!audioSource.isPlaying)
         {
             audioSource.clip = footstepClip;
-            audioSource.Play();
+            audioSource.PlayOneShot(footstepClip);
         }
     }
 
-    /// <summary>
-    /// 외부에서 이동 여부 설정 (TestMoveAnimationController에서 호출)
-    /// </summary>
-    public void SetIsMoving(bool moving)
+    public void StopFootstepSound()
     {
-        isMoving = moving;
-
-        // 이동 멈추면 현재 소리도 정지
-        if (!isMoving && audioSource != null && audioSource.isPlaying)
+        if (audioSource.isPlaying)
         {
             audioSource.Stop();
         }
