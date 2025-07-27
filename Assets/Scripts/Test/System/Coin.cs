@@ -19,6 +19,9 @@ public class Coin : MonoBehaviour
     [Header("코인 획득 효과 파티클")]
     [SerializeField] private ParticleSystem coinEffect;
 
+    [Header("코인 획득 효과 소리")]
+    [SerializeField] private AudioClip coinCollectSound;
+
     private Vector3 originalPosition;
     private Renderer coinRenderer;
     private bool isCollected = false;
@@ -67,6 +70,8 @@ public class Coin : MonoBehaviour
             
             // 플레이어의 CoinController에 직접 코인 추가
             CoinController playerCoinController = other.GetComponent<CoinController>();
+            AudioSource audioSource = other.GetComponent<AudioSource>();
+            
             if (playerCoinController == null)
             {
                 // 플레이어에 CoinController가 없으면 자식에서 찾기
@@ -77,6 +82,12 @@ public class Coin : MonoBehaviour
             {
                 playerCoinController.AddCoin(1);
             }
+
+            if (audioSource != null && coinCollectSound != null)
+            {
+                audioSource.PlayOneShot(coinCollectSound);
+            }
+
             else
             {
                 Debug.LogWarning("⚠️ Coin - 플레이어에 CoinController를 찾을 수 없습니다.");
