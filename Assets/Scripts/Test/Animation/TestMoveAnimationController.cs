@@ -251,6 +251,7 @@ public class TestMoveAnimationController : MonoBehaviour
             dashSkill.UseSkill();
             animator.SetTrigger("Dash");
             animator.SetLayerWeight(upperBodyLayerIndex, 0f);
+            gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 0f, 0f);
         }
     }
 
@@ -265,6 +266,7 @@ public class TestMoveAnimationController : MonoBehaviour
             animator.SetTrigger("Debuff 1");
             animator.SetTrigger("Throw");
             animator.SetLayerWeight(upperBodyLayerIndex, 0f);
+            gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 0f, 0f);
         }
     }
 
@@ -282,5 +284,10 @@ public class TestMoveAnimationController : MonoBehaviour
 
             Debug.Log($"총기 {(isAttached ? "숨김" : "표시")} 상태로 변경됨");
         }
+    }
+
+    public void OnSkillEnd()
+    {
+        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 1f, 1f);
     }
 }
