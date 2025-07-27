@@ -7,7 +7,7 @@ public class FootstepSoundPlayer : MonoBehaviour
 {
     [Header("발소리 클립")]
     [SerializeField] private AudioClip footstepClip;
-
+    
     private AudioSource audioSource;
     private bool isMoving = false;
 
