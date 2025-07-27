@@ -41,12 +41,15 @@ public class TestMoveAnimationController : MonoBehaviour
 
 
     private GunIK gunIK;
+    private AimIK aimIK;
     private LivingEntity livingEntity;
 
     // 대쉬 스킬
     private CharacterSkill dashSkill;
     // 아이템 스킬
     private CharacterItem itemSkill;
+
+    private Coroutine speedSkillCoroutine;
 
     private void Awake()
     {
@@ -60,6 +63,8 @@ public class TestMoveAnimationController : MonoBehaviour
         footstepSoundPlayer = GetComponent<FootstepSoundPlayer>();
         dashSkill = GetComponent<CharacterSkill>();
         itemSkill = GetComponent<CharacterItem>();
+        aimIK = GetComponent<AimIK>();
+        animator.SetFloat("SpeedMultiplier", 1.2f);
     }
 
     private void OnEnable()
@@ -69,7 +74,7 @@ public class TestMoveAnimationController : MonoBehaviour
         InputManager.OnZoomPressed += OnZoomInput;
         InputManager.OnZoomCanceledPressed += OnZoomCanceledInput;
         InputManager.OnReloadPressed += OnReloadInput;
-        InputManager.OnSkillPressed += OnDashInput;
+        InputManager.OnSkillPressed += OnSkillInput;
         InputManager.OnItemPressed += OnItemInput;
         if (livingEntity != null)
         {
@@ -85,7 +90,7 @@ public class TestMoveAnimationController : MonoBehaviour
         InputManager.OnZoomPressed -= OnZoomInput;
         InputManager.OnZoomCanceledPressed -= OnZoomCanceledInput;
         InputManager.OnReloadPressed -= OnReloadInput;
-        InputManager.OnSkillPressed -= OnDashInput;
+        InputManager.OnSkillPressed -= OnSkillInput;
         InputManager.OnItemPressed -= OnItemInput;
         if (livingEntity != null)
         {
@@ -97,7 +102,7 @@ public class TestMoveAnimationController : MonoBehaviour
     {
         HandleMovementAnimation();
         // HandleTurnAnimation();
-        HandleAnimatorSpeed();
+        // HandleAnimatorSpeed();
         HandleJumpAnimation();
         // HandleLookAnimation();
         HandleTeddyBearWeaponState();
@@ -168,6 +173,7 @@ public class TestMoveAnimationController : MonoBehaviour
     {
         animator.SetLayerWeight(upperBodyLayerIndex, 1f);
         gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 0f, 0f);
+        aimIK.enabled = false;
         animator.SetTrigger("Reload");
 
     }
@@ -181,22 +187,22 @@ public class TestMoveAnimationController : MonoBehaviour
     // 재장전 종료
     void OnReloadEnd()
     {
+        Debug.Log("Reload 애니메이션 종료됨");
         gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 1f, 1f);
+        aimIK.enabled = true;
         animator.SetLayerWeight(upperBodyLayerIndex, 0f);
 
     }
 
-    // 조준 상태에 따른 애니메이션 속도 변경
-    void HandleAnimatorSpeed()
-    {
-        animator.speed = isAiming ? aimingAnimSpeed : normalAnimSpeed;
-    }
+    // // 조준 상태에 따른 애니메이션 속도 변경
+    // void HandleAnimatorSpeed()
+    // {
+    //     animator.speed = isAiming ? aimingAnimSpeed : normalAnimSpeed;
+    // }
 
     void HandleJumpAnimation()
     {
         bool grounded = moveController.IsGrounded();
-
-        Debug.Log($"isGrounded: {grounded}, velocityY: {rb.velocity.y}");
 
         if (!moveController.IsGrounded())
         {
@@ -227,7 +233,8 @@ public class TestMoveAnimationController : MonoBehaviour
         gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.Body, gunIK.bodyTarget, 0.04f);
         gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.RightFoot, gunIK.rightLegTarget, 0.3f);
         gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftFoot, gunIK.leftLegTarget, 0.3f);
-        
+
+        animator.SetFloat("SpeedMultiplier", 0.6f); // 조준 시 이동 느리게
     }
 
     // 조준 해제 시 호출
@@ -239,20 +246,32 @@ public class TestMoveAnimationController : MonoBehaviour
         gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.Body, gunIK.bodyTarget, 0.01f);
         gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.RightFoot, gunIK.rightLegTarget, 0.2f);
         gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftFoot, gunIK.leftLegTarget, 0.2f);
-        
+
+        animator.SetFloat("SpeedMultiplier", 1.2f); // 조준 해제 시 원래 속도
     }
 
-    // 대쉬 스킬
-    void OnDashInput()
+    // 스피드 스킬
+    void OnSkillInput()
     {
         
         if (dashSkill != null && dashSkill.CanUse)
         {   
             dashSkill.UseSkill();
-            animator.SetTrigger("Dash");
+            animator.SetTrigger("Speed");
             animator.SetLayerWeight(upperBodyLayerIndex, 0f);
             gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 0f, 0f);
+
+            if (speedSkillCoroutine != null)
+                StopCoroutine(speedSkillCoroutine);
+            speedSkillCoroutine = StartCoroutine(SpeedSkillRoutine());
         }
+    }
+
+    private IEnumerator SpeedSkillRoutine()
+    {
+        animator.SetFloat("SpeedMultiplier", 1.5f); // 이동만 1.5배
+        yield return new WaitForSeconds(3f);
+        animator.SetFloat("SpeedMultiplier", 1.2f); // 원래대로
     }
 
     // 아이템 스킬
