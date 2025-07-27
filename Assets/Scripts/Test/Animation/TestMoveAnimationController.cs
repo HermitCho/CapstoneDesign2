@@ -43,6 +43,11 @@ public class TestMoveAnimationController : MonoBehaviour
     private GunIK gunIK;
     private LivingEntity livingEntity;
 
+    // 대쉬 스킬
+    private CharacterSkill dashSkill;
+    // 아이템 스킬
+    private CharacterItem itemSkill;
+
     private void Awake()
     {
         animator = GetComponent<Animator>();
@@ -53,7 +58,8 @@ public class TestMoveAnimationController : MonoBehaviour
         gunIK = GetComponent<GunIK>();
         livingEntity = GetComponent<LivingEntity>();
         footstepSoundPlayer = GetComponent<FootstepSoundPlayer>();
-
+        dashSkill = GetComponent<CharacterSkill>();
+        itemSkill = GetComponent<CharacterItem>();
     }
 
     private void OnEnable()
@@ -239,18 +245,27 @@ public class TestMoveAnimationController : MonoBehaviour
     // 대쉬 스킬
     void OnDashInput()
     {
-        animator.SetTrigger("Dash");
-        animator.SetLayerWeight(upperBodyLayerIndex, 0f);
+        
+        if (dashSkill != null && dashSkill.CanUse)
+        {   
+            dashSkill.UseSkill();
+            animator.SetTrigger("Dash");
+            animator.SetLayerWeight(upperBodyLayerIndex, 0f);
+        }
     }
 
     // 아이템 스킬
     void OnItemInput()
     {
-        animator.SetTrigger("Item");
-        animator.SetTrigger("PowerUP");
-        animator.SetTrigger("Debuff 1");
-        animator.SetTrigger("Throw");
-        animator.SetLayerWeight(upperBodyLayerIndex, 0f);
+        if (itemSkill != null && itemSkill.CanUse)
+        {
+            itemSkill.UseSkill();
+            animator.SetTrigger("Item");
+            animator.SetTrigger("PowerUP");
+            animator.SetTrigger("Debuff 1");
+            animator.SetTrigger("Throw");
+            animator.SetLayerWeight(upperBodyLayerIndex, 0f);
+        }
     }
 
     // 테디베어 총기 부착
