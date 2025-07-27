@@ -68,19 +68,29 @@ public class GameOverPanel : MonoBehaviour
     
     void Awake()
     {
+        // 점수 초기화
+        currentFinalScore = 0f;
+        isModalOpened = false;
+        
         // 최고 점수 로드
         LoadBestScore();
         
         // 버튼 이벤트 연결
         SetupButtons();
+        
+        Debug.Log("✅ GameOverPanel: 초기화 완료 - 점수 초기화됨");
     }
     
     void OnEnable()
     {
+        // 점수 초기화 (씬 전환 시 안전장치)
+        currentFinalScore = 0f;
+        isModalOpened = false;
+        
         // GameManager의 게임 오버 이벤트 구독
         GameManager.OnGameOver += OnGameOverReceived;
         
-        Debug.Log("✅ GameOverPanel: 게임 오버 이벤트 구독");
+        Debug.Log("✅ GameOverPanel: 게임 오버 이벤트 구독 및 점수 초기화");
     }
     
     void OnDisable()
@@ -117,7 +127,9 @@ public class GameOverPanel : MonoBehaviour
     /// <param name="finalScore">최종 점수</param>
     void OnGameOverReceived(float finalScore)
     {
+        // 점수 초기화 및 새 점수 설정
         currentFinalScore = finalScore;
+        isModalOpened = false; // 모달 상태 초기화
         
         // 최고 점수 업데이트 확인
         UpdateBestScore(finalScore);
@@ -431,6 +443,11 @@ public class GameOverPanel : MonoBehaviour
     void OnMainMenuButtonClicked()
     {
         Debug.Log("🏠 GameOverPanel: 메인 메뉴 버튼 클릭");
+        
+        // 점수 초기화
+        currentFinalScore = 0f;
+        isModalOpened = false;
+        
         PhotonNetwork.LeaveRoom();
         PhotonNetwork.Disconnect();
         // 메인 메뉴로 이동 (씬 이름은 프로젝트에 맞게 수정)
