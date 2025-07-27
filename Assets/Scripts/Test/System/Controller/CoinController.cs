@@ -8,7 +8,7 @@ public class CoinController : MonoBehaviour
 
     [Header("코인 관리")]
     [SerializeField] private int currentCoin = 0;
-
+    
     #endregion
 
     #region Unity 생명주기
