@@ -447,6 +447,8 @@ public class TestGun : MonoBehaviour
     /// </summary>
     private void PlayAudioEffect()
     {
+        Debug.Log(gunData.shotClip);
+        Debug.Log(gunAudioPlayer);
         if (gunAudioPlayer != null && gunData.shotClip != null)
         {
             gunAudioPlayer.PlayOneShot(gunData.shotClip);

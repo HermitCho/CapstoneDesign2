@@ -8,9 +8,6 @@ public class FootstepSoundPlayer : MonoBehaviour
     [Header("발소리 클립")]
     [SerializeField] private AudioClip footstepClip;
 
-    [Header("재장전 소리 클립")]
-    [SerializeField] private AudioClip reloadClip;
-
     private AudioSource audioSource;
     private bool isMoving = false;
 
@@ -55,14 +52,6 @@ public class FootstepSoundPlayer : MonoBehaviour
         if (audioSource.isPlaying)
         {
             audioSource.Stop();
-        }
-    }
-
-    public void PlayReloadSound()
-    {
-        if (reloadClip != null)
-        {
-            audioSource.PlayOneShot(reloadClip);
         }
     }
 }
