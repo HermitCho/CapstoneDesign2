@@ -99,11 +99,7 @@ public abstract class Skill : MonoBehaviour
     /// </summary>
     protected virtual void InitializeComponents()
     {
-        audioSource = GetComponent<AudioSource>();
-        if (audioSource == null)
-        {
-            audioSource = gameObject.AddComponent<AudioSource>();
-        }
+
     }
 
     /// <summary>
@@ -223,9 +219,9 @@ public abstract class Skill : MonoBehaviour
         }
 
         // 사운드 재생
-        if (skillSound != null && audioSource != null)
+        if (skillSound != null)
         {
-            audioSource.PlayOneShot(skillSound);
+            AudioManager.Inst.PlayOneShot(skillSound);
         }
     }
 

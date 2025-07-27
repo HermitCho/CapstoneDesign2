@@ -147,6 +147,7 @@ public class ShopController : MonoBehaviour
         if (inGameUIManager != null)
         {
             inGameUIManager.ShowShopPanel();
+            AudioManager.Inst.PlayOneShot("SFX_UI_OpenShop");
         }
         
         // 게임 입력 차단
@@ -174,6 +175,7 @@ public class ShopController : MonoBehaviour
             if (inGameUIManager != null)
             {
                 inGameUIManager.ShowHUDPanel();
+                AudioManager.Inst.PlayOneShot("SFX_UI_CloseShop");
             }
             
             

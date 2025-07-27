@@ -46,4 +46,24 @@ public class SoundController : MonoBehaviour
     {
         AudioManager.Inst.PlayOneShot("SFX_UI_SelectCharacter");
     }
+
+    public void OnHover()
+    {
+        AudioManager.Inst.PlayOneShot("SFX_UI_Hover");
+    }
+
+    public void OnOpenModal()
+    {
+        AudioManager.Inst.PlayOneShot("SFX_UI_OpenModal");
+    }
+
+    public void OnCloseModal()
+    {
+        AudioManager.Inst.PlayOneShot("SFX_UI_CloseModal");
+    }
+
+    public void OnOpenGameOverModal()
+    {
+        AudioManager.Inst.PlayOneShot("SFX_UI_OpenGameOverModal");
+    }
 }
