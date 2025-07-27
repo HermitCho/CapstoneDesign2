@@ -5,14 +5,6 @@ using UnityEngine;
 [RequireComponent(typeof(AudioSource))]
 public class FootstepSoundPlayer : MonoBehaviour
 {
-    [Header("발소리 클립 이름 (AudioManager Playlist에 있어야 함)")]
-    [SerializeField] private string footstepClipName = "SFX_Game_FootStep";
-
-    [Header("점프 사운드 클립 이름")]
-    [SerializeField] private string jumpClipName = "SFX_Game_JumpSound";
-
-    [Header("착지 사운드 클립 이름")]
-    [SerializeField] private string landClipName = "SFX_Game_JumpDown";
 
     private bool isMoving = false;
 
@@ -36,10 +28,12 @@ public class FootstepSoundPlayer : MonoBehaviour
     public void FootStepSound()
     {
         // 이동 중이 아닐 때는 재생하지 않음
-        if (!isMoving || string.IsNullOrEmpty(footstepClipName))
+        if (!isMoving)
+        {
             return;
-
-        AudioManager.Inst.PlaySFX(footstepClipName);
+        }
+            
+        AudioManager.Inst.PlaySFX("SFX_Game_FootStep");
     }
 
     /// <summary>
@@ -47,10 +41,7 @@ public class FootstepSoundPlayer : MonoBehaviour
     /// </summary>
     public void JumpSound()
     {
-        if (string.IsNullOrEmpty(jumpClipName))
-            return;
-
-        AudioManager.Inst.PlaySFX(jumpClipName);
+        AudioManager.Inst.PlaySFX("SFX_Game_JumpUp");
     }
 
     /// <summary>
@@ -58,10 +49,7 @@ public class FootstepSoundPlayer : MonoBehaviour
     /// </summary>
     public void LandSound()
     {
-        if (string.IsNullOrEmpty(landClipName))
-            return;
-
-        AudioManager.Inst.PlaySFX(landClipName);
+        AudioManager.Inst.PlaySFX("SFX_Game_JumpDown");
     }
 
     /// <summary>
@@ -74,7 +62,7 @@ public class FootstepSoundPlayer : MonoBehaviour
         for (int i = pool.Count - 1; i >= 0; i--)
         {
             // footstep 이름과 일치하는 클립만 멈춤
-            if (pool[i].Name == footstepClipName || pool[i].Name.Contains("FootStep"))
+            if (pool[i].Name == "SFX_Game_FootStep")
             {
                 pool[i].Source.Stop();
                 Destroy(pool[i].gameObject);
