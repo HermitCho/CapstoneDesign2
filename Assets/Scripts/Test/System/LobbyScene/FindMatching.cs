@@ -343,6 +343,45 @@ public class FindMatching : MonoBehaviourPunCallbacks
         UpdateUI("인증 실패! App ID를 확인하세요.");
     }
 
+    public void OnExitButtonClick()
+    {
+        Debug.Log("[매칭] 게임 종료 버튼 클릭됨");
+        
+        // 매칭 중이면 매칭 취소
+        if (isMatching)
+        {
+            CancelMatching();
+        }
+        
+        // Photon 연결 해제
+        if (PhotonNetwork.IsConnected)
+        {
+            if (PhotonNetwork.InRoom)
+                PhotonNetwork.LeaveRoom();
+            PhotonNetwork.Disconnect();
+        }
+        
+        // 게임 종료 처리
+        QuitGame();
+    }
+    
+    /// <summary>
+    /// 게임 종료 처리
+    /// </summary>
+    private void QuitGame()
+    {
+        Debug.Log("[매칭] 게임 종료 처리 시작");
+        
+        // Unity 에디터에서는 플레이 모드 종료, 빌드에서는 애플리케이션 종료
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+        Debug.Log("[매칭] Unity 에디터에서 플레이 모드 종료");
+#else
+        Application.Quit();
+        Debug.Log("[매칭] 애플리케이션 종료");
+#endif
+    }
+
 
     #endregion
 }

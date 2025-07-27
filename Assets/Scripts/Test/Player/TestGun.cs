@@ -62,7 +62,7 @@ public class TestGun : MonoBehaviour
 
     #region Private Fields
 
-    private AudioSource gunAudioPlayer;
+
     private bool isFiring;
     private float lastFireTime;
 
@@ -148,7 +148,6 @@ public class TestGun : MonoBehaviour
     /// </summary>
     private void InitializeComponents()
     {
-        gunAudioPlayer = GetComponent<AudioSource>();
         mainCamera = GameObject.FindGameObjectWithTag("MainCamera").GetComponent<Camera>();
         
         // ✅ Crosshair UI를 비동기로 찾기
@@ -417,8 +416,8 @@ public class TestGun : MonoBehaviour
     protected virtual IEnumerator ShotEffect(Vector3 start, Vector3 end)
     {
         PlayMuzzleEffects();
-        PlayAudioEffect();
-
+        PlayAudioEffect(); // AudioManager를 사용한 발사 사운드 재생
+        
         GameObject trailObject = CreateBulletTrail(start, end);
 
         yield return new WaitForSeconds(gunData.bulletTrailDuration);
@@ -447,11 +446,14 @@ public class TestGun : MonoBehaviour
     /// </summary>
     private void PlayAudioEffect()
     {
-        Debug.Log(gunData.shotClip);
-        Debug.Log(gunAudioPlayer);
-        if (gunAudioPlayer != null && gunData.shotClip != null)
+        if (gunData.shotClip != null)
         {
-            gunAudioPlayer.PlayOneShot(gunData.shotClip);
+            // AudioManager를 사용해서 발사 사운드 재생
+            AudioManager.Inst?.PlayDirectClip(gunData.shotClip, 1f, 1f);
+        }
+        else
+        {
+            Debug.LogWarning("TestGun: 발사 사운드 클립이 설정되지 않았습니다.");
         }
     }
 
@@ -525,9 +527,14 @@ public class TestGun : MonoBehaviour
     /// </summary>
     private void PlayReloadSound()
     {
-        if (gunAudioPlayer != null && gunData.reloadClip != null)
+        if (gunData.reloadClip != null)
         {
-            gunAudioPlayer.PlayOneShot(gunData.reloadClip);
+            // AudioManager를 사용해서 재장전 사운드 재생
+            AudioManager.Inst?.PlayDirectClip(gunData.reloadClip, 1f, 1f);
+        }
+        else
+        {
+            Debug.LogWarning("TestGun: 재장전 사운드 클립이 설정되지 않았습니다.");
         }
     }
 
