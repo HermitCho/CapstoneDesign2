@@ -7,7 +7,7 @@ using Photon.Pun;
 /// 🎯 캐릭터 스폰 컨트롤러
 /// 캐릭터 프리팹을 지정된 위치들 중 랜덤으로 스폰하는 시스템
 /// </summary>
-public class SpawnController : MonoBehaviour
+public class SpawnController : MonoBehaviourPunCallbacks
 {
     [Header("🎯 스폰 위치 설정")]
     [SerializeField] private GameObject[] spawnPositions; // 스폰 가능한 위치들
@@ -18,6 +18,8 @@ public class SpawnController : MonoBehaviour
     [SerializeField] private bool randomizeRotation = false; // 랜덤 회전 여부
     [SerializeField] private Vector3 spawnOffset = Vector3.zero; // 스폰 위치 오프셋
     [SerializeField] private float spawnDelay = 0.1f; // 스폰 딜레이
+    [SerializeField] private bool autoSpawnOnJoinRoom = true; // 방 입장 시 자동 스폰
+    [SerializeField] private bool waitForCharacterSelection = true; // 캐릭터 선택 대기 여부
 
     [Header("🎮 디버그 설정")]
     [SerializeField] private bool debugMode = false;
@@ -37,6 +39,12 @@ public class SpawnController : MonoBehaviour
     private int lastUsedSpawnIndex = -1;
     private bool isSpawning = false;
     private int currentSpawnedCharacterIndex = -1;
+    private bool hasSpawnedPlayer = false; // 플레이어가 이미 스폰되었는지 확인
+    private bool isWaitingForCharacterSelection = false; // 캐릭터 선택 대기 중인지 확인
+
+    // 캐릭터 선택 관련
+    private SelectCharPanel selectCharPanel;
+    private InGameUIManager inGameUIManager;
 
     #region Unity 생명주기
 
@@ -49,6 +57,15 @@ public class SpawnController : MonoBehaviour
     {
         if (debugMode)
             Debug.Log("🎯 SpawnController 초기화 완료");
+        
+        // UI 컴포넌트들 찾기
+        FindUIComponents();
+        
+        // 방에 이미 입장되어 있다면 자동 스폰 시도
+        if (autoSpawnOnJoinRoom && PhotonNetwork.InRoom && !hasSpawnedPlayer)
+        {
+            StartCoroutine(AutoSpawnPlayerOnStart());
+        }
     }
 
     void OnDrawGizmos()
@@ -74,9 +91,187 @@ public class SpawnController : MonoBehaviour
 
     #endregion
 
+    #region Photon 콜백
+
+    public override void OnJoinedRoom()
+    {
+        Debug.Log("[SpawnController] 🎉 방 입장 감지!");
+        
+        if (autoSpawnOnJoinRoom && !hasSpawnedPlayer)
+        {
+            StartCoroutine(AutoSpawnPlayerOnJoinRoom());
+        }
+    }
+
+    #endregion
+
+    #region UI 컴포넌트 찾기
+
+    void FindUIComponents()
+    {
+        // SelectCharPanel 찾기
+        if (selectCharPanel == null)
+        {
+            selectCharPanel = FindObjectOfType<SelectCharPanel>();
+            if (selectCharPanel != null)
+            {
+                Debug.Log("[SpawnController] SelectCharPanel 찾음");
+            }
+        }
+
+        // InGameUIManager 찾기
+        if (inGameUIManager == null)
+        {
+            inGameUIManager = FindObjectOfType<InGameUIManager>();
+            if (inGameUIManager != null)
+            {
+                Debug.Log("[SpawnController] InGameUIManager 찾음");
+            }
+        }
+    }
+
+    #endregion
+
+    #region 자동 스폰 시스템
+
+    private IEnumerator AutoSpawnPlayerOnStart()
+    {
+        // 씬 로드 완료 대기
+        yield return new WaitForSeconds(0.5f);
+        
+        if (PhotonNetwork.InRoom && !hasSpawnedPlayer)
+        {
+            Debug.Log("[SpawnController] 시작 시 자동 플레이어 스폰 시도");
+            AutoSpawnPlayer();
+        }
+    }
+
+    private IEnumerator AutoSpawnPlayerOnJoinRoom()
+    {
+        // 방 입장 후 약간의 지연
+        yield return new WaitForSeconds(0.2f);
+        
+        if (PhotonNetwork.InRoom && !hasSpawnedPlayer)
+        {
+            Debug.Log("[SpawnController] 방 입장 시 자동 플레이어 스폰 시도");
+            AutoSpawnPlayer();
+        }
+    }
+
+    private void AutoSpawnPlayer()
+    {
+        if (hasSpawnedPlayer) return;
+
+        // DataBase 캐싱 확인
+        CacheDataBaseInfo();
+
+        if (cachedPlayerPrefabData == null || cachedPlayerPrefabData.Length == 0)
+        {
+            Debug.LogError("[SpawnController] 플레이어 프리팹 데이터가 없습니다!");
+            return;
+        }
+
+        Debug.Log($"[SpawnController] 사용 가능한 프리팹 개수: {cachedPlayerPrefabData.Length}");
+        for (int i = 0; i < cachedPlayerPrefabData.Length; i++)
+        {
+            if (cachedPlayerPrefabData[i] != null)
+            {
+                Debug.Log($"[SpawnController] 프리팹 {i}: {cachedPlayerPrefabData[i].name}");
+            }
+        }
+
+        // 캐릭터 선택 대기 모드인지 확인
+        if (waitForCharacterSelection && selectCharPanel != null)
+        {
+            Debug.Log("[SpawnController] 캐릭터 선택 대기 모드 활성화");
+            isWaitingForCharacterSelection = true;
+            
+            // 캐릭터 선택 패널 표시
+            ShowCharacterSelectionPanel();
+        }
+        else
+        {
+            // 자동으로 랜덤 캐릭터 선택
+            int characterIndex = Random.Range(0, cachedPlayerPrefabData.Length);
+            Debug.Log($"[SpawnController] 자동 스폰 - 캐릭터 인덱스: {characterIndex}, 프리팹: {cachedPlayerPrefabData[characterIndex]?.name}");
+            
+            SpawnCharacter(characterIndex);
+            hasSpawnedPlayer = true;
+        }
+    }
+
+    #endregion
+
+    #region 캐릭터 선택 시스템
+
+    /// <summary>
+    /// 캐릭터 선택 패널 표시
+    /// </summary>
+    private void ShowCharacterSelectionPanel()
+    {
+        if (selectCharPanel != null)
+        {
+            Debug.Log("[SpawnController] 캐릭터 선택 패널 표시");
+            selectCharPanel.SetPanelVisible(true);
+        }
+        else
+        {
+            Debug.LogWarning("[SpawnController] SelectCharPanel을 찾을 수 없습니다!");
+            // SelectCharPanel이 없으면 자동으로 랜덤 선택
+            int characterIndex = Random.Range(0, cachedPlayerPrefabData.Length);
+            SpawnCharacter(characterIndex);
+            hasSpawnedPlayer = true;
+        }
+    }
+
+    /// <summary>
+    /// 캐릭터 선택 완료 처리 (SelectCharPanel에서 호출)
+    /// </summary>
+    public void OnCharacterSelectionConfirmed(int characterIndex)
+    {
+        if (!isWaitingForCharacterSelection) return;
+
+        Debug.Log($"[SpawnController] 캐릭터 선택 완료: {characterIndex}");
+        
+        isWaitingForCharacterSelection = false;
+        
+        // 선택된 캐릭터로 스폰
+        SpawnCharacter(characterIndex);
+        hasSpawnedPlayer = true;
+        
+        // 캐릭터 선택 패널 숨기기
+        if (selectCharPanel != null)
+        {
+            selectCharPanel.SetPanelVisible(false);
+        }
+    }
+
+    /// <summary>
+    /// 캐릭터 선택 취소 처리 (SelectCharPanel에서 호출)
+    /// </summary>
+    public void OnCharacterSelectionCanceled()
+    {
+        if (!isWaitingForCharacterSelection) return;
+
+        Debug.Log("[SpawnController] 캐릭터 선택 취소됨");
+        
+        isWaitingForCharacterSelection = false;
+        
+        // 기본 캐릭터로 스폰
+        int defaultCharacterIndex = 0;
+        SpawnCharacter(defaultCharacterIndex);
+        hasSpawnedPlayer = true;
+        
+        // 캐릭터 선택 패널 숨기기
+        if (selectCharPanel != null)
+        {
+            selectCharPanel.SetPanelVisible(false);
+        }
+    }
+
+    #endregion
+
     #region 초기화 및 검증
-
-
 
     void CacheDataBaseInfo()
     {
@@ -259,24 +454,18 @@ public class SpawnController : MonoBehaviour
     {
         if (prefab == null) return null;
 
-// #if UNITY_EDITOR
-//         string path = UnityEditor.AssetDatabase.GetAssetPath(prefab);
-//         if (path.Contains("Resources/"))
-//         {
-//             int startIndex = path.IndexOf("Resources/") + "Resources/".Length;
-//             int endIndex = path.LastIndexOf(".");
-//             if (startIndex < path.Length && endIndex > startIndex)
-//             {
-//                 return path.Substring(startIndex, endIndex - startIndex);
-//             }
-//         }
-// #endif
-        // 빌드 시 사용되는 동적 경로 생성
-        // 프리팹 이름을 기반으로 Resources 폴더 내의 경로를 생성
         string prefabName = prefab.name;
         
         // 프리팹 이름에 따라 경로 결정
-        if (prefabName.Contains("Player") || prefabName.Contains("Test"))
+        if (prefabName.Contains("Player"))
+        {
+            return $"Prefabs/{prefabName}";
+        }
+        else if (prefabName.Contains("Character"))
+        {
+            return $"Prefabs/Character/{prefabName}";
+        }
+        else if (prefabName.Contains("Test"))
         {
             return $"Prefabs/{prefabName}";
         }
