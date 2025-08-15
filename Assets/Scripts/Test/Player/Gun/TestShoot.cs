@@ -1,8 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Photon.Pun;
 
-public class TestShoot : MonoBehaviour
+public class TestShoot : MonoBehaviourPun
 {
     [SerializeField] private TestGun gun;
 
@@ -30,6 +31,7 @@ public class TestShoot : MonoBehaviour
 
     void OnEnable()
     {
+        if (!photonView.IsMine) return;
         InputManager.OnShootPressed += OnShootInput;
         InputManager.OnShootCanceledPressed += OnShootCanceledInput;
         InputManager.OnReloadPressed += OnReloadInput;
@@ -37,6 +39,7 @@ public class TestShoot : MonoBehaviour
 
     void OnDisable()
     {
+        if (!photonView.IsMine) return;
         InputManager.OnShootPressed -= OnShootInput;
         InputManager.OnShootCanceledPressed -= OnShootCanceledInput;
         InputManager.OnReloadPressed -= OnReloadInput;
@@ -45,18 +48,23 @@ public class TestShoot : MonoBehaviour
 
     void OnShootInput()
     {
-        if (isShooting)
+        if (!photonView.IsMine) return;
+        if (isShooting && gun != null)
             gun.InputFire(true);
     }
 
     void OnShootCanceledInput()
     {
-        gun.InputFire(false);
+        if (!photonView.IsMine) return;
+        if (gun != null)
+            gun.InputFire(false);
     }
 
     void OnReloadInput()
     {
-        gun.Reload();
+        if (!photonView.IsMine) return;
+        if (gun != null)
+            gun.Reload();
     }
 
     public static void SetIsShooting(bool value)

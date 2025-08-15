@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Photon.Pun;
 
 /// <summary>
 /// 캐릭터 스킬 클래스
@@ -130,7 +131,8 @@ public class CharacterSkill : Skill
     /// </summary>
     private void OnSkillInputPressed()
     {
-        if (useSkillInput && CanUse)
+        // 멀티플레이: 오너만 스킬 입력 처리
+        if (useSkillInput && CanUse && PhotonView.Get(this).IsMine)
         {
             // 상점이 열려있으면 스킬 사용 차단
             ShopController shopController = FindObjectOfType<ShopController>();

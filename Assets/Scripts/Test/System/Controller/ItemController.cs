@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Photon.Pun;
 
 public class ItemController : MonoBehaviour
 {
@@ -65,42 +66,40 @@ public class ItemController : MonoBehaviour
 
     public void AttachItem(GameObject itemPrefab)
     {
-        if(currentItemSlotIndex >= cachedMaxItemSlot) 
-        {
-            Debug.LogWarning("⚠️ ItemController - 아이템 슬롯이 가득 찼습니다.");
-            return;
-        }
+        if (!PhotonView.Get(this).IsMine) return;
+        PhotonView.Get(this).RPC("RPC_AttachItem", RpcTarget.All, itemPrefab.name);
+    }
 
+    [PunRPC]
+    public void RPC_AttachItem(string itemPrefabName)
+    {
         if (itemSlot1 == null)
         {
             Debug.LogError("❌ ItemController - ItemSlot을 찾을 수 없습니다.");
             return;
         }
-
-        if (itemPrefab == null)
+        GameObject prefab = null;
+        foreach (var go in cachedItemPrefab)
         {
-            Debug.LogError("❌ ItemController - 아이템 프리팹이 null입니다.");
+            if (go != null && go.name == itemPrefabName)
+            {
+                prefab = go;
+                break;
+            }
+        }
+        if (prefab == null)
+        {
+            Debug.LogError($"❌ ItemController - {itemPrefabName} 프리팹을 찾을 수 없습니다.");
             return;
         }
-
         try
         {
-            // 프리팹을 인스턴스화하여 새로운 게임오브젝트 생성
-            GameObject itemInstance = Instantiate(itemPrefab, itemSlot1.transform);
-            
-            // 새로 구매한 아이템을 첫 번째 자식(가장 위)으로 배치
+            GameObject itemInstance = Instantiate(prefab, itemSlot1.transform);
             itemInstance.transform.SetAsFirstSibling();
-            
-            // 아이템 슬롯 인덱스 증가
             currentItemSlotIndex++;
-            
-            // 아이템 순서 재정렬 및 활성화 상태 업데이트 (HUDPanel 업데이트 포함)
             UpdateItemOrderAndActivation();
-            
-            // HUD 패널 즉시 업데이트
             UpdateHUDPanelSafely();
-            
-            Debug.Log($"✅ ItemController - 아이템 부착 완료: {itemPrefab.name} -> {itemInstance.name} (첫 번째 자식으로 배치)");
+            Debug.Log($"✅ ItemController - 아이템 부착 완료: {prefab.name} -> {itemInstance.name} (첫 번째 자식으로 배치)");
         }
         catch (System.Exception e)
         {

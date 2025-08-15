@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Photon.Pun;
 
 /// <summary>
 /// 일회용 아이템(스킬) 클래스
@@ -32,6 +33,16 @@ public class CharacterItem : Skill
     private int useCount = 0; // 현재 사용 횟수
     private const int maxUseCount = 1; // 최대 사용 횟수(1회)
     private ItemController itemController; // ItemController 참조
+    private PhotonView ownerPhotonView; // 부모의 PhotonView 캐시
+
+    private PhotonView GetOwnerPhotonView()
+    {
+        if (ownerPhotonView == null)
+        {
+            ownerPhotonView = GetComponentInParent<PhotonView>();
+        }
+        return ownerPhotonView;
+    }
 
     #endregion
 
@@ -158,7 +169,8 @@ public class CharacterItem : Skill
     /// </summary>
     private void OnItemInputPressed()
     {
-        if (useItemInput && CanUse)
+        PhotonView pv = GetOwnerPhotonView();
+        if (useItemInput && CanUse && pv != null && pv.IsMine)
         {
             // 아이템이 실제로 활성화되어 있는지 확인
             if (!gameObject.activeInHierarchy)
@@ -173,7 +185,6 @@ public class CharacterItem : Skill
                 Debug.Log("⚠️ CharacterItem - 상점이 열려있어 아이템을 사용할 수 없습니다.");
                 return;
             }
-            
             // ItemController에서 첫 번째 아이템인지 확인
             if (itemController != null)
             {
@@ -201,19 +212,37 @@ public class CharacterItem : Skill
     /// <returns>스킬 사용 성공 여부</returns>
     public override bool UseSkill()
     {
-        if (!CanUse)
+        PhotonView pv = GetOwnerPhotonView();
+        if (!CanUse || pv == null || !pv.IsMine)
         {
-            Debug.LogWarning($"아이템 스킬 '{skillName}' 사용 불가: 구매되지 않았거나 이미 사용됨");
+            Debug.LogWarning($"아이템 스킬 '{skillName}' 사용 불가: 구매되지 않았거나 이미 사용됨, 또는 내 오브젝트가 아님");
             return false;
         }
+        
+        Debug.Log($"🎯 CharacterItem - UseSkill 호출됨: {skillName}");
+        
+        // PunRPC로 모든 클라이언트에 동기화
+        pv.RPC("RPC_UseItemSkill", RpcTarget.All);
+        return true;
+    }
 
+    [PunRPC]
+    public void RPC_UseItemSkill()
+    {
+        Debug.Log($"🎯 CharacterItem - RPC_UseItemSkill 실행됨: {skillName}");
+        
+        // 실제 스킬 실행
         bool success = base.UseSkill();
         if (success)
         {
             useCount++;
             OnItemSkillUsed();
+            Debug.Log($"✅ CharacterItem - 스킬 실행 완료: {skillName}");
         }
-        return success;
+        else
+        {
+            Debug.LogWarning($"❌ CharacterItem - 스킬 실행 실패: {skillName}");
+        }
     }
 
     /// <summary>
