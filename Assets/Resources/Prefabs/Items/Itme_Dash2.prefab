@@ -11,7 +11,6 @@ GameObject:
   - component: {fileID: 273426545921376410}
   - component: {fileID: -3022171209392063775}
   - component: {fileID: 5651644966289854829}
-  - component: {fileID: 5302167429439020948}
   m_Layer: 0
   m_Name: Itme_Dash2
   m_TagString: Untagged
@@ -157,7 +156,7 @@ MonoBehaviour:
   animationTrigger: Dash
   price: 1
   dashDuration: 0.3
-  dashForce: 20
+  dashForce: 200
   dashCurve:
     serializedVersion: 2
     m_Curve:
@@ -184,28 +183,6 @@ MonoBehaviour:
     m_RotationOrder: 4
   dashTrail: {fileID: 0}
   dashParticles: {fileID: 0}
---- !u!114 &5302167429439020948
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7300657394447749002}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: aa584fbee541324448dd18d8409c7a41, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  ObservedComponentsFoldoutOpen: 1
-  Group: 0
-  prefixField: -1
-  Synchronization: 3
-  OwnershipTransfer: 0
-  observableSearch: 0
-  ObservedComponents: []
-  sceneViewId: 0
-  InstantiationId: 0
-  isRuntimeInstantiated: 0
 --- !u!1001 &3313230232062244009
 PrefabInstance:
   m_ObjectHideFlags: 0

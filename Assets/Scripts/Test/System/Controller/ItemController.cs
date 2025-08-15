@@ -291,6 +291,7 @@ public class ItemController : MonoBehaviour
     {
         if (itemSlot1 == null || itemSlot1.transform.childCount == 0)
         {
+            Debug.LogWarning($"⚠️ ItemController - GetFirstActiveItem: itemSlot1이 null이거나 자식이 없음. childCount: {(itemSlot1 != null ? itemSlot1.transform.childCount : 0)}");
             return null;
         }
 
@@ -298,10 +299,19 @@ public class ItemController : MonoBehaviour
         Transform lastChild = itemSlot1.transform.GetChild(itemSlot1.transform.childCount - 1);
         if (lastChild == null || !lastChild.gameObject.activeInHierarchy)
         {
+            Debug.LogWarning($"⚠️ ItemController - GetFirstActiveItem: 마지막 자식이 null이거나 비활성화. lastChild: {(lastChild != null ? lastChild.name : "null")}, active: {(lastChild != null ? lastChild.gameObject.activeInHierarchy : false)}");
             return null;
         }
 
-        return lastChild.GetComponent<CharacterItem>();
+        CharacterItem item = lastChild.GetComponent<CharacterItem>();
+        if (item == null)
+        {
+            Debug.LogWarning($"⚠️ ItemController - GetFirstActiveItem: 마지막 자식에 CharacterItem 컴포넌트가 없음. lastChild: {lastChild.name}");
+            return null;
+        }
+
+        Debug.Log($"✅ ItemController - GetFirstActiveItem: {item.SkillName} 반환 (자식 {itemSlot1.transform.childCount}개 중 마지막)");
+        return item;
     }
 
     /// <summary>
@@ -335,10 +345,20 @@ public class ItemController : MonoBehaviour
     /// <returns>첫 번째 아이템 여부</returns>
     public bool IsFirstActiveItem(CharacterItem characterItem)
     {
-        if (characterItem == null) return false;
+        if (characterItem == null) 
+        {
+            Debug.LogWarning("⚠️ ItemController - IsFirstActiveItem: characterItem이 null");
+            return false;
+        }
         
         // 실제 활성화된 아이템을 찾기
-        if (itemSlot1 == null) return false;
+        if (itemSlot1 == null) 
+        {
+            Debug.LogWarning("⚠️ ItemController - IsFirstActiveItem: itemSlot1이 null");
+            return false;
+        }
+        
+        Debug.Log($"🔍 ItemController - IsFirstActiveItem 검사: {characterItem.SkillName}");
         
         for (int i = 0; i < itemSlot1.transform.childCount; i++)
         {
@@ -346,13 +366,19 @@ public class ItemController : MonoBehaviour
             if (child != null && child.gameObject.activeInHierarchy)
             {
                 CharacterItem activeItem = child.GetComponent<CharacterItem>();
-                if (activeItem == characterItem)
+                if (activeItem != null)
                 {
-                    return true;
+                    Debug.Log($"  - 활성 아이템 {i}: {activeItem.SkillName}");
+                    if (activeItem == characterItem)
+                    {
+                        Debug.Log($"✅ ItemController - IsFirstActiveItem: {characterItem.SkillName}이 첫 번째 활성 아이템임");
+                        return true;
+                    }
                 }
             }
         }
         
+        Debug.LogWarning($"⚠️ ItemController - IsFirstActiveItem: {characterItem.SkillName}이 첫 번째 활성 아이템이 아님");
         return false;
     }
 

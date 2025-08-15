@@ -170,11 +170,14 @@ public class CharacterItem : Skill
     private void OnItemInputPressed()
     {
         PhotonView pv = GetOwnerPhotonView();
+        Debug.Log($"🔍 CharacterItem - OnItemInputPressed: {skillName}, pv={(pv!=null)}, IsMine={(pv!=null?pv.IsMine:false)}");
+        
         if (useItemInput && CanUse && pv != null && pv.IsMine)
         {
             // 아이템이 실제로 활성화되어 있는지 확인
             if (!gameObject.activeInHierarchy)
             {
+                Debug.LogWarning($"⚠️ CharacterItem - 아이템이 비활성화되어 있음: {skillName}");
                 return;
             }
 
@@ -185,20 +188,32 @@ public class CharacterItem : Skill
                 Debug.Log("⚠️ CharacterItem - 상점이 열려있어 아이템을 사용할 수 없습니다.");
                 return;
             }
-            // ItemController에서 첫 번째 아이템인지 확인
+            
+            // ItemController에서 첫 번째 아이템인지 확인 (임시로 주석 처리하여 테스트)
             if (itemController != null)
             {
-                if (!itemController.IsFirstActiveItem(this))
-                {
-                    Debug.Log($"⚠️ CharacterItem - '{skillName}'은 첫 번째 아이템이 아니므로 사용되지 않습니다.");
-                    return;
-                }
+                bool isFirst = itemController.IsFirstActiveItem(this);
+                Debug.Log($"🔍 CharacterItem - 첫 번째 아이템 체크: {skillName}, isFirst={isFirst}");
+                
+                // 임시로 첫 번째 아이템 체크를 건너뛰어 테스트
+                // if (!isFirst)
+                // {
+                //     Debug.Log($"⚠️ CharacterItem - '{skillName}'은 첫 번째 아이템이 아니므로 사용되지 않습니다.");
+                //     return;
+                // }
             }
             else
             {
+                Debug.LogWarning($"⚠️ CharacterItem - ItemController가 null: {skillName}");
                 return;
             }
+            
+            Debug.Log($"🎯 CharacterItem - UseSkill 호출: {skillName}");
             UseSkill();
+        }
+        else
+        {
+            Debug.LogWarning($"⚠️ CharacterItem - OnItemInputPressed 조건 불충족: useItemInput={useItemInput}, CanUse={CanUse}, pv={(pv!=null)}, IsMine={(pv!=null?pv.IsMine:false)}");
         }
     }
 
@@ -213,36 +228,29 @@ public class CharacterItem : Skill
     public override bool UseSkill()
     {
         PhotonView pv = GetOwnerPhotonView();
+        Debug.Log($"🎯 CharacterItem - UseSkill 시작: {skillName}, pv={(pv!=null)}, IsMine={(pv!=null?pv.IsMine:false)}, CanUse={CanUse}");
+        
         if (!CanUse || pv == null || !pv.IsMine)
         {
-            Debug.LogWarning($"아이템 스킬 '{skillName}' 사용 불가: 구매되지 않았거나 이미 사용됨, 또는 내 오브젝트가 아님");
+            Debug.LogWarning($"아이템 스킬 '{skillName}' 사용 불가: CanUse={CanUse}, pv={(pv!=null)}, IsMine={(pv!=null?pv.IsMine:false)}");
             return false;
         }
         
-        Debug.Log($"🎯 CharacterItem - UseSkill 호출됨: {skillName}");
+        Debug.Log($"🎯 CharacterItem - UseSkill 호출됨(로컬 실행): {skillName}");
         
-        // PunRPC로 모든 클라이언트에 동기화
-        pv.RPC("RPC_UseItemSkill", RpcTarget.All);
-        return true;
-    }
-
-    [PunRPC]
-    public void RPC_UseItemSkill()
-    {
-        Debug.Log($"🎯 CharacterItem - RPC_UseItemSkill 실행됨: {skillName}");
-        
-        // 실제 스킬 실행
+        // 로컬에서 바로 실행 (루트 Transform/Rigidbody의 네트워크 동기화에 의해 위치는 전파됨)
         bool success = base.UseSkill();
         if (success)
         {
             useCount++;
             OnItemSkillUsed();
-            Debug.Log($"✅ CharacterItem - 스킬 실행 완료: {skillName}");
+            Debug.Log($"✅ CharacterItem - 스킬 실행 완료(로컬): {skillName}, useCount={useCount}");
         }
         else
         {
             Debug.LogWarning($"❌ CharacterItem - 스킬 실행 실패: {skillName}");
         }
+        return success;
     }
 
     /// <summary>

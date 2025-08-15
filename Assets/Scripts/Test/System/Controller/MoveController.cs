@@ -623,15 +623,28 @@ public class MoveController : MonoBehaviour
     // InputManager에서 아이템 입력 받기
     void OnItemInput()
     {
+        Debug.Log("🎯 MoveController - OnItemInput 시작");
+        
         // ✅ 아이템 사용 제어 확인
-        if (!canUseItem || isStunned) return;
-        if (!PhotonView.Get(this).IsMine) return;
+        if (!canUseItem || isStunned) 
+        {
+            Debug.Log($"⚠️ MoveController - 아이템 사용 차단: canUseItem={canUseItem}, isStunned={isStunned}");
+            return;
+        }
+        
+        if (!PhotonView.Get(this).IsMine) 
+        {
+            Debug.Log("⚠️ MoveController - 오너가 아니므로 아이템 사용 불가");
+            return;
+        }
+        
         // 쿨타임 체크 (중복 실행 방지)
         if (Time.time - lastItemUseTime < itemUseCooldown)
         {
             Debug.Log($"⚠️ MoveController - 아이템 사용 쿨타임 중입니다. ({(itemUseCooldown - (Time.time - lastItemUseTime)):F2}초 남음)");
             return;
         }
+        
         // 상점이 열려있으면 아이템 사용 차단
         ShopController shopController = FindObjectOfType<ShopController>();
         if (shopController != null && shopController.IsShopOpen())
@@ -639,6 +652,7 @@ public class MoveController : MonoBehaviour
             Debug.Log("⚠️ MoveController - 상점이 열려있어 아이템을 사용할 수 없습니다.");
             return;
         }
+        
         // 현재 플레이어의 활성화된 아이템 찾기
         ItemController itemController = FindCurrentPlayerItemController();
         if (itemController == null)
@@ -646,6 +660,7 @@ public class MoveController : MonoBehaviour
             Debug.LogWarning("⚠️ MoveController - ItemController를 찾을 수 없습니다.");
             return;
         }
+        
         // 활성화된 아이템 가져오기
         CharacterItem activeItem = itemController.GetFirstActiveItem();
         if (activeItem == null)
@@ -653,11 +668,16 @@ public class MoveController : MonoBehaviour
             Debug.LogWarning("⚠️ MoveController - 활성화된 아이템이 없습니다.");
             return;
         }
+        
+        Debug.Log($"🎯 MoveController - 활성 아이템 발견: {activeItem.SkillName}, CanUse: {activeItem.CanUse}");
+        
         // 쿨타임 업데이트
         lastItemUseTime = Time.time;
+        
         // 아이템 사용
-        Debug.Log($"✅ MoveController - 아이템 사용: {activeItem.SkillName}");
-        activeItem.UseSkill();
+        Debug.Log($"✅ MoveController - 아이템 사용 시작: {activeItem.SkillName}");
+        bool success = activeItem.UseSkill();
+        Debug.Log($"✅ MoveController - 아이템 사용 결과: {activeItem.SkillName}, 성공: {success}");
     }
 
     /// <summary>
@@ -666,20 +686,35 @@ public class MoveController : MonoBehaviour
     /// <returns>현재 플레이어의 ItemController</returns>
     private ItemController FindCurrentPlayerItemController()
     {
-        // 플레이어 태그로 찾기
+        // 자신 기준으로 ItemController 찾기 (태그 기반 탐색 대신)
+        ItemController itemController = GetComponent<ItemController>();
+        if (itemController == null)
+        {
+            itemController = GetComponentInChildren<ItemController>();
+        }
+        
+        if (itemController != null)
+        {
+            Debug.Log($"✅ MoveController - ItemController 찾음: {itemController.name}");
+            return itemController;
+        }
+        
+        // Fallback: 태그 기반 탐색 (기존 방식)
         GameObject currentPlayer = GameObject.FindGameObjectWithTag("Player");
         if (currentPlayer != null)
         {
-            ItemController itemController = currentPlayer.GetComponent<ItemController>();
+            itemController = currentPlayer.GetComponent<ItemController>();
             if (itemController == null)
             {
                 itemController = currentPlayer.GetComponentInChildren<ItemController>();
             }
             if (itemController != null)
             {
+                Debug.Log($"⚠️ MoveController - 태그 기반으로 ItemController 찾음: {itemController.name}");
                 return itemController;
             }
         }
+        
         Debug.LogWarning("⚠️ MoveController - 플레이어의 ItemController를 찾을 수 없습니다.");
         return null;
     }
