@@ -487,7 +487,7 @@ public class HUDPanel : MonoBehaviour
     }
 
     /// <summary>
-    /// 배율 업데이트 (시간대별 포맷 적용)
+    /// 배율 업데이트 (테디베어 부착 상태에 따른 포맷 적용)
     /// </summary>
     public void UpdateMultiplier(float multiplier)
     {
@@ -506,28 +506,26 @@ public class HUDPanel : MonoBehaviour
         string formattedText = "";
         Color textColor = Color.white;
 
-        // 시간대에 따른 포맷 선택 - GameManager 기반 안전한 접근
+        // 테디베어 부착 상태에 따른 포맷 선택
         try
         {
-            // GameManager 존재 여부만 체크
+            // GameManager 존재 여부 체크
             bool hasGameManager = GameManager.Instance != null;
 
             if (hasGameManager)
             {
-                float gameTime = GameManager.Instance.GetGameTime();
-                float scoreIncreaseTime = GameManager.Instance.GetScoreIncreaseTime();
-                bool dataBaseCached = GameManager.Instance.IsDataBaseCached();
+                bool isTeddyBearAttached = GameManager.Instance.IsTeddyBearAttached();
 
-                if (gameTime >= scoreIncreaseTime)
+                if (isTeddyBearAttached)
                 {
-                    // 점수배율 적용 시점 이후: multiplierFormat 사용
-                    textColor = multiplier > 1f ? cachedMultiplierFormatColor : cachedGeneralMultiplierFormatColor;
+                    // 테디베어 부착 시: multiplierFormat 사용
+                    textColor = cachedMultiplierFormatColor;
                     formattedText = string.Format(cachedMultiplierFormat, multiplier);
                 }
                 else
                 {
+                    // 테디베어 미부착 시: GeneralMultiplierFormat 사용
                     textColor = cachedGeneralMultiplierFormatColor;
-                    // 점수배율 적용 전: GeneralMultiplierFormat 사용
                     formattedText = string.Format(cachedGeneralMultiplierFormat, multiplier);
                 }
             }
@@ -977,21 +975,19 @@ public class HUDPanel : MonoBehaviour
     {
         if (GameManager.Instance == null) return;
 
-        float gameTime = GameManager.Instance.GetGameTime();
-        float scoreIncreaseTime = GameManager.Instance.GetScoreIncreaseTime();
+        bool isTeddyBearAttached = GameManager.Instance.IsTeddyBearAttached();
 
-        if (gameTime >= scoreIncreaseTime)
+        if (isTeddyBearAttached)
         {
             UpdateScoreStatus("증가한 점수", 0f);
         }
         else
         {
-            float remaining = scoreIncreaseTime - gameTime;
-            UpdateScoreStatus("기본 점수", remaining);
+            UpdateScoreStatus("기본 점수", 0f);
         }
 
         // 재부착 시간 실시간 업데이트
-        if (!GameManager.Instance.IsTeddyBearAttached())
+        if (!isTeddyBearAttached)
         {
             float timeUntil = GameManager.Instance.GetTimeUntilReattach();
             UpdateAttachStatus(false, timeUntil);

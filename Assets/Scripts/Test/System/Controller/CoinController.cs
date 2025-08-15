@@ -42,8 +42,44 @@ public class CoinController : MonoBehaviour
     public void AddCoin(int amount)
     {
         currentCoin += amount;
+        
+        // 테디베어 점수도 함께 증가
+        AddTeddyBearScore(amount);
+        
         // HUDPanel에 코인 변경 알림
         NotifyHUDCoinChanged();
+    }
+
+    /// <summary>
+    /// 코인 수량에 따른 테디베어 점수 추가
+    /// </summary>
+    /// <param name="coinAmount">획득한 코인 수량</param>
+    private void AddTeddyBearScore(int coinAmount)
+    {
+        // GameManager를 통해 테디베어 점수 증가
+        if (GameManager.Instance != null)
+        {
+            // 테디베어가 부착되어 있는지 확인
+            bool isTeddyBearAttached = GameManager.Instance.IsTeddyBearAttached();
+            
+            // 기본 점수 (코인 1개당 1점)
+            float baseScore = coinAmount;
+            
+            // 테디베어가 부착되어 있다면 배율 적용
+            if (isTeddyBearAttached)
+            {
+                float multiplier = GameManager.Instance.GetScoreMultiplier();
+                baseScore *= multiplier;
+                Debug.Log($"✅ CoinController - 테디베어 부착 상태에서 코인 {coinAmount}개 획득! 점수: {baseScore} (배율: {multiplier})");
+            }
+            else
+            {
+                Debug.Log($"✅ CoinController - 테디베어 미부착 상태에서 코인 {coinAmount}개 획득! 점수: {baseScore}");
+            }
+            
+            // GameManager를 통해 테디베어 점수 업데이트
+            GameManager.Instance.AddTeddyBearScore(baseScore);
+        }
     }
 
     /// <summary>

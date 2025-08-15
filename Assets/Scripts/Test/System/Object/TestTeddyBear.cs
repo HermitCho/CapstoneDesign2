@@ -23,10 +23,7 @@ public class TestTeddyBear : MonoBehaviour
     private float originalOutlineAlpha;
     
     //테디베어 점수 관련 변수
-    private Coroutine scoreIncreaseCoroutine;
-    private float gameStartTime;
     private float currentScore;
-    private float currentScoreMultiplier = 1f;
     
     //테디베어 재부착 방지 관련 변수
     private float lastDetachTime = -999f;
@@ -46,8 +43,6 @@ public class TestTeddyBear : MonoBehaviour
     private float cachedTeddyBearScore;
     private float cachedInitialScore;
     private float cachedScoreIncreaseRate;
-    private float cachedScoreIncreaseTime;
-    private float cachedScoreGetTick;
     private float cachedGlowingIntensity;
     private Color cachedGlowingColor;
     private float cachedGlowingOutlineWidth;
@@ -89,9 +84,6 @@ public class TestTeddyBear : MonoBehaviour
         originalPosition = transform.position;
         originalRotation = transform.rotation;
         originalParent = transform.parent;
-        
-        // 게임 시작 시간 기록
-        gameStartTime = Time.time;
         
         // 초기 점수 설정
         currentScore = cachedTeddyBearScore;
@@ -150,8 +142,6 @@ public class TestTeddyBear : MonoBehaviour
                 cachedTeddyBearScore = teddyBearData.TeddyBearScore;
                 cachedInitialScore = teddyBearData.InitialScore;
                 cachedScoreIncreaseRate = teddyBearData.ScoreIncreaseRate;
-                cachedScoreIncreaseTime = teddyBearData.ScoreIncreaseTime;
-                cachedScoreGetTick = teddyBearData.ScoreGetTick;
                 cachedGlowingIntensity = teddyBearData.GlowingIntensity;
                 cachedGlowingColor = teddyBearData.GlowingColor;
                 cachedGlowingOutlineWidth = teddyBearData.GlowingOutlineWidth;
@@ -215,8 +205,6 @@ public class TestTeddyBear : MonoBehaviour
 
         #warning Static으로 선언되어 있음. 최적화를 위해 수정 필요
         TestShoot.SetIsShooting(false);
-        // 부착되면 점수 증가 시작
-        StartScoreIncrease();
     }
 
     // Outline 컴포넌트 초기화
@@ -321,88 +309,14 @@ public class TestTeddyBear : MonoBehaviour
         }
     }
     
-    // 점수 증가 시작
-    void StartScoreIncrease()
-    {
-        if (scoreIncreaseCoroutine != null)
-        {
-            StopCoroutine(scoreIncreaseCoroutine);
-        }
-        scoreIncreaseCoroutine = StartCoroutine(ScoreIncreaseCoroutine());
-    }
-    
-    // 점수 증가 중지
-    void StopScoreIncrease()
-    {
-        if (scoreIncreaseCoroutine != null)
-        {
-            StopCoroutine(scoreIncreaseCoroutine);
-            scoreIncreaseCoroutine = null;
-        }
-    }
-    
-    // 점수 증가 코루틴
-    IEnumerator ScoreIncreaseCoroutine()
-    {
-        while (isAttached)
-        {
-            // 현재 게임 시간 계산
-            float currentGameTime = Time.time - gameStartTime;
-            
-            // 점수 증가량 계산
-            float scoreToAdd = CalculateScoreToAdd(currentGameTime);
-            currentScore += scoreToAdd;
-            
-            // DataBase의 점수도 업데이트
-            cachedTeddyBearScore = currentScore;
-            
-            // HeatUI에 점수 업데이트 알림 (게임매니저를 통해)
-            NotifyScoreUpdate();
-            
-            // 설정된 틱만큼 대기
-            yield return new WaitForSeconds(cachedScoreGetTick);
-        }
-    }
-    
-    // 게임 시간에 따른 점수 증가량 계산 (GameManager 기반)
-    float CalculateScoreToAdd(float gameTime)
-    {
-        // GameManager에서 실시간 배율 가져오기
-        float currentMultiplier = 1f;
-        if (GameManager.Instance != null)
-        {
-            currentMultiplier = GameManager.Instance.GetScoreMultiplier();
-        }
-        
-        // currentScoreMultiplier를 실시간으로 동기화
-        currentScoreMultiplier = currentMultiplier;
-        
-        // 초기 점수에 배율 적용
-        return cachedInitialScore * currentMultiplier;
-    }
-    
     // 점수 업데이트 알림 (게임매니저나 UI 시스템에 전달)
     void NotifyScoreUpdate()
     {
         // GameManager가 있다면 점수 업데이트 알림
         if (GameManager.Instance != null)
         {
-            // GameManager의 실시간 배율로 currentScoreMultiplier 동기화
-            currentScoreMultiplier = GameManager.Instance.GetScoreMultiplier();
+            // currentScore를 GameManager의 totalTeddyBearScore와 동기화
             GameManager.Instance.UpdateTeddyBearScore(currentScore);
-        }
-    }
-
-    //테디베어 점수 증가 메서드 - 외부 호출용
-    void TeddyBearScoreIncrease()
-    {
-        if (isAttached)
-        {
-            float currentGameTime = Time.time - gameStartTime;
-            float scoreToAdd = CalculateScoreToAdd(currentGameTime);
-            currentScore += scoreToAdd;
-            cachedTeddyBearScore = currentScore;
-            NotifyScoreUpdate();
         }
     }
 
@@ -410,11 +324,8 @@ public class TestTeddyBear : MonoBehaviour
     void TeddyBearScoreReset()
     {
         currentScore = 0f;
-        currentScoreMultiplier = 1f;
         cachedTeddyBearScore = 0f;
-        gameStartTime = Time.time; // 게임 시작 시간도 리셋
         lastDetachTime = -999f; // 재부착 방지 시간도 리셋
-
     }
 
     
@@ -480,9 +391,6 @@ public class TestTeddyBear : MonoBehaviour
         TestShoot.SetIsShooting(true);
 
         
-        // 점수 증가 중지
-        StopScoreIncrease();
-        
         // 분리되면 다시 발광 시작
         StartGlowing();
     }
@@ -518,9 +426,6 @@ public class TestTeddyBear : MonoBehaviour
         lastDetachTime = Time.time;
         
         playerTransform = null;
-        
-        // 점수 증가 중지
-        StopScoreIncrease();
         
         // 분리되면 다시 발광 시작
         StartGlowing();
@@ -558,33 +463,19 @@ public class TestTeddyBear : MonoBehaviour
         return currentScore;
     }
     
-    // 현재 점수 배율 가져오기 (GameManager 실시간 값 사용)
-    public float GetCurrentScoreMultiplier()
-    {
-        // GameManager에서 실시간 배율 가져오기 (더 정확함)
-        if (GameManager.Instance != null)
-        {
-            float realtimeMultiplier = GameManager.Instance.GetScoreMultiplier();
-            currentScoreMultiplier = realtimeMultiplier; // 내부 값도 동기화
-            return realtimeMultiplier;
-        }
-        
-        // GameManager가 없으면 내부 값 사용
-        return currentScoreMultiplier;
-    }
-    
-    // 게임 시간 가져오기
-    public float GetGameTime()
-    {
-        return Time.time - gameStartTime;
-    }
+
     
     // 점수 수동 추가 (아이템 사용 등)
     public void AddScore(float additionalScore)
     {
         currentScore += additionalScore;
         cachedTeddyBearScore = currentScore;
-        NotifyScoreUpdate();
+        
+        // 동기화가 아닌 실제 점수 추가인 경우에만 NotifyScoreUpdate 호출
+        if (additionalScore != 0f)
+        {
+            NotifyScoreUpdate();
+        }
     }
     
     // 점수 초기화 (외부 호출용)

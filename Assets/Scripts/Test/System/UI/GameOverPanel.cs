@@ -127,16 +127,24 @@ public class GameOverPanel : MonoBehaviour
     /// <param name="finalScore">최종 점수</param>
     void OnGameOverReceived(float finalScore)
     {
+        // GameManager에서 최신 점수 가져오기 (동기화 보장)
+        float latestScore = finalScore;
+        if (GameManager.Instance != null)
+        {
+            latestScore = GameManager.Instance.GetTeddyBearScore();
+            Debug.Log($"🔄 GameOverPanel: GameManager에서 최신 점수 가져옴 - 이벤트: {finalScore}, 최신: {latestScore}");
+        }
+        
         // 점수 초기화 및 새 점수 설정
-        currentFinalScore = finalScore;
+        currentFinalScore = latestScore;
         isModalOpened = false; // 모달 상태 초기화
         
         // 최고 점수 업데이트 확인
-        UpdateBestScore(finalScore);
+        UpdateBestScore(latestScore);
         
         // 현재는 싱글플레이어 환경이므로 로컬 플레이어 점수만 추가
         allPlayerScores.Clear();
-        allPlayerScores.Add(new PlayerScoreData("Player", finalScore, true));
+        allPlayerScores.Add(new PlayerScoreData("Player", latestScore, true));
         
         // UI 업데이트
         UpdateScoreUI();
@@ -144,7 +152,7 @@ public class GameOverPanel : MonoBehaviour
         // 모달창 지연 표시 시작
         StartCoroutine(ShowResultModalAfterDelay());
         
-        Debug.Log($"🎮 GameOverPanel: 게임 오버 처리 완료 - 최종 점수: {finalScore}");
+        Debug.Log($"🎮 GameOverPanel: 게임 오버 처리 완료 - 최종 점수: {latestScore}");
     }
     
     /// <summary>

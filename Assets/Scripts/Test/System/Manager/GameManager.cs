@@ -18,7 +18,6 @@ public class GameManager : Singleton<GameManager>
     
     // 게임 시간 관리
     private float gameStartTime = 0f;
-    private bool useGameManagerTime = true; // GameManager에서 시간 관리 여부
 
     // 플레이어 상태 관리
     private float playerHealth = 100f;
@@ -44,6 +43,7 @@ public class GameManager : Singleton<GameManager>
 
     private float cachedScoreIncreaseTime = 20f; // 기본값
     private float cachedScoreIncreaseRate = 2f; // 기본
+    private float cachedInitialScore = 1f; // 기본
     private float cachedPlayTime = 360f; // 기본
     private bool dataBaseCached = false;
 
@@ -298,7 +298,6 @@ public class GameManager : Singleton<GameManager>
         // 2. 게임 시간 완전 초기화
         gameStartTime = Time.time;
         isGameOver = false;
-        useGameManagerTime = true;
         
         Debug.Log($"📅 GameManager: 게임 시간 초기화 - gameStartTime: {gameStartTime:F2}, PlayTime: {GetPlayTime()}초");
         
@@ -389,6 +388,7 @@ public class GameManager : Singleton<GameManager>
             {
                 cachedScoreIncreaseTime = DataBase.Instance.teddyBearData.ScoreIncreaseTime;
                 cachedScoreIncreaseRate = DataBase.Instance.teddyBearData.ScoreIncreaseRate;
+                cachedInitialScore = DataBase.Instance.teddyBearData.InitialScore;
                 cachedPlayTime = DataBase.Instance.gameData.PlayTime;
                 dataBaseCached = true;
                 Debug.Log($"✅ DataBase 정보 캐싱 완료 - Time: {cachedScoreIncreaseTime}, Rate: {cachedScoreIncreaseRate}");
@@ -473,6 +473,13 @@ public class GameManager : Singleton<GameManager>
     {
         totalTeddyBearScore = newScore;
 
+        // 테디베어의 currentScore도 동기화
+        if (currentTeddyBear != null)
+        {
+            // TestTeddyBear의 AddScore 메서드를 통해 동기화
+            currentTeddyBear.AddScore(0f); // 0을 더해서 동기화만 수행
+        }
+
         // HeatUI에 점수 업데이트 이벤트 발생
         OnScoreUpdated?.Invoke(totalTeddyBearScore);
 
@@ -481,12 +488,44 @@ public class GameManager : Singleton<GameManager>
         OnScoreMultiplierUpdated?.Invoke(currentMultiplier);
     }
 
+    // 테디베어 점수 추가 (코인 획득 등으로 인한 점수 증가)
+    public void AddTeddyBearScore(float scoreToAdd)
+    {
+        totalTeddyBearScore += scoreToAdd;
+        
+        // 테디베어의 currentScore도 동기화
+        if (currentTeddyBear != null)
+        {
+            // TestTeddyBear의 AddScore 메서드를 통해 동기화
+            currentTeddyBear.AddScore(scoreToAdd);
+        }
+        
+        // HeatUI에 점수 업데이트 이벤트 발생
+        OnScoreUpdated?.Invoke(totalTeddyBearScore);
+        
+        // 점수 배율도 실시간 계산으로 업데이트
+        float currentMultiplier = GetScoreMultiplier();
+        OnScoreMultiplierUpdated?.Invoke(currentMultiplier);
+        
+        Debug.Log($"✅ GameManager - 테디베어 점수 증가: +{scoreToAdd}, 총 점수: {totalTeddyBearScore}");
+    }
+
     // 현재 테디베어 점수 가져오기
     public float GetTeddyBearScore()
     {
         if (currentTeddyBear != null)
         {
-            return currentTeddyBear.GetCurrentScore();
+            // 테디베어의 실제 currentScore를 우선적으로 반환
+            float teddyBearScore = currentTeddyBear.GetCurrentScore();
+            
+            // 동기화가 필요한 경우
+            if (Mathf.Abs(teddyBearScore - totalTeddyBearScore) > 0.01f)
+            {
+                totalTeddyBearScore = teddyBearScore;
+                Debug.Log($"🔄 GameManager - 테디베어 점수 동기화: {teddyBearScore} -> {totalTeddyBearScore}");
+            }
+            
+            return teddyBearScore;
         }
         return totalTeddyBearScore;
     }
@@ -536,9 +575,13 @@ public class GameManager : Singleton<GameManager>
         if (currentTeddyBear != null)
         {
             currentTeddyBear.ResetScore();
+            // 테디베어 점수 초기화 후 동기화
+            totalTeddyBearScore = currentTeddyBear.GetCurrentScore();
         }
-        OnScoreUpdated?.Invoke(0f);
+        OnScoreUpdated?.Invoke(totalTeddyBearScore);
         OnScoreMultiplierUpdated?.Invoke(1f);
+        
+        Debug.Log($"🔄 GameManager - 모든 점수 초기화 완료: totalTeddyBearScore = {totalTeddyBearScore}");
     }
 
     public float GetPlayTime()
@@ -546,44 +589,21 @@ public class GameManager : Singleton<GameManager>
         return cachedPlayTime;
     }
 
-    // 현재 점수 배율 가져오기 (실시간 계산)
+    // 현재 점수 배율 가져오기 (테디베어 부착 상태에 따른 배율)
     public float GetScoreMultiplier()
     {
-        // 실시간 게임 시간 기반으로 배율 계산
-        float currentGameTime = GetGameTime();
-        float scoreIncreaseTime = GetScoreIncreaseTime();
-
-        float multiplier;
-        if (currentGameTime >= scoreIncreaseTime)
+        // 테디베어가 부착되어 있다면 배율 적용, 아니면 기본값 1.0
+        if (IsTeddyBearAttached())
         {
-            // 점수 증가 시점 이후: 캐싱된 배율 사용
-            multiplier = cachedScoreIncreaseRate;
+            return cachedScoreIncreaseRate;
         }
-        else
-        {
-            // 점수 증가 시점 이전: 기본 배율 1.0
-            multiplier = 1f;
-        }
-        return multiplier;
+        return cachedInitialScore;
     }
 
     // 게임 시간 가져오기
     public float GetGameTime()
     {
-        if (useGameManagerTime)
-        {
-            // GameManager에서 관리하는 게임 시간 사용
-            return Time.time - gameStartTime;
-        }
-        else
-        {
-            // 기존 방식: 테디베어에서 시간 가져오기
-            if (currentTeddyBear != null)
-            {
-                return currentTeddyBear.GetGameTime();
-            }
-            return Time.time - gameStartTime;
-        }
+        return Time.time - gameStartTime;
     }
 
     #endregion
