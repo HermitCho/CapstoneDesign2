@@ -1,12 +1,13 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Photon.Pun;
 
 /// <summary>
 /// 총기 시스템을 관리하는 클래스
 /// 발사, 재장전, 조준, 효과 재생 등의 기능을 담당
 /// </summary>
-public class TestGun : MonoBehaviour
+public class TestGun : MonoBehaviourPun
 {
     #region Enums
 
@@ -62,7 +63,7 @@ public class TestGun : MonoBehaviour
 
     #region Private Fields
 
-
+    private PhotonView photonViewCached;
     private bool isFiring;
     private float lastFireTime;
 
@@ -75,7 +76,7 @@ public class TestGun : MonoBehaviour
     /// </summary>
     protected virtual void Awake()
     {
-    
+        photonViewCached = GetComponent<PhotonView>();
     }
 
     /// <summary>
@@ -211,6 +212,13 @@ public class TestGun : MonoBehaviour
     /// <param name="shouldFire">발사 여부</param>
     public void InputFire(bool shouldFire)
     {
+        if (!photonViewCached.IsMine) return;
+        photonViewCached.RPC("RPC_InputFire", RpcTarget.All, shouldFire);
+    }
+
+    [PunRPC]
+    public void RPC_InputFire(bool shouldFire)
+    {
         isFiring = shouldFire;
     }
 
@@ -258,6 +266,7 @@ public class TestGun : MonoBehaviour
     /// <param name="worldPoint">발사할 월드 좌표</param>
     public void FireAtWorldPoint(Vector3 worldPoint)
     {
+        if (!photonViewCached.IsMine) return;
         if (CanFire())
         {
             lastFireTime = Time.time;
@@ -274,7 +283,6 @@ public class TestGun : MonoBehaviour
                     QueryTriggerInteraction.Collide
                 );
             }
-
             if (isBlocked)
             {
                 direction = fireTransform.forward;
@@ -283,12 +291,16 @@ public class TestGun : MonoBehaviour
             {
                 direction = (worldPoint - fireTransform.position).normalized;
             }
-
             muzzleDirectionController?.SetDirection(direction);
-
             Debug.DrawRay(fireTransform.position, direction * gunData.range, Color.red, 1f);
-            Shot(direction);
+            photonViewCached.RPC("RPC_Shot", RpcTarget.All, direction);
         }
+    }
+
+    [PunRPC]
+    public void RPC_Shot(Vector3 shootDirection)
+    {
+        Shot(shootDirection);
     }
 
     /// <summary>
@@ -314,7 +326,7 @@ public class TestGun : MonoBehaviour
             Vector3 pelletDirection = CalculatePelletDirection(shootDirection, i);
             Vector3 pelletHitPosition = CalculatePelletHitPosition(pelletDirection, fireTransform.position + pelletDirection * gunData.range, i);
             ProcessPelletHit(pelletDirection);
-            StartCoroutine(ShotEffect(fireTransform.position, pelletHitPosition));
+            photonViewCached.RPC("RPC_ShotEffect", RpcTarget.All, fireTransform.position, pelletHitPosition);
         }
         ConsumeAmmo();
     }
@@ -425,6 +437,12 @@ public class TestGun : MonoBehaviour
         Destroy(trailObject);
     }
 
+    [PunRPC]
+    public void RPC_ShotEffect(Vector3 start, Vector3 end)
+    {
+        StartCoroutine(ShotEffect(start, end));
+    }
+
     /// <summary>
     /// 총구 효과를 재생합니다.
     /// </summary>
@@ -498,13 +516,19 @@ public class TestGun : MonoBehaviour
     /// <returns>재장전 시작 성공 여부</returns>
     public bool Reload()
     {
+        if (!photonViewCached.IsMine) return false;
         if (CurrentState == GunState.Reloading || CurrentMagAmmo >= gunData.currentAmmo)
         {
             return false;
         }
-
-        StartCoroutine(ReloadRoutine());
+        photonViewCached.RPC("RPC_Reload", RpcTarget.All);
         return true;
+    }
+
+    [PunRPC]
+    protected void RPC_Reload()
+    {
+        StartCoroutine(ReloadRoutine());
     }
 
     /// <summary>

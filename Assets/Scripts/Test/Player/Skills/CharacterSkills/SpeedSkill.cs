@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Photon.Pun;
 
 public class SpeedSkill : CharacterSkill
 {
@@ -24,7 +25,13 @@ public class SpeedSkill : CharacterSkill
     protected override void OnSkillExecuted()
     {
         base.OnSkillExecuted();
-        if (moveController == null || isBuffActive) return;
+        if (!PhotonView.Get(this).IsMine || moveController == null || isBuffActive) return;
+        PhotonView.Get(this).RPC("RPC_ApplySpeedBuff", RpcTarget.All);
+    }
+
+    [PunRPC]
+    public void RPC_ApplySpeedBuff()
+    {
         var moveControllerType = typeof(MoveController);
         var speedField = moveControllerType.GetField("cachedSpeed", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
         if (speedField != null)
@@ -43,7 +50,13 @@ public class SpeedSkill : CharacterSkill
     protected override void OnSkillFinished()
     {
         base.OnSkillFinished();
-        if (moveController == null || !isBuffActive) return;
+        if (!PhotonView.Get(this).IsMine || moveController == null || !isBuffActive) return;
+        PhotonView.Get(this).RPC("RPC_RemoveSpeedBuff", RpcTarget.All);
+    }
+
+    [PunRPC]
+    public void RPC_RemoveSpeedBuff()
+    {
         var moveControllerType = typeof(MoveController);
         var speedField = moveControllerType.GetField("cachedSpeed", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
         if (speedField != null && originalSpeed > 0f)
@@ -51,11 +64,5 @@ public class SpeedSkill : CharacterSkill
             speedField.SetValue(moveController, originalSpeed);
         }
         isBuffActive = false;
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
     }
 }

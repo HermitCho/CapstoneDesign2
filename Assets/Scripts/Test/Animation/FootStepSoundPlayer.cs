@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Photon.Pun;
 
 [RequireComponent(typeof(AudioSource))]
 public class FootstepSoundPlayer : MonoBehaviour
@@ -27,12 +28,18 @@ public class FootstepSoundPlayer : MonoBehaviour
     /// </summary>
     public void FootStepSound()
     {
+        if (!PhotonView.Get(this).IsMine) return;
         // 이동 중이 아닐 때는 재생하지 않음
         if (!isMoving)
         {
             return;
         }
-            
+        PhotonView.Get(this).RPC("RPC_PlayFootStepSound", RpcTarget.All);
+    }
+
+    [PunRPC]
+    public void RPC_PlayFootStepSound()
+    {
         AudioManager.Inst.PlaySFX("SFX_Game_FootStep");
     }
 
@@ -41,6 +48,13 @@ public class FootstepSoundPlayer : MonoBehaviour
     /// </summary>
     public void JumpSound()
     {
+        if (!PhotonView.Get(this).IsMine) return;
+        PhotonView.Get(this).RPC("RPC_PlayJumpSound", RpcTarget.All);
+    }
+
+    [PunRPC]
+    public void RPC_PlayJumpSound()
+    {
         AudioManager.Inst.PlaySFX("SFX_Game_JumpUp");
     }
 
@@ -48,6 +62,13 @@ public class FootstepSoundPlayer : MonoBehaviour
     /// 착지 이벤트 (애니메이션 이벤트에서 호출)
     /// </summary>
     public void LandSound()
+    {
+        if (!PhotonView.Get(this).IsMine) return;
+        PhotonView.Get(this).RPC("RPC_PlayLandSound", RpcTarget.All);
+    }
+
+    [PunRPC]
+    public void RPC_PlayLandSound()
     {
         AudioManager.Inst.PlaySFX("SFX_Game_JumpDown");
     }

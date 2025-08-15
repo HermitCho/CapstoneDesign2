@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using System;
+using Photon.Pun;
 
 /// <summary>
 /// 플레이어 이동 컨트롤러
@@ -614,28 +615,23 @@ public class MoveController : MonoBehaviour
     void OnSkillInput()
     {
         // ✅ 스킬 사용 제어 확인
-        if (!canUseSkill || isStunned)
-        {
-            return;
-        }
+        if (!canUseSkill || isStunned) return;
+        if (!PhotonView.Get(this).IsMine) return;
+        // 실제 스킬 사용은 각 스킬에서 오너만 처리하도록 구현되어 있음
     }
 
     // InputManager에서 아이템 입력 받기
     void OnItemInput()
     {
         // ✅ 아이템 사용 제어 확인
-        if (!canUseItem || isStunned)
-        {
-            return;
-        }
-
+        if (!canUseItem || isStunned) return;
+        if (!PhotonView.Get(this).IsMine) return;
         // 쿨타임 체크 (중복 실행 방지)
         if (Time.time - lastItemUseTime < itemUseCooldown)
         {
             Debug.Log($"⚠️ MoveController - 아이템 사용 쿨타임 중입니다. ({(itemUseCooldown - (Time.time - lastItemUseTime)):F2}초 남음)");
             return;
         }
-
         // 상점이 열려있으면 아이템 사용 차단
         ShopController shopController = FindObjectOfType<ShopController>();
         if (shopController != null && shopController.IsShopOpen())
@@ -643,7 +639,6 @@ public class MoveController : MonoBehaviour
             Debug.Log("⚠️ MoveController - 상점이 열려있어 아이템을 사용할 수 없습니다.");
             return;
         }
-
         // 현재 플레이어의 활성화된 아이템 찾기
         ItemController itemController = FindCurrentPlayerItemController();
         if (itemController == null)
@@ -651,7 +646,6 @@ public class MoveController : MonoBehaviour
             Debug.LogWarning("⚠️ MoveController - ItemController를 찾을 수 없습니다.");
             return;
         }
-
         // 활성화된 아이템 가져오기
         CharacterItem activeItem = itemController.GetFirstActiveItem();
         if (activeItem == null)
@@ -659,10 +653,8 @@ public class MoveController : MonoBehaviour
             Debug.LogWarning("⚠️ MoveController - 활성화된 아이템이 없습니다.");
             return;
         }
-
         // 쿨타임 업데이트
         lastItemUseTime = Time.time;
-
         // 아이템 사용
         Debug.Log($"✅ MoveController - 아이템 사용: {activeItem.SkillName}");
         activeItem.UseSkill();

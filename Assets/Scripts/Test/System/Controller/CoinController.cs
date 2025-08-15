@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Photon.Pun;
 
 public class CoinController : MonoBehaviour
 {
@@ -41,8 +42,14 @@ public class CoinController : MonoBehaviour
     /// <param name="amount">추가할 코인 수</param>
     public void AddCoin(int amount)
     {
+        if (!PhotonView.Get(this).IsMine) return;
+        PhotonView.Get(this).RPC("RPC_AddCoin", RpcTarget.All, amount);
+    }
+
+    [PunRPC]
+    public void RPC_AddCoin(int amount)
+    {
         currentCoin += amount;
-        // HUDPanel에 코인 변경 알림
         NotifyHUDCoinChanged();
     }
 
@@ -52,8 +59,14 @@ public class CoinController : MonoBehaviour
     /// <param name="amount">차감할 코인 수</param>
     public void SubtractCoin(int amount)
     {
+        if (!PhotonView.Get(this).IsMine) return;
+        PhotonView.Get(this).RPC("RPC_SubtractCoin", RpcTarget.All, amount);
+    }
+
+    [PunRPC]
+    public void RPC_SubtractCoin(int amount)
+    {
         currentCoin -= amount;
-        // HUDPanel에 코인 변경 알림
         NotifyHUDCoinChanged();
     }
 
@@ -71,9 +84,14 @@ public class CoinController : MonoBehaviour
     /// </summary>
     public void ResetCoin()
     {
-        currentCoin = 0;
+        if (!PhotonView.Get(this).IsMine) return;
+        PhotonView.Get(this).RPC("RPC_ResetCoin", RpcTarget.All);
+    }
 
-        // HUDPanel에 코인 변경 알림
+    [PunRPC]
+    public void RPC_ResetCoin()
+    {
+        currentCoin = 0;
         NotifyHUDCoinChanged();
     }
 
