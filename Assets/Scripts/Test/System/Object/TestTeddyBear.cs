@@ -465,13 +465,37 @@ public class TestTeddyBear : MonoBehaviour
     
 
     
-    // 점수 수동 추가 (아이템 사용 등)
+    // 점수 수동 추가/차감 (아이템 사용, 사망 시 손실 등)
     public void AddScore(float additionalScore)
     {
-        currentScore += additionalScore;
+        // 점수 차감인 경우 (음수)
+        if (additionalScore < 0f)
+        {
+            float scoreToSubtract = Mathf.Abs(additionalScore);
+            
+            // 현재 점수보다 많이 차감하려는 경우 방지
+            if (scoreToSubtract > currentScore)
+            {
+                Debug.LogWarning($"⚠️ TestTeddyBear: 현재 점수({currentScore:F0})보다 많이 차감하려 함 - {scoreToSubtract:F0}, 0으로 설정");
+                currentScore = 0f;
+            }
+            else
+            {
+                currentScore -= scoreToSubtract;
+            }
+            
+            Debug.Log($"💯 TestTeddyBear - 점수 차감: -{scoreToSubtract:F0}, 남은 점수: {currentScore:F0}");
+        }
+        else
+        {
+            // 점수 증가인 경우 (양수)
+            currentScore += additionalScore;
+            Debug.Log($"✅ TestTeddyBear - 점수 증가: +{additionalScore:F0}, 총 점수: {currentScore:F0}");
+        }
+        
         cachedTeddyBearScore = currentScore;
         
-        // 동기화가 아닌 실제 점수 추가인 경우에만 NotifyScoreUpdate 호출
+        // 동기화가 아닌 실제 점수 변경인 경우에만 NotifyScoreUpdate 호출
         if (additionalScore != 0f)
         {
             NotifyScoreUpdate();

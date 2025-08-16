@@ -229,10 +229,11 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
         // ✅ 플레이어 사망 이벤트 발생 (TestTeddyBear 등이 반응할 수 있도록)
         OnPlayerDied?.Invoke(this);
         
-        // 플레이어가 죽었을 때 GameManager에 알릴 수 있습니다 (예: 게임 오버 처리)
+        // ✅ 로컬 플레이어 사망 시 코인 및 점수 손실 처리
+        // OnPhotonSerializeView에서도 처리되므로 여기서는 제거하여 중복 방지
         // if (photonView.IsMine && GameManager.Instance != null)
         // {
-        //     GameManager.Instance.NotifyPlayerDied(); // GameManager에 필요한 메서드를 추가해야 합니다.
+        //     GameManager.Instance.HandlePlayerDeathPenalty();
         // }
 
         // 부활 코루틴은 로컬에서만 시작하거나, 부활 로직을 서버(마스터 클라이언트)에서 관리해야 합니다.
@@ -319,6 +320,7 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
         else
         {
             // 다른 클라이언트들은 수신하여 업데이트합니다.
+            bool wasDead = this.IsDead; // 이전 사망 상태 저장
             this.CurrentHealth = (float)stream.ReceiveNext();
             this.IsDead = (bool)stream.ReceiveNext();
             // this.CurrentShield = (float)stream.ReceiveNext();
@@ -327,6 +329,19 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
             // 이 부분이 중요합니다! 다른 클라이언트에서 체력이 변경될 때도 UI가 동기화됩니다.
             // 하지만 GameManager는 IsMine인지 다시 확인하여 로컬 플레이어만 UI 업데이트를 합니다.
             OnAnyLivingEntityHealthChanged?.Invoke(this.CurrentHealth, this.StartingHealth, this);
+            
+            // ✅ 사망 상태가 변경된 경우에만 사망 이벤트 발생 (중복 방지)
+            if (!wasDead && this.IsDead)
+            {
+                OnDeath?.Invoke();
+                OnPlayerDied?.Invoke(this);
+                
+                // 로컬 플레이어 사망 시에만 손실 처리 (중복 방지)
+                if (photonView.IsMine && GameManager.Instance != null)
+                {
+                    GameManager.Instance.HandlePlayerDeathPenalty();
+                }
+            }
         }
     }
 

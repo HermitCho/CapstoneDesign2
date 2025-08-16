@@ -66,7 +66,6 @@ public class GameManager : Singleton<GameManager>
 
     // 플레이어 상태 이벤트
     public static event Action<float, float> OnPlayerHealthChanged; // current, max
-
     // 아이템 UI 이벤트
     public static event Action<bool> OnItemUIToggled;
 
@@ -334,7 +333,7 @@ public class GameManager : Singleton<GameManager>
     /// <summary>
     /// 초기 UI 이벤트 발생 (약간의 지연으로 확실한 적용)
     /// </summary>
-    System.Collections.IEnumerator SendInitialUIEvents()
+    IEnumerator SendInitialUIEvents()
     {
         yield return new WaitForEndOfFrame();
         
@@ -488,10 +487,33 @@ public class GameManager : Singleton<GameManager>
         OnScoreMultiplierUpdated?.Invoke(currentMultiplier);
     }
 
-    // 테디베어 점수 추가 (코인 획득 등으로 인한 점수 증가)
+    // 테디베어 점수 추가/차감 (코인 획득, 사망 시 손실 등)
     public void AddTeddyBearScore(float scoreToAdd)
     {
-        totalTeddyBearScore += scoreToAdd;
+        // 점수 차감인 경우 (음수)
+        if (scoreToAdd < 0f)
+        {
+            float scoreToSubtract = Mathf.Abs(scoreToAdd);
+            
+            // 현재 점수보다 많이 차감하려는 경우 방지
+            if (scoreToSubtract > totalTeddyBearScore)
+            {
+                Debug.LogWarning($"⚠️ GameManager: 현재 점수({totalTeddyBearScore:F0})보다 많이 차감하려 함 - {scoreToSubtract:F0}, 0으로 설정");
+                totalTeddyBearScore = 0f;
+            }
+            else
+            {
+                totalTeddyBearScore -= scoreToSubtract;
+            }
+            
+            Debug.Log($"💯 GameManager - 테디베어 점수 차감: -{scoreToSubtract:F0}, 남은 점수: {totalTeddyBearScore:F0}");
+        }
+        else
+        {
+            // 점수 증가인 경우 (양수)
+            totalTeddyBearScore += scoreToAdd;
+            Debug.Log($"✅ GameManager - 테디베어 점수 증가: +{scoreToAdd:F0}, 총 점수: {totalTeddyBearScore:F0}");
+        }
         
         // 테디베어의 currentScore도 동기화
         if (currentTeddyBear != null)
@@ -506,8 +528,6 @@ public class GameManager : Singleton<GameManager>
         // 점수 배율도 실시간 계산으로 업데이트
         float currentMultiplier = GetScoreMultiplier();
         OnScoreMultiplierUpdated?.Invoke(currentMultiplier);
-        
-        Debug.Log($"✅ GameManager - 테디베어 점수 증가: +{scoreToAdd}, 총 점수: {totalTeddyBearScore}");
     }
 
     // 현재 테디베어 점수 가져오기
@@ -613,6 +633,65 @@ public class GameManager : Singleton<GameManager>
     
     
     #region 게임 오버 관리 메서드
+    
+    /// <summary>
+    /// 플레이어 사망 시 코인 및 점수 손실 처리
+    /// </summary>
+    public void HandlePlayerDeathPenalty()
+    {
+        // ✅ 중복 실행 방지 (정적 변수로 플레이어별 사망 상태 추적)
+        if (localPlayerLivingEntity != null && localPlayerLivingEntity.IsDead)
+        {
+            // 이미 사망 처리된 상태라면 무시
+            Debug.Log("⚠️ GameManager: 이미 사망 처리된 플레이어입니다. 손실 처리 무시.");
+            return;
+        }
+        
+        try
+        {
+            if (DataBase.Instance == null || DataBase.Instance.gameData == null)
+            {
+                Debug.LogWarning("⚠️ GameManager: DataBase 또는 gameData가 null입니다. 손실 처리 불가능.");
+                return;
+            }
+
+            // 손실률 가져오기
+            float coinLossRate = DataBase.Instance.gameData.CoinLossRate;
+            float scoreLossRate = DataBase.Instance.gameData.ScoreLossRate;
+
+            Debug.Log($"💀 GameManager: 플레이어 사망 손실 처리 시작 - 코인손실률: {coinLossRate:P0}, 점수손실률: {scoreLossRate:P0}");
+
+            // 코인 손실 처리
+            if (currentPlayerCoinController != null)
+            {
+                int currentCoins = currentPlayerCoinController.GetCurrentCoin();
+                int coinsToLose = Mathf.RoundToInt(currentCoins * coinLossRate);
+                
+                if (coinsToLose > 0)
+                {
+                    currentPlayerCoinController.SubtractCoin(coinsToLose);
+                    Debug.Log($"💰 GameManager: 코인 손실 - 현재: {currentCoins}, 손실: {coinsToLose}, 남은: {currentPlayerCoinController.GetCurrentCoin()}");
+                }
+            }
+
+            // 점수 손실 처리
+            float currentScore = GetTeddyBearScore();
+            float scoreToLose = currentScore * scoreLossRate;
+            
+            if (scoreToLose > 0f)
+            {
+                // 테디베어 점수 차감 (음수 값으로 호출)
+                AddTeddyBearScore(-scoreToLose);
+                Debug.Log($"💯 GameManager: 점수 손실 - 현재: {currentScore:F0}, 손실: {scoreToLose:F0}, 남은: {GetTeddyBearScore():F0}");
+            }
+
+            Debug.Log("✅ GameManager: 플레이어 사망 손실 처리 완료");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ GameManager: 플레이어 사망 손실 처리 중 오류 발생 - {e.Message}");
+        }
+    }
     
     /// <summary>
     /// 게임 시간을 체크하여 게임 오버 조건 확인
@@ -782,7 +861,7 @@ public class GameManager : Singleton<GameManager>
     }
 
     /// <summary>
-    /// 플레이어 체력 정보 가져오기
+    /// 플레이어 체력 정보 가져오기 
     /// </summary>
     public float GetPlayerHealth() => playerHealth;
     public float GetMaxPlayerHealth() => maxPlayerHealth;

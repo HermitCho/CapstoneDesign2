@@ -212,7 +212,7 @@ public class FindMatching : MonoBehaviourPunCallbacks
 
     private IEnumerator LoadGameScene()
     {
-        yield return new WaitForSeconds(2f);
+        yield return new WaitForSeconds(0.1f);
 
         if (PhotonNetwork.IsMasterClient && PhotonNetwork.InRoom)
         {

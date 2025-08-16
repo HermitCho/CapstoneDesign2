@@ -88,9 +88,28 @@ public class CoinController : MonoBehaviour
     /// <param name="amount">차감할 코인 수</param>
     public void SubtractCoin(int amount)
     {
-        currentCoin -= amount;
+        // 음수 값 방지
+        if (amount < 0)
+        {
+            Debug.LogWarning($"⚠️ CoinController: 음수 코인 차감 시도 무시 - {amount}");
+            return;
+        }
+        
+        // 현재 코인보다 많이 차감하려는 경우 방지
+        if (amount > currentCoin)
+        {
+            Debug.LogWarning($"⚠️ CoinController: 현재 코인({currentCoin})보다 많이 차감하려 함 - {amount}, 0으로 설정");
+            currentCoin = 0;
+        }
+        else
+        {
+            currentCoin -= amount;
+        }
+        
         // HUDPanel에 코인 변경 알림
         NotifyHUDCoinChanged();
+        
+        Debug.Log($"💰 CoinController: 코인 차감 완료 - 차감: {amount}, 남은 코인: {currentCoin}");
     }
 
     /// <summary>
