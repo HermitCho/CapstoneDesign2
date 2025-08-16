@@ -327,6 +327,9 @@ public class MoveController : MonoBehaviour
             return;
         }
         
+        // 🔒 네트워크 권한 체크 - 자신의 플레이어만 조작 가능
+        if (!PhotonView.Get(this).IsMine) return;
+        
         rawMoveInput = moveInput;
     }
 
@@ -339,6 +342,9 @@ public class MoveController : MonoBehaviour
             rotationAmount = 0;
             return;
         }
+        
+        // 🔒 네트워크 권한 체크 - 자신의 플레이어만 조작 가능
+        if (!PhotonView.Get(this).IsMine) return;
         
         float mouseX = mouseInput.x;
        
@@ -378,6 +384,9 @@ public class MoveController : MonoBehaviour
         {
             return;
         }
+        
+        // 🔒 네트워크 권한 체크 - 자신의 플레이어만 조작 가능
+        if (!PhotonView.Get(this).IsMine) return;
         
         if (isGrounded)
         {
