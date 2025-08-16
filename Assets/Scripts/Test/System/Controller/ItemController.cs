@@ -415,5 +415,34 @@ public class ItemController : MonoBehaviour
         return itemSlot1 != null ? itemSlot1.transform : null;
     }
 
+    /// <summary>
+    /// 특정 SkillName을 가진 아이템이 이미 보유하고 있는지 확인
+    /// </summary>
+    /// <param name="skillName">확인할 아이템의 SkillName</param>
+    /// <returns>이미 보유하고 있으면 true, 없으면 false</returns>
+    public bool HasItemBySkillName(string skillName)
+    {
+        if (itemSlot1 == null || string.IsNullOrEmpty(skillName))
+        {
+            return false;
+        }
+
+        // itemSlot1의 모든 자식을 확인하여 SkillName 비교
+        for (int i = 0; i < itemSlot1.transform.childCount; i++)
+        {
+            Transform child = itemSlot1.transform.GetChild(i);
+            if (child == null) continue;
+
+            CharacterItem characterItem = child.GetComponent<CharacterItem>();
+            if (characterItem != null && characterItem.SkillName == skillName)
+            {
+                Debug.Log($"✅ ItemController - 중복 아이템 발견: {skillName}");
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     #endregion
 }

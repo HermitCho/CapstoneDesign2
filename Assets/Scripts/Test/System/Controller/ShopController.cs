@@ -205,6 +205,18 @@ public class ShopController : MonoBehaviour
             return;
         }
 
+        // ✅ 중복 아이템 체크 (SkillName으로 비교)
+        CharacterItem itemComponent = cachedItemData[itemIndex].GetComponent<CharacterItem>();
+        if (itemComponent != null && !string.IsNullOrEmpty(itemComponent.SkillName))
+        {
+            string skillName = itemComponent.SkillName;
+            if (playerItemController.HasItemBySkillName(skillName))
+            {
+                Debug.LogWarning($"⚠️ ShopController - 이미 보유하고 있는 아이템입니다: {skillName}");
+                return;
+            }
+        }
+
         // 아이템 슬롯 확인
         if (playerItemController.GetItemSlotIndex() >= playerItemController.GetMaxItemSlot())
         {
@@ -212,8 +224,7 @@ public class ShopController : MonoBehaviour
             return;
         }
 
-        // 아이템 가격 확인
-        CharacterItem itemComponent = cachedItemData[itemIndex].GetComponent<CharacterItem>();
+        // 아이템 가격 확인 (itemComponent는 이미 위에서 가져왔으므로 재사용)
         if (itemComponent == null)
         {
             Debug.LogError($"❌ ShopController - 아이템 인덱스 {itemIndex}에 CharacterItem 컴포넌트가 없습니다.");
