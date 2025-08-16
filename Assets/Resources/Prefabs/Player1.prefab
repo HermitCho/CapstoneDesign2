@@ -2799,6 +2799,8 @@ GameObject:
   - component: {fileID: 5689863865605199273}
   - component: {fileID: 7464262396237854457}
   - component: {fileID: 8035385377534121215}
+  - component: {fileID: -7961903560175099636}
+  - component: {fileID: 2211831913473957174}
   m_Layer: 0
   m_Name: Player1
   m_TagString: Player
@@ -3610,6 +3612,8 @@ MonoBehaviour:
   observableSearch: 2
   ObservedComponents:
   - {fileID: 3047390998016160113}
+  - {fileID: -7961903560175099636}
+  - {fileID: 2211831913473957174}
   sceneViewId: 0
   InstantiationId: 0
   isRuntimeInstantiated: 0
@@ -3746,6 +3750,84 @@ AudioSource:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+--- !u!114 &-7961903560175099636
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5977901166455454402}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b8c4a61274f60b4ea5fb4299cfdbf14, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ShowLayerWeightsInspector: 1
+  ShowParameterInspector: 1
+  m_SynchronizeParameters:
+  - Type: 1
+    SynchronizeType: 0
+    Name: MoveX
+  - Type: 1
+    SynchronizeType: 0
+    Name: MoveY
+  - Type: 1
+    SynchronizeType: 0
+    Name: MoveTurnX
+  - Type: 1
+    SynchronizeType: 0
+    Name: TurnX
+  - Type: 1
+    SynchronizeType: 0
+    Name: LookY
+  - Type: 1
+    SynchronizeType: 0
+    Name: SpeedMultiplier
+  - Type: 4
+    SynchronizeType: 0
+    Name: IsAiming
+  - Type: 9
+    SynchronizeType: 0
+    Name: Reload
+  - Type: 4
+    SynchronizeType: 0
+    Name: JumpDown
+  - Type: 4
+    SynchronizeType: 0
+    Name: JumpUp
+  - Type: 9
+    SynchronizeType: 0
+    Name: Speed
+  - Type: 9
+    SynchronizeType: 0
+    Name: Item
+  - Type: 9
+    SynchronizeType: 0
+    Name: Death
+  - Type: 9
+    SynchronizeType: 0
+    Name: Revive
+  m_SynchronizeLayers:
+  - SynchronizeType: 0
+    LayerIndex: 0
+  - SynchronizeType: 0
+    LayerIndex: 1
+--- !u!114 &2211831913473957174
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5977901166455454402}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 627855c7f81362d41938ffe0b1475957, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_SynchronizePosition: 1
+  m_SynchronizeRotation: 1
+  m_SynchronizeScale: 0
+  m_UseLocal: 1
 --- !u!1 &6064396432649951218
 GameObject:
   m_ObjectHideFlags: 0
