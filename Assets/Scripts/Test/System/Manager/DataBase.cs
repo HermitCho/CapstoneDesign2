@@ -726,8 +726,6 @@ public class DataBase : Singleton<DataBase>
     [System.Serializable]
     public class PlayerData
     {
-
-        [Space(20)]
         [Header("플레이어 데이터")] 
         [Tooltip("플레이어 프리팹 데이터 설정")]
         [SerializeField] private List<GameObject> playerPrefabData = new List<GameObject>();
@@ -735,13 +733,12 @@ public class DataBase : Singleton<DataBase>
         {
             set { playerPrefabData = value; }
             get { return playerPrefabData; }
-        }        
+        }     
     }
 
     [System.Serializable]
     public class LobbyData
     {
-        [Space(20)]
         [Header("로비 캐릭터 데이터")]
         [Tooltip("로비 캐릭터 프리팹 데이터 설정 - 실제 게임 캐릭터 인덱스와 일치해야함 ")]
         [SerializeField] private List<GameObject> lobbyCharacterPrefabData = new List<GameObject>();
@@ -800,4 +797,21 @@ public class DataBase : Singleton<DataBase>
 
     [Header("아이템 데이터")]
     public ItemData itemData;
+
+    public override void Awake()
+    {
+        base.Awake();
+        
+        // DataBase가 씬 전환 시에도 유지되도록 보장
+        if (transform.parent == null)
+        {
+            DontDestroyOnLoad(gameObject);
+            Debug.Log("✅ DataBase: DontDestroyOnLoad 설정 완료");
+        }
+        else
+        {
+            DontDestroyOnLoad(transform.root.gameObject);
+            Debug.Log("✅ DataBase: Root GameObject에 DontDestroyOnLoad 설정 완료");
+        }
+    }
 }

@@ -13,11 +13,10 @@ public class InGameUIManager : MonoBehaviour
     
     [Header("📱 게임 패널들")]
     [SerializeField] private HUDPanel hudPanel;
-    [SerializeField] private SelectCharPanel selectCharPanel;
+
     
     [Header("🎯 패널 이름 설정")]
     [SerializeField] private string hudPanelName = "HUD";
-    [SerializeField] private string selectCharPanelName = "Select Character";
     [SerializeField] private string shopPanelName = "Shop";
     [SerializeField] private string pausePanelName = "Pause";
     [SerializeField] private string gameOverPanelName = "GameOver";
@@ -49,14 +48,7 @@ public class InGameUIManager : MonoBehaviour
     
     void Start()
     {
-        if (autoStartWithSelectChar)
-        {
-            ShowSelectCharPanel();
-        }
-        else if (autoStartWithHUD)
-        {
-            ShowHUDPanel();
-        }
+        ShowHUDPanel();
     }
     
     #endregion
@@ -76,11 +68,6 @@ public class InGameUIManager : MonoBehaviour
         if (hudPanel == null)
         {
             Debug.LogWarning("⚠️ HUDPanel이 할당되지 않았습니다.");
-        }
-        
-        if (selectCharPanel == null)
-        {
-            Debug.LogWarning("⚠️ SelectCharPanel이 할당되지 않았습니다.");
         }
         
         if (spawnController == null)
@@ -109,20 +96,6 @@ public class InGameUIManager : MonoBehaviour
         SetGameplayMouseCursor();
     }
     
-    /// <summary>
-    /// 캐릭터 선택 패널 표시
-    /// </summary>
-    public void ShowSelectCharPanel()
-    {
-        if (panelManager != null)
-        {
-            panelManager.OpenPanel(selectCharPanelName);
-            currentPanel = selectCharPanelName;
-        }
-        
-        SetSelectionMouseCursor();
-    }
-
     /// <summary>
     /// 일시정지 패널 표시
     /// </summary>
@@ -188,51 +161,6 @@ public class InGameUIManager : MonoBehaviour
     
     #endregion
     
-    #region 캐릭터 선택 처리
-    
-    public void OnCharacterSelectionConfirmed(int characterIndex)
-    {
-        selectedCharacterIndex = characterIndex;
-        isCharacterSelectionPending = true;
-        
-        StartCoroutine(WaitForSelectionTimeAndSpawn());
-    }
-    
-    public void OnCharacterSelectionCanceled()
-    {
-        selectedCharacterIndex = -1;
-        isCharacterSelectionPending = false;
-    }
-    
-    IEnumerator WaitForSelectionTimeAndSpawn()
-    {
-        if (selectCharPanel != null)
-        {
-            while (selectCharPanel.IsSelectionActive())
-            {
-                yield return null;
-            }
-        }
-        
-        yield return new WaitForSeconds(1f);
-        
-        SpawnSelectedCharacter();
-        ShowHUDPanel();
-    }
-    
-    void SpawnSelectedCharacter()
-    {
-        if (spawnController != null && selectedCharacterIndex >= 0)
-        {
-            // GameObject prefabToSpawn = characterPrefabs[selectedCharacterIndex];
-            // spawnController.SpawnCharacterPrefab(prefabToSpawn);
-            spawnController.SpawnCharacter(selectedCharacterIndex);
-        }
-        
-        isCharacterSelectionPending = false;
-    }
-    
-    #endregion
     
     #region 유틸리티 메서드
     
@@ -246,15 +174,6 @@ public class InGameUIManager : MonoBehaviour
         return isInitialized;
     }
     
-    public bool IsSelectCharPanelActive()
-    {
-        return currentPanel == selectCharPanelName && selectCharPanel != null && selectCharPanel.gameObject.activeInHierarchy;
-    }
-    
-    public SelectCharPanel GetSelectCharPanel()
-    {
-        return selectCharPanel;
-    }
     
     public SpawnController GetSpawnController()
     {
