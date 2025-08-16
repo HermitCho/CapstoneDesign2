@@ -738,6 +738,20 @@ public class DataBase : Singleton<DataBase>
         }        
     }
 
+    [System.Serializable]
+    public class LobbyData
+    {
+        [Space(20)]
+        [Header("로비 캐릭터 데이터")]
+        [Tooltip("로비 캐릭터 프리팹 데이터 설정 - 실제 게임 캐릭터 인덱스와 일치해야함 ")]
+        [SerializeField] private List<GameObject> lobbyCharacterPrefabData = new List<GameObject>();
+        public List<GameObject> LobbyCharacterPrefabData
+        {
+            set { lobbyCharacterPrefabData = value; }
+            get { return lobbyCharacterPrefabData; }
+        }
+    }
+
 
     [System.Serializable]
     public class ItemData
@@ -780,6 +794,9 @@ public class DataBase : Singleton<DataBase>
 
     [Header("플레이어 데이터")]
     public PlayerData playerData;
+
+    [Header("로비 데이터")]
+    public LobbyData lobbyData;
 
     [Header("아이템 데이터")]
     public ItemData itemData;
