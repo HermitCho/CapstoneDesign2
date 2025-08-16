@@ -1668,6 +1668,11 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 1840682602967692371, guid: d3864b247f2f52541a5a0a1e456cb157,
+        type: 3}
+      propertyPath: m_IsTrigger
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 6265810323688685393, guid: d3864b247f2f52541a5a0a1e456cb157,
         type: 3}
       propertyPath: m_Name
@@ -4396,6 +4401,8 @@ MonoBehaviour:
     canUseGun: 0
   gameData:
     playTime: 30
+    coinLossRate: 0.3
+    scoreLossRate: 0.3
   uiData:
     crosshairNormalColor: {r: 1, g: 1, b: 1, a: 1}
     crosshairTargetColor: {r: 1, g: 0, b: 0, a: 1}
@@ -4415,15 +4422,6 @@ MonoBehaviour:
     gameTimeFormatColor: {r: 0, g: 0, b: 0, a: 1}
     healthText: '{0:F0} / {1:F0}'
     healthFormatColor: {r: 0, g: 0, b: 0, a: 1}
-    maxCharacterSlots: 4
-    currentSelectedIndex: 0
-    selectionTimeText: "{0:F0}\uCD08"
-    selectionTime: 10
-    selectionTimeNormalFormatColor: {r: 1, g: 1, b: 1, a: 1}
-    selectionWarningTime: 5
-    selectionTimeWarningFormatColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
-    selectionDangerTime: 3
-    selectionTimeDangerFormatColor: {r: 1, g: 0, b: 0, a: 1}
     coinText: '{0:F0}'
     coinFormatColor: {r: 0, g: 0, b: 0, a: 1}
   playerData:
