@@ -8,36 +8,31 @@ using Michsky.UI.Heat;
 /// </summary>
 public class InGameUIManager : MonoBehaviour
 {
-    [Header("🎮 HeatUI 패널 매니저")]
+    [Header("HeatUI 패널 매니저")]
     [SerializeField] private PanelManager panelManager;
-    
-    [Header("📱 게임 패널들")]
+
+    [Header("게임 패널들")]
     [SerializeField] private HUDPanel hudPanel;
 
     
-    [Header("🎯 패널 이름 설정")]
+    [Header("패널 이름 설정")]
     [SerializeField] private string hudPanelName = "HUD";
     [SerializeField] private string shopPanelName = "Shop";
     [SerializeField] private string pausePanelName = "Pause";
     [SerializeField] private string gameOverPanelName = "GameOver";
     
-    [Header("🎯 스폰 컨트롤러")]
+    [Header("스폰 컨트롤러")]
     [SerializeField] private SpawnController spawnController;
-    
-    [Header("⚙️ UI 관리 설정")]
-    [SerializeField] private bool debugMode = false;
-    [SerializeField] private bool autoStartWithSelectChar = true;
-    [SerializeField] private bool autoStartWithHUD = false;
-    
-    [Header("📊 캐릭터 프리팹 데이터")]
+
+    [Header("캐릭터 프리팹 데이터")]
     //[SerializeField] private GameObject[] characterPrefabs;
     [SerializeField] private float characterSelectionTime = 30f;
     
-    [Header("🎯 현재 상태")]
-    [SerializeField] private string currentPanel = "";
-    [SerializeField] private bool isInitialized = false;
-    [SerializeField] private int selectedCharacterIndex = -1;
-    [SerializeField] private bool isCharacterSelectionPending = false;
+    [Header(" 현재 상태")]
+    private string currentPanel = "";
+    private bool isInitialized = false;
+    private int selectedCharacterIndex = -1;
+    private bool isCharacterSelectionPending = false;
     
     #region Unity 생명주기
     
