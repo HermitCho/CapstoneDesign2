@@ -188,14 +188,6 @@ public class InGameUIManager : MonoBehaviour
         return selectedCharacterIndex;
     }
     
-    // /// <summary>
-    // /// 사용 가능한 캐릭터 프리팹 배열 반환
-    // /// </summary>
-    // public GameObject[] GetCharacterPrefabs()
-    // {
-    //     return characterPrefabs;
-    // }
-    
     /// <summary>
     /// 캐릭터 선택 시간 반환
     /// </summary>

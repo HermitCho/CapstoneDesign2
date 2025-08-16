@@ -127,22 +127,22 @@ public class FindMatching : MonoBehaviourPunCallbacks
         if (!PhotonNetwork.IsConnected || !PhotonNetwork.InLobby)
         {
             Debug.LogWarning("[매칭] Photon이 아직 준비되지 않았습니다. 연결을 기다립니다.");
-            UpdateUI("네트워크 연결 중...");
             return;
         }
 
-        UpdateUI("방을 찾는 중...");
+        Debug.Log("[매칭] 대기 중인 방을 찾는 중...");
         
         // 게임이 시작되지 않은 방만 필터링하여 입장 시도
         ExitGames.Client.Photon.Hashtable expectedCustomRoomProperties = new ExitGames.Client.Photon.Hashtable();
         expectedCustomRoomProperties[ROOM_STATE_KEY] = ROOM_STATE_WAITING;
         
+        // 방 입장 시도 (최대 3번까지 재시도)
         PhotonNetwork.JoinRandomRoom(expectedCustomRoomProperties, targetPlayerCount);
     }
 
     private void CreateNewRoom()
     {
-        UpdateUI("새로운 방을 생성하는 중...");
+        Debug.Log("[매칭] 새로운 방을 생성하는 중...");
         
         // 고유한 방 이름 생성 (타임스탬프 + 랜덤 숫자)
         string roomName = $"Room_{System.DateTime.Now.Ticks}_{Random.Range(1000, 9999)}";
@@ -151,7 +151,8 @@ public class FindMatching : MonoBehaviourPunCallbacks
         {
             MaxPlayers = targetPlayerCount,
             IsVisible = true,
-            IsOpen = true
+            IsOpen = true,
+            PublishUserId = true // 사용자 ID 공개로 더 나은 매칭
         };
 
         // 방 생성 시 초기 상태를 "Waiting"으로 설정
@@ -176,7 +177,6 @@ public class FindMatching : MonoBehaviourPunCallbacks
                 int currentPlayers = PhotonNetwork.CurrentRoom.PlayerCount;
                 float elapsedTime = matchingTimer;
 
-                UpdateUI($"플레이어 대기 중... ({currentPlayers}/{targetPlayerCount})");
                 UpdateModalWindow(currentPlayers, elapsedTime);
 
                 // 4명 모이면 즉시 게임 시작
@@ -287,28 +287,35 @@ public class FindMatching : MonoBehaviourPunCallbacks
     {
         if (modalWindow != null && isMatching && !isGameStarting)
         {
-            // 모달창 제목 업데이트
-            modalWindow.titleText = "매칭 중";
-
+            // 매칭 중 텍스트 애니메이션 (1초마다 변화)
+            string matchingText = GetAnimatedMatchingText(elapsedTime);
+            
             // 모달창 설명에 진행 상황 표시
-            string description = $"플레이어: {currentPlayers}/{targetPlayerCount}\n";
-            description += $"경과 시간: {elapsedTime:F0}초 / {maxWaitTime:F0}초\n\n";
-
-            if (currentPlayers == 0)
-            {
-                description += "방을 찾는 중...";
-            }
-            else if (currentPlayers < targetPlayerCount)
-            {
-                description += "다른 플레이어를 기다리는 중...";
-            }
-            else
-            {
-                description += "모든 플레이어가 모였습니다!";
-            }
+            string description = $"<size=80>{elapsedTime:F0}초\n\n</size>{matchingText} \n<size=80>플레이어: {currentPlayers}/{targetPlayerCount}\n\n</size>";
 
             modalWindow.descriptionText = description;
             modalWindow.UpdateUI(); // 모달창 UI 새로고침
+        }
+    }
+
+    /// <summary>
+    /// 매칭 중 텍스트 애니메이션 생성
+    /// </summary>
+    private string GetAnimatedMatchingText(float elapsedTime)
+    {
+        // 1초마다 텍스트 변화
+        int animationIndex = Mathf.FloorToInt(elapsedTime) % 3;
+        
+        switch (animationIndex)
+        {
+            case 0:
+                return "매칭 중.";
+            case 1:
+                return "매칭 중..";
+            case 2:
+                return "매칭 중...";
+            default:
+                return "매칭 중.";
         }
     }
 
@@ -344,10 +351,23 @@ public class FindMatching : MonoBehaviourPunCallbacks
     public override void OnJoinRandomFailed(short returnCode, string message)
     {
         Debug.Log($"[매칭] OnJoinRandomFailed - 코드: {returnCode}, 메시지: {message}");
-        Debug.Log("[매칭] 대기 중인 방이 없어 새 방 생성");
-
-        // 대기 중인 방이 없으면 새로운 방 생성
-        CreateNewRoom();
+        
+        // 방 찾기 실패 원인 분석
+        switch (returnCode)
+        {
+            case 32760: // NoMatchFound
+                Debug.Log("[매칭] 대기 중인 방이 없어 새 방 생성");
+                CreateNewRoom();
+                break;
+            case 32758: // NoRandomRoomFound
+                Debug.Log("[매칭] 랜덤 방을 찾을 수 없어 새 방 생성");
+                CreateNewRoom();
+                break;
+            default:
+                Debug.LogWarning($"[매칭] 알 수 없는 오류 코드: {returnCode}, 새 방 생성 시도");
+                CreateNewRoom();
+                break;
+        }
     }
 
     public override void OnJoinedRoom()
@@ -368,14 +388,22 @@ public class FindMatching : MonoBehaviourPunCallbacks
         {
             Debug.Log("[매칭] 게임이 이미 시작된 방입니다. 방을 나갑니다.");
             PhotonNetwork.LeaveRoom();
-            UpdateUI("게임이 이미 시작된 방입니다. 다시 시도해주세요.");
             
             // 잠시 후 다시 방 찾기 시도
             StartCoroutine(RetryJoinRoom());
             return;
         }
 
-        UpdateUI($"방 입장! ({currentPlayers}/{targetPlayerCount})");
+        // 방 상태가 Waiting이 아니면 Waiting으로 설정 (방장인 경우)
+        if (PhotonNetwork.IsMasterClient && roomState != ROOM_STATE_WAITING)
+        {
+            Debug.Log("[매칭] 방 상태를 Waiting으로 초기화");
+            ExitGames.Client.Photon.Hashtable roomProperties = new ExitGames.Client.Photon.Hashtable();
+            roomProperties[ROOM_STATE_KEY] = ROOM_STATE_WAITING;
+            PhotonNetwork.CurrentRoom.SetCustomProperties(roomProperties);
+        }
+
+        Debug.Log($"[매칭] 방 입장 완료! ({currentPlayers}/{targetPlayerCount})");
 
         // 모달창 즉시 업데이트
         if (isMatching && !isGameStarting)
@@ -398,9 +426,22 @@ public class FindMatching : MonoBehaviourPunCallbacks
     public override void OnCreatedRoom()
     {
         Debug.Log("[매칭] 🎉 OnCreatedRoom - 방 생성 성공!");
+        Debug.Log($"[매칭] 방 이름: {PhotonNetwork.CurrentRoom?.Name}");
         Debug.Log($"[매칭] 현재 플레이어 수: {PhotonNetwork.CurrentRoom?.PlayerCount ?? 0}");
+        Debug.Log($"[매칭] 방 최대 인원: {PhotonNetwork.CurrentRoom?.MaxPlayers ?? 0}");
 
-        UpdateUI("방 생성 완료! 다른 플레이어를 기다리는 중...");
+        // 방 상태가 제대로 설정되었는지 확인
+        if (PhotonNetwork.CurrentRoom.CustomProperties.ContainsKey(ROOM_STATE_KEY))
+        {
+            string roomState = (string)PhotonNetwork.CurrentRoom.CustomProperties[ROOM_STATE_KEY];
+            Debug.Log($"[매칭] 방 상태 설정 확인: {roomState}");
+        }
+        else
+        {
+            Debug.LogWarning("[매칭] 방 상태가 설정되지 않았습니다!");
+        }
+
+        Debug.Log("[매칭] 다른 플레이어를 기다리는 중...");
 
         // 모달창 즉시 업데이트 (방장 1명)
         if (isMatching && !isGameStarting)
@@ -496,6 +537,32 @@ public class FindMatching : MonoBehaviourPunCallbacks
     {
         Debug.Log($"[매칭] ❌ OnCustomAuthenticationFailed - {debugMessage}");
         UpdateUI("인증 실패! App ID를 확인하세요.");
+    }
+
+    public override void OnRoomPropertiesUpdate(ExitGames.Client.Photon.Hashtable propertiesThatChanged)
+    {
+        Debug.Log("[매칭] 방 속성 업데이트 감지");
+        
+        // 방 상태 변경 확인
+        if (propertiesThatChanged.ContainsKey(ROOM_STATE_KEY))
+        {
+            string newRoomState = (string)propertiesThatChanged[ROOM_STATE_KEY];
+            Debug.Log($"[매칭] 방 상태 변경: {newRoomState}");
+            
+            // 게임 시작 중이면 매칭 중단
+            if (newRoomState == ROOM_STATE_STARTING && isMatching)
+            {
+                Debug.Log("[매칭] 방 상태가 Starting으로 변경되어 매칭 중단");
+                isMatching = false;
+                isGameStarting = true;
+                
+                if (matchingCoroutine != null)
+                {
+                    StopCoroutine(matchingCoroutine);
+                    matchingCoroutine = null;
+                }
+            }
+        }
     }
 
     public void OnExitButtonClick()
