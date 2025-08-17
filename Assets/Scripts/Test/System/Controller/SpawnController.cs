@@ -15,6 +15,13 @@ public class SpawnController : MonoBehaviourPunCallbacks
     [SerializeField] private Vector3 spawnOffset = Vector3.zero;
     [SerializeField] private float spawnDelay = 0.1f;
 
+    [Header("UI 프리팹")]
+    [SerializeField] private GameObject hudPanelPrefab;
+    [SerializeField] private GameObject shopPanelPrefab;
+    [SerializeField] private GameObject itemModalPrefab;
+    [SerializeField] private GameObject pausePanelPrefab;
+    [SerializeField] private GameObject gameOverPanelPrefab;
+
     private DataBase.PlayerData playerData;
     private GameObject[] cachedPlayerPrefabData;
     private bool dataBaseCached = false;
@@ -161,6 +168,12 @@ public class SpawnController : MonoBehaviourPunCallbacks
             }
 
             currentSpawnedCharacter = PhotonNetwork.Instantiate(prefabPath, spawnPosition, spawnRotation);
+
+            PhotonView pv = currentSpawnedCharacter.GetComponent<PhotonView>();
+            if(pv.IsMine)
+            {
+                GameObject hud = Instantiate(hudPanelPrefab);
+            }
 
             if (spawnParent != null)
             {

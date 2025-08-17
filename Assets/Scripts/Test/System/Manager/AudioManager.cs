@@ -548,8 +548,8 @@ public class AudioManager : MonoBehaviour {
     /// <returns>An AudioSource</returns>
     /// <param name="clip">재생할 클립</param>
     /// <param name="callback">재생이 끝나면 콜백할 액션</param>
-    public AudioSource PlayClipAtPoint (string clip, Vector3 location, Action callback = null) {
-        return PlayClipAtPoint (GetClipFromPlaylist(clip), location, _soundFxVolume, 1f, callback);
+    public AudioSource PlayClipAtPoint (string clip, Vector3 location, Action callback = null, Transform parentTransform = null) {
+        return PlayClipAtPoint (GetClipFromPlaylist(clip), location, _soundFxVolume, 1f, callback, parentTransform);
     }
 
     # endregion
@@ -811,11 +811,22 @@ public class AudioManager : MonoBehaviour {
     /// </summary>
     /// <param name="audio_clip">재생할 클립</param>
     /// <returns>Newly created gameobject with sound effect and audio source attached</returns>
-    private GameObject CreateSoundFx (AudioClip audio_clip, Vector3 location) {
+    private GameObject CreateSoundFx (AudioClip audio_clip, Vector3 location, Transform parentTransform = null) {
         // 임시 오브젝트
         GameObject host = new GameObject ("TempAudio");
         host.transform.position = location;
-        host.transform.SetParent (transform);
+
+            // 부모 설정
+        if (parentTransform != null)
+        {
+            host.transform.SetParent(parentTransform);
+            host.transform.localPosition = Vector3.zero; // 부모 기준으로 위치 조정
+        }
+        else
+        {
+            host.transform.SetParent(transform);
+        }
+
         host.AddComponent<SoundEffect> ();
 
         // 오디오소스 추가
@@ -1075,13 +1086,13 @@ public class AudioManager : MonoBehaviour {
     /// <param name="volume">사운드 크기</param>
     /// <param name="pitch">클립의 피치 레벨 설정</param>
     /// <param name="callback">재생이 끝나면 콜백할 액션</param>
-    public AudioSource PlayClipAtPoint (AudioClip clip, Vector3 location, float volume, float pitch = 1f, Action callback = null) {
+    public AudioSource PlayClipAtPoint (AudioClip clip, Vector3 location, float volume = 1f, float pitch = 1f, Action callback = null, Transform parentTransform = null) {
         if (clip == null) {
             return null;
         }
         //AudioSource.PlayClipAtPoint(clip, location);
         
-        GameObject host = CreateSoundFx (clip, location);
+        GameObject host = CreateSoundFx (clip, location, parentTransform);
         AudioSource source = host.GetComponent<AudioSource> ();
         source.loop = false;
         source.volume = _soundFxVolume * volume;

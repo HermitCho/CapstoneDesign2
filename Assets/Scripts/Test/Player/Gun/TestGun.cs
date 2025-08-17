@@ -467,7 +467,7 @@ public class TestGun : MonoBehaviourPun
         if (gunData.shotClip != null)
         {
             // AudioManager를 사용해서 발사 사운드 재생
-            AudioManager.Inst?.PlayDirectClip(gunData.shotClip, 1f, 1f);
+            AudioManager.Inst?.PlayClipAtPoint(gunData.shotClip, fireTransform.position, 1f, 1f, null, fireTransform);
         }
         else
         {
@@ -554,7 +554,7 @@ public class TestGun : MonoBehaviourPun
         if (gunData.reloadClip != null)
         {
             // AudioManager를 사용해서 재장전 사운드 재생
-            AudioManager.Inst?.PlayDirectClip(gunData.reloadClip, 1f, 1f);
+            AudioManager.Inst?.PlayClipAtPoint(gunData.reloadClip, fireTransform.position, 1f, 1f, null, fireTransform);
         }
         else
         {

@@ -8,7 +8,6 @@ public class SoundController : MonoBehaviour
     public void OnClick()
     {
         AudioManager.Inst.PlayOneShot("SFX_UI_Click");
-
     }
 
     public void OnClickMatching()
