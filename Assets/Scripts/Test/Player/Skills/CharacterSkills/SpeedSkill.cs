@@ -26,7 +26,12 @@ public class SpeedSkill : CharacterSkill
     {
         base.OnSkillExecuted();
         if (!PhotonView.Get(this).IsMine || moveController == null || isBuffActive) return;
-        PhotonView.Get(this).RPC("RPC_ApplySpeedBuff", RpcTarget.All);
+
+        // 모든 클라이언트에 버프 적용
+        photonView.RPC("RPC_ApplySpeedBuff", RpcTarget.All);
+        
+        // 이펙트 실행도 모든 클라이언트 동기화
+        photonView.RPC("RPC_PlayDashSkillEffects", RpcTarget.All);
     }
 
     [PunRPC]
@@ -51,7 +56,8 @@ public class SpeedSkill : CharacterSkill
     {
         base.OnSkillFinished();
         if (!PhotonView.Get(this).IsMine || moveController == null || !isBuffActive) return;
-        PhotonView.Get(this).RPC("RPC_RemoveSpeedBuff", RpcTarget.All);
+
+        photonView.RPC("RPC_RemoveSpeedBuff", RpcTarget.All);
     }
 
     [PunRPC]
@@ -64,5 +70,25 @@ public class SpeedSkill : CharacterSkill
             speedField.SetValue(moveController, originalSpeed);
         }
         isBuffActive = false;
+    }
+
+    [PunRPC]
+    private void RPC_PlayDashSkillEffects()
+    {
+        if (skillEffect != null)
+        {
+            skillEffect.Play();
+        }
+
+        if (skillSound != null)
+        {
+            AudioManager.Inst.PlayClipAtPoint(skillSound, transform.position, 1f, 1f, null, transform);
+        }
+    }
+
+    // 부모의 PlaySkillEffects 막아버리고 직접 RPC 실행
+    protected override void PlaySkillEffects()
+    {
+        // 아무 것도 하지 않음 → 위에서 RPC로 실행하므로 중복 방지
     }
 }

@@ -10,21 +10,15 @@ using Photon.Pun;
 public class TestGun : MonoBehaviourPun
 {
     #region Enums
-
-    /// <summary>
-    /// 총기의 현재 상태를 나타내는 열거형
-    /// </summary>
     public enum GunState
     {
-        Ready,       // 발사 준비 완료
-        Empty,       // 탄창이 빔
-        Reloading    // 재장전 중
+        Ready,
+        Empty,
+        Reloading
     }
-
     #endregion
 
     #region Serialized Fields
-
     [Header("Gun Configuration")]
     [SerializeField] private GunData gunData;
 
@@ -38,135 +32,65 @@ public class TestGun : MonoBehaviourPun
     [SerializeField] private RectTransform aimPointUI;
     [SerializeField] private MuzzleDirectionController muzzleDirectionController;
 
-    [Header("스턴 제어")]
     private MoveController moveController;
     #endregion
 
     #region Properties
-
-    /// <summary>
-    /// 현재 총기의 상태
-    /// </summary>
     public GunState CurrentState { get; private set; }
-
-    /// <summary>
-    /// 현재 탄창에 남아있는 총알 수
-    /// </summary>
     [HideInInspector] public int CurrentMagAmmo { get; private set; }
-
-    /// <summary>
-    /// 견착 상태 여부
-    /// </summary>
     public bool IsShouldering { get; private set; }
-
     #endregion
 
     #region Private Fields
-
     private PhotonView photonViewCached;
     private bool isFiring;
     private float lastFireTime;
-
     #endregion
 
     #region Unity Lifecycle
-
-    /// <summary>
-    /// 컴포넌트 초기화
-    /// </summary>
     protected virtual void Awake()
     {
         photonViewCached = GetComponent<PhotonView>();
     }
 
-    /// <summary>
-    /// 총기 활성화 시 초기화
-    /// </summary>
     protected virtual void OnEnable()
     {
         InitializeComponents();
         InitializeGunState();
     }
 
-    /// <summary>
-    /// 총기 비활성화 시 상태 변경
-    /// </summary>
     protected virtual void OnDisable()
     {
         CurrentState = GunState.Empty;
     }
 
-    /// <summary>
-    /// 매 프레임 업데이트
-    /// </summary>
     private void Update()
     {
+        // ✅ 발사자만 Update에서 발사 처리
+        if (!photonViewCached.IsMine) return;
+
         if (isFiring)
         {
             ProcessFiring();
         }
-
-        // 디버그 레이
-
-        //DrawDebugRays();
     }
-
-    //디버그 용 레이를 그려주는 함수, 필요하면 주석 해제
-    // private void DrawDebugRays()
-    // {
-    //     if (aimPointUI == null || mainCamera == null || fireTransform == null) return;
-
-    //     Vector3 screenPoint = aimPointUI.position;
-    //     Ray cameraRay = mainCamera.ScreenPointToRay(screenPoint);
-    //     Debug.DrawRay(cameraRay.origin, cameraRay.direction * gunData.range, Color.blue);
-
-    //     int layerMask = ~LayerMask.GetMask("PlayerPosition");
-
-    //     Vector3 targetPoint;
-    //     if (Physics.Raycast(cameraRay, out RaycastHit hit, gunData.range, layerMask))
-    //     {
-    //         targetPoint = hit.point;
-    //     }
-    //     else
-    //     {
-    //         targetPoint = cameraRay.origin + cameraRay.direction * gunData.range;
-    //     }
-
-    //     // 빨간색 레이: fireTransform에서 targetPoint로
-    //     Vector3 fireDirection = (targetPoint - fireTransform.position).normalized;
-    //     Debug.DrawRay(fireTransform.position, fireDirection * gunData.range, Color.red);
-
-    //     // 노란색 레이: Shot 함수의 실제 발사 방향(실시간)
-    //     Debug.DrawRay(fireTransform.position, fireDirection * gunData.range, Color.yellow);
-    // }
-
     #endregion
 
     #region Initialization
-
-    /// <summary>
-    /// 컴포넌트들을 초기화합니다.
-    /// </summary>
     private void InitializeComponents()
     {
         mainCamera = GameObject.FindGameObjectWithTag("MainCamera").GetComponent<Camera>();
-        
-        // ✅ Crosshair UI를 비동기로 찾기
         StartCoroutine(FindCrosshairUI());
         muzzleDirectionController = GetComponentInChildren<MuzzleDirectionController>();
     }
-    
-    /// <summary>
-    /// Crosshair UI를 찾는 코루틴
-    /// </summary>
+
     private IEnumerator FindCrosshairUI()
     {
-        int maxRetries = 100; // 최대 3초 대기 (30 * 0.1초)
+        int maxRetries = 100;
         int currentRetry = 0;
-        
+
         while (aimPointUI == null && currentRetry < maxRetries)
         {
-            // Crosshair 태그로 찾기
             GameObject crosshairObj = GameObject.FindGameObjectWithTag("Crosshair");
             if (crosshairObj != null)
             {
@@ -177,20 +101,17 @@ public class TestGun : MonoBehaviourPun
                     break;
                 }
             }
-            
+
             currentRetry++;
-            yield return new WaitForSeconds(0.1f); // 0.1초마다 재시도
+            yield return new WaitForSeconds(0.1f);
         }
-        
+
         if (aimPointUI == null)
         {
-            Debug.LogWarning("⚠️ TestGun: Crosshair UI를 찾을 수 없습니다. 카메라 중앙을 사용합니다.");
+            Debug.LogWarning("⚠️ TestGun: Crosshair UI를 찾을 수 없습니다.");
         }
     }
 
-    /// <summary>
-    /// 총기 상태를 초기화합니다.
-    /// </summary>
     private void InitializeGunState()
     {
         isFiring = false;
@@ -199,20 +120,14 @@ public class TestGun : MonoBehaviourPun
         lastFireTime = 0f;
         IsShouldering = false;
         moveController = GetComponentInParent<MoveController>();
-        Debug.Log("???" + moveController.gameObject);
     }
-
     #endregion
 
     #region Input Handling
-
-    /// <summary>
-    /// 발사 입력을 처리합니다.
-    /// </summary>
-    /// <param name="shouldFire">발사 여부</param>
     public void InputFire(bool shouldFire)
     {
         if (!photonViewCached.IsMine) return;
+        // ✅ 발사 입력은 All로 동기화 (UI 피드백 등을 위해)
         photonViewCached.RPC("RPC_InputFire", RpcTarget.All, shouldFire);
     }
 
@@ -221,33 +136,27 @@ public class TestGun : MonoBehaviourPun
     {
         isFiring = shouldFire;
     }
-
     #endregion
 
     #region Firing System
-
-    /// <summary>
-    /// 발사 처리를 수행합니다.
-    /// </summary>
     private void ProcessFiring()
     {
-        Vector3 targetPosition = CalculateShotTarget();
-        FireAtWorldPoint(targetPosition);
+        // ✅ 발사자만 실행되도록 보장
+        if (!photonViewCached.IsMine) return;
+        
+        if (CanFire())
+        {
+            Vector3 targetPosition = CalculateShotTarget();
+            ExecuteFire(targetPosition);
+        }
     }
 
-    /// <summary>
-    /// 조준점을 기반으로 발사 목표점을 계산합니다.
-    /// </summary>
-    /// <returns>발사할 월드 좌표</returns>
     private Vector3 CalculateShotTarget()
     {
-        Vector3 screenPoint = aimPointUI.position;
+        Vector3 screenPoint = aimPointUI != null ? aimPointUI.position :
+            new Vector3(Screen.width / 2f, Screen.height / 2f);
+
         Ray cameraRay = mainCamera.ScreenPointToRay(screenPoint);
-
-        // 카메라에서 나가는 레이 시각화 (파란색)
-        Debug.DrawRay(cameraRay.origin, cameraRay.direction * gunData.range, Color.blue, 1f);
-
-        // IgnoreRaycast 레이어를 무시하는 마스크 생성
         int layerMask = ~LayerMask.GetMask("PlayerPosition");
 
         if (Physics.Raycast(cameraRay, out RaycastHit hit, gunData.range, layerMask, QueryTriggerInteraction.Ignore))
@@ -260,92 +169,76 @@ public class TestGun : MonoBehaviourPun
         }
     }
 
-    /// <summary>
-    /// 지정된 월드 좌표로 발사합니다.
-    /// </summary>
-    /// <param name="worldPoint">발사할 월드 좌표</param>
-    public void FireAtWorldPoint(Vector3 worldPoint)
+    // ✅ 이름 변경: FireAtWorldPoint -> ExecuteFire (더 명확한 의미)
+    private void ExecuteFire(Vector3 worldPoint)
     {
         if (!photonViewCached.IsMine) return;
-        if (CanFire())
-        {
-            lastFireTime = Time.time;
-            Vector3 direction;
-            Collider fireCollider = fireTransform.GetComponent<BoxCollider>();
-            bool isBlocked = false;
-            if (fireCollider != null)
-            {
-                Collider[] hits = Physics.OverlapBox(
-                    fireCollider.bounds.center,
-                    fireCollider.bounds.extents,
-                    fireTransform.rotation,
-                    ~0, // 모든 레이어
-                    QueryTriggerInteraction.Collide
-                );
-            }
-            if (isBlocked)
-            {
-                direction = fireTransform.forward;
-            }
-            else
-            {
-                direction = (worldPoint - fireTransform.position).normalized;
-            }
-            muzzleDirectionController?.SetDirection(direction);
-            Debug.DrawRay(fireTransform.position, direction * gunData.range, Color.red, 1f);
-            photonViewCached.RPC("RPC_Shot", RpcTarget.All, direction);
-        }
+        
+        lastFireTime = Time.time;
+        Vector3 direction = (worldPoint - fireTransform.position).normalized;
+        muzzleDirectionController?.SetDirection(direction);
+
+        // ✅ 발사 실행을 RPC로 전송
+        photonViewCached.RPC("RPC_Shot", RpcTarget.All, direction);
+    }
+
+    private bool CanFire()
+    {
+        return CurrentState == GunState.Ready &&
+               !moveController.IsStunned() &&
+               Time.time >= lastFireTime + gunData.fireRate &&
+               CurrentMagAmmo > 0;
     }
 
     [PunRPC]
     public void RPC_Shot(Vector3 shootDirection)
     {
+        if (CurrentMagAmmo <= 0) return;
+
         Shot(shootDirection);
+
+        // ✅ 탄약 소모는 발사자만 처리하고 RPC로 동기화
+        if (photonViewCached.IsMine)
+        {
+            CurrentMagAmmo--;
+            if (CurrentMagAmmo <= 0)
+                CurrentState = GunState.Empty;
+                
+            // 탄약 상태를 다른 클라이언트에게 동기화
+            photonViewCached.RPC("RPC_SyncAmmo", RpcTarget.Others, CurrentMagAmmo, CurrentState);
+        }
     }
 
-    /// <summary>
-    /// 발사 가능한지 확인합니다.
-    /// </summary>
-    /// <returns>발사 가능 여부</returns>
-    private bool CanFire()
+    [PunRPC]
+    private void RPC_SyncAmmo(int newAmmoCount, GunState newState)
     {
-        return CurrentState == GunState.Ready && !moveController.IsStunned() &&
-               Time.time >= lastFireTime + gunData.fireRate;
+        CurrentMagAmmo = newAmmoCount;
+        CurrentState = newState;
     }
 
-    /// <summary>
-    /// 실제 발사를 수행합니다.
-    /// </summary>
-    /// <param name="shootDirection">발사 방향</param>
-    /// <param name="hitPosition">목표 위치</param>
     protected virtual void Shot(Vector3 shootDirection)
     {
-        // 노란색 레이(실제 발사 방향)로만 총알이 나가도록 함
         for (int i = 0; i < gunData.pelletCount; i++)
         {
-            Vector3 pelletDirection = CalculatePelletDirection(shootDirection, i);
-            Vector3 pelletHitPosition = CalculatePelletHitPosition(pelletDirection, fireTransform.position + pelletDirection * gunData.range, i);
-            ProcessPelletHit(pelletDirection);
-            photonViewCached.RPC("RPC_ShotEffect", RpcTarget.All, fireTransform.position, pelletHitPosition);
+            Vector3 pelletDirection = CalculatePelletDirection(shootDirection);
+            Vector3 pelletHitPosition = CalculatePelletHitPosition(pelletDirection);
+
+            // ✅ 데미지 판정은 발사자만 처리
+            if (photonViewCached.IsMine)
+            {
+                ProcessPelletHit(pelletDirection);
+            }
+
+            // ✅ 이펙트는 모든 클라이언트가 실행 (하지만 Shot이 이미 RPC로 호출되므로 추가 RPC 불필요)
+            StartCoroutine(ShotEffect(fireTransform.position, pelletHitPosition));
         }
-        ConsumeAmmo();
     }
 
-    /// <summary>
-    /// 개별 펠릿의 방향을 계산합니다.
-    /// </summary>
-    /// <param name="baseDirection">기본 발사 방향</param>
-    /// <param name="pelletIndex">펠릿 인덱스</param>
-    /// <returns>펠릿 방향</returns>
-    private Vector3 CalculatePelletDirection(Vector3 baseDirection, int pelletIndex)
+    private Vector3 CalculatePelletDirection(Vector3 baseDirection)
     {
-        // 줌 상태에 따라 분산도 결정
         float currentSpreadAngle = GetCurrentSpreadAngle();
-
         if (currentSpreadAngle <= 0f)
-        {
             return baseDirection;
-        }
 
         return Quaternion.Euler(
             Random.Range(-currentSpreadAngle, currentSpreadAngle),
@@ -354,45 +247,23 @@ public class TestGun : MonoBehaviourPun
         ) * baseDirection;
     }
 
-    /// <summary>
-    /// 현재 줌 상태에 따른 분산도를 반환합니다.
-    /// </summary>
-    /// <returns>현재 분산도</returns>
     private float GetCurrentSpreadAngle()
     {
-        // 줌 상태일 때는 분산도 0 (정확한 조준)
         if (CameraController.isZoomed)
-        {
             return 0f;
-        }
-
-        // 일반 상태일 때는 설정된 분산도 사용
         return gunData.spreadAngle;
     }
 
-    /// <summary>
-    /// 펠릿의 충돌 위치를 계산합니다.
-    /// </summary>
-    /// <param name="direction">펠릿 방향</param>
-    /// <param name="defaultHitPosition">기본 충돌 위치</param>
-    /// <param name="pelletIndex">펠릿 인덱스</param>
-    /// <returns>충돌 위치</returns>
-    private Vector3 CalculatePelletHitPosition(Vector3 direction, Vector3 defaultHitPosition, int pelletIndex)
+    private Vector3 CalculatePelletHitPosition(Vector3 direction)
     {
         int layerMask = ~LayerMask.GetMask("PlayerPosition");
         if (Physics.Raycast(fireTransform.position, direction, out RaycastHit hit, gunData.range, layerMask, QueryTriggerInteraction.Ignore))
         {
             return hit.point;
         }
-
-        // 첫 번째 펠릿은 지정된 위치 사용, 나머지는 방향 기반 계산
-        return pelletIndex == 0 ? defaultHitPosition : fireTransform.position + direction * gunData.range;
+        return fireTransform.position + direction * gunData.range;
     }
 
-    /// <summary>
-    /// 펠릿의 충돌을 처리합니다.
-    /// </summary>
-    /// <param name="direction">펠릿 방향</param>
     private void ProcessPelletHit(Vector3 direction)
     {
         int layerMask = ~LayerMask.GetMask("PlayerPosition");
@@ -402,125 +273,58 @@ public class TestGun : MonoBehaviourPun
             target?.OnDamage(gunData.damage, hit.point, hit.normal);
         }
     }
-
-    /// <summary>
-    /// 탄약을 소모합니다.
-    /// </summary>
-    private void ConsumeAmmo()
-    {
-        CurrentMagAmmo--;
-        if (CurrentMagAmmo <= 0)
-        {
-            CurrentState = GunState.Empty;
-        }
-    }
-
     #endregion
 
     #region Visual Effects
-
-    /// <summary>
-    /// 발사 효과를 재생합니다.
-    /// </summary>
-    /// <param name="start">시작 위치</param>
-    /// <param name="end">끝 위치</param>
-    /// <returns>코루틴</returns>
     protected virtual IEnumerator ShotEffect(Vector3 start, Vector3 end)
     {
         PlayMuzzleEffects();
-        PlayAudioEffect(); // AudioManager를 사용한 발사 사운드 재생
-        
+        PlayAudioEffect();
+
         GameObject trailObject = CreateBulletTrail(start, end);
-
         yield return new WaitForSeconds(gunData.bulletTrailDuration);
-
         Destroy(trailObject);
     }
 
-    [PunRPC]
-    public void RPC_ShotEffect(Vector3 start, Vector3 end)
-    {
-        StartCoroutine(ShotEffect(start, end));
-    }
-
-    /// <summary>
-    /// 총구 효과를 재생합니다.
-    /// </summary>
     private void PlayMuzzleEffects()
     {
-        if (muzzleFlashEffect != null && !muzzleFlashEffect.isPlaying)
-        {
-            muzzleFlashEffect.Play();
-        }
-
-        if (shellEjectEffect != null && !shellEjectEffect.isPlaying)
-        {
-            shellEjectEffect.Play();
-        }
+        if (muzzleFlashEffect != null) muzzleFlashEffect.Play();
+        if (shellEjectEffect != null) shellEjectEffect.Play();
     }
 
-    /// <summary>
-    /// 발사 사운드를 재생합니다.
-    /// </summary>
     private void PlayAudioEffect()
     {
         if (gunData.shotClip != null)
         {
-            // AudioManager를 사용해서 발사 사운드 재생
             AudioManager.Inst?.PlayClipAtPoint(gunData.shotClip, fireTransform.position, 1f, 1f, null, fireTransform);
-        }
-        else
-        {
-            Debug.LogWarning("TestGun: 발사 사운드 클립이 설정되지 않았습니다.");
         }
     }
 
-    /// <summary>
-    /// 총알 궤적을 생성합니다.
-    /// </summary>
-    /// <param name="start">시작 위치</param>
-    /// <param name="end">끝 위치</param>
-    /// <returns>궤적 오브젝트</returns>
     private GameObject CreateBulletTrail(Vector3 start, Vector3 end)
     {
         GameObject trailObject = new GameObject("BulletTrail");
         LineRenderer lineRenderer = trailObject.AddComponent<LineRenderer>();
 
-        ConfigureLineRenderer(lineRenderer);
-        lineRenderer.SetPosition(0, start);
-        lineRenderer.SetPosition(1, end);
-
-        return trailObject;
-    }
-
-    /// <summary>
-    /// 라인 렌더러를 설정합니다.
-    /// </summary>
-    /// <param name="lineRenderer">설정할 라인 렌더러</param>
-    private void ConfigureLineRenderer(LineRenderer lineRenderer)
-    {
         lineRenderer.positionCount = 2;
         lineRenderer.material = gunData.bulletTrailMaterial;
         lineRenderer.startWidth = gunData.bulletTrailStartWidth;
         lineRenderer.endWidth = gunData.bulletTrailEndWidth;
         lineRenderer.useWorldSpace = true;
-    }
 
+        lineRenderer.SetPosition(0, start);
+        lineRenderer.SetPosition(1, end);
+
+        return trailObject;
+    }
     #endregion
 
     #region Reload System
-
-    /// <summary>
-    /// 재장전을 시작합니다.
-    /// </summary>
-    /// <returns>재장전 시작 성공 여부</returns>
     public bool Reload()
     {
         if (!photonViewCached.IsMine) return false;
-        if (CurrentState == GunState.Reloading || CurrentMagAmmo >= gunData.currentAmmo)
-        {
+        if (CurrentState == GunState.Reloading || CurrentMagAmmo >= gunData.maxAmmo)
             return false;
-        }
+
         photonViewCached.RPC("RPC_Reload", RpcTarget.All);
         return true;
     }
@@ -531,45 +335,28 @@ public class TestGun : MonoBehaviourPun
         StartCoroutine(ReloadRoutine());
     }
 
-    /// <summary>
-    /// 재장전 루틴을 수행합니다.
-    /// </summary>
-    /// <returns>코루틴</returns>
     protected virtual IEnumerator ReloadRoutine()
     {
         CurrentState = GunState.Reloading;
-
         PlayReloadSound();
-
         yield return new WaitForSeconds(gunData.reloadTime);
 
-        CompleteReload();
+        photonViewCached.RPC("RPC_CompleteReload", RpcTarget.All);
     }
 
-    /// <summary>
-    /// 재장전 사운드를 재생합니다.
-    /// </summary>
-    private void PlayReloadSound()
-    {
-        if (gunData.reloadClip != null)
-        {
-            // AudioManager를 사용해서 재장전 사운드 재생
-            AudioManager.Inst?.PlayClipAtPoint(gunData.reloadClip, fireTransform.position, 1f, 1f, null, fireTransform);
-        }
-        else
-        {
-            Debug.LogWarning("TestGun: 재장전 사운드 클립이 설정되지 않았습니다.");
-        }
-    }
-
-    /// <summary>
-    /// 재장전을 완료합니다.
-    /// </summary>
-    private void CompleteReload()
+    [PunRPC]
+    protected void RPC_CompleteReload()
     {
         CurrentMagAmmo = gunData.maxAmmo;
         CurrentState = GunState.Ready;
     }
 
+    private void PlayReloadSound()
+    {
+        if (gunData.reloadClip != null)
+        {
+            AudioManager.Inst?.PlayClipAtPoint(gunData.reloadClip, fireTransform.position, 1f, 1f, null, fireTransform);
+        }
+    }
     #endregion
 }

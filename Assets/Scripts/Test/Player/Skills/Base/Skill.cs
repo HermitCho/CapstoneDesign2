@@ -8,7 +8,7 @@ using Photon.Pun;
 /// 스킬 시스템의 기본 클래스
 /// 캐릭터 스킬과 아이템 스킬의 공통 요소들을 정의
 /// </summary>
-public abstract class Skill : MonoBehaviour
+public abstract class Skill : MonoBehaviourPun
 {
     #region Serialized Fields
 
@@ -128,7 +128,7 @@ public abstract class Skill : MonoBehaviour
             Debug.LogWarning($"스킬 '{skillName}' 사용 불가: CanUse={CanUse}, Initialized={isInitialized}");
             return false;
         }
-        
+
         // 시전 시간이 있으면 코루틴으로 처리
         if (castTime > 0f)
         {
@@ -167,9 +167,9 @@ public abstract class Skill : MonoBehaviour
     protected virtual IEnumerator CastSkillRoutine()
     {
         OnSkillCastStart();
-        
+
         yield return new WaitForSeconds(castTime);
-        
+
         ExecuteSkill();
     }
 
@@ -179,10 +179,10 @@ public abstract class Skill : MonoBehaviour
     protected virtual void ExecuteSkill()
     {
         IsActive = true;
-        
-        PlaySkillEffects();
+
         OnSkillExecuted();
-        
+        PlaySkillEffects();
+
         // 지속시간이 있으면 코루틴으로 처리
         if (duration > 0f)
         {
@@ -202,7 +202,7 @@ public abstract class Skill : MonoBehaviour
     protected virtual IEnumerator SkillDurationRoutine()
     {
         yield return new WaitForSeconds(duration);
-        
+
         OnSkillFinished();
         IsActive = false;
     }
@@ -215,14 +215,15 @@ public abstract class Skill : MonoBehaviour
         // 파티클 이펙트 재생
         if (skillEffect != null)
         {
-            Debug.Log(skillEffect);
-            skillEffect.Play();
+            if(photonView.IsMine)
+                skillEffect.Play();
         }
 
         // 사운드 재생
         if (skillSound != null)
         {
-            AudioManager.Inst.PlayOneShot(skillSound);
+            if(photonView.IsMine)
+                AudioManager.Inst.PlayClipAtPoint(skillSound, transform.position, 1f, 1f, null, transform);
         }
     }
 
