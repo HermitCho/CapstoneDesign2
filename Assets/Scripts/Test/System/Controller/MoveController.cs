@@ -220,6 +220,7 @@ public class MoveController : MonoBehaviourPun
     // 지면 상태 업데이트
     void UpdateGroundedState()
     {
+        if(!photonView.IsMine) return;
         wasGrounded = isGrounded;
         isGrounded = CheckGrounded();
     }
@@ -227,6 +228,7 @@ public class MoveController : MonoBehaviourPun
     //움직임 처리
     void HandleMovement()
     {
+        if(!photonView.IsMine) return;
         if (rawMoveInput.magnitude < 0.1f) return;
 
         Vector3 playerRelativeMovement = GetPlayerRelativeMovement(rawMoveInput);
@@ -247,6 +249,7 @@ public class MoveController : MonoBehaviourPun
     // 공중 이동
     void HandleAirMovement(Vector3 wishDirection)
     {
+        if(!photonView.IsMine) return;
         Vector3 currentVelocity = playerRigidbody.velocity;
         Vector3 horizontalVelocity = new Vector3(currentVelocity.x, 0, currentVelocity.z);
         
@@ -287,6 +290,7 @@ public class MoveController : MonoBehaviourPun
     // 점프 버퍼 업데이트
     void UpdateJumpBuffer()
     {
+        if(!photonView.IsMine) return;
         if (jumpBufferTimer > 0)
         {
             jumpBufferTimer -= Time.deltaTime;
@@ -303,6 +307,7 @@ public class MoveController : MonoBehaviourPun
     // 착지 처리
     void HandleLanding()
     {
+        if(!photonView.IsMine) return;
         // 공중에서 땅으로 착지한 순간
         if (!wasGrounded && isGrounded)
         {
@@ -321,6 +326,7 @@ public class MoveController : MonoBehaviourPun
     // InputManager에서 이동 입력 받기
     void OnMoveInput(Vector2 moveInput)
     {
+        if(!photonView.IsMine) return;
         // ✅ 움직임 제어 확인
         if (!canMove || isStunned)
         {
@@ -337,6 +343,7 @@ public class MoveController : MonoBehaviourPun
     // InputManager에서 마우스 입력 받기
     void OnMouseInput(Vector2 mouseInput)
     {
+        if(!photonView.IsMine) return;
         // ✅ 마우스 조작 제어 확인
         if (!canRotate || isStunned)
         {
@@ -363,6 +370,7 @@ public class MoveController : MonoBehaviourPun
     // 회전 처리
     void HandleRotation()
     {   
+        if(!photonView.IsMine) return;
         // ✅ 회전 제어 확인
         if (!canRotate || isStunned)
         {
@@ -380,6 +388,7 @@ public class MoveController : MonoBehaviourPun
     // InputManager에서 점프 입력 받기
     void OnJumpInput()
     {      
+        if(!photonView.IsMine) return;
         // ✅ 점프 제어 확인
         if (!canJump || isStunned)
         {
@@ -404,6 +413,7 @@ public class MoveController : MonoBehaviourPun
     // 점프 실행
     void PerformJump()
     {
+        if(!photonView.IsMine) return;
         if (Time.time - lastJumpTime < cachedJumpCooldown) return; // 캐싱된 값 사용
 
         // 수직 속도만 리셋 (수평 속도는 유지)
@@ -432,6 +442,7 @@ public class MoveController : MonoBehaviourPun
     /// </summary>
     private void CheckWallPenetration()
     {
+        if(!photonView.IsMine) return;
         Vector3 currentPosition = transform.position;
         Vector3 moveVector = currentPosition - lastValidPosition;
         float moveDistance = moveVector.magnitude;
@@ -517,6 +528,7 @@ public class MoveController : MonoBehaviourPun
 
     public void MouseLock()
     {
+        if(!photonView.IsMine) return;
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
     }
@@ -524,6 +536,7 @@ public class MoveController : MonoBehaviourPun
     // 벽 충돌 시 자연스럽게 떨어지도록 처리
     void OnCollisionEnter(Collision collision)
     {
+        if(!photonView.IsMine) return;
         // 공중에 있을 때만 처리
         if (!isGrounded)
         {
@@ -567,6 +580,7 @@ public class MoveController : MonoBehaviourPun
     // 벽에 계속 붙어있는 상태 방지
     void OnCollisionStay(Collision collision)
     {
+        if(!photonView.IsMine) return;
         // 공중에 있고 수직 속도가 거의 0일 때 (벽에 붙어있는 상태)
         if (!isGrounded)
         {

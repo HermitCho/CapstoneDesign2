@@ -40,7 +40,7 @@ public class FootstepSoundPlayer : MonoBehaviour
     [PunRPC]
     public void RPC_PlayFootStepSound()
     {
-        AudioManager.Inst.PlaySFX("SFX_Game_FootStep");
+        AudioManager.Inst.PlayClipAtPoint("SFX_Game_FootStep", transform.position, null, transform);
     }
 
     /// <summary>
@@ -55,7 +55,7 @@ public class FootstepSoundPlayer : MonoBehaviour
     [PunRPC]
     public void RPC_PlayJumpSound()
     {
-        AudioManager.Inst.PlaySFX("SFX_Game_JumpUp");
+        AudioManager.Inst.PlayClipAtPoint("SFX_Game_JumpUp", transform.position, null, transform);
     }
 
     /// <summary>
@@ -70,7 +70,7 @@ public class FootstepSoundPlayer : MonoBehaviour
     [PunRPC]
     public void RPC_PlayLandSound()
     {
-        AudioManager.Inst.PlaySFX("SFX_Game_JumpDown");
+        AudioManager.Inst.PlayClipAtPoint("SFX_Game_JumpDown", transform.position, null, transform);
     }
 
     /// <summary>
