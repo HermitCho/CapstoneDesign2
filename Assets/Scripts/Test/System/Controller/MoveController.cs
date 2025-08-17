@@ -17,11 +17,12 @@ using Photon.Pun;
 /// </summary>
 
 
-public class MoveController : MonoBehaviour
+public class MoveController : MonoBehaviourPun
 {
     private DataBase.PlayerMoveData playerMoveData;
     private Rigidbody playerRigidbody;
     private Vector2 rawMoveInput; // 원본 입력값 저장
+    private PhotonView photonView;
   
 
     // 벽 통과 방지를 위한 변수 추가
@@ -77,9 +78,15 @@ public class MoveController : MonoBehaviour
     private float lastItemUseTime = 0f; // 마지막 아이템 사용 시간
     private const float itemUseCooldown = 0.5f; // 아이템 사용 쿨타임 (0.5초)
 
+
+    void Awake()
+    {
+        photonView = GetComponent<PhotonView>();
+    }
     // InputManager 이벤트 구독
     void OnEnable()
     {
+        if(!photonView.IsMine) return;
         // InputManager 이벤트 구독
         InputManager.OnMoveInput += OnMoveInput;
         InputManager.OnXMouseInput += OnMouseInput;
@@ -92,6 +99,7 @@ public class MoveController : MonoBehaviour
 
     void OnDisable()
     {
+        if(!photonView.IsMine) return;
         // InputManager 이벤트 구독 해제
         InputManager.OnMoveInput -= OnMoveInput;
         InputManager.OnXMouseInput -= OnMouseInput;
@@ -104,6 +112,7 @@ public class MoveController : MonoBehaviour
     
     void Start()
     {
+        if(!photonView.IsMine) return;
                 // 메인 카메라 찾기
         mainCamera = Camera.main;
         if (mainCamera == null)
@@ -196,6 +205,7 @@ public class MoveController : MonoBehaviour
 
     void Update()
     {
+        if(!photonView.IsMine) return;
         UpdateGroundedState();
         HandleMovement();
         HandleRotation();
@@ -206,15 +216,6 @@ public class MoveController : MonoBehaviour
         CheckWallPenetration();
     }
 
-    void FixedUpdate()
-    {
-        //HandleMovement();
-    }
-
-    void LateUpdate()
-    {
-       // HandleRotation();
-    }
 
     // 지면 상태 업데이트
     void UpdateGroundedState()

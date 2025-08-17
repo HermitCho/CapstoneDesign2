@@ -3,32 +3,33 @@ using System.Collections.Generic;
 using UnityEngine;
 using DG.Tweening;
 using Photon.Pun;
-using Cinemachine;
-
 /// <summary>
-/// TPS 게임용 카메라 컨트롤러 - 캐릭터 바로 뒤쪽에 가상카메라 배치
-/// 캐릭터 프리팹에 붙여서 사용
+/// 카메라 연결 방법 - 플레이어 또는 기타 controller 오브젝트에 붙여서 사용
 /// DataBase.cs 파일에서 카메라 데이터 설정 가능
-/// 해당 스크립트에 존재하는 변수 값 수정 X
+///해당 스크립트에 존재하는 변수 값 수정 X
 /// </summary>
 
+
+// 순수 Unity Camera Transform 제어 방식
 public class CameraController : MonoBehaviourPun
 {
     // 회전 각도 관련 변수 (수직만)
+    private float currentVerticalAngle = 0f;   // pitch (상하 각도)
     private float targetVerticalAngle = 0f;
-
-    // TPS용 고정 카메라 거리
-    private const float TPS_CAMERA_SIDE = 0.5f;
-    private const float TPS_CAMERA_DISTANCE = 2f;
-    private const float TPS_CAMERA_HEIGHT = 1f;
+    private float rotationVelocity = 0f;
+    
+    // 카메라 거리 관련 변수
+    private float maxCameraDistance = 5f;      // 최대 카메라 거리
+    private float currentCameraDistance;       // 현재 카메라 거리
+    private float targetCameraDistance;        // 목표 카메라 거리
 
     // 마우스 입력 관련 변수
     private float mouseY;
-
+    
     // 회전 부드러움 관련 변수
     private float originalRotationSmoothTime;
     private bool rotationSmoothTimeStored = false;
-
+    
     // 플레이어 참조
     private Transform playerTransform;
     private bool isPlayerFound = false;
@@ -37,21 +38,19 @@ public class CameraController : MonoBehaviourPun
     private float originalFOV;
     [HideInInspector] public static bool isZoomed = false;
     private Tween zoomTween;
+    private Animator zoomAnimator;
 
-    // Cinemachine 관련
-    private CinemachineVirtualCamera virtualCamera;
-    private Cinemachine3rdPersonFollow cam3rdPerson;
+    // 카메라 제어용
     private Camera mainCamera;
-
+    private PhotonView photonView;
+    
     // 카메라 조작 제어
     private bool cameraControlEnabled = true;
-    private bool isLocalPlayer = false;
-
+    
     // 데이터베이스 참조
     private DataBase.CameraData cameraData;
-
+    
     // ✅ DataBase 캐싱된 값들 (성능 최적화)
-    private float cachedMouseSensitivityX; // ✨ 수평 감도 캐싱 변수 추가
     private float cachedMouseSensitivityY;
     private float cachedZoomMouseSensitivityY;
     private float cachedMinVerticalAngle;
@@ -62,84 +61,62 @@ public class CameraController : MonoBehaviourPun
     private bool cachedUseWallCollisionAvoidance;
     private float cachedCameraFix;
     private float cachedWallAvoidanceSpeed;
+    private float cachedMaxCameraDistance;
+    private float cachedPivotHeightOffset;
     private string cachedPlayerTag;
+    private float cachedFindPlayerInterval;
     private bool dataBaseCached = false;
+
 
     void Awake()
     {
-        if (photonView == null)
-        {
-            Debug.LogError("❌ CameraController - PhotonView가 필요합니다!");
-            return;
-        }
-
-        isLocalPlayer = photonView.IsMine;
-
-        if (!isLocalPlayer)
-        {
-            this.enabled = false;
-            return;
-        }
-
-        Debug.Log("✅ TPS CameraController - 로컬 플레이어 카메라 초기화 시작");
+        photonView = GetComponent<PhotonView>();
     }
-
+    
     void Start()
     {
-        if (!isLocalPlayer) return;
+        if(!photonView.IsMine) return;
 
-        CacheDataBaseInfo();
-        playerTransform = transform;
-        isPlayerFound = true;
-        CreateVirtualCamera();
-        InitializeCamera();
-        Debug.Log("✅ TPS CameraController - 로컬 플레이어 카메라 설정 완료");
-    }
-
-    void CreateVirtualCamera()
-    {
+        // 메인 카메라 참조 얻기
         mainCamera = Camera.main;
         if (mainCamera == null)
+        {
             mainCamera = FindObjectOfType<Camera>();
-
-        if (mainCamera == null)
-        {
-            Debug.LogError("❌ TPS CameraController - 메인 카메라를 찾을 수 없습니다!");
-            return;
         }
 
-        CinemachineBrain brain = mainCamera.GetComponent<CinemachineBrain>();
-        if (brain == null)
-            brain = mainCamera.gameObject.AddComponent<CinemachineBrain>();
 
-        GameObject vcamObj = new GameObject($"TPS_VirtualCamera_{photonView.ViewID}");
-        vcamObj.transform.position = playerTransform.position;
-
-        virtualCamera = vcamObj.AddComponent<CinemachineVirtualCamera>();
-        virtualCamera.Priority = 10;
-        virtualCamera.Follow = playerTransform;
-        virtualCamera.LookAt = playerTransform;
-
-
-        cam3rdPerson = virtualCamera.AddCinemachineComponent<Cinemachine3rdPersonFollow>();
-        if (cam3rdPerson != null)
-        {
-            cam3rdPerson.ShoulderOffset = new Vector3(-0.5f, 1, -2);
-        }
-
-        Debug.Log("✅ TPS VirtualCamera 생성 및 설정 완료");
+        // DataBase 정보 안전하게 캐싱 (Start에서 지연 실행)
+        CacheDataBaseInfo();
+        
+        // 카메라 시스템 초기화
+        InitializeCamera();
+            
+        // 플레이어 찾기 시작
+        StartCoroutine(FindPlayerRoutine());
     }
+
+
+    
+    /// <summary>
+    /// DataBase 정보 안전하게 캐싱 (GameManager와 동일한 방식)
+    /// </summary>
     void CacheDataBaseInfo()
     {
         try
         {
-            if (DataBase.Instance != null && DataBase.Instance.cameraData != null)
+            // DataBase 인스턴스가 없으면 잠시 대기 후 재시도
+            if (DataBase.Instance == null)
+            {
+                Debug.LogWarning("⚠️ CameraController - DataBase 인스턴스가 아직 초기화되지 않음, 재시도 예정");
+                StartCoroutine(RetryCacheDataBaseInfo());
+                return;
+            }
+            
+            if (DataBase.Instance.cameraData != null)
             {
                 cameraData = DataBase.Instance.cameraData;
-
-                // ✨ 수평 감도(MouseSensitivityX)를 DataBase에서 가져오도록 추가합니다.
-                //    (만약 DataBase.cs에 MouseSensitivityX가 없다면 추가해주셔야 합니다)
-                cachedMouseSensitivityX = cameraData.MouseSensitivityY;
+                
+                // 자주 사용되는 값들을 개별 변수로 캐싱
                 cachedMouseSensitivityY = cameraData.MouseSensitivityY;
                 cachedZoomMouseSensitivityY = cameraData.ZoomMouseSensitivityY;
                 cachedMinVerticalAngle = cameraData.MinVerticalAngle;
@@ -150,119 +127,110 @@ public class CameraController : MonoBehaviourPun
                 cachedUseWallCollisionAvoidance = cameraData.UseWallCollisionAvoidance;
                 cachedCameraFix = cameraData.CameraFix;
                 cachedWallAvoidanceSpeed = cameraData.WallAvoidanceSpeed;
+                cachedMaxCameraDistance = cameraData.MaxCameraDistance;
+                cachedPivotHeightOffset = cameraData.PivotHeightOffset;
                 cachedPlayerTag = cameraData.PlayerTag;
+                cachedFindPlayerInterval = cameraData.FindPlayerInterval;
+                
                 dataBaseCached = true;
-                Debug.Log("✅ TPS CameraController - DataBase 정보 캐싱 완료");
+                Debug.Log("✅ CameraController - DataBase 정보 캐싱 완료");
             }
             else
             {
-                Debug.LogWarning("⚠️ TPS CameraController - DataBase 접근 실패, 기본값 사용");
+                Debug.LogWarning("⚠️ CameraController - DataBase 접근 실패, 기본값 사용");
                 dataBaseCached = false;
-                SetDefaultValues();
             }
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"❌ TPS CameraController - DataBase 캐싱 중 오류: {e.Message}");
+            Debug.LogError($"❌ CameraController - DataBase 캐싱 중 오류: {e.Message}");
             dataBaseCached = false;
-            SetDefaultValues();
         }
     }
-
-    void SetDefaultValues()
-    {
-        cachedMouseSensitivityX = 100f; // ✨ 수평 감도 기본값 추가
-        cachedMouseSensitivityY = 100f;
-        cachedZoomMouseSensitivityY = 50f;
-        cachedMinVerticalAngle = -20f;
-        cachedMaxVerticalAngle = 45f;
-        cachedRotationSmoothTime = 0.08f;
-        cachedZoomValue = 2f;
-        cachedZoomDuration = 0.2f;
-        cachedUseWallCollisionAvoidance = true;
-        cachedCameraFix = 0.2f;
-        cachedWallAvoidanceSpeed = 6f;
-        cachedPlayerTag = "Player";
-    }
-
+    
+    /// <summary>
+    /// DataBase 캐싱 재시도 코루틴
+    /// </summary>
     IEnumerator RetryCacheDataBaseInfo()
     {
         int maxRetries = 10;
         int currentRetry = 0;
+        
         while (currentRetry < maxRetries)
         {
-            yield return new WaitForSeconds(0.1f);
+            yield return new WaitForSeconds(0.1f); // 0.1초 대기
+            
             if (DataBase.Instance != null)
             {
-                CacheDataBaseInfo();
+                CacheDataBaseInfo(); // 재귀 호출로 다시 시도
                 yield break;
             }
+            
             currentRetry++;
         }
-        Debug.LogError("❌ TPS CameraController - DataBase 캐싱 최대 재시도 횟수 초과, 기본값 사용");
+        
+        Debug.LogError("❌ CameraController - DataBase 캐싱 최대 재시도 횟수 초과, 기본값 사용");
         dataBaseCached = false;
-        SetDefaultValues();
     }
-
+    
+    /// <summary>
+    /// 카메라 시스템 초기화
+    /// </summary>
     void InitializeCamera()
     {
+        // 초기 카메라 거리 설정 (캐싱된 값 사용)
+        maxCameraDistance = cachedMaxCameraDistance;
+        currentCameraDistance = maxCameraDistance;
+        targetCameraDistance = maxCameraDistance;
+        
+        // 초기 각도 설정 (수직만)
+        currentVerticalAngle = 0f;
         targetVerticalAngle = 0f;
-        if (virtualCamera != null)
-        {
-            originalFOV = virtualCamera.m_Lens.FieldOfView;
-            var lens = virtualCamera.m_Lens;
-            lens.FieldOfView = 60f;
-            virtualCamera.m_Lens = lens;
-        }
-        Debug.Log("🎮 TPS Camera 초기화 완료");
     }
-
+    
+    // InputManager 이벤트 구독
     void OnEnable()
     {
-        if (!isLocalPlayer) return;
-
-        // ✨ Y축 입력 이벤트 대신 통합된 마우스 입력 이벤트를 구독하도록 변경합니다.
-        //    (InputManager에서 OnMouseInput 이라는 이름으로 Vector2를 보내준다고 가정)
-        InputManager.OnYMouseInput += HandleMouseInput;
+        if(!photonView.IsMine) return;
+        InputManager.OnYMouseInput += OnYMouseInput; // Y축만 처리 (상하 시점)
         InputManager.OnZoomPressed += OnZoomPressed;
         InputManager.OnZoomCanceledPressed += OnZoomPressedCanceled;
     }
-
+    
     void OnDisable()
     {
-        if (!isLocalPlayer) return;
-
-        InputManager.OnYMouseInput -= HandleMouseInput;
+        if(!photonView.IsMine) return;
+        InputManager.OnYMouseInput -= OnYMouseInput;
         InputManager.OnZoomPressed -= OnZoomPressed;
         InputManager.OnZoomCanceledPressed -= OnZoomPressedCanceled;
     }
-
-    // ✨ 마우스 입력을 통합적으로 처리하는 함수
-    void HandleMouseInput(Vector2 mouseInput)
+    
+    // InputManager에서 Y축 마우스 입력 받기 (상하 시점만 처리)
+    void OnYMouseInput(Vector2 mouseInput)
     {
-        if (!cameraControlEnabled || !isPlayerFound || !isLocalPlayer)
+        // 카메라 조작이 비활성화되어 있으면 무시
+        if (!cameraControlEnabled || !isPlayerFound)
+        {
             return;
+        }
+        
+            if(isZoomed)
+            {
+                mouseY = mouseInput.y * cachedZoomMouseSensitivityY * Time.deltaTime;
+            }
+            else
+            {
+                mouseY = mouseInput.y * cachedMouseSensitivityY * Time.deltaTime;
+            }
 
-        // 줌 상태일 때와 아닐 때 Y 감도만 사용
-        float sensitivityX = isZoomed ? cachedZoomMouseSensitivityY : cachedMouseSensitivityY;
-        float sensitivityY = isZoomed ? cachedZoomMouseSensitivityY : cachedMouseSensitivityY;
+            //사용 X
+            // 거리 기반 감도 계산
+            // float currentSensitivity = GetDistanceBasedSensitivity();    
+            // Y축 처리 (수직 회전만)
+            // float mouseY = mouseInput.y * currentSensitivity * Time.deltaTime;
 
-
-        float mouseY = mouseInput.y * sensitivityY * Time.deltaTime;
-        float mouseX = mouseInput.x * sensitivityX;
-
-        // 수직 각도 누적
-        targetVerticalAngle -= mouseY;
-        targetVerticalAngle = Mathf.Clamp(targetVerticalAngle, cachedMinVerticalAngle, cachedMaxVerticalAngle);
-
-        // // 카메라 회전 적용
-        // if (virtualCamera != null)
-        // {
-        //     Transform camTransform = virtualCamera.transform;
-        //     Vector3 currentAngles = camTransform.eulerAngles;
-
-        //     camTransform.rotation = Quaternion.Euler(targetVerticalAngle, currentAngles.y, 0f);
-        // }
+            targetVerticalAngle -= mouseY; // Y축은 반전
+            targetVerticalAngle = Mathf.Clamp(targetVerticalAngle, cachedMinVerticalAngle, cachedMaxVerticalAngle);
     }
 
     void OnZoomPressed()
@@ -272,7 +240,7 @@ public class CameraController : MonoBehaviourPun
         {
             return;
         }
-
+        
         // 카메라 확대(줌) 적용
         ApplyCameraZoom();
     }
@@ -284,106 +252,168 @@ public class CameraController : MonoBehaviourPun
         {
             return;
         }
-
+        
         // 카메라 확대(줌) 되돌리기 적용
         ApplyCameraZoomCanceled();
     }
-
+    
+    // 플레이어를 주기적으로 찾는 코루틴
+    IEnumerator FindPlayerRoutine()
+    {
+        while (!isPlayerFound)
+        {
+            FindPlayer();
+            
+            if (isPlayerFound)
+            {
+                SetupCamera();
+                break;
+            }
+            
+            yield return new WaitForSeconds(cachedFindPlayerInterval);
+        }
+    }
+    
+    // 플레이어 찾기
+    void FindPlayer()
+    {
+        GameObject player = GameObject.FindGameObjectWithTag(cameraData.PlayerTag);
+        if (player != null)
+        {
+            playerTransform = player.transform;
+            isPlayerFound = true;
+        }
+    }
+    
+    // 카메라 설정 - 필요 시 구현
+    void SetupCamera()
+    {
+        if (playerTransform != null)
+        {
+            
+        }
+    }
+    
+ 
+    
     void LateUpdate()
-    {
-        if (!isLocalPlayer || !isPlayerFound || virtualCamera == null) return;
+    { 
+        if(!photonView.IsMine) return;
 
-        if (cachedUseWallCollisionAvoidance)
-        {
-            HandleTPSWallCollisionAvoidance();
+        if (isPlayerFound)
+        {       
+            // 벽 충돌 방지 처리 (캐싱된 값 사용)
+            if (cachedUseWallCollisionAvoidance)
+            {
+                HandleWallCollisionAvoidance();
+            }
+            
+            // 부드러운 회전 적용 (수직 각도만) (캐싱된 값 사용)
+            currentVerticalAngle = Mathf.SmoothDamp(currentVerticalAngle, targetVerticalAngle, ref rotationVelocity, cachedRotationSmoothTime);
+            
+            // 3인칭 카메라 위치 및 회전 적용
+            ApplyThirdPersonCamera();
         }
     }
 
-    // ✨ 벽 충돌 처리 로직을 Transposer의 오프셋을 직접 조절하는 방식으로 유지합니다.
-    void HandleTPSWallCollisionAvoidance()
+    /// <summary>
+    /// 3인칭 카메라 위치 및 회전 적용
+    /// </summary>
+    void ApplyThirdPersonCamera()
     {
-        if (playerTransform == null || cam3rdPerson == null) return;
-
-        Vector3 targetOffset;
-        Vector3 originalOffset = new Vector3(-TPS_CAMERA_SIDE, TPS_CAMERA_HEIGHT, -TPS_CAMERA_DISTANCE);
-
-        // 카메라의 실제 위치가 아닌, 플레이어 위치에서 원래 오프셋만큼 떨어진 가상의 위치를 기준으로 레이를 쏩니다.
-        Vector3 rayOrigin = playerTransform.position + Vector3.up * TPS_CAMERA_HEIGHT; // 캐릭터 어깨 높이에서 시작
-        Vector3 rayDirection = -playerTransform.forward;
-        float rayDistance = TPS_CAMERA_DISTANCE;
-
-        RaycastHit hit;
-        if (Physics.Raycast(rayOrigin, rayDirection, out hit, rayDistance, ~LayerMask.GetMask(cachedPlayerTag)))
-        {
-            float safeDistance = hit.distance - cachedCameraFix;
-            safeDistance = Mathf.Max(safeDistance, 0.3f);
-            targetOffset = new Vector3(-TPS_CAMERA_SIDE, TPS_CAMERA_HEIGHT, -safeDistance);
-        }
-        else
-        {
-            targetOffset = originalOffset;
-        }
-
-        // 이 부분이 핵심입니다. Cinemachine3rdPersonFollow의 ShoulderOffset을 Raycast 결과에 따라 업데이트합니다.
-        cam3rdPerson.ShoulderOffset = Vector3.Lerp(cam3rdPerson.ShoulderOffset, targetOffset, Time.deltaTime * cachedWallAvoidanceSpeed);
+        if (playerTransform == null || mainCamera == null) return;
+        
+        // 플레이어 피벗 포인트 계산 (카메라가 바라볼 지점) (캐싱된 값 사용)
+        Vector3 pivotPoint = playerTransform.position + Vector3.up * cachedPivotHeightOffset;
+        
+        // 플레이어 뒤쪽 방향 계산 (플레이어가 바라보는 방향의 반대)
+        Vector3 playerBackward = -playerTransform.forward;
+        
+        // 수직 각도 적용
+        float verticalOffset = currentCameraDistance * Mathf.Sin(currentVerticalAngle * Mathf.Deg2Rad);
+        float horizontalDistance = currentCameraDistance * Mathf.Cos(currentVerticalAngle * Mathf.Deg2Rad);
+        
+        // 카메라 위치 계산 (플레이어 뒤쪽 + 수직 오프셋)
+        Vector3 cameraPosition = pivotPoint + playerBackward * horizontalDistance + Vector3.up * verticalOffset;
+        
+        // 카메라 위치 적용
+        mainCamera.transform.position = cameraPosition;
+        
+        // 카메라가 항상 플레이어를 바라보도록 회전
+        mainCamera.transform.LookAt(pivotPoint);
+        
     }
+    
+    /// <summary>
+    /// 3인칭 카메라 위치 계산
+    /// </summary>
+    Vector3 CalculateThirdPersonCameraPosition(Vector3 pivotPoint, float distance)
+    {
+        // 플레이어 뒤쪽 방향 계산 (플레이어가 바라보는 방향의 반대)
+        Vector3 playerBackward = -playerTransform.forward;
+        
+        // 수직 각도 적용
+        float verticalOffset = distance * Mathf.Sin(currentVerticalAngle * Mathf.Deg2Rad);
+        float horizontalDistance = distance * Mathf.Cos(currentVerticalAngle * Mathf.Deg2Rad);
+        
+        // 카메라 위치 계산 (플레이어 뒤쪽 + 수직 오프셋)
+        Vector3 cameraPosition = pivotPoint + playerBackward * horizontalDistance + Vector3.up * verticalOffset;
+        
+        return cameraPosition;
+    }
+    
+
 
     void ApplyCameraZoom()
     {
-        if (virtualCamera != null && !isZoomed)
+        if (mainCamera != null && !isZoomed)
         {
             isZoomed = true;
-
-
+            
+            // 현재 FOV를 원본 FOV로 저장 (첫 번째 줌 시에만)
             if (originalFOV == 0f)
             {
-                originalFOV = virtualCamera.m_Lens.FieldOfView;
+                originalFOV = mainCamera.fieldOfView;
             }
-
+            
+            // 회전 부드러움 값 저장 (첫 번째 줌 시에만) (캐싱된 값 사용)
             if (!rotationSmoothTimeStored)
             {
                 originalRotationSmoothTime = cachedRotationSmoothTime;
                 rotationSmoothTimeStored = true;
             }
-
+            
+            // 기존 애니메이션 중지
             zoomTween?.Kill();
-
+            
+            // 줌 인: FOV를 zoomValue만큼 감소 (캐싱된 값 사용)
             float targetFOV = originalFOV / cachedZoomValue;
-            zoomTween = DOTween.To(() => virtualCamera.m_Lens.FieldOfView,
-                       x =>
-                       {
-                           var lens = virtualCamera.m_Lens;
-                           lens.FieldOfView = x;
-                           virtualCamera.m_Lens = lens;
-                       },
-                       targetFOV, cachedZoomDuration)
-                     .SetEase(Ease.OutQuad);
+            zoomTween = DOTween.To(() => mainCamera.fieldOfView, 
+                                  x => mainCamera.fieldOfView = x, 
+                                  targetFOV, cachedZoomDuration)
+                               .SetEase(Ease.OutQuad);
 
-            // 줌 시 더 정밀한 제어
-            cachedRotationSmoothTime *= 0.3f;
+            // 회전 부드러움을 0으로 설정 (즉시 반응) (캐싱된 값 직접 수정)
+            cachedRotationSmoothTime = 0f;
         }
     }
 
     void ApplyCameraZoomCanceled()
     {
-        if (virtualCamera != null && isZoomed)
+        if (mainCamera != null && isZoomed)
         {
             isZoomed = false;
-
+            
+            // 기존 애니메이션 중지
             zoomTween?.Kill();
+            
+            // 줌 아웃: 원본 FOV로 복원 (캐싱된 값 사용)
+            zoomTween = DOTween.To(() => mainCamera.fieldOfView, 
+                                x => mainCamera.fieldOfView = x, 
+                                originalFOV, cachedZoomDuration)
+                                .SetEase(Ease.OutQuad);
 
-            zoomTween = DOTween.To(() => virtualCamera.m_Lens.FieldOfView,
-                      x =>
-                      {
-                          var lens = virtualCamera.m_Lens;
-                          lens.FieldOfView = x;
-                          virtualCamera.m_Lens = lens;
-                      },
-                      originalFOV, cachedZoomDuration)
-                      .SetEase(Ease.OutQuad);
-
-
-
+            // 회전 부드러움을 원본 값으로 복원 (캐싱된 값 사용)
             if (rotationSmoothTimeStored)
             {
                 cachedRotationSmoothTime = originalRotationSmoothTime;
@@ -391,76 +421,180 @@ public class CameraController : MonoBehaviourPun
         }
     }
 
+    
 
 
     // ========================================
-    // === 유틸리티 메서드들 ===
+    // === DataBase 캐싱 유틸리티 메서드들 ===
     // ========================================
-
-
-
+    
+    /// <summary>
+    /// DataBase가 성공적으로 캐싱되었는지 확인
+    /// </summary>
     public bool IsDataBaseCached()
     {
         return dataBaseCached;
     }
-
-
-
+    
+    /// <summary>
+    /// DataBase 정보 강제 새로고침
+    /// </summary>
     public void RefreshDataBaseCache()
     {
         CacheDataBaseInfo();
     }
 
+    // ========================================
+    // === 유틸리티 함수들 ===
+    // ========================================
 
-
+    // 외부에서 플레이어 설정 가능 (수동 설정용)
+    public void SetPlayer(Transform player)
+    {
+        playerTransform = player;
+        isPlayerFound = true;
+        SetupCamera();
+    }
+    
+    // 플레이어 재찾기 (플레이어가 파괴되었을 때)
+    public void ResetPlayer()
+    {
+        isPlayerFound = false;
+        playerTransform = null;
+        StartCoroutine(FindPlayerRoutine());
+    }
+    
+    /// <summary>
+    /// 카메라 조작 활성화
+    /// </summary>
     public void EnableCameraControl()
     {
-        if (!isLocalPlayer) return;
-
         cameraControlEnabled = true;
-        Debug.Log("✅ TPS CameraController: 카메라 조작 활성화");
+        Debug.Log("✅ CameraController: 카메라 조작 활성화");
     }
-
-
-
+    
+    /// <summary>
+    /// 카메라 조작 비활성화
+    /// </summary>
     public void DisableCameraControl()
     {
-        if (!isLocalPlayer) return;
-
         cameraControlEnabled = false;
-        Debug.Log("❌ TPS CameraController: 카메라 조작 비활성화");
+        Debug.Log("❌ CameraController: 카메라 조작 비활성화");
     }
-
-
-
+    
+    /// <summary>
+    /// 카메라 조작 상태 확인
+    /// </summary>
+    /// <returns>카메라 조작 활성화 여부</returns>
     public bool IsCameraControlEnabled()
     {
         return cameraControlEnabled;
     }
-
-
-
-    public bool IsLocalPlayer()
+    
+    // 거리 기반 감도 계산
+    float GetDistanceBasedSensitivity()
     {
-        return isLocalPlayer;
+        // 기본 감도 선택
+        float baseSensitivity = isZoomed ? cameraData.ZoomMouseSensitivityY : cameraData.MouseSensitivityY;
+        
+        // 현재 카메라 거리 사용
+        float currentDistance = currentCameraDistance;
+        
+        // 기준 거리 설정 (최대 카메라 거리)
+        float baseDistance = maxCameraDistance;
+        
+        if (baseDistance <= 0f)
+        {
+            return baseSensitivity;
+        }
+        
+        // 거리 비율 계산 (1.0 = 기준 거리, 0.5 = 절반 거리, 2.0 = 2배 거리)
+        float distanceRatio = currentDistance / baseDistance;
+        
+        // 거리 비율에 따른 감도 조정
+        // 카메라가 가까우면 감도 감소, 멀면 감도 증가
+        float adjustedSensitivity = baseSensitivity * distanceRatio;
+        
+        // 감도 제한 (너무 극단적이지 않게)
+        adjustedSensitivity = Mathf.Clamp(adjustedSensitivity, baseSensitivity * 0.1f, baseSensitivity * 3f);
+        
+        return adjustedSensitivity;
+    }
+
+    // ========================================
+    // === 벽 충돌 방지 시스템 ===
+    // ========================================
+    
+    /// <summary>
+    /// 벽 충돌 방지 처리 메인 함수 (3인칭 카메라용)
+    /// </summary>
+    void HandleWallCollisionAvoidance()
+    {
+        if (playerTransform == null) return;
+        
+        // 이상적인 카메라 위치 계산 (3인칭 방식) (캐싱된 값 사용)
+        Vector3 pivotPoint = playerTransform.position + Vector3.up * cachedPivotHeightOffset;
+        Vector3 idealCameraPosition = CalculateThirdPersonCameraPosition(pivotPoint, maxCameraDistance);
+        
+        // 벽 충돌 감지 및 안전 거리 계산
+        float safeDistance = PerformWallCollisionCheck(pivotPoint, idealCameraPosition);
+        
+        // 타겟 거리 업데이트
+        targetCameraDistance = safeDistance;
+        
+        // 현재 거리를 타겟 거리로 부드럽게 보간 (캐싱된 값 사용)
+        currentCameraDistance = Mathf.Lerp(currentCameraDistance, targetCameraDistance, 
+            Time.deltaTime * cachedWallAvoidanceSpeed);
+    }
+    
+    /// <summary>
+    /// 벽 충돌 체크 및 안전 거리 반환
+    /// </summary>
+    float PerformWallCollisionCheck(Vector3 pivotPoint, Vector3 idealCameraPosition)
+    {
+        Vector3 directionToCamera = (idealCameraPosition - pivotPoint).normalized;
+        float maxDistance = Vector3.Distance(pivotPoint, idealCameraPosition);
+        
+        // 레이캐스트로 벽 충돌 감지
+        RaycastHit hit;
+        if (Physics.Raycast(pivotPoint, directionToCamera, out hit, maxDistance))
+        {
+            // 플레이어 자신은 무시 (캐싱된 값 사용)
+            if (hit.collider.CompareTag(cachedPlayerTag))
+            {
+                return maxDistance;
+            }
+            
+            // 안전 거리 계산 (충돌 지점에서 약간 떨어진 위치) (캐싱된 값 사용)
+            float safeDistance = hit.distance - cachedCameraFix;
+            safeDistance = Mathf.Max(safeDistance, 0.5f); // 최소 거리 보장
+            
+            return safeDistance;
+        }
+        else
+        {       
+            return maxDistance;
+        }
+    }
+    
+    /// <summary>
+    /// 각도 정규화 (0-360도 범위로 유지)
+    /// </summary>
+    float NormalizeAngle(float angle)
+    {
+        while (angle < 0f)
+            angle += 360f;
+        while (angle >= 360f)
+            angle -= 360f;
+        return angle;
     }
 
 
-
+    /// <summary>
+    /// 외부 메서드
+    /// </summary>
     public float GetTargetVerticalAngle()
     {
         return targetVerticalAngle;
-    }
-
-    void OnDestroy()
-    {
-        zoomTween?.Kill();
-
-        // VirtualCamera 정리 (로컬 플레이어인 경우만)
-        if (isLocalPlayer && virtualCamera != null)
-
-        {
-            DestroyImmediate(virtualCamera.gameObject);
-        }
     }
 }
