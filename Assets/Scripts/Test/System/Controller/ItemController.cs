@@ -3,10 +3,11 @@ using System.Collections.Generic;
 using UnityEngine;
 using Photon.Pun;
 
-public class ItemController : MonoBehaviour
+public class ItemController : MonoBehaviourPun
 {
-    #region 데이터베이스 참조
+    #region  참조
     private DataBase.ItemData itemData;
+    private PhotonView photonView;
     #endregion
 
     #region 캐싱된 값들 (성능 최적화)
@@ -32,11 +33,13 @@ public class ItemController : MonoBehaviour
     #region Unity 생명주기
     void Awake()
     {
-        CacheDataBaseInfo();
+        photonView = GetComponent<PhotonView>();
     }   
 
     void Start()
-    {
+    {   
+        if (!photonView.IsMine) return;
+        CacheDataBaseInfo();
         // HUDPanel 찾아서 캐싱
         FindAndCacheHUDPanel();
     }
@@ -66,11 +69,13 @@ public class ItemController : MonoBehaviour
 
     public void AttachItem(GameObject itemPrefab)
     {
-        if (!PhotonView.Get(this).IsMine) return;
-        PhotonView.Get(this).RPC("RPC_AttachItem", RpcTarget.All, itemPrefab.name);
+        if (!photonView.IsMine) return;
+        RPC_AttachItem(itemPrefab.name);
+        //if (!PhotonView.Get(this).IsMine) return;
+        //PhotonView.Get(this).RPC("RPC_AttachItem", RpcTarget.All, itemPrefab.name);
     }
 
-    [PunRPC]
+    //[PunRPC]
     public void RPC_AttachItem(string itemPrefabName)
     {
         if (itemSlot1 == null)
@@ -112,6 +117,8 @@ public class ItemController : MonoBehaviour
     /// </summary>
     public void UpdateItemOrderAndActivation()
     {
+        if (!photonView.IsMine) return;
+
         if (itemSlot1 == null) return;
 
         int childCount = itemSlot1.transform.childCount;
@@ -203,6 +210,8 @@ public class ItemController : MonoBehaviour
     /// <param name="usedItem">사용된 아이템</param>
     public void MoveUsedItemToTemp(GameObject usedItem)
     {
+        if (!photonView.IsMine) return;
+        
         if (itemTemp == null)
         {
             Debug.LogError("❌ ItemController - itemTemp가 할당되지 않았습니다.");
@@ -252,6 +261,8 @@ public class ItemController : MonoBehaviour
     /// </summary>
     public void SwapFirstAndSecondItems()
     {
+        if (!photonView.IsMine) return;
+        
         if (itemSlot1 == null || itemSlot1.transform.childCount < 2)
         {
             Debug.LogWarning("⚠️ ItemController - 아이템이 2개 미만이어서 위치를 바꿀 수 없습니다.");

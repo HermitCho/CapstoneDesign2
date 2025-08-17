@@ -1,11 +1,14 @@
 using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Photon.Pun;
 
-public class InputManager : MonoBehaviour
+public class InputManager : MonoBehaviourPun
 {
     [Header("Input System")]
     [SerializeField] private PlayerAction playerAction;
+
+    private PhotonView photonView;
     
     // 입력 값들
     private Vector2 moveInput;
@@ -48,6 +51,8 @@ public class InputManager : MonoBehaviour
     
     void Awake()
     {
+        photonView = GetComponent<PhotonView>();
+        if (!photonView.IsMine) return;
         // PlayerAction 초기화
         if (playerAction == null)
             playerAction = new PlayerAction();
@@ -55,7 +60,7 @@ public class InputManager : MonoBehaviour
     
     void OnEnable()
     {
-        
+        if (!photonView.IsMine) return;
         // PlayerAction이 null인 경우 다시 초기화
         if (playerAction == null)
         {
@@ -104,6 +109,7 @@ public class InputManager : MonoBehaviour
     
     void OnDisable()
     {
+        if (!photonView.IsMine) return;
         // PlayerAction이 null인 경우 처리하지 않음
         if (playerAction == null)
             return;
