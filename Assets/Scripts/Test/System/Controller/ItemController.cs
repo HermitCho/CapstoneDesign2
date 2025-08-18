@@ -26,8 +26,7 @@ public class ItemController : MonoBehaviourPun
     [SerializeField] private GameObject itemSlot1;
     [Header("아이템 쓰레기통 할당")]
     [SerializeField] private GameObject itemTemp;
-    [Header("UI 참조")]
-    [SerializeField] private HUDPanel hudPanel; // HUDPanel 직접 참조
+
     #endregion
 
     #region Unity 생명주기
@@ -40,8 +39,6 @@ public class ItemController : MonoBehaviourPun
     {   
         if (!photonView.IsMine) return;
         CacheDataBaseInfo();
-        // HUDPanel 찾아서 캐싱
-        FindAndCacheHUDPanel();
     }
     #endregion
 
@@ -70,19 +67,14 @@ public class ItemController : MonoBehaviourPun
     public void AttachItem(GameObject itemPrefab)
     {
         if (!photonView.IsMine) return;
-        RPC_AttachItem(itemPrefab.name);
-        //if (!PhotonView.Get(this).IsMine) return;
-        //PhotonView.Get(this).RPC("RPC_AttachItem", RpcTarget.All, itemPrefab.name);
+        AttachItemString(itemPrefab.name);
     }
 
     //[PunRPC]
-    public void RPC_AttachItem(string itemPrefabName)
+    public void AttachItemString(string itemPrefabName)
     {
-        if (itemSlot1 == null)
-        {
-            Debug.LogError("❌ ItemController - ItemSlot을 찾을 수 없습니다.");
-            return;
-        }
+        if (itemSlot1 == null) return;
+
         GameObject prefab = null;
         foreach (var go in cachedItemPrefab)
         {
@@ -92,19 +84,15 @@ public class ItemController : MonoBehaviourPun
                 break;
             }
         }
-        if (prefab == null)
-        {
-            Debug.LogError($"❌ ItemController - {itemPrefabName} 프리팹을 찾을 수 없습니다.");
-            return;
-        }
+        
+        if (prefab == null) return;
+
         try
         {
             GameObject itemInstance = Instantiate(prefab, itemSlot1.transform);
             itemInstance.transform.SetAsFirstSibling();
             currentItemSlotIndex++;
             UpdateItemOrderAndActivation();
-            UpdateHUDPanelSafely();
-            Debug.Log($"✅ ItemController - 아이템 부착 완료: {prefab.name} -> {itemInstance.name} (첫 번째 자식으로 배치)");
         }
         catch (System.Exception e)
         {
@@ -122,9 +110,8 @@ public class ItemController : MonoBehaviourPun
         if (itemSlot1 == null) return;
 
         int childCount = itemSlot1.transform.childCount;
-        if (childCount == 0) return;
 
-        Debug.Log($"🔄 ItemController - 아이템 순서 재정렬 시작: {childCount}개 아이템");
+        if (childCount == 0) return;
 
         // 모든 자식을 비활성화
         for (int i = 0; i < childCount; i++)
@@ -142,48 +129,6 @@ public class ItemController : MonoBehaviourPun
         {
             lastChild.gameObject.SetActive(true);
         }
-        
-        // HUDPanel 안전하게 업데이트
-        UpdateHUDPanelSafely();
-    }
-
-    /// <summary>
-    /// HUDPanel을 찾아서 캐싱
-    /// </summary>
-    private void FindAndCacheHUDPanel()
-    {
-        if (hudPanel == null)
-        {
-            hudPanel = FindObjectOfType<HUDPanel>();
-            if (hudPanel != null)
-            {
-                Debug.Log("✅ ItemController - HUDPanel 찾기 및 캐싱 완료");
-            }
-            else
-            {
-                Debug.LogWarning("⚠️ ItemController - HUDPanel을 찾을 수 없습니다.");
-            }
-        }
-    }
-
-    /// <summary>
-    /// HUDPanel을 안전하게 업데이트 (이벤트 기반으로 변경)
-    /// </summary>
-    private void UpdateHUDPanelSafely()
-    {
-        // 이벤트를 통해 HUD에 알림 (직접 호출 대신)
-        // HUD는 자체적으로 로컬 플레이어의 ItemController를 모니터링하므로
-        // 별도의 업데이트 호출이 필요하지 않음
-        Debug.Log("✅ ItemController - 아이템 변경 완료, HUD는 자동 업데이트됨");
-    }
-
-    /// <summary>
-    /// 외부에서 HUD 패널 업데이트 요청 (상점에서 나갈 때 등)
-    /// </summary>
-    public void RequestHUDPanelUpdate()
-    {
-        // HUD는 자체적으로 업데이트되므로 별도 작업 불필요
-        Debug.Log("✅ ItemController - HUD 업데이트 요청 (자동 처리됨)");
     }
 
     /// <summary>
@@ -196,31 +141,21 @@ public class ItemController : MonoBehaviourPun
         
         if (itemTemp == null)
         {
-            Debug.LogError("❌ ItemController - itemTemp가 할당되지 않았습니다.");
             return;
         }
 
         if (usedItem == null)
         {
-            Debug.LogError("❌ ItemController - 사용된 아이템이 null입니다.");
             return;
         }
 
         try
         {
             // 사용된 아이템이 실제로 itemSlot1의 자식인지 확인
-            if (usedItem.transform.parent != itemSlot1.transform)
-            {
-                Debug.LogWarning($"⚠️ ItemController - 사용된 아이템이 ItemSlot1의 자식이 아닙니다: {usedItem.name}");
-                return;
-            }
+            if (usedItem.transform.parent != itemSlot1.transform) return;
 
             // 사용된 아이템이 실제로 활성화되어 있는지 확인
-            if (!usedItem.activeInHierarchy)
-            {
-                Debug.LogWarning($"⚠️ ItemController - 사용된 아이템이 비활성화되어 있습니다: {usedItem.name}");
-                return;
-            }
+            if (!usedItem.activeInHierarchy) return;
 
             // 아이템을 쓰레기통으로 이동
             usedItem.transform.SetParent(itemTemp.transform);
@@ -245,11 +180,7 @@ public class ItemController : MonoBehaviourPun
     {
         if (!photonView.IsMine) return;
         
-        if (itemSlot1 == null || itemSlot1.transform.childCount < 2)
-        {
-            Debug.LogWarning("⚠️ ItemController - 아이템이 2개 미만이어서 위치를 바꿀 수 없습니다.");
-            return;
-        }
+        if (itemSlot1 == null || itemSlot1.transform.childCount < 2) return;
 
         try
         {
@@ -267,8 +198,6 @@ public class ItemController : MonoBehaviourPun
 
             // 아이템 순서 재정렬 및 활성화 상태 업데이트
             UpdateItemOrderAndActivation();
-
-            Debug.Log("✅ ItemController - 아이템 위치 변경 완료");
         }
         catch (System.Exception e)
         {
@@ -282,28 +211,14 @@ public class ItemController : MonoBehaviourPun
     /// <returns>첫 번째 활성화된 아이템, 없으면 null</returns>
     public CharacterItem GetFirstActiveItem()
     {
-        if (itemSlot1 == null || itemSlot1.transform.childCount == 0)
-        {
-            Debug.LogWarning($"⚠️ ItemController - GetFirstActiveItem: itemSlot1이 null이거나 자식이 없음. childCount: {(itemSlot1 != null ? itemSlot1.transform.childCount : 0)}");
-            return null;
-        }
-
+        if (itemSlot1 == null || itemSlot1.transform.childCount == 0) return null;
         // 마지막 자식(가장 아래)을 첫 번째 아이템으로 처리
         Transform lastChild = itemSlot1.transform.GetChild(itemSlot1.transform.childCount - 1);
-        if (lastChild == null || !lastChild.gameObject.activeInHierarchy)
-        {
-            Debug.LogWarning($"⚠️ ItemController - GetFirstActiveItem: 마지막 자식이 null이거나 비활성화. lastChild: {(lastChild != null ? lastChild.name : "null")}, active: {(lastChild != null ? lastChild.gameObject.activeInHierarchy : false)}");
-            return null;
-        }
 
+        if (lastChild == null || !lastChild.gameObject.activeInHierarchy) return null;
         CharacterItem item = lastChild.GetComponent<CharacterItem>();
-        if (item == null)
-        {
-            Debug.LogWarning($"⚠️ ItemController - GetFirstActiveItem: 마지막 자식에 CharacterItem 컴포넌트가 없음. lastChild: {lastChild.name}");
-            return null;
-        }
 
-        Debug.Log($"✅ ItemController - GetFirstActiveItem: {item.SkillName} 반환 (자식 {itemSlot1.transform.childCount}개 중 마지막)");
+        if (item == null) return null;
         return item;
     }
 
@@ -338,20 +253,10 @@ public class ItemController : MonoBehaviourPun
     /// <returns>첫 번째 아이템 여부</returns>
     public bool IsFirstActiveItem(CharacterItem characterItem)
     {
-        if (characterItem == null) 
-        {
-            Debug.LogWarning("⚠️ ItemController - IsFirstActiveItem: characterItem이 null");
-            return false;
-        }
+        if (characterItem == null) return false;
         
         // 실제 활성화된 아이템을 찾기
-        if (itemSlot1 == null) 
-        {
-            Debug.LogWarning("⚠️ ItemController - IsFirstActiveItem: itemSlot1이 null");
-            return false;
-        }
-        
-        Debug.Log($"🔍 ItemController - IsFirstActiveItem 검사: {characterItem.SkillName}");
+        if (itemSlot1 == null) return false;
         
         for (int i = 0; i < itemSlot1.transform.childCount; i++)
         {
@@ -361,17 +266,13 @@ public class ItemController : MonoBehaviourPun
                 CharacterItem activeItem = child.GetComponent<CharacterItem>();
                 if (activeItem != null)
                 {
-                    Debug.Log($"  - 활성 아이템 {i}: {activeItem.SkillName}");
                     if (activeItem == characterItem)
                     {
-                        Debug.Log($"✅ ItemController - IsFirstActiveItem: {characterItem.SkillName}이 첫 번째 활성 아이템임");
                         return true;
                     }
                 }
             }
         }
-        
-        Debug.LogWarning($"⚠️ ItemController - IsFirstActiveItem: {characterItem.SkillName}이 첫 번째 활성 아이템이 아님");
         return false;
     }
 
@@ -429,7 +330,6 @@ public class ItemController : MonoBehaviourPun
             CharacterItem characterItem = child.GetComponent<CharacterItem>();
             if (characterItem != null && characterItem.SkillName == skillName)
             {
-                Debug.Log($"✅ ItemController - 중복 아이템 발견: {skillName}");
                 return true;
             }
         }

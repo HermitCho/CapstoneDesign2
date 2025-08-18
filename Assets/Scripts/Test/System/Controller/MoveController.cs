@@ -93,6 +93,7 @@ public class MoveController : MonoBehaviourPun
         InputManager.OnJumpPressed += OnJumpInput;
         InputManager.OnSkillPressed += OnSkillInput;
         InputManager.OnItemPressed += OnItemInput; // 아이템 사용 중앙 관리
+        InputManager.OnChangeItemPressed += OnChangeItemInput;
 
         MouseLock();
     }
@@ -106,6 +107,7 @@ public class MoveController : MonoBehaviourPun
         InputManager.OnJumpPressed -= OnJumpInput;
         InputManager.OnSkillPressed -= OnSkillInput;
         InputManager.OnItemPressed -= OnItemInput; // 아이템 사용 중앙 관리
+        InputManager.OnChangeItemPressed -= OnChangeItemInput;
     }
 
 
@@ -699,6 +701,19 @@ public class MoveController : MonoBehaviourPun
         Debug.Log($"✅ MoveController - 아이템 사용 시작: {activeItem.SkillName}");
         bool success = activeItem.UseSkill();
         Debug.Log($"✅ MoveController - 아이템 사용 결과: {activeItem.SkillName}, 성공: {success}");
+    }
+
+    void OnChangeItemInput()
+    {
+        ItemController itemController = FindCurrentPlayerItemController();
+        if (itemController == null)
+        {
+            Debug.LogWarning("⚠️ MoveController - ItemController를 찾을 수 없습니다.");
+            return;
+        }
+
+        itemController.SwapFirstAndSecondItems();
+
     }
 
     /// <summary>

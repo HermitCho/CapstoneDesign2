@@ -180,11 +180,6 @@ public class ShopController : MonoBehaviourPun
             {
                 shopObject.DisconnectShopController();
             }
-            
-            if (playerItemController != null)
-            {
-                playerItemController.RequestHUDPanelUpdate();
-            }
 
             playerCoinController = null;
             playerItemController = null;

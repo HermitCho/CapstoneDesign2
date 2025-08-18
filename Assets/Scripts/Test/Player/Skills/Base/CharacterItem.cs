@@ -298,9 +298,6 @@ public class CharacterItem : Skill
             if (itemController != null)
             {
                 itemController.MoveUsedItemToTemp(gameObject);
-                
-                // HUD 패널 업데이트 요청
-                itemController.RequestHUDPanelUpdate();
             }
             else
             {
