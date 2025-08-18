@@ -15,7 +15,10 @@ public class CoinController : MonoBehaviourPun
     private float scoreMultiplier = 1f;
 
     private PhotonView photonView;
-    
+
+
+    private bool isTeddyBearAttached = false;
+
     #endregion
 
     #region Unity 생명주기
@@ -79,7 +82,7 @@ public class CoinController : MonoBehaviourPun
         if (GameManager.Instance != null)
         {
             // 테디베어가 부착되어 있는지 확인
-            bool isTeddyBearAttached = GameManager.Instance.IsTeddyBearAttached();
+            isTeddyBearAttached = GameManager.Instance.IsTeddyBearAttached();
             
             // 기본 점수 (코인 1개당 1점)
             float baseScore = coinAmount;
@@ -245,6 +248,12 @@ public class CoinController : MonoBehaviourPun
     public int GetCurrentCoin()
     {
         return currentCoin;
+    }
+
+
+    public bool GetIsTeddyBearAttached()
+    {
+        return isTeddyBearAttached;
     }
 
     #endregion

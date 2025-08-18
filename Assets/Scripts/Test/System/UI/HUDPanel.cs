@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using TMPro;
 using Michsky.UI.Heat;
 using Photon.Pun;
+using Febucci.UI;
 using System.Collections;
 
 /// <summary>
@@ -17,6 +18,7 @@ public class HUDPanel : MonoBehaviour
     
     [Header("점수 UI")]
     [SerializeField] private TextMeshProUGUI scoreText;
+    [SerializeField] private TextMeshProUGUI scoreMultiplierText;
     
     [Header("코인 UI")]
     [SerializeField] private TextMeshProUGUI coinText;
@@ -111,6 +113,7 @@ public class HUDPanel : MonoBehaviour
             UpdateItemUI();
             lastItemUpdate = currentTime;
         }
+        
     }
     
     /// <summary>
@@ -293,6 +296,29 @@ public class HUDPanel : MonoBehaviour
         if (scoreText != null)
         {
             scoreText.text = $"{currentScore:F0}";
+        }
+    }
+
+
+    void UpdateScoreMultiplier()
+    {
+        if (localCoinController == null) return;
+
+        if (localCoinController.GetIsTeddyBearAttached())
+        {
+            UpdateScoreMultiplierDisplay();
+        }
+        else
+        {
+            scoreMultiplierText.text = "";
+        }
+    }
+
+    void UpdateScoreMultiplierDisplay()
+    {
+        if (scoreMultiplierText != null)
+        {
+            scoreMultiplierText.text = $"<wave>점수 2배!</wave>";
         }
     }
     
