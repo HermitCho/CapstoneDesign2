@@ -167,27 +167,14 @@ public class ItemController : MonoBehaviourPun
     }
 
     /// <summary>
-    /// HUDPanel을 안전하게 업데이트
+    /// HUDPanel을 안전하게 업데이트 (이벤트 기반으로 변경)
     /// </summary>
     private void UpdateHUDPanelSafely()
     {
-        // 캐싱된 HUDPanel이 없으면 다시 찾기
-        if (hudPanel == null)
-        {
-            FindAndCacheHUDPanel();
-        }
-
-        // HUDPanel이 할당되어 있고 활성화되어 있는 경우에만 업데이트
-        if (hudPanel != null && hudPanel.gameObject.activeInHierarchy)
-        {
-            hudPanel.UpdateItemUI();
-            Debug.Log("✅ ItemController - HUDPanel 아이템 UI 업데이트 완료");
-        }
-        else
-        {
-            // HUDPanel이 비활성화되어 있으면 나중에 OnEnable에서 업데이트됨
-            Debug.Log("⚠️ ItemController - HUDPanel이 비활성화되어 있어 업데이트를 건너뜁니다.");
-        }
+        // 이벤트를 통해 HUD에 알림 (직접 호출 대신)
+        // HUD는 자체적으로 로컬 플레이어의 ItemController를 모니터링하므로
+        // 별도의 업데이트 호출이 필요하지 않음
+        Debug.Log("✅ ItemController - 아이템 변경 완료, HUD는 자동 업데이트됨");
     }
 
     /// <summary>
@@ -195,13 +182,8 @@ public class ItemController : MonoBehaviourPun
     /// </summary>
     public void RequestHUDPanelUpdate()
     {
-        // 캐싱된 HUDPanel이 없으면 다시 찾기
-        if (hudPanel == null)
-        {
-            FindAndCacheHUDPanel();
-        }
-        
-        UpdateHUDPanelSafely();
+        // HUD는 자체적으로 업데이트되므로 별도 작업 불필요
+        Debug.Log("✅ ItemController - HUD 업데이트 요청 (자동 처리됨)");
     }
 
     /// <summary>

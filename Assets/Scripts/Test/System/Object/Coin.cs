@@ -77,7 +77,6 @@ public class Coin : MonoBehaviour
             if (playerCoinController != null)
             {
                 playerCoinController.AddCoin(1);
-                AudioManager.Inst.PlayOneShot("SFX_Game_GetCoin");
             }
 
 

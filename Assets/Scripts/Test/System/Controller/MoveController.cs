@@ -128,9 +128,6 @@ public class MoveController : MonoBehaviourPun
         CacheDataBaseInfo();
     }
     
-    /// <summary>
-    /// DataBase 정보 안전하게 캐싱 (GameManager와 동일한 방식)
-    /// </summary>
     void CacheDataBaseInfo()
     {
         try

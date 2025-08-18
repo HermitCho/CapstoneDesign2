@@ -16,6 +16,7 @@ public class ShopController : MonoBehaviourPun
 
     [Header("UI 컴포넌트")]
     private InGameUIManager inGameUIManager;
+    private Shop shopObject;
 
     private PhotonView photonView;
 
@@ -66,6 +67,12 @@ public class ShopController : MonoBehaviourPun
             inGameUIManager = FindObjectOfType<InGameUIManager>();
         }
         
+        // Shop 오브젝트 찾기
+        if (shopObject == null)
+        {
+            shopObject = FindObjectOfType<Shop>();
+        }
+        
         Debug.Log("✅ ShopController - 초기화 완료");
     }
 
@@ -102,9 +109,9 @@ public class ShopController : MonoBehaviourPun
     {
         if (!photonView.IsMine) return;
 
-        if (other.CompareTag("Player"))
+        if (other.CompareTag("Shop"))
         {
-            OpenShop(other);
+            OpenShop();
         }
     }
 
@@ -115,7 +122,7 @@ public class ShopController : MonoBehaviourPun
     {
         if (!photonView.IsMine) return;
 
-        if (other.CompareTag("Player"))
+        if (other.CompareTag("Shop"))
         {
             CloseShop();
         }
@@ -129,15 +136,21 @@ public class ShopController : MonoBehaviourPun
     /// 상점 열기
     /// </summary>
     /// <param name="Shop">상점 오브젝트</param>
-    void OpenShop(Collider player)
+    void OpenShop()
     {
         if (!photonView.IsMine) return;
 
         isShopOpen = true;
         
-        // 플레이어 컴포넌트 찾기 (여러 방법으로 시도)
-        playerItemController = player.GetComponent<ItemController>();
-        playerCoinController = player.GetComponent<CoinController>();
+        // 플레이어 컴포넌트 찾기
+        playerItemController = GetComponent<ItemController>();
+        playerCoinController = GetComponent<CoinController>();
+        
+        // Shop 오브젝트와 연결
+        if (shopObject != null)
+        {
+            shopObject.ConnectShopController(this);
+        }
         
         // 상점 패널 표시
         if (inGameUIManager != null)
@@ -161,6 +174,12 @@ public class ShopController : MonoBehaviourPun
         {
             isShopOpen = false;
             EnableGameInput();
+            
+            // Shop 오브젝트와의 연결 해제
+            if (shopObject != null)
+            {
+                shopObject.DisconnectShopController();
+            }
             
             if (playerItemController != null)
             {
@@ -299,7 +318,7 @@ public class ShopController : MonoBehaviourPun
     /// </summary>
     /// <returns>현재 코인 수</returns>
     public int GetPlayerCoins()
-    {
+    {       
         return playerCoinController != null ? playerCoinController.GetCoin() : 0;
     }
 

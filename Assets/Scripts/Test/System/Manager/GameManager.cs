@@ -12,8 +12,7 @@ public class GameManager : Singleton<GameManager>
     // 플레이어 관리
     private LivingEntity localPlayerLivingEntity;
 
-    // 테디베어 점수 관리
-    private float totalTeddyBearScore = 0f;
+    // 테디베어 관리 (점수는 CoinController에서 관리)
     private TestTeddyBear currentTeddyBear;
     
     // 게임 시간 관리
@@ -99,7 +98,6 @@ public class GameManager : Singleton<GameManager>
         string currentSceneName = SceneManager.GetActiveScene().name;
         if (IsGameScene(currentSceneName))
         {
-            Debug.Log($"🔄 GameManager: Awake에서 게임 씬 감지 ({currentSceneName}) - 즉시 초기화");
             ResetGameState();
             lastSceneName = currentSceneName;
         }
@@ -109,8 +107,6 @@ public class GameManager : Singleton<GameManager>
     {
         // DataBase 정보 캐싱 (항상 수행)
         CacheDataBaseInfo();
-
-        Debug.Log($"🔧 GameManager: Start 완료 - PlayTime: {GetPlayTime()}초");
     }
     
     void Update()
@@ -152,8 +148,6 @@ public class GameManager : Singleton<GameManager>
         SceneManager.sceneLoaded -= OnSceneLoaded;
         
         LivingEntity.OnAnyLivingEntityHealthChanged -= HandleAnyLivingEntityHealthChanged;
-
-        Debug.Log("❌ GameManager - OnDestroy: 이벤트 구독 해제");
     }
 
 
@@ -173,21 +167,14 @@ public class GameManager : Singleton<GameManager>
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         string currentSceneName = scene.name;
-        
-        Debug.Log($"🔍 GameManager: 씬 로드 감지 - 이전:{lastSceneName}, 현재:{currentSceneName}, 게임씬여부:{IsGameScene(currentSceneName)}");
-        
         // 씬이 바뀌었고, 게임 씬인 경우
         if (lastSceneName != currentSceneName && IsGameScene(currentSceneName))
-        {
-            Debug.Log($"🔄 GameManager: 게임 씬 전환 감지 - {lastSceneName} → {currentSceneName}");
-            
+        {         
             // 게임 상태 초기화
             ResetGameState();
             
             // 약간의 지연 후 컴포넌트 찾기 (씬 로드 완료 대기)
             StartCoroutine(FindComponentsAfterSceneLoad());
-            
-            Debug.Log("✅ GameManager: 게임 상태 초기화 완료");
         }
         
         // 현재 씬 이름 저장
@@ -206,8 +193,6 @@ public class GameManager : Singleton<GameManager>
         // 컴포넌트 찾기
         FindInGameUIManager();
         FindTeddyBear();
-        
-        Debug.Log("✅ GameManager: 씬 로드 후 컴포넌트 찾기 완료");
         
         // 필수 컴포넌트 확인 시작
         StartCoroutine(VerifyEssentialComponents());
@@ -231,14 +216,12 @@ public class GameManager : Singleton<GameManager>
             
             if (inGameUIManager == null)
             {
-                Debug.LogWarning($"⚠️ GameManager: {checkTime:F1}초 경과 - InGameUIManager 여전히 null");
                 FindInGameUIManager();
                 allFound = false;
             }
             
             if (currentTeddyBear == null)
             {
-                Debug.LogWarning($"⚠️ GameManager: {checkTime:F1}초 경과 - TeddyBear 여전히 null");
                 FindTeddyBear();
                 allFound = false;
             }
@@ -246,19 +229,8 @@ public class GameManager : Singleton<GameManager>
             // 모든 컴포넌트를 찾았다면 종료
             if (allFound)
             {
-                Debug.Log($"✅ GameManager: 모든 필수 컴포넌트 확인 완료 ({checkTime:F1}초)");
                 break;
             }
-        }
-        
-        // 최종 체크
-        if (inGameUIManager == null)
-        {
-            Debug.LogError("❌ GameManager: InGameUIManager를 찾지 못했습니다! 게임 오버 시 문제가 발생할 수 있습니다.");
-        }
-        if (currentTeddyBear == null)
-        {
-            Debug.LogError("❌ GameManager: TeddyBear를 찾지 못했습니다! 점수 시스템에 문제가 발생할 수 있습니다.");
         }
     }
     
@@ -298,10 +270,8 @@ public class GameManager : Singleton<GameManager>
         gameStartTime = Time.time;
         isGameOver = false;
         
-        Debug.Log($"📅 GameManager: 게임 시간 초기화 - gameStartTime: {gameStartTime:F2}, PlayTime: {GetPlayTime()}초");
-        
         // 3. 점수 완전 초기화
-        totalTeddyBearScore = 0f;
+        // totalTeddyBearScore = 0f; // 점수 관련 필드 제거
         ResetAllScores(); // 테디베어 점수도 함께 초기화
         
         // 4. 플레이어 상태 초기화
@@ -319,15 +289,8 @@ public class GameManager : Singleton<GameManager>
         currentPlayerCoinController = null;
         currentTeddyBear = null;
         inGameUIManager = null;
-        
-        Debug.Log($"💯 GameManager: 점수 초기화 완료 - totalTeddyBearScore: {totalTeddyBearScore}");
-        Debug.Log($"❤️ GameManager: 플레이어 상태 초기화 완료 - Health: {playerHealth}/{maxPlayerHealth}");
-        Debug.Log($"🕐 GameManager: 최종 시간 확인 - 현재게임시간: {GetGameTime():F2}초, 남은시간: {(GetPlayTime() - GetGameTime()):F2}초");
-        
         // 7. UI 이벤트 발생 (초기값으로) - 약간의 지연을 두어 확실히 적용
         StartCoroutine(SendInitialUIEvents());
-        
-        Debug.Log("✅ GameManager: 게임 상태 초기화 완료");
     }
     
     /// <summary>
@@ -340,16 +303,11 @@ public class GameManager : Singleton<GameManager>
         // UI 이벤트 발생 전 최종 상태 확인
         float currentPlayTime = GetPlayTime();
         float currentGameTime = GetGameTime();
-        float remainingTime = currentPlayTime - currentGameTime;
-        
-        Debug.Log($"📡 GameManager: UI 이벤트 발생 전 최종 확인 - PlayTime:{currentPlayTime}, GameTime:{currentGameTime:F2}, 남은시간:{remainingTime:F2}");
-        
+        float remainingTime = currentPlayTime - currentGameTime;   
         // UI 이벤트 발생 (초기값으로)
         OnScoreUpdated?.Invoke(0f);
         OnScoreMultiplierUpdated?.Invoke(1f);
         OnGameTimeUpdated?.Invoke(remainingTime); // 남은 시간으로 초기화
-        
-        Debug.Log($"📡 GameManager: UI 이벤트 발생 완료 - 점수:0, 배율:1, 남은시간:{remainingTime:F2}초");
     }
     
     /// <summary>
@@ -357,7 +315,6 @@ public class GameManager : Singleton<GameManager>
     /// </summary>
     public void ForceResetGameState()
     {
-        Debug.Log("🚨 GameManager: 강제 게임 상태 초기화 호출됨");
         ResetGameState();
         
         // 테디베어 다시 찾기 및 초기화
@@ -367,8 +324,6 @@ public class GameManager : Singleton<GameManager>
         // InGameUIManager 다시 찾기
         inGameUIManager = null;
         FindInGameUIManager();
-        
-        Debug.Log("✅ GameManager: 강제 게임 상태 초기화 완료");
     }
 
     #endregion
@@ -390,17 +345,14 @@ public class GameManager : Singleton<GameManager>
                 cachedInitialScore = DataBase.Instance.teddyBearData.InitialScore;
                 cachedPlayTime = DataBase.Instance.gameData.PlayTime;
                 dataBaseCached = true;
-                Debug.Log($"✅ DataBase 정보 캐싱 완료 - Time: {cachedScoreIncreaseTime}, Rate: {cachedScoreIncreaseRate}");
             }
             else
             {
-                Debug.LogWarning("⚠️ GameManager: DataBase 접근 실패 - 기본값 사용");
                 dataBaseCached = false;
             }
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"❌ GameManager: DataBase 캐싱 중 오류: {e.Message} - 기본값 사용");
             dataBaseCached = false;
         }
     }
@@ -470,7 +422,7 @@ public class GameManager : Singleton<GameManager>
     // 테디베어 점수 업데이트 (TestTeddyBear에서 호출)
     public void UpdateTeddyBearScore(float newScore)
     {
-        totalTeddyBearScore = newScore;
+        // totalTeddyBearScore = newScore; // 점수 관련 필드 제거
 
         // 테디베어의 currentScore도 동기화
         if (currentTeddyBear != null)
@@ -480,74 +432,25 @@ public class GameManager : Singleton<GameManager>
         }
 
         // HeatUI에 점수 업데이트 이벤트 발생
-        OnScoreUpdated?.Invoke(totalTeddyBearScore);
+        OnScoreUpdated?.Invoke(0f); // 점수 관련 필드 제거
 
         // 점수 배율도 실시간 계산으로 업데이트
         float currentMultiplier = GetScoreMultiplier();
         OnScoreMultiplierUpdated?.Invoke(currentMultiplier);
     }
 
-    // 테디베어 점수 추가/차감 (코인 획득, 사망 시 손실 등)
-    public void AddTeddyBearScore(float scoreToAdd)
-    {
-        // 점수 차감인 경우 (음수)
-        if (scoreToAdd < 0f)
-        {
-            float scoreToSubtract = Mathf.Abs(scoreToAdd);
-            
-            // 현재 점수보다 많이 차감하려는 경우 방지
-            if (scoreToSubtract > totalTeddyBearScore)
-            {
-                Debug.LogWarning($"⚠️ GameManager: 현재 점수({totalTeddyBearScore:F0})보다 많이 차감하려 함 - {scoreToSubtract:F0}, 0으로 설정");
-                totalTeddyBearScore = 0f;
-            }
-            else
-            {
-                totalTeddyBearScore -= scoreToSubtract;
-            }
-            
-            Debug.Log($"💯 GameManager - 테디베어 점수 차감: -{scoreToSubtract:F0}, 남은 점수: {totalTeddyBearScore:F0}");
-        }
-        else
-        {
-            // 점수 증가인 경우 (양수)
-            totalTeddyBearScore += scoreToAdd;
-            Debug.Log($"✅ GameManager - 테디베어 점수 증가: +{scoreToAdd:F0}, 총 점수: {totalTeddyBearScore:F0}");
-        }
-        
-        // 테디베어의 currentScore도 동기화
-        if (currentTeddyBear != null)
-        {
-            // TestTeddyBear의 AddScore 메서드를 통해 동기화
-            currentTeddyBear.AddScore(scoreToAdd);
-        }
-        
-        // HeatUI에 점수 업데이트 이벤트 발생
-        OnScoreUpdated?.Invoke(totalTeddyBearScore);
-        
-        // 점수 배율도 실시간 계산으로 업데이트
-        float currentMultiplier = GetScoreMultiplier();
-        OnScoreMultiplierUpdated?.Invoke(currentMultiplier);
-    }
+    // 테디베어 점수 추가/차감 (코인 획득, 사망 시 손실 등) - 제거됨
+    // 점수는 CoinController에서 직접 관리
 
     // 현재 테디베어 점수 가져오기
     public float GetTeddyBearScore()
     {
-        if (currentTeddyBear != null)
+        if (currentPlayerCoinController != null)
         {
-            // 테디베어의 실제 currentScore를 우선적으로 반환
-            float teddyBearScore = currentTeddyBear.GetCurrentScore();
-            
-            // 동기화가 필요한 경우
-            if (Mathf.Abs(teddyBearScore - totalTeddyBearScore) > 0.01f)
-            {
-                totalTeddyBearScore = teddyBearScore;
-                Debug.Log($"🔄 GameManager - 테디베어 점수 동기화: {teddyBearScore} -> {totalTeddyBearScore}");
-            }
-            
-            return teddyBearScore;
+            // CoinController에서 직접 점수 가져오기
+            return currentPlayerCoinController.GetCurrentScore();
         }
-        return totalTeddyBearScore;
+        return 0f;
     }
 
     // 테디베어가 부착되어 있는지 확인
@@ -591,17 +494,17 @@ public class GameManager : Singleton<GameManager>
     // 점수 초기화 (개발자용)
     public void ResetAllScores()
     {
-        totalTeddyBearScore = 0f;
-        if (currentTeddyBear != null)
+        if (currentPlayerCoinController != null)
         {
-            currentTeddyBear.ResetScore();
-            // 테디베어 점수 초기화 후 동기화
-            totalTeddyBearScore = currentTeddyBear.GetCurrentScore();
+            // CoinController를 통해 점수 초기화
+            currentPlayerCoinController.ResetScore();
         }
-        OnScoreUpdated?.Invoke(totalTeddyBearScore);
-        OnScoreMultiplierUpdated?.Invoke(1f);
-        
-        Debug.Log($"🔄 GameManager - 모든 점수 초기화 완료: totalTeddyBearScore = {totalTeddyBearScore}");
+        else
+        {
+            // CoinController가 없으면 기본값으로 초기화
+            OnScoreUpdated?.Invoke(0f);
+            OnScoreMultiplierUpdated?.Invoke(1f);
+        }
     }
 
     public float GetPlayTime()
@@ -642,8 +545,6 @@ public class GameManager : Singleton<GameManager>
         // ✅ 중복 실행 방지 (정적 변수로 플레이어별 사망 상태 추적)
         if (localPlayerLivingEntity != null && localPlayerLivingEntity.IsDead)
         {
-            // 이미 사망 처리된 상태라면 무시
-            Debug.Log("⚠️ GameManager: 이미 사망 처리된 플레이어입니다. 손실 처리 무시.");
             return;
         }
         
@@ -651,7 +552,6 @@ public class GameManager : Singleton<GameManager>
         {
             if (DataBase.Instance == null || DataBase.Instance.gameData == null)
             {
-                Debug.LogWarning("⚠️ GameManager: DataBase 또는 gameData가 null입니다. 손실 처리 불가능.");
                 return;
             }
 
@@ -659,33 +559,27 @@ public class GameManager : Singleton<GameManager>
             float coinLossRate = DataBase.Instance.gameData.CoinLossRate;
             float scoreLossRate = DataBase.Instance.gameData.ScoreLossRate;
 
-            Debug.Log($"💀 GameManager: 플레이어 사망 손실 처리 시작 - 코인손실률: {coinLossRate:P0}, 점수손실률: {scoreLossRate:P0}");
-
-            // 코인 손실 처리
+            // 코인과 점수 손실 처리 (CoinController를 통해)
             if (currentPlayerCoinController != null)
             {
+                // 코인 손실 처리
                 int currentCoins = currentPlayerCoinController.GetCurrentCoin();
                 int coinsToLose = Mathf.RoundToInt(currentCoins * coinLossRate);
                 
                 if (coinsToLose > 0)
                 {
                     currentPlayerCoinController.SubtractCoin(coinsToLose);
-                    Debug.Log($"💰 GameManager: 코인 손실 - 현재: {currentCoins}, 손실: {coinsToLose}, 남은: {currentPlayerCoinController.GetCurrentCoin()}");
+                }
+                
+                // 점수 손실 처리 (CoinController를 통해)
+                float currentScore = currentPlayerCoinController.GetCurrentScore();
+                float scoreToLose = currentScore * scoreLossRate;
+                
+                if (scoreToLose > 0f)
+                {
+                    currentPlayerCoinController.SubtractScore(scoreToLose);
                 }
             }
-
-            // 점수 손실 처리
-            float currentScore = GetTeddyBearScore();
-            float scoreToLose = currentScore * scoreLossRate;
-            
-            if (scoreToLose > 0f)
-            {
-                // 테디베어 점수 차감 (음수 값으로 호출)
-                AddTeddyBearScore(-scoreToLose);
-                Debug.Log($"💯 GameManager: 점수 손실 - 현재: {currentScore:F0}, 손실: {scoreToLose:F0}, 남은: {GetTeddyBearScore():F0}");
-            }
-
-            Debug.Log("✅ GameManager: 플레이어 사망 손실 처리 완료");
         }
         catch (System.Exception e)
         {
@@ -723,8 +617,6 @@ public class GameManager : Singleton<GameManager>
         // 최종 점수 가져오기
         float finalScore = GetTeddyBearScore();
         
-        Debug.Log($"🎮 게임 오버! 최종 점수: {finalScore}");
-        
         // 플레이어 조작 비활성화
         DisablePlayerControls();
         // UI 표시
@@ -750,24 +642,17 @@ public class GameManager : Singleton<GameManager>
                 if (moveController != null)
                 {
                     moveController.DisableAllControls();
-                    Debug.Log("✅ GameManager: 플레이어 모든 조작 비활성화");
                 }
             }
             
             // 총 발사 비활성화
             TestShoot.SetIsShooting(false);
-            Debug.Log("✅ GameManager: 총 발사 비활성화");
             
             // 카메라 조작 비활성화
             CameraController cameraController = localPlayerLivingEntity.GetComponent<CameraController>();
             if (cameraController != null)
             {
                 cameraController.DisableCameraControl();
-                Debug.Log("✅ GameManager: 카메라 조작 비활성화");
-            }
-            else
-            {
-                Debug.LogWarning("⚠️ GameManager: CameraController를 찾을 수 없습니다.");
             }
             
             // 마우스 커서 표시
@@ -790,30 +675,21 @@ public class GameManager : Singleton<GameManager>
         // InGameUIManager가 null이면 즉시 찾기 시도
         if (inGameUIManager == null)
         {
-            Debug.LogWarning("⚠️ GameManager: InGameUIManager가 null - 즉시 찾기 시도");
             FindInGameUIManager();
         }
         
         if (inGameUIManager != null)
         {
             inGameUIManager.ShowGameOverPanel(finalScore);
-            Debug.Log($"✅ GameManager: 게임 오버 UI 표시 완료 - 점수: {finalScore}");
         }
         else
         {
-            Debug.LogError("❌ GameManager: InGameUIManager를 찾을 수 없습니다. 게임 오버 UI를 표시할 수 없습니다.");
-            
             // 마지막 시도: 강제로 모든 InGameUIManager 찾기
             InGameUIManager[] allManagers = FindObjectsOfType<InGameUIManager>();
             if (allManagers.Length > 0)
             {
                 inGameUIManager = allManagers[0];
-                Debug.Log($"🔍 GameManager: 강제 검색으로 InGameUIManager 발견 - {inGameUIManager.name}");
                 inGameUIManager.ShowGameOverPanel(finalScore);
-            }
-            else
-            {
-                Debug.LogError("❌ GameManager: 씬에 InGameUIManager가 존재하지 않습니다!");
             }
         }
     }
@@ -963,12 +839,9 @@ public class GameManager : Singleton<GameManager>
         {
             currentTeddyBear = FindObjectOfType<TestTeddyBear>();
             if (currentTeddyBear != null)
-            {
-                Debug.Log("✅ GameManager: 테디베어를 찾았습니다!");
-                
+            {     
                 // 게임 씬에서는 항상 점수 초기화
                 currentTeddyBear.ResetScore();
-                Debug.Log($"🔄 GameManager: 테디베어 점수 초기화 완료 - 현재 점수: {currentTeddyBear.GetCurrentScore()}");
             }
         }
     }
@@ -985,7 +858,6 @@ public class GameManager : Singleton<GameManager>
             
             if (inGameUIManager != null)
             {
-                Debug.Log("✅ GameManager: InGameUIManager를 찾았습니다!");
                 return;
             }
             
@@ -997,19 +869,15 @@ public class GameManager : Singleton<GameManager>
                 if (manager.gameObject.scene.isLoaded)
                 {
                     inGameUIManager = manager;
-                    Debug.Log($"✅ GameManager: 비활성화된 InGameUIManager를 찾았습니다! - {manager.name}");
                     
                     // 비활성화되어 있다면 활성화
                     if (!manager.gameObject.activeInHierarchy)
                     {
-                        Debug.LogWarning("⚠️ GameManager: InGameUIManager가 비활성화되어 있어서 활성화합니다.");
                         manager.gameObject.SetActive(true);
                     }
                     return;
                 }
             }
-            
-            Debug.LogWarning("⚠️ GameManager: InGameUIManager를 찾을 수 없습니다.");
         }
     }
 
@@ -1044,24 +912,10 @@ public class GameManager : Singleton<GameManager>
                         // 플레이어의 CoinController 찾기
                         FindPlayerCoinController(playerObject);
 
-                        Debug.Log($"✅ GameManager: 로컬 플레이어를 찾았고 이벤트 구독 완료 - {playerObject.name}");
-
                         // HUD에 스킬 데이터 업데이트 알림
                         NotifyHUDToUpdateSkillData();
                     }
-                    else
-                    {
-                        Debug.LogError("❌ GameManager: 플레이어 오브젝트에 LivingEntity 컴포넌트가 없습니다!");
-                    }
                 }
-                else
-                {
-                    Debug.Log($"⚠️ GameManager: 'Player' 태그를 가진 오브젝트를 찾았지만 로컬 플레이어가 아닙니다: {playerObject.name}");
-                }
-            }
-            else
-            {
-                Debug.LogWarning("⚠️ GameManager: 'Player' 태그를 가진 오브젝트를 찾을 수 없습니다.");
             }
         }
         catch (System.Exception e)
@@ -1081,12 +935,6 @@ public class GameManager : Singleton<GameManager>
             playerHealth = current;
             maxPlayerHealth = max;
             OnPlayerHealthChanged?.Invoke(playerHealth, maxPlayerHealth);
-            Debug.Log($"[GameManager] 로컬 플레이어 체력 업데이트: {playerHealth}/{maxPlayerHealth}");
-        }
-        else
-        {
-            // 로컬 플레이어의 체력 변화가 아니므로 HUD에 알리지 않습니다. (예: 적의 체력 변화)
-            Debug.Log($"[GameManager] 비-로컬 LivingEntity 체력 변화 감지: {changedEntity?.gameObject.name} -> {current}/{max}");
         }
     }
 
@@ -1106,15 +954,6 @@ public class GameManager : Singleton<GameManager>
         {
             currentPlayerCoinController = playerObject.GetComponentInChildren<CoinController>();
         }
-
-        if (currentPlayerCoinController != null)
-        {
-            Debug.Log($"✅ GameManager: 플레이어의 CoinController를 찾았습니다 - {currentPlayerCoinController.name}");
-        }
-        else
-        {
-            Debug.LogWarning("⚠️ GameManager: 플레이어에서 CoinController를 찾을 수 없습니다.");
-        }
     }
 
     /// <summary>
@@ -1125,7 +964,6 @@ public class GameManager : Singleton<GameManager>
     {
         if (currentPlayerCoinController == null)
         {
-            Debug.LogWarning("⚠️ GameManager - 현재 플레이어의 CoinController가 null입니다.");
             return null;
         }
 
@@ -1138,21 +976,12 @@ public class GameManager : Singleton<GameManager>
     #region HUD 업데이트 메서드
 
     /// <summary>
-    /// HUD에 스킬 데이터 업데이트 알림
+    /// HUD에 스킬 데이터 업데이트 알림 (이벤트 기반으로 변경)
     /// </summary>
     private void NotifyHUDToUpdateSkillData()
     {
-        HUDPanel hudPanel = FindObjectOfType<HUDPanel>();
-
-        if (hudPanel != null)
-        {
-            hudPanel.UpdateSkillDataFromSpawnedCharacter();
-            Debug.Log("HUDPanel을 찾았습니다!");
-        }
-        else
-        {
-            Debug.LogWarning("⚠️ GameManager: HUDPanel을 찾을 수 없습니다.");
-        }
+        // 이벤트를 통해 HUD에 알림 (직접 호출 대신)
+        OnCharacterSpawned?.Invoke();
     }
 
     #endregion

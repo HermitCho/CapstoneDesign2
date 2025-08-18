@@ -9,6 +9,10 @@ public class CoinController : MonoBehaviourPun
 
     [Header("코인 관리")]
     [SerializeField] private int currentCoin = 0;
+    
+    [Header("점수 관리")]
+    private float currentScore = 0f;
+    private float scoreMultiplier = 1f;
 
     private PhotonView photonView;
     
@@ -37,7 +41,9 @@ public class CoinController : MonoBehaviourPun
     private void InitializeCoin()
     {
         currentCoin = 0;
-        Debug.Log("✅ CoinController - 코인 초기화 완료");
+        currentScore = 0f;
+        scoreMultiplier = 1f;
+        Debug.Log("✅ CoinController - 코인과 점수 초기화 완료");
     }
 
     #endregion
@@ -53,7 +59,7 @@ public class CoinController : MonoBehaviourPun
         if (!photonView.IsMine) return;
 
         currentCoin += amount;
-        
+        AudioManager.Inst.PlayOneShot("SFX_Game_GetCoin");
         // 테디베어 점수도 함께 증가
         AddTeddyBearScore(amount);
         
@@ -81,18 +87,81 @@ public class CoinController : MonoBehaviourPun
             // 테디베어가 부착되어 있다면 배율 적용
             if (isTeddyBearAttached)
             {
-                float multiplier = GameManager.Instance.GetScoreMultiplier();
-                baseScore *= multiplier;
-                Debug.Log($"✅ CoinController - 테디베어 부착 상태에서 코인 {coinAmount}개 획득! 점수: {baseScore} (배율: {multiplier})");
+                scoreMultiplier = GameManager.Instance.GetScoreIncreaseRate();
+                baseScore *= scoreMultiplier;
+                Debug.Log($"✅ CoinController - 테디베어 부착 상태에서 코인 {coinAmount}개 획득! 점수: {baseScore} (배율: {scoreMultiplier})");
             }
             else
             {
+                scoreMultiplier = 1f;
                 Debug.Log($"✅ CoinController - 테디베어 미부착 상태에서 코인 {coinAmount}개 획득! 점수: {baseScore}");
             }
             
-            // GameManager를 통해 테디베어 점수 업데이트
-            GameManager.Instance.AddTeddyBearScore(baseScore);
+            // 점수 추가
+            AddScore(baseScore);
         }
+    }
+    
+    /// <summary>
+    /// 점수 추가
+    /// </summary>
+    /// <param name="scoreToAdd">추가할 점수</param>
+    public void AddScore(float scoreToAdd)
+    {
+        if (!photonView.IsMine) return;
+        
+        currentScore += scoreToAdd;
+    }
+    
+    /// <summary>
+    /// 점수 차감
+    /// </summary>
+    /// <param name="scoreToSubtract">차감할 점수</param>
+    public void SubtractScore(float scoreToSubtract)
+    {
+        if (!photonView.IsMine) return;
+        
+        float amount = Mathf.Abs(scoreToSubtract);
+        
+        // 현재 점수보다 많이 차감하려는 경우 방지
+        if (amount > currentScore)
+        {
+            currentScore = 0f;
+        }
+        else
+        {
+            currentScore -= amount;
+        }
+        
+        Debug.Log($"✅ CoinController: 점수 차감 완료 - 차감: {amount}, 총 점수: {currentScore}");
+    }
+    
+    /// <summary>
+    /// 점수 초기화
+    /// </summary>
+    public void ResetScore()
+    {
+        if (!photonView.IsMine) return;
+        
+        currentScore = 0f;
+    }
+    
+    /// <summary>
+    /// 현재 점수 가져오기
+    /// </summary>
+    /// <returns>현재 점수</returns>
+    public float GetCurrentScore()
+    {
+        return currentScore;
+    }
+    
+    /// <summary>
+    /// 현재 점수 배율 가져오기
+    /// </summary>
+    /// <returns>현재 점수 배율</returns>
+    public float GetScoreMultiplier()
+    {
+        return scoreMultiplier;
     }
 
     /// <summary>
@@ -154,17 +223,15 @@ public class CoinController : MonoBehaviourPun
     #region UI 알림 메서드
 
     /// <summary>
-    /// HUDPanel에 코인 변경 알림
+    /// HUDPanel에 코인 변경 알림 (이벤트 기반으로 변경)
     /// </summary>
     private void NotifyHUDCoinChanged()
     {
         if (!photonView.IsMine) return;
-        // HUD 패널이 비활성화되어 있어도 코인 업데이트를 위해 강제로 찾기
-        HUDPanel hudPanel = FindObjectOfType<HUDPanel>();
-        if (hudPanel != null)
-        {
-            hudPanel.UpdateCoin(currentCoin);
-        }
+        
+        // HUD는 자체적으로 로컬 플레이어의 CoinController를 모니터링하므로
+        // 별도의 업데이트 호출이 필요하지 않음
+        Debug.Log($"✅ CoinController: 코인 변경 완료 - {currentCoin}, HUD는 자동 업데이트됨");
     }
 
     #endregion

@@ -441,16 +441,13 @@ public class ItemModalController : MonoBehaviour
     }
 
     /// <summary>
-    /// HUD 패널 업데이트
+    /// HUD 패널 업데이트 (이벤트 기반으로 변경)
     /// </summary>
     private void UpdateHUDPanel()
     {
-        // 업데이트
-        if (hudPanel != null && hudPanel.gameObject.activeInHierarchy)
-        {
-            hudPanel.UpdateItemUI();
-            Debug.Log("✅ ItemModalController - HUD 패널 업데이트 완료");
-        }
+        // HUD는 자체적으로 로컬 플레이어의 ItemController를 모니터링하므로
+        // 별도의 업데이트 호출이 필요하지 않음
+        Debug.Log("✅ ItemModalController - HUD 패널 업데이트 (자동 처리됨)");
     }
 
     #endregion
