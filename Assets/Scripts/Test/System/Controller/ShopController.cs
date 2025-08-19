@@ -215,7 +215,7 @@ public class ShopController : MonoBehaviourPun
         }
 
         // ✅ 중복 아이템 체크 (SkillName으로 비교)
-        CharacterItem itemComponent = cachedItemData[itemIndex].GetComponent<CharacterItem>();
+        Skill itemComponent = cachedItemData[itemIndex].GetComponent<Skill>();
         if (itemComponent != null && !string.IsNullOrEmpty(itemComponent.SkillName))
         {
             string skillName = itemComponent.SkillName;
@@ -236,17 +236,15 @@ public class ShopController : MonoBehaviourPun
         // 아이템 가격 확인 (itemComponent는 이미 위에서 가져왔으므로 재사용)
         if (itemComponent == null)
         {
-            Debug.LogError($"❌ ShopController - 아이템 인덱스 {itemIndex}에 CharacterItem 컴포넌트가 없습니다.");
             return;
         }
 
-        int itemPrice = itemComponent.GetPrice();
+        int itemPrice = itemComponent.Price;
         int playerCoins = playerCoinController.GetCoin();
 
         // 코인 확인
         if (playerCoins < itemPrice)
         {
-            Debug.LogWarning($"❌ ShopController - 코인이 부족합니다. 필요: {itemPrice}, 보유: {playerCoins}");
             return;
         }
 
@@ -256,17 +254,10 @@ public class ShopController : MonoBehaviourPun
             // 코인 차감
             playerCoinController.SubtractCoin(itemPrice);
             
-            // 아이템 스킬 적용
-            itemComponent.PurchaseItemSkill();
-            
             // 아이템 슬롯에 추가 (프리팹 인스턴스화)
             if (cachedItemData[itemIndex] != null)
             {
                 playerItemController.AttachItem(cachedItemData[itemIndex]);
-            }
-            else
-            {
-                Debug.LogError($"❌ ShopController - 아이템 인덱스 {itemIndex}의 프리팹이 null입니다.");
             }
         }
         catch (System.Exception e)
@@ -329,8 +320,8 @@ public class ShopController : MonoBehaviourPun
             return 0;
         }
 
-        CharacterItem itemComponent = cachedItemData[itemIndex].GetComponent<CharacterItem>();
-        return itemComponent != null ? itemComponent.GetPrice() : 0;
+        Skill itemComponent = cachedItemData[itemIndex].GetComponent<Skill>();
+        return itemComponent != null ? itemComponent.Price : 0;
     }
 
     #endregion

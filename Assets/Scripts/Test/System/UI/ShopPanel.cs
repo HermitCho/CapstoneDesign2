@@ -48,7 +48,7 @@ public class ShopPanel : MonoBehaviour
 
             try
             {
-                CharacterItem itemComponent = items[i].GetComponent<CharacterItem>();
+                Skill itemComponent = items[i].GetComponent<Skill>();
                 if (itemComponent == null) continue;
 
                 AssignButtonData(buttons[i], itemComponent, i);
@@ -60,7 +60,7 @@ public class ShopPanel : MonoBehaviour
         }
     }
 
-    private void AssignButtonData(ShopButtonManager button, CharacterItem itemComponent, int itemIndex)
+    private void AssignButtonData(ShopButtonManager button, Skill itemComponent, int itemIndex)
     {
         if (button == null || itemComponent == null) return;
 
@@ -69,7 +69,7 @@ public class ShopPanel : MonoBehaviour
             Sprite skillIcon = itemComponent.SkillIcon;
             string skillName = itemComponent.SkillName;
             string skillDescription = itemComponent.SkillDescription;
-            int price = itemComponent.GetPrice();
+            int price = itemComponent.Price;
 
             button.SetIcon(skillIcon);
             button.SetText(skillName);

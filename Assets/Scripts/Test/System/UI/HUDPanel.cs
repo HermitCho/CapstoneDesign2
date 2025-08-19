@@ -40,7 +40,7 @@ public class HUDPanel : MonoBehaviour
     private GameObject localPlayer;
     private LivingEntity localLivingEntity;
     private CoinController localCoinController;
-    private CharacterSkill localCharacterSkill;
+    private Skill localCharacterSkill;
     private ItemController localItemController;
     
     // UI 상태
@@ -161,7 +161,7 @@ public class HUDPanel : MonoBehaviour
                 localPlayer = player;
                 localLivingEntity = player.GetComponent<LivingEntity>();
                 localCoinController = player.GetComponent<CoinController>();
-                localCharacterSkill = player.GetComponent<CharacterSkill>();
+                localCharacterSkill = player.GetComponent<Skill>();
                 localItemController = player.GetComponent<ItemController>();
                 break;
             }
@@ -374,9 +374,9 @@ public class HUDPanel : MonoBehaviour
         // 쿨다운 오버레이
         if (skillCooldownOverlay != null)
         {
-            if (isOnCooldown && localCharacterSkill.CooldownTime > 0f)
+            if (isOnCooldown && localCharacterSkill.Cooldown > 0f)
             {
-                float fillAmount = localCharacterSkill.RemainingCooldown / localCharacterSkill.CooldownTime;
+                float fillAmount = localCharacterSkill.RemainingCooldown / localCharacterSkill.Cooldown;
                 skillCooldownOverlay.fillAmount = fillAmount;
                 skillCooldownOverlay.gameObject.SetActive(true);
             }
@@ -467,7 +467,7 @@ public class HUDPanel : MonoBehaviour
                 Transform firstChild = itemSlot.GetChild(itemCount - 1);
                 if (firstChild != null)
                 {
-                    CharacterItem firstItem = firstChild.GetComponent<CharacterItem>();
+                    Skill firstItem = firstChild.GetComponent<Skill>();
                     if (firstItem != null)
                     {
                         bool isActive = firstChild.gameObject.activeInHierarchy;
@@ -490,7 +490,7 @@ public class HUDPanel : MonoBehaviour
                 Transform secondChild = itemSlot.GetChild(itemCount - 2);
                 if (secondChild != null)
                 {
-                    CharacterItem secondItem = secondChild.GetComponent<CharacterItem>();
+                    Skill secondItem = secondChild.GetComponent<Skill>();
                     if (secondItem != null)
                     {
                         bool isActive = secondChild.gameObject.activeInHierarchy;

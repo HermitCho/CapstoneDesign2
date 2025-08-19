@@ -209,14 +209,14 @@ public class ItemController : MonoBehaviourPun
     /// 첫 번째 활성화된 아이템 가져오기
     /// </summary>
     /// <returns>첫 번째 활성화된 아이템, 없으면 null</returns>
-    public CharacterItem GetFirstActiveItem()
+    public Skill GetFirstActiveItem()
     {
         if (itemSlot1 == null || itemSlot1.transform.childCount == 0) return null;
         // 마지막 자식(가장 아래)을 첫 번째 아이템으로 처리
         Transform lastChild = itemSlot1.transform.GetChild(itemSlot1.transform.childCount - 1);
 
         if (lastChild == null || !lastChild.gameObject.activeInHierarchy) return null;
-        CharacterItem item = lastChild.GetComponent<CharacterItem>();
+        Skill item = lastChild.GetComponent<Skill>();
 
         if (item == null) return null;
         return item;
@@ -251,7 +251,7 @@ public class ItemController : MonoBehaviourPun
     /// </summary>
     /// <param name="characterItem">확인할 아이템</param>
     /// <returns>첫 번째 아이템 여부</returns>
-    public bool IsFirstActiveItem(CharacterItem characterItem)
+    public bool IsFirstActiveItem(Skill characterItem)
     {
         if (characterItem == null) return false;
         
@@ -263,7 +263,7 @@ public class ItemController : MonoBehaviourPun
             Transform child = itemSlot1.transform.GetChild(i);
             if (child != null && child.gameObject.activeInHierarchy)
             {
-                CharacterItem activeItem = child.GetComponent<CharacterItem>();
+                Skill activeItem = child.GetComponent<Skill>();
                 if (activeItem != null)
                 {
                     if (activeItem == characterItem)
@@ -327,7 +327,7 @@ public class ItemController : MonoBehaviourPun
             Transform child = itemSlot1.transform.GetChild(i);
             if (child == null) continue;
 
-            CharacterItem characterItem = child.GetComponent<CharacterItem>();
+            Skill characterItem = child.GetComponent<Skill>();
             if (characterItem != null && characterItem.SkillName == skillName)
             {
                 return true;

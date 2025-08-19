@@ -293,11 +293,11 @@ public class SpawnController : MonoBehaviourPunCallbacks
         return currentSpawnedCharacter;
     }
 
-    public CharacterSkill GetCurrentSpawnedCharacterSkill()
+    public Skill GetCurrentSpawnedCharacterSkill()
     {
         if (currentSpawnedCharacter != null)
         {
-            return currentSpawnedCharacter.GetComponent<CharacterSkill>();
+            return currentSpawnedCharacter.GetComponent<Skill>();
         }
         return null;
     }
