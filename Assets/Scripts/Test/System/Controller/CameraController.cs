@@ -266,7 +266,6 @@ public class CameraController : MonoBehaviourPun
 
             if (isPlayerFound)
             {
-                SetupCamera();
                 break;
             }
 
@@ -284,15 +283,6 @@ public class CameraController : MonoBehaviourPun
                 playerTransform = players[i].transform;
                 isPlayerFound = true;
             }
-    }
-
-    // 카메라 설정 - 필요 시 구현
-    void SetupCamera()
-    {
-        if (playerTransform != null)
-        {
-
-        }
     }
 
 
@@ -367,6 +357,7 @@ public class CameraController : MonoBehaviourPun
 
     void ApplyCameraZoom()
     {
+        if (!photonView.IsMine) return;
         if (mainCamera != null && !isZoomed)
         {
             isZoomed = true;
@@ -401,6 +392,7 @@ public class CameraController : MonoBehaviourPun
 
     void ApplyCameraZoomCanceled()
     {
+        if (!photonView.IsMine) return;
         if (mainCamera != null && isZoomed)
         {
             isZoomed = false;
@@ -454,7 +446,6 @@ public class CameraController : MonoBehaviourPun
     {
         playerTransform = player;
         isPlayerFound = true;
-        SetupCamera();
     }
 
     // 플레이어 재찾기 (플레이어가 파괴되었을 때)

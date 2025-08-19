@@ -136,7 +136,7 @@ public class AutoPlayerSpawner : MonoBehaviourPunCallbacks
         }
 
         // 기본적으로 첫 번째 캐릭터를 스폰 (또는 랜덤 선택)
-        int characterIndex = Random.Range(0, cachedPlayerPrefabData.Length);
+        int characterIndex = PlayerPrefs.GetInt("SelectChar_CurrentIndex", 0);
         
         Debug.Log($"[AutoPlayerSpawner] 자동 스폰 - 캐릭터 인덱스: {characterIndex}, 프리팹: {cachedPlayerPrefabData[characterIndex]?.name}");
         

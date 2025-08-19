@@ -45,9 +45,9 @@ public class TestMoveAnimationController : MonoBehaviour
     private LivingEntity livingEntity;
 
     // 대쉬 스킬
-    private CharacterSkill dashSkill;
+    private Skill dashSkill;
     // 아이템 스킬
-    private CharacterItem itemSkill;
+    private Skill itemSkill;
 
     private Coroutine speedSkillCoroutine;
 
@@ -61,8 +61,8 @@ public class TestMoveAnimationController : MonoBehaviour
         gunIK = GetComponent<GunIK>();
         livingEntity = GetComponent<LivingEntity>();
         footstepSoundPlayer = GetComponent<FootstepSoundPlayer>();
-        dashSkill = GetComponent<CharacterSkill>();
-        itemSkill = GetComponent<CharacterItem>();
+        dashSkill = GetComponent<Skill>();
+        itemSkill = GetComponent<Skill>();
         aimIK = GetComponent<AimIK>();
         animator.SetFloat("SpeedMultiplier", 1.2f);
     }
@@ -256,7 +256,7 @@ public class TestMoveAnimationController : MonoBehaviour
         
         if (dashSkill != null && dashSkill.CanUse)
         {   
-            dashSkill.UseSkill();
+            //dashSkill.Activate(moveController);
             animator.SetTrigger("Speed");
             animator.SetLayerWeight(upperBodyLayerIndex, 0f);
             gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 0f, 0f);
@@ -279,7 +279,7 @@ public class TestMoveAnimationController : MonoBehaviour
     {
         if (itemSkill != null && itemSkill.CanUse)
         {
-            itemSkill.UseSkill();
+            //itemSkill.Activate(moveController);
             animator.SetTrigger("Item");
             animator.SetTrigger("PowerUP");
             animator.SetTrigger("Debuff 1");

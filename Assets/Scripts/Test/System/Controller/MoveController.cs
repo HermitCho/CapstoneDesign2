@@ -23,6 +23,9 @@ public class MoveController : MonoBehaviourPun
     private Rigidbody playerRigidbody;
     private Vector2 rawMoveInput; // 원본 입력값 저장
     private PhotonView photonView;
+    private Skill skill;
+    private Skill activeItem;
+
   
 
     // 벽 통과 방지를 위한 변수 추가
@@ -93,6 +96,7 @@ public class MoveController : MonoBehaviourPun
         InputManager.OnJumpPressed += OnJumpInput;
         InputManager.OnSkillPressed += OnSkillInput;
         InputManager.OnItemPressed += OnItemInput; // 아이템 사용 중앙 관리
+        InputManager.OnChangeItemPressed += OnChangeItemInput;
 
         MouseLock();
     }
@@ -106,6 +110,7 @@ public class MoveController : MonoBehaviourPun
         InputManager.OnJumpPressed -= OnJumpInput;
         InputManager.OnSkillPressed -= OnSkillInput;
         InputManager.OnItemPressed -= OnItemInput; // 아이템 사용 중앙 관리
+        InputManager.OnChangeItemPressed -= OnChangeItemInput;
     }
 
 
@@ -120,6 +125,7 @@ public class MoveController : MonoBehaviourPun
             mainCamera = FindObjectOfType<Camera>();
         }
         playerRigidbody = GetComponent<Rigidbody>();
+        skill = GetComponent<Skill>();
         
         // 마지막 유효한 위치 초기화
         lastValidPosition = transform.position;
@@ -128,9 +134,6 @@ public class MoveController : MonoBehaviourPun
         CacheDataBaseInfo();
     }
     
-    /// <summary>
-    /// DataBase 정보 안전하게 캐싱 (GameManager와 동일한 방식)
-    /// </summary>
     void CacheDataBaseInfo()
     {
         try
@@ -638,42 +641,92 @@ public class MoveController : MonoBehaviourPun
     // InputManager에서 스킬 입력 받기
     void OnSkillInput()
     {
-        // ✅ 스킬 사용 제어 확인
-        if (!canUseSkill || isStunned) return;
-        if (!PhotonView.Get(this).IsMine) return;
-        // 실제 스킬 사용은 각 스킬에서 오너만 처리하도록 구현되어 있음
+        UseSkill();
+    }
+
+    public void UseSkill()
+    {
+        if(skill != null)
+        {
+            skill.ActivateSkill(this);
+        }
+    }
+
+    public void UseItem()
+    {
+        if(activeItem != null)
+        {
+            activeItem.ActivateItem(this);
+        }
+    }
+
+    [PunRPC]
+    public void ExecuteSkill(string skillTypeName, Vector3 pos, Vector3 dir)
+    {
+        // 실질 동작은 자기 자신만
+        if(photonView.IsMine && skill != null && skill.GetType().Name == skillTypeName)
+        {
+            skill.Execute(this, pos, dir);
+        }
+
+        // 이펙트/사운드는 모든 클라이언트에서 실행
+        if(skill != null)
+        {
+            skill.PlayEffectAtRemote(this, pos, dir);
+        }
+    }
+
+    [PunRPC]
+    public void CastExecuteSkill(string skillTypeName, Vector3 pos, Vector3 dir)
+    {
+        // 실질 동작은 자기 자신만
+        if(photonView.IsMine && skill != null && skill.GetType().Name == skillTypeName)
+        {
+            skill.CastExecute(this, pos, dir);
+        }
+
+        // 캐스팅 이펙트/사운드는 모든 클라이언트에서 실행
+        if(skill != null)
+        {
+            skill.PlayCastEffectAtRemote(this, pos, dir);
+        }
+    }
+
+    [PunRPC]
+    public void ExecuteItem(string itemTypeName, Vector3 pos, Vector3 dir)
+    {
+        if(photonView.IsMine && activeItem != null && activeItem.GetType().Name == itemTypeName)
+        {
+            activeItem.Execute(this, pos, dir);
+        }
+        
+        if(activeItem != null)
+        {
+            activeItem.PlayEffectAtRemote(this, pos, dir);
+        }
+    }
+
+    [PunRPC]
+    public void CastExecuteItem(string itemTypeName, Vector3 pos, Vector3 dir)
+    {
+        if(photonView.IsMine && activeItem != null && activeItem.GetType().Name == itemTypeName)
+        {
+            activeItem.CastExecute(this, pos, dir);
+        }
+
+        if(activeItem != null)
+        {
+            activeItem.PlayCastEffectAtRemote(this, pos, dir);
+        }
     }
 
     // InputManager에서 아이템 입력 받기
     void OnItemInput()
-    {
-        Debug.Log("🎯 MoveController - OnItemInput 시작");
-        
-        // ✅ 아이템 사용 제어 확인
-        if (!canUseItem || isStunned) 
-        {
-            Debug.Log($"⚠️ MoveController - 아이템 사용 차단: canUseItem={canUseItem}, isStunned={isStunned}");
-            return;
-        }
-        
-        if (!PhotonView.Get(this).IsMine) 
-        {
-            Debug.Log("⚠️ MoveController - 오너가 아니므로 아이템 사용 불가");
-            return;
-        }
-        
-        // 쿨타임 체크 (중복 실행 방지)
-        if (Time.time - lastItemUseTime < itemUseCooldown)
-        {
-            Debug.Log($"⚠️ MoveController - 아이템 사용 쿨타임 중입니다. ({(itemUseCooldown - (Time.time - lastItemUseTime)):F2}초 남음)");
-            return;
-        }
-        
+    {      
         // 상점이 열려있으면 아이템 사용 차단
-        ShopController shopController = FindObjectOfType<ShopController>();
+        ShopController shopController = GetComponent<ShopController>();
         if (shopController != null && shopController.IsShopOpen())
         {
-            Debug.Log("⚠️ MoveController - 상점이 열려있어 아이템을 사용할 수 없습니다.");
             return;
         }
         
@@ -686,22 +739,33 @@ public class MoveController : MonoBehaviourPun
         }
         
         // 활성화된 아이템 가져오기
-        CharacterItem activeItem = itemController.GetFirstActiveItem();
+        activeItem = itemController.GetFirstActiveItem();
+
         if (activeItem == null)
         {
             Debug.LogWarning("⚠️ MoveController - 활성화된 아이템이 없습니다.");
             return;
         }
-        
-        Debug.Log($"🎯 MoveController - 활성 아이템 발견: {activeItem.SkillName}, CanUse: {activeItem.CanUse}");
-        
         // 쿨타임 업데이트
         lastItemUseTime = Time.time;
-        
-        // 아이템 사용
-        Debug.Log($"✅ MoveController - 아이템 사용 시작: {activeItem.SkillName}");
-        bool success = activeItem.UseSkill();
-        Debug.Log($"✅ MoveController - 아이템 사용 결과: {activeItem.SkillName}, 성공: {success}");
+
+        UseItem();
+        //아이템 사용 후 쓰레기통으로 이동
+        itemController.MoveUsedItemToTemp(activeItem.gameObject);
+        Destroy(activeItem.gameObject, activeItem.DestroyTime);
+    }
+
+    void OnChangeItemInput()
+    {
+        ItemController itemController = FindCurrentPlayerItemController();
+        if (itemController == null)
+        {
+            Debug.LogWarning("⚠️ MoveController - ItemController를 찾을 수 없습니다.");
+            return;
+        }
+
+        itemController.SwapFirstAndSecondItems();
+
     }
 
     /// <summary>

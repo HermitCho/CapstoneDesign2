@@ -1,11 +1,14 @@
 using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Photon.Pun;
 
-public class InputManager : MonoBehaviour
+public class InputManager : MonoBehaviourPun
 {
     [Header("Input System")]
     [SerializeField] private PlayerAction playerAction;
+
+    private PhotonView photonView;
     
     // 입력 값들
     private Vector2 moveInput;
@@ -18,6 +21,7 @@ public class InputManager : MonoBehaviour
     private bool zoomPressed; 
     private bool shootPressed;
     private bool reloadPressed;
+    private bool changeItemPressed;
     
     // 이벤트들 (다른 스크립트들이 구독)
     public static event Action<Vector2> OnMoveInput;
@@ -33,6 +37,7 @@ public class InputManager : MonoBehaviour
     public static event Action OnShootPressed;
     public static event Action OnShootCanceledPressed;
     public static event Action OnReloadPressed;
+    public static event Action OnChangeItemPressed;
     
     // 현재 입력 값들 (다른 스크립트들이 읽기용)
     public static Vector2 MoveInput { get; private set; }
@@ -45,9 +50,12 @@ public class InputManager : MonoBehaviour
     public static bool ZoomPressed { get; private set; }
     public static bool ShootPressed { get; private set; }
     public static bool ReloadPressed { get; private set; }
+    public static bool ChangeItemPressed { get; private set; }
     
     void Awake()
     {
+        photonView = GetComponent<PhotonView>();
+        if (!photonView.IsMine) return;
         // PlayerAction 초기화
         if (playerAction == null)
             playerAction = new PlayerAction();
@@ -55,7 +63,7 @@ public class InputManager : MonoBehaviour
     
     void OnEnable()
     {
-        
+        if (!photonView.IsMine) return;
         // PlayerAction이 null인 경우 다시 초기화
         if (playerAction == null)
         {
@@ -82,6 +90,7 @@ public class InputManager : MonoBehaviour
             playerAction.Player.Shoot.performed += OnShoot;
             playerAction.Player.Shoot.canceled += OnShootCanceled;
             playerAction.Player.Reload.performed += OnReload;
+            playerAction.Player.ChangeItem.performed += OnChangeItem;
 
             Debug.Log("Player actions이 등록되었습니다.");
         }
@@ -104,6 +113,7 @@ public class InputManager : MonoBehaviour
     
     void OnDisable()
     {
+        if (!photonView.IsMine) return;
         // PlayerAction이 null인 경우 처리하지 않음
         if (playerAction == null)
             return;
@@ -126,6 +136,7 @@ public class InputManager : MonoBehaviour
             playerAction.Player.Shoot.performed -= OnShoot;
             playerAction.Player.Shoot.canceled -= OnShootCanceled;
             playerAction.Player.Reload.performed -= OnReload;
+            playerAction.Player.ChangeItem.performed -= OnChangeItem;
         }
         catch (System.Exception e)
         {
@@ -231,6 +242,18 @@ public class InputManager : MonoBehaviour
         if (itemPressed)
         {
             OnItemPressed?.Invoke();
+        }
+    }
+
+    // 아이템 변경 입력 처리
+    void OnChangeItem(InputAction.CallbackContext context)
+    {
+        changeItemPressed = context.performed;
+        ChangeItemPressed = changeItemPressed;
+
+        if (changeItemPressed)
+        {
+            OnChangeItemPressed?.Invoke();
         }
     }
     

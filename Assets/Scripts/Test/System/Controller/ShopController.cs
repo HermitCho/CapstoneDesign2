@@ -1,10 +1,12 @@
+using System;
 using System.Collections;
 using UnityEngine;
 using Michsky.UI.Heat;
 using TMPro;
 using UnityEngine.UI;
+using Photon.Pun;
 
-public class ShopController : MonoBehaviour
+public class ShopController : MonoBehaviourPun
 {
     #region 변수
 
@@ -13,7 +15,10 @@ public class ShopController : MonoBehaviour
     [SerializeField] private bool isShopOpen = false;
 
     [Header("UI 컴포넌트")]
-    [SerializeField] private InGameUIManager inGameUIManager;
+    private InGameUIManager inGameUIManager;
+    private Shop shopObject;
+
+    private PhotonView photonView;
 
     #endregion
 
@@ -32,10 +37,17 @@ public class ShopController : MonoBehaviour
     private bool dataBaseCached = false;
     #endregion
 
+
     #region Unity 생명주기
 
+    void Awake()
+    {
+        photonView = GetComponent<PhotonView>();
+    }
     void Start()
     {
+        if (!photonView.IsMine) return;
+
         InitializeShopController();
         CacheDataBaseInfo();
     }
@@ -53,6 +65,12 @@ public class ShopController : MonoBehaviour
         if (inGameUIManager == null)
         {
             inGameUIManager = FindObjectOfType<InGameUIManager>();
+        }
+        
+        // Shop 오브젝트 찾기
+        if (shopObject == null)
+        {
+            shopObject = FindObjectOfType<Shop>();
         }
         
         Debug.Log("✅ ShopController - 초기화 완료");
@@ -89,9 +107,11 @@ public class ShopController : MonoBehaviour
     /// </summary>
     void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Player"))
+        if (!photonView.IsMine) return;
+
+        if (other.CompareTag("Shop"))
         {
-            OpenShop(other);
+            OpenShop();
         }
     }
 
@@ -100,7 +120,9 @@ public class ShopController : MonoBehaviour
     /// </summary>
     void OnTriggerExit(Collider other)
     {
-        if (other.CompareTag("Player"))
+        if (!photonView.IsMine) return;
+
+        if (other.CompareTag("Shop"))
         {
             CloseShop();
         }
@@ -113,34 +135,21 @@ public class ShopController : MonoBehaviour
     /// <summary>
     /// 상점 열기
     /// </summary>
-    /// <param name="player">플레이어 오브젝트</param>
-    void OpenShop(Collider player)
+    /// <param name="Shop">상점 오브젝트</param>
+    void OpenShop()
     {
+        if (!photonView.IsMine) return;
+
         isShopOpen = true;
         
-        // 플레이어 컴포넌트 찾기 (여러 방법으로 시도)
-        playerItemController = player.GetComponent<ItemController>();
+        // 플레이어 컴포넌트 찾기
+        playerItemController = GetComponent<ItemController>();
+        playerCoinController = GetComponent<CoinController>();
         
-        // CoinController는 GameManager를 통해 현재 플레이어의 것을 가져오기
-        if (GameManager.Instance != null)
+        // Shop 오브젝트와 연결
+        if (shopObject != null)
         {
-            playerCoinController = GameManager.Instance.GetCurrentPlayerCoinController();
-        }
-        
-        // GameManager에서 찾지 못한 경우 직접 찾기
-        if (playerCoinController == null)
-        {
-            playerCoinController = player.GetComponent<CoinController>();
-        }
-        
-        if (playerCoinController == null)
-        {
-            playerCoinController = player.GetComponentInChildren<CoinController>();
-        }
-        
-        if (playerItemController == null)
-        {
-            playerItemController = player.GetComponentInChildren<ItemController>();
+            shopObject.ConnectShopController(this);
         }
         
         // 상점 패널 표시
@@ -159,14 +168,17 @@ public class ShopController : MonoBehaviour
     /// </summary>
     void CloseShop()
     {
+        if (!photonView.IsMine) return;
+
         if (isShopOpen)
         {
             isShopOpen = false;
             EnableGameInput();
             
-            if (playerItemController != null)
+            // Shop 오브젝트와의 연결 해제
+            if (shopObject != null)
             {
-                playerItemController.RequestHUDPanelUpdate();
+                shopObject.DisconnectShopController();
             }
 
             playerCoinController = null;
@@ -177,9 +189,6 @@ public class ShopController : MonoBehaviour
                 inGameUIManager.ShowHUDPanel();
                 AudioManager.Inst.PlayOneShot("SFX_UI_CloseShop");
             }
-            
-            
-            Debug.Log("✅ ShopController - 상점이 닫혔습니다.");
         }
     }
 
@@ -193,20 +202,20 @@ public class ShopController : MonoBehaviour
     /// <param name="itemIndex">구매할 아이템 인덱스</param>
     public void PurchaseItem(int itemIndex)
     {
+        if (!photonView.IsMine) return;
+
         if (!isShopOpen || playerCoinController == null || playerItemController == null)
         {
-            Debug.LogWarning("⚠️ ShopController - 상점이 닫혀있거나 플레이어 컴포넌트를 찾을 수 없습니다.");
             return;
         }
 
         if (!dataBaseCached || itemIndex < 0 || itemIndex >= cachedItemData.Length)
         {
-            Debug.LogError($"❌ ShopController - 유효하지 않은 아이템 인덱스: {itemIndex}");
             return;
         }
 
         // ✅ 중복 아이템 체크 (SkillName으로 비교)
-        CharacterItem itemComponent = cachedItemData[itemIndex].GetComponent<CharacterItem>();
+        Skill itemComponent = cachedItemData[itemIndex].GetComponent<Skill>();
         if (itemComponent != null && !string.IsNullOrEmpty(itemComponent.SkillName))
         {
             string skillName = itemComponent.SkillName;
@@ -227,17 +236,15 @@ public class ShopController : MonoBehaviour
         // 아이템 가격 확인 (itemComponent는 이미 위에서 가져왔으므로 재사용)
         if (itemComponent == null)
         {
-            Debug.LogError($"❌ ShopController - 아이템 인덱스 {itemIndex}에 CharacterItem 컴포넌트가 없습니다.");
             return;
         }
 
-        int itemPrice = itemComponent.GetPrice();
+        int itemPrice = itemComponent.Price;
         int playerCoins = playerCoinController.GetCoin();
 
         // 코인 확인
         if (playerCoins < itemPrice)
         {
-            Debug.LogWarning($"❌ ShopController - 코인이 부족합니다. 필요: {itemPrice}, 보유: {playerCoins}");
             return;
         }
 
@@ -247,17 +254,10 @@ public class ShopController : MonoBehaviour
             // 코인 차감
             playerCoinController.SubtractCoin(itemPrice);
             
-            // 아이템 스킬 적용
-            itemComponent.PurchaseItemSkill();
-            
             // 아이템 슬롯에 추가 (프리팹 인스턴스화)
             if (cachedItemData[itemIndex] != null)
             {
                 playerItemController.AttachItem(cachedItemData[itemIndex]);
-            }
-            else
-            {
-                Debug.LogError($"❌ ShopController - 아이템 인덱스 {itemIndex}의 프리팹이 null입니다.");
             }
         }
         catch (System.Exception e)
@@ -304,7 +304,7 @@ public class ShopController : MonoBehaviour
     /// </summary>
     /// <returns>현재 코인 수</returns>
     public int GetPlayerCoins()
-    {
+    {       
         return playerCoinController != null ? playerCoinController.GetCoin() : 0;
     }
 
@@ -320,8 +320,8 @@ public class ShopController : MonoBehaviour
             return 0;
         }
 
-        CharacterItem itemComponent = cachedItemData[itemIndex].GetComponent<CharacterItem>();
-        return itemComponent != null ? itemComponent.GetPrice() : 0;
+        Skill itemComponent = cachedItemData[itemIndex].GetComponent<Skill>();
+        return itemComponent != null ? itemComponent.Price : 0;
     }
 
     #endregion

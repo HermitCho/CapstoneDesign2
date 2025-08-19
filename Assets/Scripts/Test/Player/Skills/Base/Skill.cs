@@ -1,298 +1,199 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI;
 using Photon.Pun;
 
-/// <summary>
-/// 스킬 시스템의 기본 클래스
-/// 캐릭터 스킬과 아이템 스킬의 공통 요소들을 정의
-/// </summary>
 public abstract class Skill : MonoBehaviour
 {
     #region Serialized Fields
 
     [Header("스킬 기본 정보")]
+    [Tooltip("스킬 이름")]
     [SerializeField] protected string skillName = "기본 스킬";
+    [Tooltip("스킬 설명")]
     [SerializeField] protected string skillDescription = "스킬 설명";
-    [SerializeField] protected float duration = 0f; // 지속시간 (0이면 즉시 발동)
-    [SerializeField] protected float castTime = 0f; // 시전 시간
+    [Tooltip("재사용 대기시간")]
+    [SerializeField] protected float cooldown; 
+    [Tooltip("스킬 지속시간")]
+    [SerializeField] protected float duration = 0f; // 스킬 지속시간
+    [Tooltip("이펙트 지속시간")]
+    [SerializeField] protected float effectDuration = 0f; 
+    [Tooltip("캐스팅 이펙트 지속시간")]
+    [SerializeField] protected float effectCastingDuration = 0f; 
+    [Tooltip("시전 시간 (0이면 즉시 발동)")]
+    [SerializeField] protected float castTime = 0f; 
+    [Tooltip("아이템 사용 시 삭제 시간 (-1이면 삭제 안함)")]
+    [SerializeField] protected float destroyTime = -1f; // 스킬 삭제 시간
+    [Tooltip("스킬 이펙트 및 사운드가 플레이어를 따라가는지 여부")]
+    [SerializeField] protected bool isFollowing = false; 
+    [Tooltip("캐스팅 중 스킬 이펙트 및 사운드가 플레이어를 따라가는지 여부")]
+    [SerializeField] protected bool isCastingFollowing = false;
 
+    [Space(10)]
     [Header("UI 요소")]
+    [Tooltip("스킬 아이콘")]
     [SerializeField] protected Sprite skillIcon; // 스킬 아이콘
+    [Tooltip("스킬 색상")]
     [SerializeField] protected Color skillColor = Color.white; // 스킬 색상
 
+    [Space(10)]
     [Header("시각 효과")]
+    [Tooltip("스킬 이펙트")]
     [SerializeField] protected ParticleSystem skillEffect; // 스킬 이펙트
+    [Tooltip("캐스팅 이펙트")]
+    [SerializeField] protected ParticleSystem castTimeSkillEffect; //스킬 시전 이펙트
+    [Tooltip("스킬 사운드")]
     [SerializeField] protected AudioClip skillSound; // 스킬 사운드
+    [Tooltip("캐스팅 이펙트 사운드")]
+    [SerializeField] protected AudioClip castTimeSkillSound; // 스킬 시전 사운드
+
+    [Header("아이템 가격 - 해당 프리팹이 아이템인 경우 사용")]
+    [SerializeField] protected int price = 1;
 
     #endregion
 
     #region Properties
 
-    /// <summary>
-    /// 스킬 이름
-    /// </summary>
     public string SkillName => skillName;
-
-    /// <summary>
-    /// 스킬 설명
-    /// </summary>
     public string SkillDescription => skillDescription;
-
-    /// <summary>
-    /// 스킬 지속시간
-    /// </summary>
+    public float Cooldown => cooldown;
     public float Duration => duration;
-
-    /// <summary>
-    /// 시전 시간
-    /// </summary>
+    public float EffectDuration => effectDuration;
+    public float EffectCastingDuration => effectCastingDuration;
     public float CastTime => castTime;
-
-    /// <summary>
-    /// 스킬 아이콘
-    /// </summary>
+    public float DestroyTime => destroyTime;
     public Sprite SkillIcon => skillIcon;
-
-    /// <summary>
-    /// 스킬 색상
-    /// </summary>
     public Color SkillColor => skillColor;
-
-    /// <summary>
-    /// 스킬이 현재 활성화되어 있는지 여부
-    /// </summary>
-    public bool IsActive { get; protected set; }
-
-    /// <summary>
-    /// 스킬 사용 가능 여부
-    /// </summary>
-    public abstract bool CanUse { get; }
+    public ParticleSystem SkillEffect => skillEffect;
+    public ParticleSystem CastTimeSkillEffect => castTimeSkillEffect;
+    public AudioClip SkillSound => skillSound;
+    public AudioClip CastTimeSkillSound => castTimeSkillSound;
+    public int Price => price;
 
     #endregion
 
-    #region Protected Fields
+    private float lastUseTime;
 
-    protected AudioSource audioSource;
-    protected bool isInitialized = false;
+    public bool CanUse => Time.time - lastUseTime >= cooldown;
+    public bool IsCasting => Time.time - lastUseTime < castTime;
 
-    #endregion
-
-    #region Unity Lifecycle
-
-    protected virtual void Awake()
+    public void ActivateSkill(MoveController executor)
     {
-        InitializeComponents();
-    }
+        if (!CanUse) return;
+        lastUseTime = Time.time;
 
-    protected virtual void Start()
-    {
-        InitializeSkill();
-    }
-
-    #endregion
-
-    #region Initialization
-
-    /// <summary>
-    /// 컴포넌트들을 초기화합니다.
-    /// </summary>
-    protected virtual void InitializeComponents()
-    {
-
-    }
-
-    /// <summary>
-    /// 스킬을 초기화합니다.
-    /// </summary>
-    protected virtual void InitializeSkill()
-    {
-        IsActive = false;
-        isInitialized = true;
-        OnSkillInitialized();
-    }
-
-    #endregion
-
-    #region Public Methods
-
-    /// <summary>
-    /// 스킬을 사용합니다.
-    /// </summary>
-    /// <returns>스킬 사용 성공 여부</returns>
-    public virtual bool UseSkill()
-    {
-        if (!CanUse || !isInitialized)
+        if(castTime > 0f)
         {
-            Debug.LogWarning($"스킬 '{skillName}' 사용 불가: CanUse={CanUse}, Initialized={isInitialized}");
-            return false;
+            executor.photonView.RPC(
+                "CastExecuteSkill",
+                RpcTarget.All,
+                this.GetType().Name,
+                executor.transform.position,
+                executor.transform.forward
+            );
         }
-        
-        // 시전 시간이 있으면 코루틴으로 처리
-        if (castTime > 0f)
-        {
-            StartCoroutine(CastSkillRoutine());
-        }
-        else
-        {
-            ExecuteSkill();
-        }
-
-        return true;
+        executor.photonView.RPC(
+            "ExecuteSkill",
+            RpcTarget.All,
+            this.GetType().Name,
+            executor.transform.position,
+            executor.transform.forward
+        );
     }
 
-    /// <summary>
-    /// 스킬을 강제로 중단합니다.
-    /// </summary>
-    public virtual void CancelSkill()
+    public void ActivateItem(MoveController executor)
     {
-        if (IsActive)
+        if (!CanUse) return;
+        lastUseTime = Time.time;
+        
+        if(castTime > 0f)
         {
-            Debug.Log($"스킬 '{skillName}' 중단");
-            StopAllCoroutines();
-            OnSkillCancelled();
-            IsActive = false;
+            executor.photonView.RPC(
+                "CastExecuteItem",
+                RpcTarget.All,
+                this.GetType().Name,
+                executor.transform.position,
+                executor.transform.forward
+            );
         }
+        executor.photonView.RPC(
+            "ExecuteItem",
+            RpcTarget.All,
+            this.GetType().Name,
+            executor.transform.position,
+            executor.transform.forward
+        );
     }
 
-    #endregion
+    // 실제 동작: 자기 자신만 실행
+    public virtual void Execute(MoveController executor, Vector3 pos, Vector3 dir) { }
+    public virtual void CastExecute(MoveController executor, Vector3 pos, Vector3 dir) { }
 
-    #region Protected Methods
-
-    /// <summary>
-    /// 시전 시간을 고려한 스킬 사용 루틴
-    /// </summary>
-    /// <returns>코루틴</returns>
-    protected virtual IEnumerator CastSkillRoutine()
+    protected void SpawnEffectFollow(ParticleSystem effectPrefab, Transform followTarget, float destroyDelay)
     {
-        OnSkillCastStart();
-        
-        yield return new WaitForSeconds(castTime);
-        
-        ExecuteSkill();
+        if (effectPrefab == null) return;
+        Debug.Log("이펙트 따라감");
+        var fx = GameObject.Instantiate(effectPrefab, followTarget.position, followTarget.rotation, followTarget);
+        fx.Play();
+        Destroy(fx.gameObject, destroyDelay > 0f ? destroyDelay : 0f);
     }
 
-    /// <summary>
-    /// 실제 스킬 효과를 실행합니다.
-    /// </summary>
-    protected virtual void ExecuteSkill()
+    protected void SpawnEffectAtPosition(ParticleSystem effectPrefab, Vector3 pos, Quaternion rot, float destroyDelay)
     {
-        IsActive = true;
-        
-        PlaySkillEffects();
-        OnSkillExecuted();
-        
-        // 지속시간이 있으면 코루틴으로 처리
-        if (duration > 0f)
-        {
-            StartCoroutine(SkillDurationRoutine());
-        }
-        else
-        {
-            OnSkillFinished();
-            IsActive = false;
-        }
+        if (effectPrefab == null) return;
+        Debug.Log("이펙트 고정");
+        var fx = GameObject.Instantiate(effectPrefab, pos, rot, null);
+        fx.Play();
+        Destroy(fx.gameObject, destroyDelay > 0f ? destroyDelay : 0f);
     }
 
-    /// <summary>
-    /// 스킬 지속시간을 처리하는 루틴
-    /// </summary>
-    /// <returns>코루틴</returns>
-    protected virtual IEnumerator SkillDurationRoutine()
-    {
-        yield return new WaitForSeconds(duration);
-        
-        OnSkillFinished();
-        IsActive = false;
-    }
 
-    /// <summary>
-    /// 스킬 효과를 재생합니다.
-    /// </summary>
-    protected virtual void PlaySkillEffects()
+    // 원격 클라이언트에서도 실행되는 이펙트/사운드
+    public void PlayEffectAtRemote(MoveController executor, Vector3 pos, Vector3 dir)
     {
-        // 파티클 이펙트 재생
         if (skillEffect != null)
         {
-            Debug.Log(skillEffect);
-            skillEffect.Play();
+            if(isFollowing)
+            {
+                SpawnEffectFollow(skillEffect, executor.transform, effectDuration);
+                if (skillSound != null && AudioManager.Inst != null)
+                    AudioManager.Inst.PlayClipAtPoint(skillSound, executor.transform.position, 1f, 1f, null, executor.transform);
+            }
+            else
+            {
+                SpawnEffectAtPosition(skillEffect, pos, Quaternion.identity, effectDuration);
+                if (skillSound != null && AudioManager.Inst != null)
+                    AudioManager.Inst.PlayClipAtPoint(skillSound, pos, 1f, 1f, null, executor.transform);
+            }
         }
+    }
 
-        // 사운드 재생
-        if (skillSound != null)
+    public void PlayCastEffectAtRemote(MoveController executor, Vector3 pos, Vector3 dir)
+    {
+        if (castTimeSkillEffect != null)
         {
-            AudioManager.Inst.PlayOneShot(skillSound);
+            if(isCastingFollowing)
+            {
+                SpawnEffectFollow(castTimeSkillEffect, executor.transform, effectCastingDuration);
+                if (castTimeSkillSound != null && AudioManager.Inst != null)
+                    AudioManager.Inst.PlayClipAtPoint(castTimeSkillSound, executor.transform.position, 1f, 1f, null, executor.transform);
+        }
+        else
+        {
+            SpawnEffectAtPosition(castTimeSkillEffect, pos, Quaternion.identity, effectCastingDuration);
+            if (castTimeSkillSound != null && AudioManager.Inst != null)
+                AudioManager.Inst.PlayClipAtPoint(castTimeSkillSound, pos, 1f, 1f, null, executor.transform);
+        }
+    }
+}
+
+    public float RemainingCooldown
+    {
+        get
+        {
+            float elapsed = Time.time - lastUseTime;
+            return Mathf.Max(0f, cooldown - elapsed);
         }
     }
 
-    #endregion
-
-    #region Abstract Methods
-
-    /// <summary>
-    /// 스킬 사용 가능 여부를 확인합니다.
-    /// 자식 클래스에서 구현해야 합니다.
-    /// </summary>
-    /// <returns>사용 가능 여부</returns>
-    protected abstract bool CheckCanUse();
-
-    #endregion
-
-    #region Virtual Methods (자식 클래스에서 오버라이드 가능)
-
-    /// <summary>
-    /// 스킬 초기화 완료 시 호출됩니다.
-    /// </summary>
-    protected virtual void OnSkillInitialized()
-    {
-        // 자식 클래스에서 오버라이드하여 사용
-    }
-
-    /// <summary>
-    /// 스킬 시전 시작 시 호출됩니다.
-    /// </summary>
-    protected virtual void OnSkillCastStart()
-    {
-        // 자식 클래스에서 오버라이드하여 사용
-    }
-
-    /// <summary>
-    /// 스킬 실행 완료 시 호출됩니다.
-    /// </summary>
-    protected virtual void OnSkillExecuted()
-    {
-        // 자식 클래스에서 오버라이드하여 사용
-    }
-
-    /// <summary>
-    /// 스킬 지속시간 종료 시 호출됩니다.
-    /// </summary>
-    protected virtual void OnSkillFinished()
-    {
-        // 자식 클래스에서 오버라이드하여 사용
-    }
-
-    /// <summary>
-    /// 스킬 중단 시 호출됩니다.
-    /// </summary>
-    protected virtual void OnSkillCancelled()
-    {
-        // 자식 클래스에서 오버라이드하여 사용
-    }
-
-    #endregion
-
-    #region Utility Methods
-
-    /// <summary>
-    /// 스킬 정보를 문자열로 반환합니다.
-    /// </summary>
-    /// <returns>스킬 정보 문자열</returns>
-    public override string ToString()
-    {
-        return $"스킬: {skillName} (지속시간: {duration}s, 시전시간: {castTime}s, 활성화: {IsActive})";
-    }
-
-    #endregion
 }
