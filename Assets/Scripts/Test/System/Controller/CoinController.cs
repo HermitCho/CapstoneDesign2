@@ -46,7 +46,6 @@ public class CoinController : MonoBehaviourPun
         currentCoin = 0;
         currentScore = 0f;
         scoreMultiplier = 1f;
-        Debug.Log("✅ CoinController - 코인과 점수 초기화 완료");
     }
 
     #endregion
@@ -92,12 +91,10 @@ public class CoinController : MonoBehaviourPun
             {
                 scoreMultiplier = GameManager.Instance.GetScoreIncreaseRate();
                 baseScore *= scoreMultiplier;
-                Debug.Log($"✅ CoinController - 테디베어 부착 상태에서 코인 {coinAmount}개 획득! 점수: {baseScore} (배율: {scoreMultiplier})");
             }
             else
             {
                 scoreMultiplier = 1f;
-                Debug.Log($"✅ CoinController - 테디베어 미부착 상태에서 코인 {coinAmount}개 획득! 점수: {baseScore}");
             }
             
             // 점수 추가
@@ -135,8 +132,6 @@ public class CoinController : MonoBehaviourPun
         {
             currentScore -= amount;
         }
-        
-        Debug.Log($"✅ CoinController: 점수 차감 완료 - 차감: {amount}, 총 점수: {currentScore}");
     }
     
     /// <summary>
@@ -178,14 +173,12 @@ public class CoinController : MonoBehaviourPun
         // 음수 값 방지
         if (amount < 0)
         {
-            Debug.LogWarning($"⚠️ CoinController: 음수 코인 차감 시도 무시 - {amount}");
             return;
         }
         
         // 현재 코인보다 많이 차감하려는 경우 방지
         if (amount > currentCoin)
         {
-            Debug.LogWarning($"⚠️ CoinController: 현재 코인({currentCoin})보다 많이 차감하려 함 - {amount}, 0으로 설정");
             currentCoin = 0;
         }
         else
@@ -195,8 +188,6 @@ public class CoinController : MonoBehaviourPun
         
         // HUDPanel에 코인 변경 알림
         NotifyHUDCoinChanged();
-        
-        Debug.Log($"💰 CoinController: 코인 차감 완료 - 차감: {amount}, 남은 코인: {currentCoin}");
     }
 
     /// <summary>
@@ -231,10 +222,6 @@ public class CoinController : MonoBehaviourPun
     private void NotifyHUDCoinChanged()
     {
         if (!photonView.IsMine) return;
-        
-        // HUD는 자체적으로 로컬 플레이어의 CoinController를 모니터링하므로
-        // 별도의 업데이트 호출이 필요하지 않음
-        Debug.Log($"✅ CoinController: 코인 변경 완료 - {currentCoin}, HUD는 자동 업데이트됨");
     }
 
     #endregion

@@ -29,6 +29,9 @@ public abstract class Skill : MonoBehaviour
     [Tooltip("캐스팅 중 스킬 이펙트 및 사운드가 플레이어를 따라가는지 여부")]
     [SerializeField] protected bool isCastingFollowing = false;
 
+    [Tooltip("고유 인덱스 - 스킬, 아이템 인덱스 따로 동작함 (둘끼리는 인덱스 중복 가능)")]
+    [SerializeField] protected int index = 0;
+
     [Space(10)]
     [Header("UI 요소")]
     [Tooltip("스킬 아이콘")]
@@ -69,6 +72,7 @@ public abstract class Skill : MonoBehaviour
     public AudioClip SkillSound => skillSound;
     public AudioClip CastTimeSkillSound => castTimeSkillSound;
     public int Price => price;
+    public int Index => index;
 
     #endregion
 
@@ -87,7 +91,7 @@ public abstract class Skill : MonoBehaviour
             executor.photonView.RPC(
                 "CastExecuteSkill",
                 RpcTarget.All,
-                this.GetType().Name,
+                this.index,
                 executor.transform.position,
                 executor.transform.forward
             );
@@ -95,7 +99,7 @@ public abstract class Skill : MonoBehaviour
         executor.photonView.RPC(
             "ExecuteSkill",
             RpcTarget.All,
-            this.GetType().Name,
+            this.index,
             executor.transform.position,
             executor.transform.forward
         );
@@ -111,7 +115,7 @@ public abstract class Skill : MonoBehaviour
             executor.photonView.RPC(
                 "CastExecuteItem",
                 RpcTarget.All,
-                this.GetType().Name,
+                this.index,
                 executor.transform.position,
                 executor.transform.forward
             );
@@ -119,7 +123,7 @@ public abstract class Skill : MonoBehaviour
         executor.photonView.RPC(
             "ExecuteItem",
             RpcTarget.All,
-            this.GetType().Name,
+            this.index,
             executor.transform.position,
             executor.transform.forward
         );

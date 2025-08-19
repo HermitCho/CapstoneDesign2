@@ -11,10 +11,12 @@ public class Dash : Skill
     {
         base.Execute(executor, pos, dir);
 
-        if (!executor.photonView.IsMine) return;
+        if (executor.photonView.IsMine)
+        {
+            var rb = executor.GetComponent<Rigidbody>();
+            rb.AddForce(dir * dashForce, ForceMode.VelocityChange);
+        }
         
-        var rb = executor.GetComponent<Rigidbody>();
-        rb.AddForce(dir * dashForce, ForceMode.VelocityChange);
         
         // 순간적으로 바닥에 남는 흔적 같은 이펙트도 추가 가능
         // SpawnEffectAtPosition(trailEffectPrefab, pos, Quaternion.identity, 1f);
