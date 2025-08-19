@@ -122,19 +122,18 @@ public class MoveController : MonoBehaviourPun
     
     void Start()
     {
-        if(!photonView.IsMine) return;
-                // 메인 카메라 찾기
-        mainCamera = Camera.main;
-        if (mainCamera == null)
-        {
-            mainCamera = FindObjectOfType<Camera>();
-        }
-        playerRigidbody = GetComponent<Rigidbody>();
-        skill = GetComponent<Skill>();
-        
-        // 마지막 유효한 위치 초기화
-        lastValidPosition = transform.position;
-        
+        if(photonView.IsMine)
+        {               // 메인 카메라 찾기
+            mainCamera = Camera.main;
+            if (mainCamera == null)
+            {
+                mainCamera = FindObjectOfType<Camera>();
+            }
+            playerRigidbody = GetComponent<Rigidbody>();
+            skill = GetComponent<Skill>();              
+            // 마지막 유효한 위치 초기화
+            lastValidPosition = transform.position;         
+        } 
         // DataBase 정보 안전하게 캐싱 (Start에서 지연 실행)
         CacheDataBaseInfo();
         CacheDictionary();
