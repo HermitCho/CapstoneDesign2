@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using System;
+using System.Linq;
 using Photon.Pun;
 
 /// <summary>
@@ -20,14 +21,18 @@ using Photon.Pun;
 public class MoveController : MonoBehaviourPun
 {
     private DataBase.PlayerMoveData playerMoveData;
+    private DataBase.PlayerData playerData;
+    private DataBase.ItemData itemData;
     private Rigidbody playerRigidbody;
     private Vector2 rawMoveInput; // 원본 입력값 저장
     private PhotonView photonView;
     private Skill skill;
     private Skill activeItem;
+    private Skill[] Skills;
+    private Skill[] Items;
 
-  
-
+    private Dictionary<int, Skill> skillDictionary = new Dictionary<int, Skill>();
+    private Dictionary<int, Skill> itemDictionary = new Dictionary<int, Skill>();
     // 벽 통과 방지를 위한 변수 추가
     private LayerMask wallLayerMask = -1; // 벽으로 인식할 레이어
     private Vector3 lastValidPosition; // 마지막 유효한 위치 저장
@@ -132,6 +137,7 @@ public class MoveController : MonoBehaviourPun
         
         // DataBase 정보 안전하게 캐싱 (Start에서 지연 실행)
         CacheDataBaseInfo();
+        CacheDictionary();
     }
     
     void CacheDataBaseInfo()
@@ -146,11 +152,11 @@ public class MoveController : MonoBehaviourPun
                 return;
             }
             
-            if (DataBase.Instance.playerMoveData != null)
+            if (DataBase.Instance.playerMoveData != null && DataBase.Instance.playerData != null && DataBase.Instance.itemData != null)
             {
                 playerMoveData = DataBase.Instance.playerMoveData;
-
-           
+                playerData = DataBase.Instance.playerData;
+                itemData = DataBase.Instance.itemData;
                 // 자주 사용되는 값들을 개별 변수로 캐싱
                 cachedSpeed = playerMoveData.Speed;
                 cachedRotationSpeed = playerMoveData.RotationSpeed;
@@ -164,7 +170,8 @@ public class MoveController : MonoBehaviourPun
                 cachedAirMaxSpeed = playerMoveData.AirMaxSpeed;
                 cachedLandingFriction = playerMoveData.LandingFriction;
                 cachedMaxMoveDistance = playerMoveData.MaxMoveDistance;
-
+                Skills = playerData.PlayerPrefabData.Select(prefab => prefab.transform.GetComponent<Skill>()).Where(skill => skill != null).ToArray();
+                Items = itemData.ItemPrefabData.Select(prefab => prefab.transform.GetComponent<Skill>()).Where(item => item != null).ToArray();
                 dataBaseCached = true;
                 Debug.Log("✅ MoveController - DataBase 정보 캐싱 완료");
             }
@@ -204,6 +211,37 @@ public class MoveController : MonoBehaviourPun
         
         Debug.LogError("❌ MoveController - DataBase 캐싱 최대 재시도 횟수 초과, 기본값 사용");
         dataBaseCached = false;
+    }
+
+
+    void CacheDictionary()
+    {
+        skillDictionary.Clear();
+        itemDictionary.Clear();
+
+        if(Skills == null || Skills.Count() == 0) return;
+        foreach(var skill in Skills)
+        {
+            skillDictionary.Add(skill.Index, skill);
+        }
+        if(Items == null || Items.Count() == 0) return;
+        foreach(var item in Items)
+        {
+            itemDictionary.Add(item.Index, item);
+        }
+
+
+        Debug.Log("✅ MoveController - Dictionary 캐싱 완료");
+        Debug.Log("✅ MoveController - skillDictionary 개수: " + skillDictionary.Count());
+        foreach(var skill in skillDictionary)
+        {
+            Debug.Log("✅ MoveController - skillDictionary 개수: " + skill.Key + " " + skill.Value);
+        }
+        Debug.Log("✅ MoveController - itemDictionary 개수: " + itemDictionary.Count());
+        foreach(var item in itemDictionary)
+        {
+            Debug.Log("✅ MoveController - itemDictionary 개수: " + item.Key + " " + item.Value);
+        }
     }
 
     void Update()
@@ -661,62 +699,132 @@ public class MoveController : MonoBehaviourPun
     }
 
     [PunRPC]
-    public void ExecuteSkill(string skillTypeName, Vector3 pos, Vector3 dir)
+    public void ExecuteSkill(int skillIndex, Vector3 pos, Vector3 dir)
     {
         // 실질 동작은 자기 자신만
-        if(photonView.IsMine && skill != null && skill.GetType().Name == skillTypeName)
+        if(photonView.IsMine && skill != null && skill.Index == skillIndex)
         {
             skill.Execute(this, pos, dir);
         }
 
         // 이펙트/사운드는 모든 클라이언트에서 실행
-        if(skill != null)
+        PlaySkillEffectByIndex(skillIndex, pos, dir);
+    }
+    
+    /// <summary>
+    /// 스킬 타입 이름으로 이펙트 재생
+    /// </summary>
+    private void PlaySkillEffectByIndex(int skillIndex, Vector3 pos, Vector3 dir)
+    {
+        if(skillDictionary == null || skillDictionary.Count() == 0) return;
+        // 현재 플레이어의 스킬 컴포넌트 찾기
+        Skill targetSkill = skillDictionary[skillIndex];
+        
+        if (targetSkill != null)
         {
-            skill.PlayEffectAtRemote(this, pos, dir);
+            Debug.Log($"✅ ExecuteSkill - 스킬 '{skillIndex}' 이펙트 재생");
+            targetSkill.PlayEffectAtRemote(this, pos, dir);
+        }
+        else
+        {
+            Debug.LogWarning($"⚠️ ExecuteSkill - 스킬 인덱스 '{skillIndex}'을 찾을 수 없습니다.");
         }
     }
 
     [PunRPC]
-    public void CastExecuteSkill(string skillTypeName, Vector3 pos, Vector3 dir)
+    public void CastExecuteSkill(int skillIndex, Vector3 pos, Vector3 dir)
     {
         // 실질 동작은 자기 자신만
-        if(photonView.IsMine && skill != null && skill.GetType().Name == skillTypeName)
+        if(photonView.IsMine && skill != null && skill.Index == skillIndex)
         {
             skill.CastExecute(this, pos, dir);
         }
 
         // 캐스팅 이펙트/사운드는 모든 클라이언트에서 실행
-        if(skill != null)
+        PlaySkillCastEffectByIndex(skillIndex, pos, dir);
+    }
+    
+    /// <summary>
+    /// 스킬 타입 이름으로 캐스팅 이펙트 재생
+    /// </summary>
+    private void PlaySkillCastEffectByIndex(int skillIndex, Vector3 pos, Vector3 dir)
+    {
+        if(skillDictionary == null || skillDictionary.Count() == 0) return;
+        // 현재 플레이어의 스킬 컴포넌트 찾기
+        Skill targetSkill = skillDictionary[skillIndex];
+        
+        if (targetSkill != null)
         {
-            skill.PlayCastEffectAtRemote(this, pos, dir);
+            Debug.Log($"✅ CastExecuteSkill - 스킬 '{skillIndex}' 캐스팅 이펙트 재생");
+            targetSkill.PlayCastEffectAtRemote(this, pos, dir);
+        }
+        else
+        {
+            Debug.LogWarning($"⚠️ CastExecuteSkill - 스킬 인덱스 '{skillIndex}'을 찾을 수 없습니다.");
         }
     }
 
-    [PunRPC]
-    public void ExecuteItem(string itemTypeName, Vector3 pos, Vector3 dir)
+        [PunRPC]
+    public void ExecuteItem(int itemIndex, Vector3 pos, Vector3 dir)
     {
-        if(photonView.IsMine && activeItem != null && activeItem.GetType().Name == itemTypeName)
+        if(photonView.IsMine && activeItem != null && activeItem.Index == itemIndex)
         {
             activeItem.Execute(this, pos, dir);
         }
         
-        if(activeItem != null)
+        // 이펙트/사운드는 모든 클라이언트에서 실행
+        PlayItemEffectByIndex(itemIndex, pos, dir);
+    }
+    
+    /// <summary>
+    /// 아이템 타입 이름으로 이펙트 재생
+    /// </summary>
+    private void PlayItemEffectByIndex(int itemIndex, Vector3 pos, Vector3 dir)
+    {
+        if(itemDictionary == null || itemDictionary.Count() == 0) return;
+        // 현재 플레이어의 아이템 컴포넌트 찾기
+        Skill targetItem = itemDictionary[itemIndex];
+        
+        if (targetItem != null)
         {
-            activeItem.PlayEffectAtRemote(this, pos, dir);
+            Debug.Log($"✅ ExecuteItem - 아이템 '{itemIndex}' 이펙트 재생");
+            targetItem.PlayEffectAtRemote(this, pos, dir);
+        }
+        else
+        {
+            Debug.LogWarning($"⚠️ ExecuteItem - 아이템 인덱스 '{itemIndex}'을 찾을 수 없습니다.");
         }
     }
 
-    [PunRPC]
-    public void CastExecuteItem(string itemTypeName, Vector3 pos, Vector3 dir)
+        [PunRPC]
+    public void CastExecuteItem(int itemIndex, Vector3 pos, Vector3 dir)
     {
-        if(photonView.IsMine && activeItem != null && activeItem.GetType().Name == itemTypeName)
+        if(photonView.IsMine && activeItem != null && activeItem.Index == itemIndex)
         {
             activeItem.CastExecute(this, pos, dir);
         }
 
-        if(activeItem != null)
+        // 캐스팅 이펙트/사운드는 모든 클라이언트에서 실행
+        PlayItemCastEffectByIndex(itemIndex, pos, dir);
+    }
+    
+    /// <summary>
+    /// 아이템 타입 이름으로 캐스팅 이펙트 재생
+    /// </summary>
+    private void PlayItemCastEffectByIndex(int itemIndex, Vector3 pos, Vector3 dir)
+    {
+        if(itemDictionary == null || itemDictionary.Count() == 0) return;
+        // 현재 플레이어의 아이템 컴포넌트 찾기
+        Skill targetItem = itemDictionary[itemIndex];
+        
+        if (targetItem != null)
         {
-            activeItem.PlayCastEffectAtRemote(this, pos, dir);
+            Debug.Log($"✅ CastExecuteItem - 아이템 '{itemIndex}' 캐스팅 이펙트 재생");
+            targetItem.PlayCastEffectAtRemote(this, pos, dir);
+        }
+        else
+        {
+            Debug.LogWarning($"⚠️ CastExecuteItem - 아이템 인덱스 '{itemIndex}'을 찾을 수 없습니다.");
         }
     }
 

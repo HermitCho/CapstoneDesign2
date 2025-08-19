@@ -1,7 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
 /// <summary>
 /// 데이터베이스
 /// 카메라, 플레이어, 테디베어 데이터 설정 가능
