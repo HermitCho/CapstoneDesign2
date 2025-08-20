@@ -312,11 +312,11 @@ public class ItemController : MonoBehaviourPun
     /// <summary>
     /// 특정 SkillName을 가진 아이템이 이미 보유하고 있는지 확인
     /// </summary>
-    /// <param name="skillName">확인할 아이템의 SkillName</param>
+    /// <param name="index">확인할 아이템의 인덱스</param>
     /// <returns>이미 보유하고 있으면 true, 없으면 false</returns>
-    public bool HasItemBySkillName(string skillName)
+    public bool HasItemByIndex(int index)
     {
-        if (itemSlot1 == null || string.IsNullOrEmpty(skillName))
+        if (itemSlot1 == null || index < 0)
         {
             return false;
         }
@@ -328,7 +328,7 @@ public class ItemController : MonoBehaviourPun
             if (child == null) continue;
 
             Skill characterItem = child.GetComponent<Skill>();
-            if (characterItem != null && characterItem.SkillName == skillName)
+            if (characterItem != null && characterItem.Index == index)
             {
                 return true;
             }
