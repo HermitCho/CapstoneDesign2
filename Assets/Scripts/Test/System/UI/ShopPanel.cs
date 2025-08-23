@@ -8,15 +8,17 @@ using Michsky.UI.Heat;
 public class ShopPanel : MonoBehaviour
 {
     [Header("ShopPanel 버튼 컴포넌트들")]
-    [SerializeField] private ShopButtonManager[] buffShopButtons;
-    [SerializeField] private ShopButtonManager[] debuffShopButtons;
+    [SerializeField] private ButtonManager[] ShopButtons;
 
     [Header("ShopPanel 아이템 컴포넌트들")]
-    [SerializeField] private GameObject[] buffItems;
-    [SerializeField] private GameObject[] debuffItems;
+    [SerializeField] private GameObject[] Items;
 
     [Header("ShopPanel UI 컴포넌트들")]
     [SerializeField] private TextMeshProUGUI coinText;
+
+    [Header("Item Description 모달 컴포넌트")]
+    [SerializeField] private ModalWindowManager itemDescriptionModal;
+
 
     void Start()
     {
@@ -27,8 +29,7 @@ public class ShopPanel : MonoBehaviour
     {
         try
         {
-            AssignItemDataToButtons(buffItems, buffShopButtons, "Buff");
-            AssignItemDataToButtons(debuffItems, debuffShopButtons, "Debuff");
+            AssignItemDataToButtons(Items, ShopButtons);
         }
         catch (System.Exception e)
         {
@@ -36,7 +37,7 @@ public class ShopPanel : MonoBehaviour
         }
     }
 
-    private void AssignItemDataToButtons(GameObject[] items, ShopButtonManager[] buttons, string itemType)
+    private void AssignItemDataToButtons(GameObject[] items, ButtonManager[] buttons)
     {
         if (items == null || buttons == null) return;
 
@@ -55,30 +56,42 @@ public class ShopPanel : MonoBehaviour
             }
             catch (System.Exception e)
             {
-                Debug.LogError($"❌ ShopPanel - {itemType} 아이템 인덱스 {i} 데이터 할당 중 오류: {e.Message}");
+                Debug.LogError($"❌ ShopPanel - 아이템 인덱스 {i} 데이터 할당 중 오류: {e.Message}");
             }
         }
     }
 
-    private void AssignButtonData(ShopButtonManager button, Skill itemComponent, int itemIndex)
+    public void OnHoverItemButton(int index)
+    {
+        itemDescriptionModal.OpenWindow();
+
+        
+        itemDescriptionModal.icon = Items[index].GetComponent<Skill>().SkillIcon;
+
+        itemDescriptionModal.descriptionText = Items[index].GetComponent<Skill>().SkillDescription;
+        itemDescriptionModal.UpdateUI();
+    }
+
+    public void OnLeaveItemButton()
+    {
+        //itemDescriptionModal.icon = null;
+        //itemDescriptionModal.descriptionText = "";
+        itemDescriptionModal.CloseWindow();
+        itemDescriptionModal.UpdateUI();
+    }
+
+    private void AssignButtonData(ButtonManager button, Skill itemComponent, int itemIndex)
     {
         if (button == null || itemComponent == null) return;
 
         try
         {
             Sprite skillIcon = itemComponent.SkillIcon;
-            string skillName = itemComponent.SkillName;
-            string skillDescription = itemComponent.SkillDescription;
-            int price = itemComponent.Price;
+            string skillPrice = itemComponent.Price.ToString();
 
             button.SetIcon(skillIcon);
-            button.SetText(skillName);
-            button.SetPrice(price.ToString());
+            button.SetText(skillPrice);
 
-            if (button.descriptionObj != null)
-            {
-                button.descriptionObj.text = skillDescription;
-            }
 
             button.UpdateUI();
         }

@@ -2,14 +2,17 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System;
+using Photon.Pun;
 
-public class TestTeddyBear : MonoBehaviour
+public class TestTeddyBear : MonoBehaviourPun
 {
 
     private DataBase.TeddyBearData teddyBearData;
     private Collider colliderTeddyBear;
     private Rigidbody teddyRigidbody;
+
     
+    private PhotonView photonView;
     //테디베어 부착 관련 변수
     private Transform playerTransform;
     private Vector3 originalPosition;
@@ -104,6 +107,8 @@ public class TestTeddyBear : MonoBehaviour
 
     void OnCollisionEnter(Collision collision)
     {
+        photonView = collision.transform.GetComponent<PhotonView>();
+        if (!photonView.IsMine) return;
         if (collision.gameObject.CompareTag("Player") && !isAttached)
         {
             // 재부착 방지 시간 확인
@@ -171,6 +176,7 @@ public class TestTeddyBear : MonoBehaviour
 
     void AttachToPlayer(Transform player)
     {
+        if (!photonView.IsMine) return;
         if (isAttached) return;
         
         isAttached = true;
@@ -342,6 +348,7 @@ public class TestTeddyBear : MonoBehaviour
     // 기본 부착 해제 기능 - 현재 위치에 떨구기
     public void DetachFromPlayer()
     {     
+        if (!photonView.IsMine) return;
         if (!isAttached) 
         {
             return;
@@ -393,6 +400,7 @@ public class TestTeddyBear : MonoBehaviour
         
         // 분리되면 다시 발광 시작
         StartGlowing();
+        photonView = null;
     }
     
     // 아이템 사용 시 원래 위치로 되돌아가는 부착 해제 기능
