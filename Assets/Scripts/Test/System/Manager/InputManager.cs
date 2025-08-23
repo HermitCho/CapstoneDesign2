@@ -22,6 +22,7 @@ public class InputManager : MonoBehaviourPun
     private bool shootPressed;
     private bool reloadPressed;
     private bool changeItemPressed;
+    private bool detachPressed;
     
     // 이벤트들 (다른 스크립트들이 구독)
     public static event Action<Vector2> OnMoveInput;
@@ -38,6 +39,7 @@ public class InputManager : MonoBehaviourPun
     public static event Action OnShootCanceledPressed;
     public static event Action OnReloadPressed;
     public static event Action OnChangeItemPressed;
+    public static event Action OnDetachPressed;
     
     // 현재 입력 값들 (다른 스크립트들이 읽기용)
     public static Vector2 MoveInput { get; private set; }
@@ -51,6 +53,7 @@ public class InputManager : MonoBehaviourPun
     public static bool ShootPressed { get; private set; }
     public static bool ReloadPressed { get; private set; }
     public static bool ChangeItemPressed { get; private set; }
+    public static bool DetachPressed { get; private set; }
     
     void Awake()
     {
@@ -91,6 +94,7 @@ public class InputManager : MonoBehaviourPun
             playerAction.Player.Shoot.canceled += OnShootCanceled;
             playerAction.Player.Reload.performed += OnReload;
             playerAction.Player.ChangeItem.performed += OnChangeItem;
+            playerAction.Player.Detach.performed += OnDetach;
 
             Debug.Log("Player actions이 등록되었습니다.");
         }
@@ -137,6 +141,7 @@ public class InputManager : MonoBehaviourPun
             playerAction.Player.Shoot.canceled -= OnShootCanceled;
             playerAction.Player.Reload.performed -= OnReload;
             playerAction.Player.ChangeItem.performed -= OnChangeItem;
+            playerAction.Player.Detach.performed -= OnDetach;
         }
         catch (System.Exception e)
         {
@@ -254,6 +259,17 @@ public class InputManager : MonoBehaviourPun
         if (changeItemPressed)
         {
             OnChangeItemPressed?.Invoke();
+        }
+    }
+
+    void OnDetach(InputAction.CallbackContext context)
+    {
+        detachPressed = context.performed;
+        DetachPressed = detachPressed;
+
+        if (detachPressed)
+        {
+            OnDetachPressed?.Invoke();
         }
     }
     

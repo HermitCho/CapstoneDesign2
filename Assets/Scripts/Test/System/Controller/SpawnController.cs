@@ -8,12 +8,14 @@ public class SpawnController : MonoBehaviourPunCallbacks
     [Header("스폰 위치 설정")]
     [SerializeField] private GameObject[] spawnPositions;
     [SerializeField] private Transform spawnParent;
+    [SerializeField] private Transform crownSpawnPosition;
 
     [Header("스폰 설정")]
     [SerializeField] private bool destroyPreviousCharacter = true;
     [SerializeField] private bool randomizeRotation = false;
     [SerializeField] private Vector3 spawnOffset = Vector3.zero;
     [SerializeField] private float spawnDelay = 0.1f;
+    [SerializeField] private GameObject crownPrefab;
 
     [Header("UI 프리팹")]
     [SerializeField] private GameObject hudPanelPrefab;
@@ -27,6 +29,7 @@ public class SpawnController : MonoBehaviourPunCallbacks
     private bool dataBaseCached = false;
 
     private GameObject currentSpawnedCharacter = null;
+     private GameObject spawnedCrown;
     private int lastUsedSpawnIndex = -1;
     private bool isSpawning = false;
     private int currentSpawnedCharacterIndex = -1;
@@ -37,6 +40,21 @@ public class SpawnController : MonoBehaviourPunCallbacks
         ValidateSpawnPositions();
         CacheDataBaseInfo();
         SpawnSelectedCharacterOnAwake();
+
+    }
+
+    void Start()
+    {
+        if(PhotonNetwork.IsMasterClient)
+        {
+            StartCoroutine(SpawnCrownCoroutine());
+        }
+    }
+
+    IEnumerator SpawnCrownCoroutine()
+    {
+        yield return new WaitForSeconds(3f);
+        SpawnCrown();
     }
 
     void OnDrawGizmos()
@@ -61,6 +79,8 @@ public class SpawnController : MonoBehaviourPunCallbacks
 
     public override void OnJoinedRoom()
     {
+
+        //SpawnCrown();
         // 캐릭터는 이미 Awake에서 스폰되었으므로 추가 작업 불필요
     }
 
@@ -357,5 +377,35 @@ public class SpawnController : MonoBehaviourPunCallbacks
             SpawnCharacter(0);
             hasSpawnedPlayer = true;
         }
+    }
+
+    private void SpawnCrown()
+    {
+        string prefabName = crownPrefab.name;
+
+        // RoomObject 모드로 생성 → 룸 내 모든 클라이언트가 공유
+        spawnedCrown = PhotonNetwork.InstantiateRoomObject(
+            $"Prefabs/{prefabName}",
+            crownSpawnPosition.position,
+            Quaternion.identity
+        );
+        
+    }
+
+    private string GetCrownPrefabResourcePath()
+    {
+        if(crownPrefab == null) return null;
+
+        string prefabName = crownPrefab.name;
+
+        if(Resources.Load($"Prefabs/{prefabName}") != null)
+        {
+            return $"Prefabs/{prefabName}";
+        }
+        else if(Resources.Load($"Prefabs/Items/{prefabName}") != null)
+        {
+            return $"Prefabs/Items/{prefabName}";
+        }
+        return null;
     }
 }

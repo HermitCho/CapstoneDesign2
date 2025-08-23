@@ -32,7 +32,7 @@ public class TestMoveAnimationController : MonoBehaviour
     private bool isAiming = false;
 
     // 테디베어 총기 부착 관련
-    [SerializeField] private TestTeddyBear teddyBear;
+    [SerializeField] private Crown teddyBear;
     [SerializeField] private GameObject gunObject;
     private bool previousAttachState = false;
 
