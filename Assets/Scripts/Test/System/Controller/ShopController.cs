@@ -216,12 +216,12 @@ public class ShopController : MonoBehaviourPun
 
         // ✅ 중복 아이템 체크 (SkillName으로 비교)
         Skill itemComponent = cachedItemData[itemIndex].GetComponent<Skill>();
-        if (itemComponent != null && !string.IsNullOrEmpty(itemComponent.SkillName))
+        if (itemComponent != null && itemComponent.Index >= 0)
         {
-            string skillName = itemComponent.SkillName;
-            if (playerItemController.HasItemBySkillName(skillName))
+            int index = itemComponent.Index;
+            if (playerItemController.HasItemByIndex(index))
             {
-                Debug.LogWarning($"⚠️ ShopController - 이미 보유하고 있는 아이템입니다: {skillName}");
+                Debug.LogWarning($"⚠️ ShopController - 이미 보유하고 있는 아이템입니다: {index}");
                 return;
             }
         }

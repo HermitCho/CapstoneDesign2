@@ -13,7 +13,7 @@ public class GameManager : Singleton<GameManager>
     private LivingEntity localPlayerLivingEntity;
 
     // 테디베어 관리 (점수는 CoinController에서 관리)
-    private TestTeddyBear currentTeddyBear;
+    private Crown currentTeddyBear;
     
     // 게임 시간 관리
     private float gameStartTime = 0f;
@@ -837,7 +837,7 @@ public class GameManager : Singleton<GameManager>
     {
         if (currentTeddyBear == null)
         {
-            currentTeddyBear = FindObjectOfType<TestTeddyBear>();
+            currentTeddyBear = FindObjectOfType<Crown>();
             if (currentTeddyBear != null)
             {     
                 // 게임 씬에서는 항상 점수 초기화

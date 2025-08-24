@@ -95,14 +95,18 @@ public abstract class Skill : MonoBehaviour
                 executor.transform.position,
                 executor.transform.forward
             );
+            StartCoroutine(DelaySkillExecute(executor, castTime));
         }
-        executor.photonView.RPC(
+        else
+        {       
+            executor.photonView.RPC(
             "ExecuteSkill",
             RpcTarget.All,
             this.index,
             executor.transform.position,
             executor.transform.forward
         );
+        }
     }
 
     public void ActivateItem(MoveController executor)
@@ -119,7 +123,36 @@ public abstract class Skill : MonoBehaviour
                 executor.transform.position,
                 executor.transform.forward
             );
+            StartCoroutine(DelayItemExecute(executor, castTime));
         }
+        else
+        {
+            
+            executor.photonView.RPC(
+            "ExecuteItem",
+            RpcTarget.All,
+            this.index,
+            executor.transform.position,
+            executor.transform.forward
+        );
+        }
+    }
+
+    private IEnumerator DelaySkillExecute(MoveController executor, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        executor.photonView.RPC(
+            "ExecuteSkill",
+            RpcTarget.All,
+            this.index,
+            executor.transform.position,
+            executor.transform.forward
+        );
+    }
+
+    private IEnumerator DelayItemExecute(MoveController executor, float delay)
+    {
+        yield return new WaitForSeconds(delay);
         executor.photonView.RPC(
             "ExecuteItem",
             RpcTarget.All,

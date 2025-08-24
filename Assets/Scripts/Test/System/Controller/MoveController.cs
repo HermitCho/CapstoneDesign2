@@ -228,19 +228,6 @@ public class MoveController : MonoBehaviourPun
         {
             itemDictionary.Add(item.Index, item);
         }
-
-
-        Debug.Log("✅ MoveController - Dictionary 캐싱 완료");
-        Debug.Log("✅ MoveController - skillDictionary 개수: " + skillDictionary.Count());
-        foreach(var skill in skillDictionary)
-        {
-            Debug.Log("✅ MoveController - skillDictionary 개수: " + skill.Key + " " + skill.Value);
-        }
-        Debug.Log("✅ MoveController - itemDictionary 개수: " + itemDictionary.Count());
-        foreach(var item in itemDictionary)
-        {
-            Debug.Log("✅ MoveController - itemDictionary 개수: " + item.Key + " " + item.Value);
-        }
     }
 
     void Update()

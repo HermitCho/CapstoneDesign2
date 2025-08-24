@@ -2,14 +2,18 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System;
+using Photon.Pun;
 
-public class TestTeddyBear : MonoBehaviour
+public class Crown : MonoBehaviourPun
 {
 
     private DataBase.TeddyBearData teddyBearData;
-    private Collider colliderTeddyBear;
-    private Rigidbody teddyRigidbody;
+    private Collider crownCollider;
+    private Rigidbody crownRigidbody;
+
     
+    private PhotonView photonView;
+    private PhotonView currentPlayerPhotonView;
     //테디베어 부착 관련 변수
     private Transform playerTransform;
     private Vector3 originalPosition;
@@ -58,8 +62,9 @@ public class TestTeddyBear : MonoBehaviour
     {   
         CacheDataBaseInfo();
 
-        colliderTeddyBear = GetComponent<Collider>();
-        teddyRigidbody = GetComponent<Rigidbody>();
+        crownCollider = GetComponent<Collider>();
+        crownRigidbody = GetComponent<Rigidbody>();
+        photonView = GetComponent<PhotonView>();
         
         // Outline 컴포넌트 초기화
         InitializeOutline();
@@ -69,12 +74,14 @@ public class TestTeddyBear : MonoBehaviour
     {
         // ✅ 플레이어 사망 이벤트 구독
         LivingEntity.OnPlayerDied += OnPlayerDied;
+        InputManager.OnDetachPressed += DetachFromPlayer;
     }
 
     void OnDisable()
     {
         // ✅ 플레이어 사망 이벤트 구독 해제
         LivingEntity.OnPlayerDied -= OnPlayerDied;
+        InputManager.OnDetachPressed -= DetachFromPlayer;
     }
 
     // Start is called before the first frame update
@@ -95,22 +102,21 @@ public class TestTeddyBear : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if(Input.GetKeyDown(KeyCode.LeftShift))
-        {
-            DetachFromPlayer();
-        }  
-        
     }
 
     void OnCollisionEnter(Collision collision)
     {
+       // if(!collision.gameObject.CompareTag("Player")) return;
+
         if (collision.gameObject.CompareTag("Player") && !isAttached)
-        {
+        {   
+            PhotonView playerPhotonView = collision.transform.GetComponent<PhotonView>();
+            if (!playerPhotonView.IsMine) return;
             // 재부착 방지 시간 확인
             float timeSinceDetach = Time.time - lastDetachTime;
             if (timeSinceDetach >= cachedDetachReattachTime)
             {
-                AttachToPlayer(collision.transform);
+                AttachToPlayer(playerPhotonView);
             }
             else
             {
@@ -169,42 +175,54 @@ public class TestTeddyBear : MonoBehaviour
     }
 
 
-    void AttachToPlayer(Transform player)
+
+    void AttachToPlayer(PhotonView playerView )
     {
         if (isAttached) return;
         
-        isAttached = true;
-        playerTransform = player;
+        // 1) 소유권을 Crown 집은 플레이어에게 넘김
+        photonView.TransferOwnership(playerView.Owner);
+        currentPlayerPhotonView = playerView;
 
-        
-        
-        // 플레이어의 자식으로 설정
-        transform.SetParent(player);
-        
-        // 플레이어 앞에 즉시 부착
-        Vector3 targetPosition = player.position + player.forward * cachedAttachOffset.z + player.up * cachedAttachOffset.y + player.right * cachedAttachOffset.x;
-        Quaternion targetRotation = player.rotation * Quaternion.Euler(cachedAttachRotation);
-        
-        // 즉시 위치와 회전 설정
-        transform.position = targetPosition;
-        transform.rotation = targetRotation;
-        
-        // 물리적 상호작용 비활성화 (떨어져 나가는 것 방지)
-        if (teddyRigidbody != null)
-        {
-            teddyRigidbody.isKinematic = true;
-            teddyRigidbody.useGravity = false;
-        }
-        
-        // 콜라이더 비활성화 (추가 접촉 방지)
-        if (colliderTeddyBear != null)
-        {
-            colliderTeddyBear.enabled = false;
-        }
-        
+        // 2) 모든 클라이언트에게 Attach 사실 알림
+        photonView.RPC("RpcAttachToPlayer", RpcTarget.AllBuffered, playerView.ViewID);
 
         #warning Static으로 선언되어 있음. 최적화를 위해 수정 필요
-        TestShoot.SetIsShooting(false);
+        if(playerView.IsMine)
+        {
+            TestShoot.SetIsShooting(false);
+            isAttached = true;
+        }
+    }
+
+    [PunRPC]
+    private void RpcAttachToPlayer(int playerViewId)
+    {
+        PhotonView playerPV = PhotonView.Find(playerViewId);
+        if (playerPV == null) return;
+
+        playerTransform = playerPV.transform;
+
+        // 플레이어 앞에 즉시 부착
+        Vector3 targetPosition = playerPV.transform.position + playerPV.transform.forward * cachedAttachOffset.z + playerPV.transform.up * cachedAttachOffset.y + playerPV.transform.right * cachedAttachOffset.x;
+        Quaternion targetRotation = playerPV.transform.rotation * Quaternion.Euler(cachedAttachRotation);
+
+        
+        transform.localPosition = targetPosition;
+        transform.localRotation = targetRotation;
+        transform.SetParent(playerTransform);
+
+        if (crownRigidbody != null)
+        {
+            crownRigidbody.isKinematic = true;
+            crownRigidbody.useGravity = false;
+        }
+        if (crownCollider != null)
+        {
+            crownCollider.enabled = false;
+        }
+
+        Debug.Log($"👑 Crown attached to {playerPV.Owner.NickName}");
     }
 
     // Outline 컴포넌트 초기화
@@ -342,59 +360,63 @@ public class TestTeddyBear : MonoBehaviour
     // 기본 부착 해제 기능 - 현재 위치에 떨구기
     public void DetachFromPlayer()
     {     
-        if (!isAttached) 
-        {
-            return;
-        }
-        
-        isAttached = false;
+        if (currentPlayerPhotonView == null || !currentPlayerPhotonView.IsMine) return;
+        if (!isAttached) return;
         
         // 현재 위치 저장 (떨굴 위치)
-        Vector3 currentPos = transform.position;
-        Quaternion currentRot = transform.rotation;
+        Vector3 dropPosition = transform.position;
         
-        // 원본 부모로 복원
-        transform.SetParent(originalParent);
-        
-        // 현재 위치에 떨구기 (원래 위치가 아닌)
-        transform.position = currentPos;
-        transform.rotation = currentRot;
-        
-        // 물리적 상호작용 다시 활성화
-        if (teddyRigidbody != null)
-        {
-            teddyRigidbody.isKinematic = false;
-            teddyRigidbody.useGravity = true;
-            
-            // 플레이어 앞쪽 방향으로 힘 가하기 (밀어내기)
-            if (playerTransform != null)
-            {
-                Vector3 pushDirection = playerTransform.forward + Vector3.up * 0.5f; // 약간 위쪽으로도 힘 가하기
-                float pushForce = 5f; // 밀어내는 힘의 강도
-                teddyRigidbody.AddForce(pushDirection * pushForce, ForceMode.Impulse);
 
-            }
-        }
-        
-        // 콜라이더 다시 활성화
-        if (colliderTeddyBear != null)
-        {
-            colliderTeddyBear.enabled = true;
-        }
-        
+        // 모든 클라이언트에서 떨구기 상태 적용
+        photonView.RPC("RpcDetachFromPlayer", RpcTarget.AllBuffered, transform.position);  
+
         // 재부착 방지 시간 기록
         lastDetachTime = Time.time;
         
         playerTransform = null;
 
-        #warning Static으로 선언되어 있음. 최적화를 위해 수정 필요
-        TestShoot.SetIsShooting(true);
+        if(currentPlayerPhotonView.IsMine)
+        {
+            TestShoot.SetIsShooting(true);
+            isAttached = false;
+        }
+        currentPlayerPhotonView = null;
+    }
 
-        
+    [PunRPC]
+    private void RpcDetachFromPlayer(Vector3 dropPosition)
+    {
+        playerTransform = null;
+
+        // 부모 복원
+        transform.SetParent(originalParent);
+
+        // 위치, 회전 적용
+        transform.position = dropPosition;
+        transform.rotation = Quaternion.identity;
+
+        // 물리 활성화
+        if (crownRigidbody != null)
+        {
+            crownRigidbody.isKinematic = false;
+            crownRigidbody.useGravity = true;
+
+            // optional: 약간 힘을 가해 밀어내기
+            if (playerTransform != null)
+            {
+             Vector3 pushDirection = playerTransform.forward + Vector3.up * 0.5f;
+            float pushForce = 5f;
+            crownRigidbody.AddForce(pushDirection * pushForce, ForceMode.Impulse);
+            }
+        }
+        // 콜라이더 활성화
+        if (crownCollider != null)
+            crownCollider.enabled = true;
+
         // 분리되면 다시 발광 시작
         StartGlowing();
     }
-    
+
     // 아이템 사용 시 원래 위치로 되돌아가는 부착 해제 기능
     public void DetachAndReturnToOriginal()
     {
@@ -410,16 +432,16 @@ public class TestTeddyBear : MonoBehaviour
         transform.rotation = originalRotation;
         
         // 물리적 상호작용 다시 활성화
-        if (teddyRigidbody != null)
+        if (crownRigidbody != null)
         {
-            teddyRigidbody.isKinematic = false;
-            teddyRigidbody.useGravity = true;
+            crownRigidbody.isKinematic = false;
+            crownRigidbody.useGravity = true;
         }
         
         // 콜라이더 다시 활성화
-        if (colliderTeddyBear != null)
+        if (crownCollider != null)
         {
-            colliderTeddyBear.enabled = true;
+            crownCollider.enabled = true;
         }
         
         // 재부착 방지 시간 기록

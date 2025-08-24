@@ -7,7 +7,7 @@ public class GunData : ScriptableObject
 {
     [Header("총 기본 스탯탯")]
     public string gunName;
-    public int damage;
+    public float damage;
     public float range;
     public float fireRate;
     public int maxAmmo;

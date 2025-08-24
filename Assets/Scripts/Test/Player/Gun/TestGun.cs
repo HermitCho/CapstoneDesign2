@@ -143,7 +143,7 @@ public class TestGun : MonoBehaviourPun
     {
         // ✅ 발사자만 실행되도록 보장
         if (!photonViewCached.IsMine) return;
-        
+
         if (CanFire())
         {
             Vector3 targetPosition = CalculateShotTarget();
@@ -173,7 +173,7 @@ public class TestGun : MonoBehaviourPun
     private void ExecuteFire(Vector3 worldPoint)
     {
         if (!photonViewCached.IsMine) return;
-        
+
         lastFireTime = Time.time;
         Vector3 direction = (worldPoint - fireTransform.position).normalized;
         muzzleDirectionController?.SetDirection(direction);
@@ -203,7 +203,7 @@ public class TestGun : MonoBehaviourPun
             CurrentMagAmmo--;
             if (CurrentMagAmmo <= 0)
                 CurrentState = GunState.Empty;
-                
+
             // 탄약 상태를 다른 클라이언트에게 동기화
             photonViewCached.RPC("RPC_SyncAmmo", RpcTarget.Others, CurrentMagAmmo, CurrentState);
         }
@@ -270,9 +270,15 @@ public class TestGun : MonoBehaviourPun
         if (Physics.Raycast(fireTransform.position, direction, out RaycastHit hit, gunData.range, layerMask, QueryTriggerInteraction.Ignore))
         {
             IDamageable target = hit.collider.GetComponent<IDamageable>();
-            target?.OnDamage(gunData.damage, hit.point, hit.normal);
+            PhotonView targetView = hit.collider.GetComponent<PhotonView>();
+
+            if (target != null && targetView != null)
+            {
+                targetView.RPC("OnDamage", RpcTarget.MasterClient, gunData.damage, hit.point, hit.normal);
+            }
         }
     }
+
     #endregion
 
     #region Visual Effects
