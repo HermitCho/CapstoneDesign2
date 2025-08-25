@@ -222,7 +222,7 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
         }
         else
         {
-a            Debug.Log($"[LivingEntity] {gameObject.name} 부활 RPC 호출 실패 - IsMine이 아님");
+            Debug.Log($"[LivingEntity] {gameObject.name} 부활 RPC 호출 실패 - IsMine이 아님");
         }
     }
 
