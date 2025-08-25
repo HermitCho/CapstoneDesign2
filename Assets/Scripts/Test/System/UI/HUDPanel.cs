@@ -36,6 +36,10 @@ public class HUDPanel : MonoBehaviour
     [SerializeField] private Image itemIcon2;
     [SerializeField] private Sprite emptyItemIcon;
 
+    [Header("킬로그 UI")]
+    [SerializeField] private GameObject killLogParent;
+    [SerializeField] private GameObject killLogPrefab;
+
     // 로컬 플레이어 참조
     private GameObject localPlayer;
     private LivingEntity localLivingEntity;
@@ -113,6 +117,7 @@ public class HUDPanel : MonoBehaviour
             UpdateItemUI();
             lastItemUpdate = currentTime;
         }
+        
         
     }
     
@@ -558,6 +563,38 @@ public class HUDPanel : MonoBehaviour
         ClearItemIcon(itemIcon1);
         ClearItemIcon(itemIcon2);
     }
+
+
+    private void OnEnable()
+    {
+        LivingEntity.OnPlayerDied += HandlePlayerDeath;
+    }
+
+    private void OnDisable()
+    {
+        LivingEntity.OnPlayerDied -= HandlePlayerDeath;
+    }
+
+    private void HandlePlayerDeath(LivingEntity victim)
+    {
+        if (victim == null) return;
+
+        LivingEntity attacker = victim.GetAttacker();
+        if (attacker != null)
+        {
+            // 모든 클라이언트에서 킬로그 생성
+            GameObject killLog = Instantiate(killLogPrefab, killLogParent.transform);
+            Debug.Log($"HUD: 킬로그 생성 - {killLog.name}");
+            QuestItem questItem = killLog.GetComponent<QuestItem>();
+            
+            // 킬로그 텍스트 설정
+            questItem.questText = $"{attacker.CharacterData.characterName}         {victim.CharacterData.characterName}";
+            questItem.UpdateUI();
+            questItem.AnimateQuest();
+            Debug.Log($"HUD: 킬로그 업데이트 - {questItem.questText}");
+        }
+    }
+
 } 
 
 

@@ -19,6 +19,9 @@ public class TestGun : MonoBehaviourPun
     #endregion
 
     #region Serialized Fields
+    [Header("Living Entity")]
+    [SerializeField] private LivingEntity livingEntity;
+
     [Header("Gun Configuration")]
     [SerializeField] private GunData gunData;
 
@@ -33,6 +36,7 @@ public class TestGun : MonoBehaviourPun
     [SerializeField] private MuzzleDirectionController muzzleDirectionController;
 
     private MoveController moveController;
+    
     #endregion
 
     #region Properties
@@ -45,12 +49,14 @@ public class TestGun : MonoBehaviourPun
     private PhotonView photonViewCached;
     private bool isFiring;
     private float lastFireTime;
+    private float damage;
     #endregion
 
     #region Unity Lifecycle
     protected virtual void Awake()
     {
         photonViewCached = GetComponent<PhotonView>();
+        damage = gunData.damage;
     }
 
     protected virtual void OnEnable()
@@ -274,7 +280,7 @@ public class TestGun : MonoBehaviourPun
 
             if (target != null && targetView != null)
             {
-                targetView.RPC("OnDamage", RpcTarget.MasterClient, gunData.damage, hit.point, hit.normal);
+                targetView.RPC("OnDamage", RpcTarget.AllViaServer, damage, hit.point, hit.normal, livingEntity);
             }
         }
     }
