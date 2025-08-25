@@ -280,7 +280,9 @@ public class TestGun : MonoBehaviourPun
 
             if (target != null && targetView != null)
             {
-                targetView.RPC("OnDamage", RpcTarget.AllViaServer, damage, hit.point, hit.normal, livingEntity);
+                // LivingEntity 객체 대신 PhotonView.ViewID를 전달
+                int attackerViewId = livingEntity.photonView.ViewID;
+                targetView.RPC("OnDamage", RpcTarget.AllViaServer, damage, hit.point, hit.normal, attackerViewId);
             }
         }
     }

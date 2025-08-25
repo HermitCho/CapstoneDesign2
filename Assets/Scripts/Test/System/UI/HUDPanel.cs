@@ -585,13 +585,33 @@ public class HUDPanel : MonoBehaviour
             // 모든 클라이언트에서 킬로그 생성
             GameObject killLog = Instantiate(killLogPrefab, killLogParent.transform);
             Debug.Log($"HUD: 킬로그 생성 - {killLog.name}");
+            
+     
             QuestItem questItem = killLog.GetComponent<QuestItem>();
+
             
             // 킬로그 텍스트 설정
             questItem.questText = $"{attacker.CharacterData.characterName}         {victim.CharacterData.characterName}";
             questItem.UpdateUI();
+
+            // Animate quest
             questItem.AnimateQuest();
-            Debug.Log($"HUD: 킬로그 업데이트 - {questItem.questText}");
+            questItem.ExpandQuest();
+            questItem.MinimizeQuest();
+            
+            // 3초 후 킬로그 제거
+            StartCoroutine(DestroyKillLogAfterDelay(killLog, 5f));
+        }
+    }
+    
+    private IEnumerator DestroyKillLogAfterDelay(GameObject killLog, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        
+        if (killLog != null)
+        {
+            Debug.Log($"HUD: 킬로그 제거 - {killLog.name}");
+            Destroy(killLog);
         }
     }
 
