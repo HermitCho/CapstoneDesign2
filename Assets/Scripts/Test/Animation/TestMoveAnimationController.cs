@@ -39,7 +39,7 @@ public class TestMoveAnimationController : MonoBehaviour
     // 발소리 관련
     private FootstepSoundPlayer footstepSoundPlayer;
 
-
+    // 체력 관련
     private GunIK gunIK;
     private AimIK aimIK;
     private LivingEntity livingEntity;
@@ -98,6 +98,7 @@ public class TestMoveAnimationController : MonoBehaviour
             livingEntity.OnRevive -= OnRevive;
         }
     }
+    
     private void Update()
     {
         HandleMovementAnimation();
@@ -106,7 +107,24 @@ public class TestMoveAnimationController : MonoBehaviour
         HandleJumpAnimation();
         // HandleLookAnimation();
         HandleTeddyBearWeaponState();
+        HandleHealthBasedAnimation();
+    }
 
+    // 체력 기반 애니메이션 처리
+    private void HandleHealthBasedAnimation()
+    {
+        if (livingEntity == null) return;
+
+        // MoveController의 스턴 상태 확인하여 stun 애니메이션 제어
+        if (moveController != null)
+        {
+            bool isStunned = moveController.IsStunned();
+            
+            if (isStunned)
+            {
+                Debug.Log("스턴 상태 - Death 애니메이션으로 Stun 상태 전환");
+            }
+        }
     }
 
     // 이동 입력 처리
@@ -140,6 +158,11 @@ public class TestMoveAnimationController : MonoBehaviour
     private void OnRevive()
     {
         animator.SetTrigger("Revive");
+        // 부활 시 스턴 상태 해제
+        if (moveController != null)
+        {
+            moveController.SetStunned(false);
+        }
     }
 
     // // 캐릭터 회전값을 받아 애니메이션 전달
