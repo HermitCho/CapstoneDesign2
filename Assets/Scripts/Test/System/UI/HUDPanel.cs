@@ -73,6 +73,10 @@ public class HUDPanel : MonoBehaviour
         {
             GameManager.OnGameTimeUpdated += UpdateGameTime;
         }
+        
+        // LivingEntity 사망 이벤트 구독
+        LivingEntity.OnPlayerDied += HandlePlayerDeath;
+        Debug.Log("HUD: LivingEntity.OnPlayerDied 이벤트 구독 완료");
     }
     
     void OnDestroy()
@@ -82,6 +86,10 @@ public class HUDPanel : MonoBehaviour
         {
             GameManager.OnGameTimeUpdated -= UpdateGameTime;
         }
+        
+        // LivingEntity 사망 이벤트 구독 해제
+        LivingEntity.OnPlayerDied -= HandlePlayerDeath;
+        Debug.Log("HUD: LivingEntity.OnPlayerDied 이벤트 구독 해제 완료");
     }
     
     void Update()
@@ -565,15 +573,7 @@ public class HUDPanel : MonoBehaviour
     }
 
 
-    private void OnEnable()
-    {
-        LivingEntity.OnPlayerDied += HandlePlayerDeath;
-    }
 
-    private void OnDisable()
-    {
-        LivingEntity.OnPlayerDied -= HandlePlayerDeath;
-    }
 
     private void HandlePlayerDeath(LivingEntity victim)
     {

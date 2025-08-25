@@ -119,11 +119,6 @@ public class TestMoveAnimationController : MonoBehaviour
         if (moveController != null)
         {
             bool isStunned = moveController.IsStunned();
-            
-            if (isStunned)
-            {
-                Debug.Log("스턴 상태 - Death 애니메이션으로 Stun 상태 전환");
-            }
         }
     }
 
