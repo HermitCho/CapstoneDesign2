@@ -20,18 +20,13 @@ public class TestMoveAnimationController : MonoBehaviourPun
     // 입력값(WASD, 마우스 X)
     private Vector2 moveInput; 
     private Vector2 mouseInput;
-
-    // 총기 상태 체크용
-    private TestGun testGun;
+    
+    // 재장전 관련
+    private bool isReloading = false;
 
     // 캐릭터 이동 정보를 가져오는 컴포넌트
     private MoveController moveController;
     private CameraController cameraController;
-
-    // 애니메이션 속도 관련
-    private float normalAnimSpeed = 1f;
-    private float aimingAnimSpeed = 0.5f;
-    private bool isAiming = false;
 
     // 테디베어 총기 부착 관련
     [SerializeField] private Crown teddyBear;
@@ -50,9 +45,7 @@ public class TestMoveAnimationController : MonoBehaviourPun
     private Skill skill;
     // 아이템 스킬
     private Skill itemSkill;
-
     private Coroutine speedSkillCoroutine;
-
     private string skillAnimationTriggerName = "None";
 
     private void Awake()
@@ -111,12 +104,25 @@ public class TestMoveAnimationController : MonoBehaviourPun
     {
         if (!photonView.IsMine) return;
         HandleMovementAnimation();
-        // HandleTurnAnimation();
-        // HandleAnimatorSpeed();
         HandleJumpAnimation();
-        // HandleLookAnimation();
         HandleTeddyBearWeaponState();
         HandleHealthBasedAnimation();
+        HandleUpperBodyLayer();
+    }
+
+    private void HandleUpperBodyLayer()
+    {
+
+        if (isReloading)
+        {
+            animator.SetLayerWeight(upperBodyLayerIndex, 1f);
+            return;
+        }
+
+        bool isInMovement = animator.GetCurrentAnimatorStateInfo(0).IsName("Movement");
+        bool isJumping = animator.GetBool("JumpUp");
+
+        animator.SetLayerWeight(upperBodyLayerIndex, isInMovement || isJumping ? 1f : 0f);        
     }
 
     // 체력 기반 애니메이션 처리
@@ -172,7 +178,7 @@ public class TestMoveAnimationController : MonoBehaviourPun
     // 재장전시 트리거 실행
     void OnReloadInput()
     {
-        animator.SetLayerWeight(upperBodyLayerIndex, 1f);
+        isReloading = true;
         gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 0f, 0f);
         aimIK.enabled = false;
         animator.SetTrigger("Reload");
@@ -188,6 +194,7 @@ public class TestMoveAnimationController : MonoBehaviourPun
     // 재장전 종료
     void OnReloadEnd()
     {
+        isReloading = false;
         Debug.Log("Reload 애니메이션 종료됨");
         gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 1f, 1f);
         aimIK.enabled = true;
@@ -228,7 +235,6 @@ public class TestMoveAnimationController : MonoBehaviourPun
     // 조준 시작 시 호출
     void OnZoomInput()
     {
-        isAiming = true;
         gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.Body, gunIK.bodyTarget, 0.04f);
         gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.RightFoot, gunIK.rightLegTarget, 0.3f);
         gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftFoot, gunIK.leftLegTarget, 0.3f);
@@ -239,7 +245,6 @@ public class TestMoveAnimationController : MonoBehaviourPun
     // 조준 해제 시 호출
     void OnZoomCanceledInput()
     {
-        isAiming = false;
         gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.Body, gunIK.bodyTarget, 0.01f);
         gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.RightFoot, gunIK.rightLegTarget, 0.2f);
         gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftFoot, gunIK.leftLegTarget, 0.2f);
