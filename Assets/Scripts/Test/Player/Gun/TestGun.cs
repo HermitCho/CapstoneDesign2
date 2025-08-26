@@ -20,7 +20,7 @@ public class TestGun : MonoBehaviourPun
 
     #region Serialized Fields
     [Header("Living Entity")]
-    [SerializeField] private LivingEntity livingEntity;
+    private LivingEntity livingEntity;
 
     [Header("Gun Configuration")]
     [SerializeField] private GunData gunData;
@@ -30,10 +30,9 @@ public class TestGun : MonoBehaviourPun
     [SerializeField] private ParticleSystem shellEjectEffect;
 
     [Header("Aiming System")]
-    [SerializeField] private Camera mainCamera;
+    private Camera mainCamera;
     [SerializeField] private Transform fireTransform;
-    [SerializeField] private RectTransform aimPointUI;
-    [SerializeField] private MuzzleDirectionController muzzleDirectionController;
+    private RectTransform aimPointUI;
 
     private MoveController moveController;
     
@@ -87,7 +86,6 @@ public class TestGun : MonoBehaviourPun
     {
         mainCamera = GameObject.FindGameObjectWithTag("MainCamera").GetComponent<Camera>();
         StartCoroutine(FindCrosshairUI());
-        muzzleDirectionController = GetComponentInChildren<MuzzleDirectionController>();
     }
 
     private IEnumerator FindCrosshairUI()
@@ -182,7 +180,6 @@ public class TestGun : MonoBehaviourPun
 
         lastFireTime = Time.time;
         Vector3 direction = (worldPoint - fireTransform.position).normalized;
-        muzzleDirectionController?.SetDirection(direction);
 
         // ✅ 발사 실행을 RPC로 전송
         photonViewCached.RPC("RPC_Shot", RpcTarget.All, direction);
