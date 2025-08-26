@@ -26,7 +26,7 @@ public class GunIK : MonoBehaviour
     {
         // 평소에는 IK를 켜두고 싶으면 아래처럼 항상 1로 유지
         // (아니면 외부에서 SetLeftHandIK로 제어)
-        // ik.solver.leftHandEffector.positionWeight = 1f;
+        ik.solver.rightHandEffector.positionWeight = 1f;
         // ik.solver.leftHandEffector.rotationWeight = 1f;
     }
 }

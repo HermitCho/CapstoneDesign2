@@ -13024,7 +13024,10 @@ Animator:
   m_ApplyRootMotion: 0
   m_LinearVelocityBlending: 0
   m_StabilizeFeet: 0
-  m_WarningMessage: 
+  m_WarningMessage: "\nBinding warning: Some generic clip(s) animate transforms that
+    are already bound by a Humanoid avatar. These transforms can only be changed
+    by Humanoid clips.\n\tTransform 'hand_l'\n\tTransform 'hand_l'\n\tTransform 'hand_r'\n\tFrom
+    animation clip 'Reloading (1)'"
   m_HasTransformHierarchy: 1
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
@@ -13209,7 +13212,7 @@ MonoBehaviour:
         bone1: {fileID: 0}
         bone2: {fileID: 0}
         bone3: {fileID: 0}
-        bendGoal: {fileID: 8299540910308308178}
+        bendGoal: {fileID: 0}
         direction: {x: 1, y: 0, z: 0}
         rotationOffset: {x: 0, y: 0, z: 0, w: 0}
         weight: 0
@@ -13259,10 +13262,10 @@ MonoBehaviour:
         bone1: {fileID: 0}
         bone2: {fileID: 0}
         bone3: {fileID: 0}
-        bendGoal: {fileID: 8280397624714877529}
+        bendGoal: {fileID: 0}
         direction: {x: 1, y: 0, z: 0}
         rotationOffset: {x: 0, y: 0, z: 0, w: 0}
-        weight: 0.5
+        weight: 0
         defaultLocalDirection: {x: 0, y: 0, z: 0}
         defaultChildDirection: {x: 0, y: 0, z: 0}
     - pin: 0
@@ -13440,8 +13443,8 @@ MonoBehaviour:
       planeRotationOffset: {x: 0, y: 0, z: 0, w: 1}
     - bone: {fileID: 1827806129491895552}
       target: {fileID: 6549602045010188793}
-      positionWeight: 0
-      rotationWeight: 0
+      positionWeight: 0.2
+      rotationWeight: 0.2
       position: {x: 0, y: 0, z: 0}
       rotation: {x: 0, y: 0, z: 0, w: 1}
       positionOffset: {x: 0, y: 0, z: 0}
@@ -13455,7 +13458,7 @@ MonoBehaviour:
     - bone: {fileID: 3713109070076542410}
       target: {fileID: 1682980317477706965}
       positionWeight: 1
-      rotationWeight: 0.5
+      rotationWeight: 0
       position: {x: 0, y: 0, z: 0}
       rotation: {x: 0, y: 0, z: 0, w: 1}
       positionOffset: {x: 0, y: 0, z: 0}
@@ -14059,52 +14062,52 @@ PrefabInstance:
     - target: {fileID: 3615125276788392186, guid: 352e109950c457547a8f25a626cf3783,
         type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.03
+      value: 0.048
       objectReference: {fileID: 0}
     - target: {fileID: 3615125276788392186, guid: 352e109950c457547a8f25a626cf3783,
         type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.006
+      value: 0.013
       objectReference: {fileID: 0}
     - target: {fileID: 3615125276788392186, guid: 352e109950c457547a8f25a626cf3783,
         type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0.039
+      value: 0.053
       objectReference: {fileID: 0}
     - target: {fileID: 3615125276788392186, guid: 352e109950c457547a8f25a626cf3783,
         type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.54680955
+      value: 0.48327738
       objectReference: {fileID: 0}
     - target: {fileID: 3615125276788392186, guid: 352e109950c457547a8f25a626cf3783,
         type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0.1505195
+      value: 0.326314
       objectReference: {fileID: 0}
     - target: {fileID: 3615125276788392186, guid: 352e109950c457547a8f25a626cf3783,
         type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0.33016303
+      value: 0.43648
       objectReference: {fileID: 0}
     - target: {fileID: 3615125276788392186, guid: 352e109950c457547a8f25a626cf3783,
         type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0.75454336
+      value: 0.68516225
       objectReference: {fileID: 0}
     - target: {fileID: 3615125276788392186, guid: 352e109950c457547a8f25a626cf3783,
         type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
-      value: -19.489
+      value: -16.423
       objectReference: {fileID: 0}
     - target: {fileID: 3615125276788392186, guid: 352e109950c457547a8f25a626cf3783,
         type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
-      value: 38.607
+      value: 64.958
       objectReference: {fileID: 0}
     - target: {fileID: 3615125276788392186, guid: 352e109950c457547a8f25a626cf3783,
         type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
-      value: 101.254
+      value: 99.109
       objectReference: {fileID: 0}
     - target: {fileID: 4134394504317917760, guid: 352e109950c457547a8f25a626cf3783,
         type: 3}
@@ -14236,7 +14239,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   livingEntity: {fileID: 1536954947631229322}
-  gunData: {fileID: 11400000, guid: 86ffc4b529c137849bc517177daded46, type: 2}
+  gunData: {fileID: 11400000, guid: 8e2c70e2d5bc4374592d95dce48a3b0e, type: 2}
   muzzleFlashEffect: {fileID: 0}
   shellEjectEffect: {fileID: 0}
   fireTransform: {fileID: 4281911077153353028}
