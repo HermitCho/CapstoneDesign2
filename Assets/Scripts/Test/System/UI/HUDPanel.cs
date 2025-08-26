@@ -591,16 +591,15 @@ public class HUDPanel : MonoBehaviour
 
             
             // 킬로그 텍스트 설정
-            questItem.questText = $"{attacker.CharacterData.characterName}         {victim.CharacterData.characterName}";
+            questItem.questText = $"{attacker.CharacterData.characterName}       {victim.CharacterData.characterName}";
             questItem.UpdateUI();
 
             // Animate quest
             questItem.AnimateQuest();
-            questItem.ExpandQuest();
-            questItem.MinimizeQuest();
+
             
             // 3초 후 킬로그 제거
-            StartCoroutine(DestroyKillLogAfterDelay(killLog, 5f));
+            //StartCoroutine(DestroyKillLogAfterDelay(killLog, 5f));
         }
     }
     
