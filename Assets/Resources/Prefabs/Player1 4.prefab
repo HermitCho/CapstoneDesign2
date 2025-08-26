@@ -12972,6 +12972,7 @@ GameObject:
   - component: {fileID: 3166417935309336795}
   - component: {fileID: 7762769094975138310}
   - component: {fileID: 5151913333570520661}
+  - component: {fileID: 672365786783179384}
   m_Layer: 0
   m_Name: Player1 4
   m_TagString: Player
@@ -14003,6 +14004,25 @@ MonoBehaviour:
   price: 1
   skillAnimationTriggerName: Speed
   dashForce: 60
+--- !u!114 &672365786783179384
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9056164256221340431}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b6e94521f27992488390ce06f1f0447, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ik: {fileID: 1040060191287191804}
+  leftHandTarget: {fileID: 1827806129491895552}
+  rightHandTarget: {fileID: 4856644169920512746}
+  bodyTarget: {fileID: 1714798512487397495}
+  rightLegTarget: {fileID: 7945366600060813455}
+  leftLegTarget: {fileID: 361810347546009940}
+  headTarget: {fileID: 0}
 --- !u!1001 &8164398771453002256
 PrefabInstance:
   m_ObjectHideFlags: 0
