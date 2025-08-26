@@ -179,8 +179,8 @@ public class TestMoveAnimationController : MonoBehaviourPun
     void OnReloadInput()
     {
         isReloading = true;
-        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 0f, 0f);
-        aimIK.enabled = false;
+        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.RightHand, gunIK.rightHandTarget, 0f, 0f);
+        // aimIK.enabled = false;
         animator.SetTrigger("Reload");
 
     }
@@ -194,19 +194,13 @@ public class TestMoveAnimationController : MonoBehaviourPun
     // 재장전 종료
     void OnReloadEnd()
     {
+        Debug.Log("OnReloadEnd 호출됨");
         isReloading = false;
-        Debug.Log("Reload 애니메이션 종료됨");
-        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 1f, 1f);
-        aimIK.enabled = true;
-        animator.SetLayerWeight(upperBodyLayerIndex, 0f);
+        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.RightHand, gunIK.rightHandTarget, 1f, 0.5f);
+        // aimIK.enabled = true;
+        //animator.SetLayerWeight(upperBodyLayerIndex, 0f);
 
     }
-
-    // // 조준 상태에 따른 애니메이션 속도 변경
-    // void HandleAnimatorSpeed()
-    // {
-    //     animator.speed = isAiming ? aimingAnimSpeed : normalAnimSpeed;
-    // }
 
     void HandleJumpAnimation()
     {
