@@ -9,7 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 857333846348877670}
-  - component: {fileID: -5089279008078345787}
+  - component: {fileID: -5929017585117990963}
   m_Layer: 0
   m_Name: Fireball_item
   m_TagString: Untagged
@@ -32,7 +32,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &-5089279008078345787
+--- !u!114 &-5929017585117990963
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -41,21 +41,21 @@ MonoBehaviour:
   m_GameObject: {fileID: 5829680253115518611}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 92f04e0568847d64f8a8d16274ac2aef, type: 3}
+  m_Script: {fileID: 11500000, guid: ee63f689bd95f9544ab123d2823672b1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  skillName: "\uD30C\uC774\uC5B4\uBCFC"
-  skillDescription: "\uD30C\uC774\uC5B4\uBCFC\uC744 \uB0A0\uB9B0\uB2E4"
+  skillName: "\uAE30\uBCF8 \uC2A4\uD0AC"
+  skillDescription: "\uC2A4\uD0AC \uC124\uBA85"
   cooldown: 0
   duration: 0
-  effectDuration: 5
-  effectCastingDuration: 5
+  effectDuration: 0
+  effectCastingDuration: 0
   castTime: 0
-  destroyTime: 20
+  destroyTime: -1
   isFollowing: 0
   isCastingFollowing: 0
   index: 3
-  skillIcon: {fileID: 21300000, guid: 9c3baa723048042e0a0218d6d8d5ea5a, type: 3}
+  skillIcon: {fileID: 0}
   skillColor: {r: 1, g: 1, b: 1, a: 1}
   skillEffect: {fileID: 0}
   castTimeSkillEffect: {fileID: 0}
@@ -63,7 +63,5 @@ MonoBehaviour:
   castTimeSkillSound: {fileID: 0}
   price: 1
   skillAnimationTriggerName: None
-  damage: 30
-  speed: 15
-  lifetime: 5
-  explosionEffectPrefab: {fileID: 0}
+  fireballPrefab: {fileID: 0}
+  launchPoint: {fileID: 0}
