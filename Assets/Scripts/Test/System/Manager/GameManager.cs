@@ -992,4 +992,10 @@ public class GameManager : Singleton<GameManager>
 
     #endregion
 
+
+    #region 점수판 메서드
+
+
+
+    #endregion
 }
