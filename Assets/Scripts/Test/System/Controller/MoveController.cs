@@ -172,6 +172,7 @@ public class MoveController : MonoBehaviourPun
                 Skills = playerData.PlayerPrefabData.Select(prefab => prefab.transform.GetComponent<Skill>()).Where(skill => skill != null).ToArray();
                 Items = itemData.ItemPrefabData.Select(prefab => prefab.transform.GetComponent<Skill>()).Where(item => item != null).ToArray();
                 dataBaseCached = true;
+                Debug.Log(Items.Length + " dfdsfdfdfdsfsdfsadfdsgsdfsdfsadf");
                 Debug.Log("✅ MoveController - DataBase 정보 캐싱 완료");
             }
             else
