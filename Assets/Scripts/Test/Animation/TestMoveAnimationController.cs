@@ -229,8 +229,6 @@ public class TestMoveAnimationController : MonoBehaviourPun
     void OnZoomInput()
     {
         isAiming = true;
-        animator.SetLayerWeight(upperBodyLayerIndex, 1f);
-        animator.SetBool("IsAiming", true);
         gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.Body, gunIK.bodyTarget, 0.04f);
         gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.RightFoot, gunIK.rightLegTarget, 0.3f);
         gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftFoot, gunIK.leftLegTarget, 0.3f);
@@ -242,8 +240,6 @@ public class TestMoveAnimationController : MonoBehaviourPun
     void OnZoomCanceledInput()
     {
         isAiming = false;
-        animator.SetLayerWeight(upperBodyLayerIndex, 0f);
-        animator.SetBool("IsAiming", false);
         gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.Body, gunIK.bodyTarget, 0.01f);
         gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.RightFoot, gunIK.rightLegTarget, 0.2f);
         gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftFoot, gunIK.leftLegTarget, 0.2f);
