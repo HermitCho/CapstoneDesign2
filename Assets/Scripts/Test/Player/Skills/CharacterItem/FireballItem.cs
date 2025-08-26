@@ -15,21 +15,15 @@ public class FireballItem : Skill
     /// 플레이어가 아이템을 사용했을 때 호출되는 메서드.
     /// </summary>
     /// <param name="player">아이템을 사용하는 플레이어의 MoveController.</param>
-    public void Use(MoveController player)
+    public override void Execute(MoveController executor, Vector3 pos, Vector3 dir)
     {
-        // 마스터 클라이언트만 네트워크 객체를 생성
-        if (!PhotonNetwork.IsMasterClient)
-        {
-            return;
-        }
-
         // 발사 위치가 지정되지 않았으면 플레이어의 위치를 사용
-        Vector3 spawnPosition = launchPoint != null ? launchPoint.position : player.transform.position + player.transform.forward * 1.5f;
-        
+        Vector3 spawnPosition = launchPoint != null ? launchPoint.position : executor.transform.position + executor.transform.forward * 1.5f;
+
         // 네트워크 상에 파이어볼 프리팹을 생성
         GameObject fireballInstance = PhotonNetwork.Instantiate(
-            fireballPrefab.name, // 프리팹 이름
-            spawnPosition, 
+            "Prefabs/Skill/" + fireballPrefab.name,
+            spawnPosition,
             Quaternion.identity
         );
 
@@ -37,10 +31,10 @@ public class FireballItem : Skill
         if (fireballInstance.TryGetComponent<Fireball>(out Fireball fireballScript))
         {
             fireballScript.photonView.RPC(
-                "InitializeAndLaunch", 
-                RpcTarget.All, 
-                player.photonView.OwnerActorNr, 
-                player.transform.forward
+                "InitializeAndLaunch",
+                RpcTarget.All,
+                executor.photonView.OwnerActorNr,
+                executor.transform.forward
             );
         }
     }
