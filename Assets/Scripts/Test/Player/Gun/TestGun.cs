@@ -20,7 +20,7 @@ public class TestGun : MonoBehaviourPun
 
     #region Serialized Fields
     [Header("Living Entity")]
-    private LivingEntity livingEntity;
+    [SerializeField] private LivingEntity livingEntity;
 
     [Header("Gun Configuration")]
     [SerializeField] private GunData gunData;
