@@ -13,7 +13,7 @@ using DG.Tweening;
 /// 로컬 플레이어의 기본 정보만을 표시하는 간단한 HUD
 /// 다른 플레이어와 완전히 독립적으로 동작
 /// </summary>
-public class HUDPanel : MonoBehaviour
+public class HUDPanel : MonoBehaviourPunCallbacks, IPunObservable
 {
     [Header("체력 UI")]
     [SerializeField] private ProgressBar healthProgressBar;
@@ -121,6 +121,23 @@ public class HUDPanel : MonoBehaviour
         // LivingEntity 사망 이벤트 구독 해제
         LivingEntity.OnPlayerDied -= HandlePlayerDeath;
         Debug.Log("HUD: LivingEntity.OnPlayerDied 이벤트 구독 해제 완료");
+    }
+    
+    /// <summary>
+    /// Photon 플레이어 프로퍼티 변경 시 호출 (PunCallbacks)
+    /// </summary>
+    public override void OnPlayerPropertiesUpdate(Photon.Realtime.Player targetPlayer, ExitGames.Client.Photon.Hashtable changedProps)
+    {
+        // 점수 관련 프로퍼티가 변경되었는지 확인
+        foreach (var prop in changedProps)
+        {
+            if (prop.Key.ToString().StartsWith("score_"))
+            {
+                Debug.Log($"📡 플레이어 점수 프로퍼티 변경 감지: {targetPlayer.ActorNumber} -> {prop.Value}");
+                ForceUpdateScoreBoard();
+                break;
+            }
+        }
     }
     
     void Update()
@@ -334,8 +351,16 @@ public class HUDPanel : MonoBehaviour
         float newScore = localCoinController.GetCurrentScore();
         if (Mathf.Abs(newScore - currentScore) > 0.1f)
         {
+            float previousScore = currentScore;
             currentScore = newScore;
             UpdateScoreDisplay();
+            
+            // 점수가 변경되었을 때 네트워크 동기화
+            if (PhotonNetwork.IsConnected && PhotonNetwork.LocalPlayer != null)
+            {
+                SyncPlayerScoreToNetwork(PhotonNetwork.LocalPlayer.ActorNumber, newScore);
+                Debug.Log($"🎯 점수 변경 감지: {previousScore} -> {newScore}");
+            }
         }
     }
     
@@ -627,17 +652,20 @@ public class HUDPanel : MonoBehaviour
      
         QuestItem questItem = killLog.GetComponent<QuestItem>();
 
+            Photon.Realtime.Player attackerPlayer = attacker.photonView.Owner;
+            Photon.Realtime.Player victimPlayer = victim.photonView.Owner;
+
+            string attackerNickname = GetPlayerNickname(attackerPlayer);
+            string victimNickname = GetPlayerNickname(victimPlayer);
             
             // 킬로그 텍스트 설정
-            questItem.questText = $"{attacker.CharacterData.characterName}       {victim.CharacterData.characterName}";
+            questItem.questText = $"{attackerNickname}       {victimNickname}";
             questItem.UpdateUI();
 
             // Animate quest
             questItem.AnimateQuest();
 
-            
-            // 3초 후 킬로그 제거
-            //StartCoroutine(DestroyKillLogAfterDelay(killLog, 5f));
+
         }
     }
     
@@ -849,14 +877,31 @@ public class HUDPanel : MonoBehaviour
     }
     
     /// <summary>
-    /// 플레이어의 점수 가져오기
+    /// 플레이어의 점수 가져오기 (네트워크 동기화 우선)
     /// </summary>
     private float GetPlayerScore(GameObject playerObject)
     {
-        CoinController coinController = playerObject.GetComponent<CoinController>();
-        if (coinController != null)
+        PhotonView pv = playerObject.GetComponent<PhotonView>();
+        if (pv != null && pv.Owner != null)
         {
-            return coinController.GetCurrentScore();
+            // 로컬 플레이어인 경우 CoinController에서 직접 가져오기
+            if (pv.IsMine)
+            {
+                CoinController coinController = playerObject.GetComponent<CoinController>();
+                if (coinController != null)
+                {
+                    float localScore = coinController.GetCurrentScore();
+                    Debug.Log($"💰 로컬 플레이어 점수: {localScore}");
+                    return localScore;
+                }
+            }
+            else
+            {
+                // 원격 플레이어인 경우 네트워크에서 가져오기
+                float networkScore = GetPlayerScoreFromNetwork(pv.Owner);
+                Debug.Log($"🌐 원격 플레이어 점수: {networkScore} (Player {pv.Owner.ActorNumber})");
+                return networkScore;
+            }
         }
         
         return 0f;
@@ -1057,9 +1102,72 @@ public class HUDPanel : MonoBehaviour
     /// </summary>
     private void OnScoreChanged(float newScore)
     {
+        // 로컬 플레이어의 점수가 변경되었을 때 네트워크로 동기화
+        if (PhotonNetwork.IsConnected && PhotonNetwork.LocalPlayer != null)
+        {
+            SyncPlayerScoreToNetwork(PhotonNetwork.LocalPlayer.ActorNumber, newScore);
+        }
+        
         // 점수가 변경되면 즉시 점수판 업데이트
         ForceUpdateScoreBoard();
-        Debug.Log($"🎯 점수 변경 감지 - 점수판 즉시 업데이트 요청");
+        Debug.Log($"🎯 점수 변경 감지 - 점수판 즉시 업데이트 요청: {newScore}");
+    }
+    
+    /// <summary>
+    /// 플레이어 점수를 네트워크로 동기화
+    /// </summary>
+    private void SyncPlayerScoreToNetwork(int playerId, float score)
+    {
+        // Photon Custom Properties에 점수 저장
+        var props = new ExitGames.Client.Photon.Hashtable();
+        props[$"score_{playerId}"] = score;
+        PhotonNetwork.LocalPlayer.SetCustomProperties(props);
+        
+        // PhotonView가 있는 경우에만 RPC 전송
+        if (photonView != null)
+        {
+            // 모든 클라이언트에게 점수 변경 RPC 전송
+            photonView.RPC("RPC_UpdatePlayerScore", RpcTarget.Others, playerId, score);
+        }
+        
+        Debug.Log($"📡 점수 네트워크 동기화: Player {playerId} -> {score}점");
+    }
+    
+    /// <summary>
+    /// 다른 클라이언트로부터 점수 업데이트 RPC 수신
+    /// </summary>
+    [PunRPC]
+    private void RPC_UpdatePlayerScore(int playerId, float score)
+    {
+        Debug.Log($"📨 점수 업데이트 수신: Player {playerId} -> {score}점");
+        
+        // 점수판 즉시 업데이트
+        ForceUpdateScoreBoard();
+    }
+    
+    /// <summary>
+    /// Photon Custom Properties에서 플레이어 점수 가져오기
+    /// </summary>
+    private float GetPlayerScoreFromNetwork(Photon.Realtime.Player player)
+    {
+        // Custom Properties에서 점수 확인
+        if (player.CustomProperties.TryGetValue($"score_{player.ActorNumber}", out object scoreObj))
+        {
+            if (float.TryParse(scoreObj.ToString(), out float networkScore))
+            {
+                return networkScore;
+            }
+        }
+        
+        return 0f;
+    }
+    
+    /// <summary>
+    /// IPunObservable 구현 - 실시간 데이터 동기화
+    /// </summary>
+    public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
+    {
+        // 현재는 사용하지 않음 (Custom Properties와 RPC 사용)
     }
     
     #endregion
