@@ -4,22 +4,28 @@ using System.Collections.Generic;
 using UnityEngine;
 using Photon.Pun;
 using Photon.Realtime; // Player 클래스를 위해 추가
+using Febucci.UI;
+using Michsky.UI.Heat;
 
 /// <summary>
 /// 생명체의 기본 기능을 담당하는 클래스 (포톤 멀티플레이 고려)
 /// 체력, 방어막, 데미지 처리, 사망 처리 등을 관리
 /// </summary>
-public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservable // ✅ IPunObservable 추가
+public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable  , IPunObservable // ✅ IPunObservable 추가
 {
     // photonView는 MonoBehaviourPunCallbacks가 가지고 있습니다.
     // private PhotonView photonView; // ❌ 중복 선언이므로 제거 (this.photonView 사용)
 
     [Header("Character Data")]
     [SerializeField] private CharacterData characterData;
+
+    private LivingEntity currentAttacker;
+
     // Health & Shield Properties
     // ✅ [PunRPC]를 통해 동기화될 public 변수이므로 set을 private으로 변경하지 않고,
     // OnPhotonSerializeView에서 동기화하거나 RPC로 변경하는 로직을 구현합니다.
     public float StartingHealth { get; private set; }
+    public CharacterData CharacterData { get; private set; }
     public float StartingShield { get; private set; }
     public float CurrentHealth { get; private set; }
     public float CurrentShield { get; private set; }
@@ -32,6 +38,7 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
     public static event Action<LivingEntity> OnPlayerDied;
 
     public event Action OnRevive;
+    
 
 
     [Header("스턴 제어")]
@@ -72,6 +79,7 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
         CurrentHealth = StartingHealth;
         StartingShield = characterData.startingShield;
         CurrentShield = StartingShield;
+        CharacterData = characterData;
         moveController = GetComponent<MoveController>();
     }
 
@@ -93,23 +101,48 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
     }
 
     [PunRPC]
-    public virtual void OnDamage(float damage, Vector3 hitPoint, Vector3 hitNormal)
+    public void RPC_UpdateHealth(float newHealth)
     {
-        if (PhotonNetwork.IsMasterClient)
-        {
-            CurrentHealth = Mathf.Max(0f, CurrentHealth - damage);
+        Debug.Log($"[LivingEntity] {gameObject.name} 체력 동기화 - 이전: {CurrentHealth} -> 새로운: {newHealth}");
+        CurrentHealth = newHealth;
+        OnAnyLivingEntityHealthChanged?.Invoke(CurrentHealth, StartingHealth, this);
+    }
 
-            Debug.Log($"[LivingEntity:Master] {gameObject.name} 데미지 적용: {damage}, 남은 체력: {CurrentHealth}");
+    [PunRPC]
+    public virtual void OnDamage(float damage, Vector3 hitPoint, Vector3 hitNormal, int attackerViewId)
+    {
+        // 마스터 클라이언트에서만 데미지 계산 처리
+        if (!PhotonNetwork.IsMasterClient) return;
+        
+        // 이미 사망한 상태라면 데미지 처리하지 않음
+        if (IsDead) return;
 
-            // 모든 클라이언트에게 체력 변경을 알리는 이벤트 또는 RPC를 호출합니다.
-            photonView.RPC("UpdateHealth", RpcTarget.Others, CurrentHealth, IsDead);
-            photonView.RPC("OnDamage", RpcTarget.Others, damage, hitPoint, hitNormal);
-        }
+        // 체력이 0 이하라면 이미 사망한 상태
+        if (CurrentHealth <= 0f) return;
 
+        // ViewID를 통해 attacker LivingEntity 찾기
+        PhotonView attackerPV = PhotonView.Find(attackerViewId);
+        LivingEntity attacker = attackerPV?.GetComponent<LivingEntity>();
+
+        
+        // 데미지 적용
+        float previousHealth = CurrentHealth;
+        CurrentHealth = Mathf.Max(0f, CurrentHealth - damage);
+        
+        Debug.Log($"[LivingEntity:Master] {gameObject.name} 데미지 적용 완료 - 이전 체력: {previousHealth} -> 현재 체력: {CurrentHealth}");
+
+        // 모든 클라이언트에게 체력 변경을 동기화
+        photonView.RPC("RPC_UpdateHealth", RpcTarget.All, CurrentHealth);
+        
+        // 사망 처리
         if (CurrentHealth <= 0f && !IsDead)
         {
-            // 사망 처리 RPC 호출은 마스터 클라이언트에서만 결정하여 모든 클라이언트에 알립니다.
-            photonView.RPC("RPC_Die", RpcTarget.All);
+            currentAttacker = attacker;
+            Debug.Log($"[LivingEntity] {gameObject.name} 사망 처리 시작 - attacker: {attacker?.name ?? "null"}");
+            
+            // 사망 처리 RPC 호출
+            int attackerId = attacker != null ? attacker.photonView.ViewID : -1;
+            photonView.RPC("RPC_Die", RpcTarget.All, attackerId);
         }
     }
 
@@ -150,11 +183,25 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
     /// </summary>
     /// <returns>사망 처리 성공 여부</returns>
     [PunRPC]
-    public virtual bool RPC_Die()
+    public virtual bool RPC_Die(int attackerViewId)
     {
-        if (IsDead) return false;
+        // 이미 사망한 상태라면 처리하지 않음
+        if (IsDead) 
+        {
+            Debug.Log($"[LivingEntity] {gameObject.name} 이미 사망한 상태 - 중복 사망 처리 방지");
+            return false;
+        }
 
+        // ViewID를 통해 attacker LivingEntity 찾기
+        PhotonView attackerPV = PhotonView.Find(attackerViewId);
+        LivingEntity attacker = attackerPV?.GetComponent<LivingEntity>();
+        
+        // 사망 상태 설정
         IsDead = true;
+        currentAttacker = attacker;
+        
+        Debug.Log($"[LivingEntity] {gameObject.name} 사망 처리 완료 - attacker: {currentAttacker?.name ?? "null"}, IsDead: {IsDead}");
+        
         OnDeath?.Invoke(); // 이벤트는 각 클라이언트에서 개별적으로 발생
 
         // MoveController는 로컬에서만 제어해도 무방합니다. (stunned 상태가 물리적인 움직임에만 영향)
@@ -163,72 +210,93 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
             moveController.SetStunned(true);
         }
 
-        // ✅ 플레이어 사망 이벤트 발생 (TestTeddyBear 등이 반응할 수 있도록)
+        // 플레이어 사망 이벤트 발생
         OnPlayerDied?.Invoke(this);
 
-        // ✅ 로컬 플레이어 사망 시 코인 및 점수 손실 처리
-        // OnPhotonSerializeView에서도 처리되므로 여기서는 제거하여 중복 방지
-        // if (photonView.IsMine && GameManager.Instance != null)
-        // {
-        //     GameManager.Instance.HandlePlayerDeathPenalty();
-        // }
-
-        // 부활 코루틴은 로컬에서만 시작하거나, 부활 로직을 서버(마스터 클라이언트)에서 관리해야 합니다.
-        // 여기서는 각 클라이언트에서 부활 타이머를 시작합니다.
-        StartCoroutine(ReviveAfterDelay(10f));
+        // 부활 코루틴 시작 (마스터 클라이언트에서만)
+        if (PhotonNetwork.IsMasterClient)
+        {
+            StartCoroutine(ReviveAfterDelay(10f));
+        }
 
         Debug.Log($"[LivingEntity] {gameObject.name} 사망! - 플레이어 사망 이벤트 발생");
 
         return true;
     }
 
-    // ✅ 기존 Die() 메서드는 RPC_Die()로 대체되었습니다. 아래 메서드는 이제 필요 없습니다.
-    // private void Die() { ... } // ❌ 삭제
-
     private IEnumerator ReviveAfterDelay(float delay)
     {
-        float remaining = delay;
-        while (remaining > 0f)
+        Debug.Log($"[LivingEntity] {gameObject.name} 부활 대기 시작 - {delay}초 (마스터 클라이언트에서 실행)");
+        
+        yield return new WaitForSeconds(delay);
+        
+        // 부활 중에 마스터 클라이언트가 변경될 수 있으므로 다시 체크
+        if (!PhotonNetwork.IsMasterClient)
         {
-            // ✅ 멀티플레이 수정: 부활 대기 메시지는 자신의 클라이언트에서만 보이도록 합니다.
-            if (photonView.IsMine)
-            {
-                Debug.Log($"[부활 대기] 남은 시간: {Mathf.CeilToInt(remaining)}초");
-            }
-            yield return new WaitForSeconds(1f);
-            remaining -= 1f;
+            Debug.Log($"[LivingEntity] {gameObject.name} 마스터 클라이언트가 아니므로 부활 처리 중단");
+            yield break;
         }
-
-        // 부활 로직도 RPC를 통해 모든 클라이언트에서 실행되어야 합니다.
-        // 부활 결정은 소유자가 하거나 마스터 클라이언트가 합니다.
-        if (photonView.IsMine)
+        
+        // 이미 부활한 상태인지 체크
+        if (!IsDead)
         {
-            photonView.RPC("RPC_Revive", RpcTarget.All); // ✅ RpcTarget.All로 부활 RPC 호출
+            Debug.Log($"[LivingEntity] {gameObject.name} 이미 부활한 상태 - 부활 처리 중단");
+            yield break;
         }
+        
+        Debug.Log($"[LivingEntity] {gameObject.name} 부활 대기 완료 - 부활 RPC 호출");
+        
+        // 부활 RPC 호출 (마스터 클라이언트에서만)
+        photonView.RPC("RPC_Revive", RpcTarget.All);
+        Debug.Log($"[LivingEntity] {gameObject.name} 부활 RPC 호출 완료");
     }
 
-    [PunRPC] // ✅ RPC 메서드로 추가
+    [PunRPC]
     public void RPC_Revive()
     {
-        if (!IsDead) return; // ✅ IsDead 변수 사용
-
+        Debug.Log($"[LivingEntity] {gameObject.name} RPC_Revive 호출됨 - 현재 IsDead: {IsDead}");
+        
+        if (!IsDead) 
+        {
+            Debug.Log($"[LivingEntity] {gameObject.name} 이미 살아있는 상태 - 부활 처리 건너뜀");
+            return;
+        }
+        
+        Debug.Log($"[LivingEntity] {gameObject.name} 부활 처리 시작");
+        
+        // 사망 상태 해제
         IsDead = false;
-        InitializeEntity(); // 체력 및 상태 초기화
+        currentAttacker = null; // 공격자 정보 초기화
+        
+        // 체력 및 상태 초기화
+        InitializeEntity();
 
         if (moveController != null)
         {
             moveController.SetStunned(false); // 스턴 해제
         }
 
+        Debug.Log($"[LivingEntity] {gameObject.name} 부활 완료 - 현재 체력: {CurrentHealth}, IsDead: {IsDead}");
+
+        // 모든 클라이언트에서 UI 업데이트
+        OnAnyLivingEntityHealthChanged?.Invoke(CurrentHealth, StartingHealth, this);
+
         if (photonView.IsMine)
         {
-            Debug.Log($"[LivingEntity] {gameObject.name} 부활!");
-            // 부활 시 UI 업데이트 (GameManager에 알림)
-            OnAnyLivingEntityHealthChanged?.Invoke(CurrentHealth, StartingHealth, this);
-
             OnRevive?.Invoke();
         }
     }
+
+
+    public LivingEntity GetAttacker()
+    {
+        return currentAttacker;
+    }
+
+    
+
+
+
 
     #endregion
 
@@ -244,41 +312,42 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
     /// </summary>
     public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
     {
-        if (stream.IsWriting)
-        {
-            // 마스터 클라이언트 또는 소유자(IsMine)가 쓰기 권한을 가집니다.
-            // 데미지 계산은 마스터 클라이언트에서 수행하고, 그 결과를 여기서 동기화합니다.
-            stream.SendNext(CurrentHealth);
-            stream.SendNext(IsDead);
-            // 필요하다면 실드도 동기화
-            // stream.SendNext(CurrentShield);
-        }
-        else
-        {
-            // 다른 클라이언트들은 수신하여 업데이트합니다.
-            bool wasDead = this.IsDead; // 이전 사망 상태 저장
-            this.CurrentHealth = (float)stream.ReceiveNext();
-            this.IsDead = (bool)stream.ReceiveNext();
-            // this.CurrentShield = (float)stream.ReceiveNext();
+        // if (stream.IsWriting)
+        // {
+        //     // 마스터 클라이언트 또는 소유자(IsMine)가 쓰기 권한을 가집니다.
+        //     // 데미지 계산은 마스터 클라이언트에서 수행하고, 그 결과를 여기서 동기화합니다.
+        //     stream.SendNext(CurrentHealth);
+        //     stream.SendNext(IsDead);
+        //     // 필요하다면 실드도 동기화
+        //     // stream.SendNext(CurrentShield);
 
-            // ✅ IPunObservable로 체력이 동기화될 때, 로컬 UI도 업데이트되도록 이벤트 발생
-            // 이 부분이 중요합니다! 다른 클라이언트에서 체력이 변경될 때도 UI가 동기화됩니다.
-            // 하지만 GameManager는 IsMine인지 다시 확인하여 로컬 플레이어만 UI 업데이트를 합니다.
-            OnAnyLivingEntityHealthChanged?.Invoke(this.CurrentHealth, this.StartingHealth, this);
+        // }
+        // else
+        // {
+        //     // 다른 클라이언트들은 수신하여 업데이트합니다.
+        //     bool wasDead = this.IsDead; // 이전 사망 상태 저장
+        //     this.CurrentHealth = (float)stream.ReceiveNext();
+        //     this.IsDead = (bool)stream.ReceiveNext();
+        //     // this.CurrentShield = (float)stream.ReceiveNext();
 
-            // ✅ 사망 상태가 변경된 경우에만 사망 이벤트 발생 (중복 방지)
-            if (!wasDead && this.IsDead)
-            {
-                OnDeath?.Invoke();
-                OnPlayerDied?.Invoke(this);
+        //     // ✅ IPunObservable로 체력이 동기화될 때, 로컬 UI도 업데이트되도록 이벤트 발생
+        //     // 이 부분이 중요합니다! 다른 클라이언트에서 체력이 변경될 때도 UI가 동기화됩니다.
+        //     // 하지만 GameManager는 IsMine인지 다시 확인하여 로컬 플레이어만 UI 업데이트를 합니다.
+        //     OnAnyLivingEntityHealthChanged?.Invoke(this.CurrentHealth, this.StartingHealth, this);
 
-                // 로컬 플레이어 사망 시에만 손실 처리 (중복 방지)
-                if (photonView.IsMine && GameManager.Instance != null)
-                {
-                    GameManager.Instance.HandlePlayerDeathPenalty();
-                }
-            }
-        }
+        //     // ✅ 사망 상태가 변경된 경우에만 사망 이벤트 발생 (중복 방지)
+        //     if (!wasDead && this.IsDead)
+        //     {
+        //         OnDeath?.Invoke();
+        //         OnPlayerDied?.Invoke(this);
+
+        //         // 로컬 플레이어 사망 시에만 손실 처리 (중복 방지)
+        //         if (photonView.IsMine && GameManager.Instance != null)
+        //         {
+        //             GameManager.Instance.HandlePlayerDeathPenalty();
+        //         }
+        //     }
+        // }
     }
 
 

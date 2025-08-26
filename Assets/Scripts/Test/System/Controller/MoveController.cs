@@ -751,7 +751,7 @@ public class MoveController : MonoBehaviourPun
         }
     }
 
-        [PunRPC]
+    [PunRPC]
     public void ExecuteItem(int itemIndex, Vector3 pos, Vector3 dir)
     {
         if(photonView.IsMine && activeItem != null && activeItem.Index == itemIndex)

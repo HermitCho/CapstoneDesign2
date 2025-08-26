@@ -53,6 +53,8 @@ public abstract class Skill : MonoBehaviour
     [Header("아이템 가격 - 해당 프리팹이 아이템인 경우 사용")]
     [SerializeField] protected int price = 1;
 
+    [Header("스킬 애니메이션 트리거 이름")]
+    [SerializeField] protected string skillAnimationTriggerName = "None";
     #endregion
 
     #region Properties
@@ -73,6 +75,7 @@ public abstract class Skill : MonoBehaviour
     public AudioClip CastTimeSkillSound => castTimeSkillSound;
     public int Price => price;
     public int Index => index;
+    public string SkillAnimationTriggerName => skillAnimationTriggerName;
 
     #endregion
 

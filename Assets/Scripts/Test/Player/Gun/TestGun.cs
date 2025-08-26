@@ -19,6 +19,9 @@ public class TestGun : MonoBehaviourPun
     #endregion
 
     #region Serialized Fields
+    [Header("Living Entity")]
+    private LivingEntity livingEntity;
+
     [Header("Gun Configuration")]
     [SerializeField] private GunData gunData;
 
@@ -27,12 +30,12 @@ public class TestGun : MonoBehaviourPun
     [SerializeField] private ParticleSystem shellEjectEffect;
 
     [Header("Aiming System")]
-    [SerializeField] private Camera mainCamera;
+    private Camera mainCamera;
     [SerializeField] private Transform fireTransform;
-    [SerializeField] private RectTransform aimPointUI;
-    [SerializeField] private MuzzleDirectionController muzzleDirectionController;
+    private RectTransform aimPointUI;
 
     private MoveController moveController;
+    
     #endregion
 
     #region Properties
@@ -45,12 +48,14 @@ public class TestGun : MonoBehaviourPun
     private PhotonView photonViewCached;
     private bool isFiring;
     private float lastFireTime;
+    private float damage;
     #endregion
 
     #region Unity Lifecycle
     protected virtual void Awake()
     {
         photonViewCached = GetComponent<PhotonView>();
+        damage = gunData.damage;
     }
 
     protected virtual void OnEnable()
@@ -81,7 +86,6 @@ public class TestGun : MonoBehaviourPun
     {
         mainCamera = GameObject.FindGameObjectWithTag("MainCamera").GetComponent<Camera>();
         StartCoroutine(FindCrosshairUI());
-        muzzleDirectionController = GetComponentInChildren<MuzzleDirectionController>();
     }
 
     private IEnumerator FindCrosshairUI()
@@ -176,7 +180,6 @@ public class TestGun : MonoBehaviourPun
 
         lastFireTime = Time.time;
         Vector3 direction = (worldPoint - fireTransform.position).normalized;
-        muzzleDirectionController?.SetDirection(direction);
 
         // ✅ 발사 실행을 RPC로 전송
         photonViewCached.RPC("RPC_Shot", RpcTarget.All, direction);
@@ -274,7 +277,11 @@ public class TestGun : MonoBehaviourPun
 
             if (target != null && targetView != null)
             {
-                targetView.RPC("OnDamage", RpcTarget.MasterClient, gunData.damage, hit.point, hit.normal);
+                // LivingEntity 객체 대신 PhotonView.ViewID를 전달
+                int attackerViewId = livingEntity.photonView.ViewID;
+                
+                // 마스터 클라이언트로 데미지 RPC 전송
+                targetView.RPC("OnDamage", RpcTarget.All, damage, hit.point, hit.normal, attackerViewId);
             }
         }
     }

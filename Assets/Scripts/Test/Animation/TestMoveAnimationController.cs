@@ -4,16 +4,18 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Animations.Rigging;
 using RootMotion.FinalIK;
+using Photon.Pun;
 
 /// <summary>
 /// 캐릭터의 이동/점프/조준/재장전 애니메이션을 제어하는 컨트롤러
 /// </summary>
-public class TestMoveAnimationController : MonoBehaviour
+public class TestMoveAnimationController : MonoBehaviourPun
 {   
     // 애니메이터 컴포넌트
     private Animator animator;
     private Rigidbody rb;
     private int upperBodyLayerIndex;
+    private PhotonView photonView;
 
     // 입력값(WASD, 마우스 X)
     private Vector2 moveInput; 
@@ -39,17 +41,19 @@ public class TestMoveAnimationController : MonoBehaviour
     // 발소리 관련
     private FootstepSoundPlayer footstepSoundPlayer;
 
-
+    // 체력 관련
     private GunIK gunIK;
     private AimIK aimIK;
     private LivingEntity livingEntity;
 
     // 대쉬 스킬
-    private Skill dashSkill;
+    private Skill skill;
     // 아이템 스킬
     private Skill itemSkill;
 
     private Coroutine speedSkillCoroutine;
+
+    private string skillAnimationTriggerName = "None";
 
     private void Awake()
     {
@@ -61,14 +65,17 @@ public class TestMoveAnimationController : MonoBehaviour
         gunIK = GetComponent<GunIK>();
         livingEntity = GetComponent<LivingEntity>();
         footstepSoundPlayer = GetComponent<FootstepSoundPlayer>();
-        dashSkill = GetComponent<Skill>();
+        skill = GetComponent<Skill>();
         itemSkill = GetComponent<Skill>();
         aimIK = GetComponent<AimIK>();
+        photonView = GetComponent<PhotonView>();
         animator.SetFloat("SpeedMultiplier", 1.2f);
+        skillAnimationTriggerName = skill.SkillAnimationTriggerName;
     }
 
     private void OnEnable()
     {
+        if (!photonView.IsMine) return;
         InputManager.OnMoveInput += OnMoveInput;
         InputManager.OnXMouseInput += OnMouseInput;
         InputManager.OnZoomPressed += OnZoomInput;
@@ -85,6 +92,7 @@ public class TestMoveAnimationController : MonoBehaviour
 
     private void OnDisable()
     {
+        if (!photonView.IsMine) return;
         InputManager.OnMoveInput -= OnMoveInput;
         InputManager.OnXMouseInput -= OnMouseInput;
         InputManager.OnZoomPressed -= OnZoomInput;
@@ -98,15 +106,29 @@ public class TestMoveAnimationController : MonoBehaviour
             livingEntity.OnRevive -= OnRevive;
         }
     }
+    
     private void Update()
     {
+        if (!photonView.IsMine) return;
         HandleMovementAnimation();
         // HandleTurnAnimation();
         // HandleAnimatorSpeed();
         HandleJumpAnimation();
         // HandleLookAnimation();
         HandleTeddyBearWeaponState();
+        HandleHealthBasedAnimation();
+    }
 
+    // 체력 기반 애니메이션 처리
+    private void HandleHealthBasedAnimation()
+    {
+        if (livingEntity == null) return;
+
+        // MoveController의 스턴 상태 확인하여 stun 애니메이션 제어
+        if (moveController != null)
+        {
+            bool isStunned = moveController.IsStunned();
+        }
     }
 
     // 이동 입력 처리
@@ -140,33 +162,12 @@ public class TestMoveAnimationController : MonoBehaviour
     private void OnRevive()
     {
         animator.SetTrigger("Revive");
+        // 부활 시 스턴 상태 해제
+        if (moveController != null)
+        {
+            moveController.SetStunned(false);
+        }
     }
-
-    // // 캐릭터 회전값을 받아 애니메이션 전달
-    // void HandleTurnAnimation()
-    // {   
-    //     if (moveController == null) return;
-
-    //     float currentRotationAmount = moveController.GetRotationAmount();
-    //     float rawTurn = Mathf.Clamp(currentRotationAmount * turnSensitivity, -1f, 1f);
-
-    //     if (Mathf.Abs(rawTurn) < 0.1f)
-    //         rawTurn = 0f;
-
-    //     bool isMoving = moveInput.magnitude > 0.1f;
-        
-    //     float targetTurnX = isMoving ? 0f : rawTurn;
-    //     float targetMoveTurnX = isMoving ? rawTurn : 0f;
-        
-    //     smoothedTurnValue = Mathf.Lerp(smoothedTurnValue, targetTurnX, Time.deltaTime * turnLerpSpeed);
-    //     if (Mathf.Abs(smoothedTurnValue) < 0.005f) smoothedTurnValue = 0f;
-
-    //     smoothedMoveTurnValue = Mathf.Lerp(smoothedMoveTurnValue, targetMoveTurnX, Time.deltaTime * MoveturnLerpSpeed);
-    //     if (Mathf.Abs(smoothedMoveTurnValue) < 0.005f) smoothedMoveTurnValue = 0f;
-
-    //     animator.SetFloat("TurnX", smoothedTurnValue, 0f, Time.deltaTime);
-    //     animator.SetFloat("MoveTurnX", smoothedMoveTurnValue, 0f, Time.deltaTime);
-    // }
 
     // 재장전시 트리거 실행
     void OnReloadInput()
@@ -254,10 +255,9 @@ public class TestMoveAnimationController : MonoBehaviour
     void OnSkillInput()
     {
         
-        if (dashSkill != null && dashSkill.CanUse)
+        if (skill != null && skill.CanUse)
         {   
-            //dashSkill.Activate(moveController);
-            animator.SetTrigger("Speed");
+            animator.SetTrigger(skillAnimationTriggerName);
             animator.SetLayerWeight(upperBodyLayerIndex, 0f);
             gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 0f, 0f);
 
@@ -279,11 +279,7 @@ public class TestMoveAnimationController : MonoBehaviour
     {
         if (itemSkill != null && itemSkill.CanUse)
         {
-            //itemSkill.Activate(moveController);
-            animator.SetTrigger("Item");
-            animator.SetTrigger("PowerUP");
-            animator.SetTrigger("Debuff 1");
-            animator.SetTrigger("Throw");
+            animator.SetTrigger(itemSkill.SkillAnimationTriggerName);
             animator.SetLayerWeight(upperBodyLayerIndex, 0f);
             gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 0f, 0f);
         }

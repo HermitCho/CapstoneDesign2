@@ -36,6 +36,10 @@ public class HUDPanel : MonoBehaviour
     [SerializeField] private Image itemIcon2;
     [SerializeField] private Sprite emptyItemIcon;
 
+    [Header("킬로그 UI")]
+    [SerializeField] private GameObject killLogParent;
+    [SerializeField] private GameObject killLogPrefab;
+
     // 로컬 플레이어 참조
     private GameObject localPlayer;
     private LivingEntity localLivingEntity;
@@ -69,6 +73,10 @@ public class HUDPanel : MonoBehaviour
         {
             GameManager.OnGameTimeUpdated += UpdateGameTime;
         }
+        
+        // LivingEntity 사망 이벤트 구독
+        LivingEntity.OnPlayerDied += HandlePlayerDeath;
+        Debug.Log("HUD: LivingEntity.OnPlayerDied 이벤트 구독 완료");
     }
     
     void OnDestroy()
@@ -78,6 +86,10 @@ public class HUDPanel : MonoBehaviour
         {
             GameManager.OnGameTimeUpdated -= UpdateGameTime;
         }
+        
+        // LivingEntity 사망 이벤트 구독 해제
+        LivingEntity.OnPlayerDied -= HandlePlayerDeath;
+        Debug.Log("HUD: LivingEntity.OnPlayerDied 이벤트 구독 해제 완료");
     }
     
     void Update()
@@ -113,6 +125,7 @@ public class HUDPanel : MonoBehaviour
             UpdateItemUI();
             lastItemUpdate = currentTime;
         }
+        
         
     }
     
@@ -558,6 +571,50 @@ public class HUDPanel : MonoBehaviour
         ClearItemIcon(itemIcon1);
         ClearItemIcon(itemIcon2);
     }
+
+
+
+
+    private void HandlePlayerDeath(LivingEntity victim)
+    {
+        if (victim == null) return;
+
+        LivingEntity attacker = victim.GetAttacker();
+        if (attacker != null)
+        {
+            // 모든 클라이언트에서 킬로그 생성
+            GameObject killLog = Instantiate(killLogPrefab, killLogParent.transform);
+            Debug.Log($"HUD: 킬로그 생성 - {killLog.name}");
+            
+     
+            QuestItem questItem = killLog.GetComponent<QuestItem>();
+
+            
+            // 킬로그 텍스트 설정
+            questItem.questText = $"{attacker.CharacterData.characterName}         {victim.CharacterData.characterName}";
+            questItem.UpdateUI();
+
+            // Animate quest
+            questItem.AnimateQuest();
+            questItem.ExpandQuest();
+            questItem.MinimizeQuest();
+            
+            // 3초 후 킬로그 제거
+            StartCoroutine(DestroyKillLogAfterDelay(killLog, 5f));
+        }
+    }
+    
+    private IEnumerator DestroyKillLogAfterDelay(GameObject killLog, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        
+        if (killLog != null)
+        {
+            Debug.Log($"HUD: 킬로그 제거 - {killLog.name}");
+            Destroy(killLog);
+        }
+    }
+
 } 
 
 

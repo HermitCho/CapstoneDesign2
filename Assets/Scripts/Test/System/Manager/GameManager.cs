@@ -12,6 +12,8 @@ public class GameManager : Singleton<GameManager>
     // 플레이어 관리
     private LivingEntity localPlayerLivingEntity;
 
+    private LivingEntity[] allPlayerLivingEntities;
+
     // 테디베어 관리 (점수는 CoinController에서 관리)
     private Crown currentTeddyBear;
     
@@ -924,6 +926,10 @@ public class GameManager : Singleton<GameManager>
         }
     }
 
+    public LivingEntity[] GetAllPlayerLivingEntities()
+    {
+        return allPlayerLivingEntities;
+    }
 
     // ✅ 추가: LivingEntity의 체력 변경 이벤트를 처리하는 핸들러
     private void HandleAnyLivingEntityHealthChanged(float current, float max, LivingEntity changedEntity)
