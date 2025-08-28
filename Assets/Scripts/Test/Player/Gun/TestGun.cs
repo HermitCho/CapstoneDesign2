@@ -30,16 +30,15 @@ public class TestGun : MonoBehaviourPun
     [SerializeField] private ParticleSystem shellEjectEffect;
 
     [Header("Aiming System")]
-    private Camera mainCamera;
-    [SerializeField] private Transform fireTransform;
-    private RectTransform aimPointUI;
+    private Transform fireTransform;
 
     private MoveController moveController;
-    
+    private TestShoot testShoot; // TestShoot 스크립트 참조 추가
+
     #endregion
 
     #region Properties
-    public GunState CurrentState { get; private set; }
+    public static GunState CurrentState { get; private set; } // 정적 속성으로 변경
     [HideInInspector] public int CurrentMagAmmo { get; private set; }
     public bool IsShouldering { get; private set; }
     #endregion
@@ -55,12 +54,18 @@ public class TestGun : MonoBehaviourPun
     protected virtual void Awake()
     {
         photonViewCached = GetComponent<PhotonView>();
+        fireTransform = transform; // fireTransform 초기화
         damage = gunData.damage;
+        testShoot = GetComponentInParent<TestShoot>(); // TestShoot 스크립트 찾기
+
+        if (testShoot == null)
+        {
+            Debug.LogError("TestShoot 스크립트를 찾을 수 없습니다.");
+        }
     }
 
     protected virtual void OnEnable()
     {
-        InitializeComponents();
         InitializeGunState();
     }
 
@@ -82,40 +87,6 @@ public class TestGun : MonoBehaviourPun
     #endregion
 
     #region Initialization
-    private void InitializeComponents()
-    {
-        mainCamera = GameObject.FindGameObjectWithTag("MainCamera").GetComponent<Camera>();
-        StartCoroutine(FindCrosshairUI());
-    }
-
-    private IEnumerator FindCrosshairUI()
-    {
-        int maxRetries = 100;
-        int currentRetry = 0;
-
-        while (aimPointUI == null && currentRetry < maxRetries)
-        {
-            GameObject crosshairObj = GameObject.FindGameObjectWithTag("Crosshair");
-            if (crosshairObj != null)
-            {
-                aimPointUI = crosshairObj.GetComponent<RectTransform>();
-                if (aimPointUI != null)
-                {
-                    Debug.Log("✅ TestGun: Crosshair UI 찾기 성공!");
-                    break;
-                }
-            }
-
-            currentRetry++;
-            yield return new WaitForSeconds(0.1f);
-        }
-
-        if (aimPointUI == null)
-        {
-            Debug.LogWarning("⚠️ TestGun: Crosshair UI를 찾을 수 없습니다.");
-        }
-    }
-
     private void InitializeGunState()
     {
         isFiring = false;
@@ -145,52 +116,40 @@ public class TestGun : MonoBehaviourPun
     #region Firing System
     private void ProcessFiring()
     {
-        // ✅ 발사자만 실행되도록 보장
         if (!photonViewCached.IsMine) return;
 
         if (CanFire())
         {
-            Vector3 targetPosition = CalculateShotTarget();
-            ExecuteFire(targetPosition);
+            Vector3 shootDirection = testShoot.CalculateShotDirection();
+            ExecuteFire(shootDirection);
         }
     }
-
-    private Vector3 CalculateShotTarget()
+    public GunData GetGunData()
     {
-        Vector3 screenPoint = aimPointUI != null ? aimPointUI.position :
-            new Vector3(Screen.width / 2f, Screen.height / 2f);
-
-        Ray cameraRay = mainCamera.ScreenPointToRay(screenPoint);
-        int layerMask = ~LayerMask.GetMask("PlayerPosition");
-
-        if (Physics.Raycast(cameraRay, out RaycastHit hit, gunData.range, layerMask, QueryTriggerInteraction.Ignore))
-        {
-            return hit.point;
-        }
-        else
-        {
-            return cameraRay.origin + cameraRay.direction * gunData.range;
-        }
+        return gunData;
+    }
+    public Transform GetFireTransform()
+    {
+        return fireTransform;
     }
 
     // ✅ 이름 변경: FireAtWorldPoint -> ExecuteFire (더 명확한 의미)
-    private void ExecuteFire(Vector3 worldPoint)
+    private void ExecuteFire(Vector3 shootDirection)
     {
         if (!photonViewCached.IsMine) return;
 
         lastFireTime = Time.time;
-        Vector3 direction = (worldPoint - fireTransform.position).normalized;
 
         // ✅ 발사 실행을 RPC로 전송
-        photonViewCached.RPC("RPC_Shot", RpcTarget.All, direction);
+        photonViewCached.RPC("RPC_Shot", RpcTarget.All, shootDirection);
     }
 
     private bool CanFire()
     {
         return CurrentState == GunState.Ready &&
-               !moveController.IsStunned() &&
-               Time.time >= lastFireTime + gunData.fireRate &&
-               CurrentMagAmmo > 0;
+           !moveController.IsStunned() &&
+           Time.time >= lastFireTime + gunData.fireRate &&
+           CurrentMagAmmo > 0;
     }
 
     [PunRPC]
@@ -244,9 +203,9 @@ public class TestGun : MonoBehaviourPun
             return baseDirection;
 
         return Quaternion.Euler(
-            Random.Range(-currentSpreadAngle, currentSpreadAngle),
-            Random.Range(-currentSpreadAngle, currentSpreadAngle),
-            0f
+          Random.Range(-currentSpreadAngle, currentSpreadAngle),
+          Random.Range(-currentSpreadAngle, currentSpreadAngle),
+          0f
         ) * baseDirection;
     }
 
@@ -279,7 +238,7 @@ public class TestGun : MonoBehaviourPun
             {
                 // LivingEntity 객체 대신 PhotonView.ViewID를 전달
                 int attackerViewId = livingEntity.photonView.ViewID;
-                
+
                 // 마스터 클라이언트로 데미지 RPC 전송
                 targetView.RPC("OnDamage", RpcTarget.All, damage, hit.point, hit.normal, attackerViewId);
             }

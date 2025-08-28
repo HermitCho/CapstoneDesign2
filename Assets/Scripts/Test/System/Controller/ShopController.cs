@@ -66,13 +66,13 @@ public class ShopController : MonoBehaviourPun
         {
             inGameUIManager = FindObjectOfType<InGameUIManager>();
         }
-        
+
         // Shop 오브젝트 찾기
         if (shopObject == null)
         {
             shopObject = FindObjectOfType<Shop>();
         }
-        
+
         Debug.Log("✅ ShopController - 초기화 완료");
     }
 
@@ -141,24 +141,24 @@ public class ShopController : MonoBehaviourPun
         if (!photonView.IsMine) return;
 
         isShopOpen = true;
-        
+
         // 플레이어 컴포넌트 찾기
         playerItemController = GetComponent<ItemController>();
         playerCoinController = GetComponent<CoinController>();
-        
+
         // Shop 오브젝트와 연결
         if (shopObject != null)
         {
             shopObject.ConnectShopController(this);
         }
-        
+
         // 상점 패널 표시
         if (inGameUIManager != null)
         {
             inGameUIManager.ShowShopPanel();
             AudioManager.Inst.PlayOneShot("SFX_UI_OpenShop");
         }
-        
+
         // 게임 입력 차단
         DisableGameInput();
     }
@@ -174,7 +174,7 @@ public class ShopController : MonoBehaviourPun
         {
             isShopOpen = false;
             EnableGameInput();
-            
+
             // Shop 오브젝트와의 연결 해제
             if (shopObject != null)
             {
@@ -183,7 +183,7 @@ public class ShopController : MonoBehaviourPun
 
             playerCoinController = null;
             playerItemController = null;
-                
+
             if (inGameUIManager != null)
             {
                 inGameUIManager.ShowHUDPanel();
@@ -253,7 +253,7 @@ public class ShopController : MonoBehaviourPun
         {
             // 코인 차감
             playerCoinController.SubtractCoin(itemPrice);
-            
+
             // 아이템 슬롯에 추가 (프리팹 인스턴스화)
             if (cachedItemData[itemIndex] != null)
             {
@@ -304,7 +304,7 @@ public class ShopController : MonoBehaviourPun
     /// </summary>
     /// <returns>현재 코인 수</returns>
     public int GetPlayerCoins()
-    {       
+    {
         return playerCoinController != null ? playerCoinController.GetCoin() : 0;
     }
 
