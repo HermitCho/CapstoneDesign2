@@ -968,7 +968,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks, IPunObservable
             scoreBoardObjects[i].SetActive(true);
             
             // 순위와 함께 표시
-            string displayText = $"{i + 1}. {playerData.nickname}: {playerData.score:F0}";
+            string displayText = $"{playerData.nickname}   {playerData.score:F0}";
             
             // 로컬 플레이어인 경우 하이라이트
             if (playerData.isLocalPlayer)
@@ -1025,47 +1025,69 @@ public class HUDPanel : MonoBehaviourPunCallbacks, IPunObservable
     {
         isAnimating = true;
         
-        // 현재 위치 저장
-        List<Vector3> originalPositions = new List<Vector3>();
-        foreach (var scoreBoard in scoreBoardObjects)
+        // 현재 위치와 순서 정보 저장
+        Dictionary<GameObject, Vector3> originalPositions = new Dictionary<GameObject, Vector3>();
+        Dictionary<GameObject, int> originalIndices = new Dictionary<GameObject, int>();
+        
+        for (int i = 0; i < scoreBoardObjects.Count; i++)
         {
-            originalPositions.Add(scoreBoard.transform.localPosition);
+            var scoreBoard = scoreBoardObjects[i];
+            if (scoreBoard != null)
+            {
+                originalPositions[scoreBoard] = scoreBoard.transform.localPosition;
+                originalIndices[scoreBoard] = scoreBoard.transform.GetSiblingIndex();
+            }
         }
         
-        // Hierarchy 순서 변경
+        // 먼저 새로운 순서로 정렬
         for (int i = 0; i < playerScoreDataList.Count && i < scoreBoardObjects.Count; i++)
         {
             scoreBoardObjects[i].transform.SetSiblingIndex(i);
         }
         
+        // Layout 업데이트를 위해 잠시 대기
+        yield return new WaitForEndOfFrame();
+        
         // Layout Group 강제 업데이트
         LayoutRebuilder.ForceRebuildLayoutImmediate(scoreBoardParent.GetComponent<RectTransform>());
         
-        // 새로운 목표 위치 계산
-        List<Vector3> targetPositions = new List<Vector3>();
+        // 새로운 목표 위치 저장
+        Dictionary<GameObject, Vector3> targetPositions = new Dictionary<GameObject, Vector3>();
         foreach (var scoreBoard in scoreBoardObjects)
         {
-            targetPositions.Add(scoreBoard.transform.localPosition);
-        }
-        
-        // 원래 위치로 되돌리기 (애니메이션 시작점)
-        for (int i = 0; i < scoreBoardObjects.Count; i++)
-        {
-            if (i < originalPositions.Count)
+            if (scoreBoard != null)
             {
-                scoreBoardObjects[i].transform.localPosition = originalPositions[i];
+                targetPositions[scoreBoard] = scoreBoard.transform.localPosition;
             }
         }
+        
+        // 원래 순서와 위치로 되돌리기
+        foreach (var scoreBoard in scoreBoardObjects)
+        {
+            if (scoreBoard != null && originalIndices.ContainsKey(scoreBoard))
+            {
+                scoreBoard.transform.SetSiblingIndex(originalIndices[scoreBoard]);
+                scoreBoard.transform.localPosition = originalPositions[scoreBoard];
+            }
+        }
+        
+        // Layout 업데이트를 위해 다시 대기
+        yield return new WaitForEndOfFrame();
         
         // DOTween을 사용한 부드러운 이동 애니메이션
         List<Tween> tweens = new List<Tween>();
         
-        for (int i = 0; i < scoreBoardObjects.Count; i++)
+        foreach (var scoreBoard in scoreBoardObjects)
         {
-            if (i < targetPositions.Count)
+            if (scoreBoard != null && targetPositions.ContainsKey(scoreBoard))
             {
-                var tween = scoreBoardObjects[i].transform
-                    .DOLocalMove(targetPositions[i], 0.5f)
+                // 먼저 올바른 순서로 설정
+                int targetIndex = scoreBoardObjects.IndexOf(scoreBoard);
+                scoreBoard.transform.SetSiblingIndex(targetIndex);
+                
+                // 그 다음 위치 애니메이션 실행
+                var tween = scoreBoard.transform
+                    .DOLocalMove(targetPositions[scoreBoard], 0.5f)
                     .SetEase(Ease.OutCubic);
                 tweens.Add(tween);
             }
@@ -1077,11 +1099,11 @@ public class HUDPanel : MonoBehaviourPunCallbacks, IPunObservable
         // 애니메이션 완료 후 정리
         foreach (var tween in tweens)
         {
-            if (tween != null)
+            if (tween != null && tween.IsActive())
                 tween.Kill();
         }
         
-        // Layout Group 다시 활성화
+        // 최종 Layout 업데이트
         LayoutRebuilder.ForceRebuildLayoutImmediate(scoreBoardParent.GetComponent<RectTransform>());
         
         isAnimating = false;

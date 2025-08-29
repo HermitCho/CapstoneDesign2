@@ -50,7 +50,7 @@ public class TestShoot : MonoBehaviourPun
         if (!photonView.IsMine) return;
         if (TestGun.CurrentState == TestGun.GunState.Ready) // TestGun의 정적 속성 사용
         {
-            if (gun != null)
+            if (gun != null && isShooting)
                 gun.InputFire(true);
         }
 

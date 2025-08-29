@@ -270,7 +270,7 @@ public class DataBase : Singleton<DataBase>
             get { return airAcceleration; }
         }
         [Space(10)]
-        [Tooltip("공중 최대 속도 - 공중에서 도달할 수 있는 최대 속도 제한 값값")]
+        [Tooltip("공중 최대 속도 - 공중에서 도달할 수 있는 최대 속도 제한 값")]
         [Range(5f, 20f)]
         [SerializeField] private float airMaxSpeed = 8f;
         public float AirMaxSpeed
