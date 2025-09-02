@@ -120,7 +120,8 @@ public class TestMoveAnimationController : MonoBehaviourPun
         }
 
         bool isInMovement = animator.GetCurrentAnimatorStateInfo(0).IsName("Movement");
-        bool isJumping = animator.GetBool("JumpUp");
+        bool isJumping = animator.GetCurrentAnimatorStateInfo(0).IsName("JumpStart");
+
 
         animator.SetLayerWeight(upperBodyLayerIndex, isInMovement || isJumping ? 1f : 0f);        
     }
@@ -179,7 +180,7 @@ public class TestMoveAnimationController : MonoBehaviourPun
     void OnReloadInput()
     {
         isReloading = true;
-        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.RightHand, gunIK.rightHandTarget, 0f, 0f);
+        // gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.RightHand, gunIK.rightHandTarget, 1f, 0f);
         // aimIK.enabled = false;
         animator.SetTrigger("Reload");
 
@@ -196,7 +197,7 @@ public class TestMoveAnimationController : MonoBehaviourPun
     {
         Debug.Log("OnReloadEnd 호출됨");
         isReloading = false;
-        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.RightHand, gunIK.rightHandTarget, 1f, 0.5f);
+        // gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.RightHand, gunIK.rightHandTarget, 1f, 0.5f);
         // aimIK.enabled = true;
         //animator.SetLayerWeight(upperBodyLayerIndex, 0f);
 
