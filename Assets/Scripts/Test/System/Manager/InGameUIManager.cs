@@ -11,12 +11,16 @@ public class InGameUIManager : MonoBehaviour
     [Header("HeatUI 패널 매니저")]
     [SerializeField] private PanelManager panelManager;
 
+    [Header("GameOver 모달 창 설정")]
+    [SerializeField] private ModalWindowManager gameOverModalWindowManager;
     
     [Header("패널 이름 설정")]
     [SerializeField] private string hudPanelName = "HUD";
     [SerializeField] private string shopPanelName = "Shop";
     [SerializeField] private string pausePanelName = "Pause";
     [SerializeField] private string gameOverPanelName = "GameOver";
+
+
     
     [Header(" 현재 상태")]
     private string currentPanel = "";
@@ -79,13 +83,22 @@ public class InGameUIManager : MonoBehaviour
     /// </summary>
     public void ShowGameOverPanel(float finalScore)
     {
-        if (panelManager != null)
+        if (panelManager != null && gameOverModalWindowManager != null)
         {
-            panelManager.OpenPanel(gameOverPanelName);
-            currentPanel = gameOverPanelName;
             SetMenuMouseCursor();
-            Debug.Log($"✅ InGameUIManager: 게임 오버 패널 표시 - 최종 점수: {finalScore}");
+            gameOverModalWindowManager.OpenWindow();
+
+            StartCoroutine(ShowGameOverPanelCoroutine(3f));
         }
+    }
+
+    IEnumerator ShowGameOverPanelCoroutine(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        gameOverModalWindowManager.CloseWindow();
+        panelManager.OpenPanel(gameOverPanelName);
+        currentPanel = gameOverPanelName;
+        
     }
     
     #endregion

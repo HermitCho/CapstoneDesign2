@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using System;
+using System.Linq;
 using Photon.Pun;
 
 public class GameManager : Singleton<GameManager>
@@ -631,35 +632,52 @@ public class GameManager : Singleton<GameManager>
     }
     
     /// <summary>
-    /// 플레이어 조작 비활성화
+    /// 모든 플레이어 조작 비활성화
     /// </summary>
     void DisablePlayerControls()
     {
         try
         {
-            // MoveController의 모든 조작 비활성화
-            if (localPlayerLivingEntity != null)
+            Debug.Log("🚫 GameManager: 모든 플레이어 컨트롤 비활성화 시작");
+            
+            // 모든 플레이어 찾기
+            GameObject[] allPlayerObjects = GameObject.FindGameObjectsWithTag("Player");
+            
+            foreach(GameObject playerObj in allPlayerObjects)
             {
-                MoveController moveController = localPlayerLivingEntity.GetComponent<MoveController>();
-                if (moveController != null)
+                PhotonView pv = playerObj.GetComponent<PhotonView>();
+                if(pv != null)
                 {
-                    moveController.DisableAllControls();
+                    // MoveController 비활성화
+                    MoveController moveController = playerObj.GetComponent<MoveController>();
+                    if(moveController != null)
+                    {
+                        moveController.DisableAllControls();
+                        Debug.Log($"🚫 플레이어 {pv.Owner.ActorNumber} MoveController 비활성화");
+                    }
+                    
+                    // CameraController 비활성화 (로컬 플레이어만)
+                    if(pv.IsMine)
+                    {
+                        CameraController cameraController = playerObj.GetComponent<CameraController>();
+                        if(cameraController != null)
+                        {
+                            cameraController.DisableCameraControl();
+                            cameraController.enabled = false;
+                            Debug.Log($"🚫 로컬 플레이어 CameraController 비활성화");
+                        }
+                    }
                 }
             }
             
-            // 총 발사 비활성화
+            // 전역 사격 시스템 비활성화
             TestShoot.SetIsShooting(false);
-            
-            // 카메라 조작 비활성화
-            CameraController cameraController = localPlayerLivingEntity.GetComponent<CameraController>();
-            if (cameraController != null)
-            {
-                cameraController.DisableCameraControl();
-            }
             
             // 마우스 커서 표시
             Cursor.visible = true;
             Cursor.lockState = CursorLockMode.None;
+            
+            Debug.Log("✅ GameManager: 모든 플레이어 컨트롤 비활성화 완료");
             
         }
         catch (System.Exception e)
@@ -928,6 +946,20 @@ public class GameManager : Singleton<GameManager>
 
     public LivingEntity[] GetAllPlayerLivingEntities()
     {
+        // 실시간으로 모든 플레이어 찾기 (멀티플레이어 환경에서 안전)
+        GameObject[] playerObjects = GameObject.FindGameObjectsWithTag("Player");
+        List<LivingEntity> livingEntities = new List<LivingEntity>();
+        
+        foreach(GameObject playerObj in playerObjects)
+        {
+            LivingEntity livingEntity = playerObj.GetComponent<LivingEntity>();
+            if(livingEntity != null)
+            {
+                livingEntities.Add(livingEntity);
+            }
+        }
+        
+        allPlayerLivingEntities = livingEntities.ToArray();
         return allPlayerLivingEntities;
     }
 

@@ -5812,6 +5812,17 @@ MonoBehaviour:
   itemIcon1: {fileID: 2086688106940844383}
   itemIcon2: {fileID: 356674404228097955}
   emptyItemIcon: {fileID: 21300000, guid: 16c763b97d21a4f96a2edbabf8b126c3, type: 3}
+  killLogParent: {fileID: 0}
+  killLogPrefab: {fileID: 0}
+  scoreBoardParent: {fileID: 0}
+  player1ScoreBoard: {fileID: 0}
+  player1ScoreText: {fileID: 0}
+  player2ScoreBoard: {fileID: 0}
+  player2ScoreText: {fileID: 0}
+  player3ScoreBoard: {fileID: 0}
+  player3ScoreText: {fileID: 0}
+  player4ScoreBoard: {fileID: 0}
+  player4ScoreText: {fileID: 0}
 --- !u!1 &5412915408788370691
 GameObject:
   m_ObjectHideFlags: 0
@@ -7028,7 +7039,6 @@ GameObject:
   - component: {fileID: 4832656097405009632}
   - component: {fileID: 1885661125097542764}
   - component: {fileID: 3724883249950465404}
-  - component: {fileID: 6685396886774444620}
   m_Layer: 5
   m_Name: GameOver Panel
   m_TagString: Untagged
@@ -7089,25 +7099,6 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
---- !u!114 &6685396886774444620
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6534418943038284671}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5ce2c7d7337563048b744863ac09a0e7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  finalScoreTexts:
-  - {fileID: 3942449096183324176}
-  - {fileID: 2777320258110637797}
-  - {fileID: 8487912144714733477}
-  - {fileID: 6989578882913481235}
-  mainMenuButton: {fileID: 7656061897743505102}
-  modalWindowManager: {fileID: 5375107444317613396}
 --- !u!1 &6935803045307082529
 GameObject:
   m_ObjectHideFlags: 0
