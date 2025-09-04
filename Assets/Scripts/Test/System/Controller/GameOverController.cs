@@ -39,129 +39,148 @@ public class GameOverController : MonoBehaviour
         winnerPlayer = null;
         playerRankings.Clear();
 
-        Debug.Log("🎮 GameOverController: 플레이어 순위 계산 시작");
-
-        // 모든 플레이어의 정보 수집
-        foreach(var player in GameManager.Instance.GetAllPlayerLivingEntities())
+        // HUDPanel에서 이미 계산된 점수판 데이터 가져오기
+        HUDPanel hudPanel = FindObjectOfType<HUDPanel>();
+        if(hudPanel != null)
         {
-            PhotonView pv = player.GetComponent<PhotonView>();
-            if(pv != null)
+            // HUDPanel의 점수판 데이터를 활용
+            var hudPlayerData = hudPanel.GetPlayerScoreDataList();
+            
+            foreach(var playerData in hudPlayerData)
             {
-                float playerScore = player.GetComponent<CoinController>().GetCurrentScore();
-                string nickname = GetPlayerNickname(pv.Owner);
-                bool isLocal = pv.IsMine;
-                int actorNumber = pv.Owner.ActorNumber;
-
-                playerRankings.Add(new PlayerRankData(
-                    player.gameObject,
-                    nickname,
-                    playerScore,
-                    isLocal,
-                    actorNumber
-                ));
-
-                Debug.Log($"📊 플레이어 정보: {nickname} (Actor: {actorNumber}) - 점수: {playerScore} {(isLocal ? "[로컬]" : "[원격]")}");
-
-                // 최고 점수 플레이어 갱신
-                if(playerScore > winnerScore)
+                GameObject playerObject = FindPlayerObjectByActorNumber(playerData.playerId);
+                if(playerObject != null)
                 {
-                    winnerScore = playerScore;
-                    winnerPlayer = player.gameObject;
+                    playerRankings.Add(new PlayerRankData(
+                        playerObject,
+                        playerData.nickname,
+                        playerData.score,
+                        playerData.isLocalPlayer,
+                        playerData.playerId
+                    ));
+
+                    // 최고 점수 플레이어 갱신
+                    if(playerData.score > winnerScore)
+                    {
+                        winnerScore = playerData.score;
+                        winnerPlayer = playerObject;
+                    }
                 }
             }
+
+            // 이미 HUDPanel에서 정렬되어 있으므로 그대로 사용
+            // playerRankings는 HUD 데이터 순서를 유지
         }
 
-        // 점수 기준으로 내림차순 정렬 (점수가 같으면 ActorNumber 순)
-        playerRankings = playerRankings.OrderByDescending(p => p.score).ThenBy(p => p.actorNumber).ToList();
-
-        Debug.Log($"🏆 승자 결정: {GetPlayerNickname(winnerPlayer?.GetComponent<PhotonView>()?.Owner)} - 점수: {winnerScore}");
-
-        // 승자 플레이어를 winnerPosition으로 이동 (로컬 플레이어인 경우에만)
-        if(winnerPlayer != null && winnerPosition != null)
-        {
-            PhotonView winnerPV = winnerPlayer.GetComponent<PhotonView>();
-            if(winnerPV != null && winnerPV.IsMine)
-            {
-                Debug.Log("🎯 로컬 플레이어가 승자입니다. winnerPosition으로 이동합니다.");
-                StartCoroutine(MoveWinnerToPosition());
-            }
-            else
-            {
-                Debug.Log("🎯 원격 플레이어가 승자입니다. 위치 이동은 하지 않습니다.");
-            }
-        }
+        // 로컬 플레이어가 승자인 경우에만 이동
+        CheckAndMoveWinner();
 
         // GameOverPanel에 순위 정보 전달
         UpdateGameOverPanel();
     }
 
+    /// <summary>
+    /// ActorNumber로 플레이어 오브젝트 찾기
+    /// </summary>
+    private GameObject FindPlayerObjectByActorNumber(int actorNumber)
+    {
+        foreach(var player in GameManager.Instance.GetAllPlayerLivingEntities())
+        {
+            PhotonView pv = player.GetComponent<PhotonView>();
+            if(pv != null && pv.Owner.ActorNumber == actorNumber)
+            {
+                return player.gameObject;
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// 승자 확인 및 처리
+    /// </summary>
+    private void CheckAndMoveWinner()
+    {
+        if(winnerPlayer != null)
+        {
+            PhotonView winnerPV = winnerPlayer.GetComponent<PhotonView>();
+            if(winnerPV != null && winnerPV.IsMine)
+            {
+                // 로컬 플레이어가 승자인 경우 - 플레이어 이동 + 카메라 설정
+                StartCoroutine(MoveWinnerToPosition());
+            }
+            else
+            {
+                // 로컬 플레이어가 승자가 아닌 경우 - 카메라만 이동
+                StartCoroutine(SetupNonWinnerView());
+            }
+        }
+        else
+        {
+            // 승자를 찾을 수 없는 경우에도 카메라 이동
+            StartCoroutine(SetupNonWinnerView());
+        }
+    }
+
     private IEnumerator MoveWinnerToPosition()
     {
-        // 모든 플레이어의 컨트롤 비활성화
-        DisableAllPlayersControls();
+        // 로컬 플레이어만 컨트롤 비활성화
+        DisableLocalPlayerControls();
         
-        // 약간의 지연 후 이동
         yield return new WaitForSeconds(0.5f);
         
         if(winnerPlayer != null && winnerPosition != null)
         {
-            // 간단한 텔레포트
             SimpleTeleport(winnerPlayer, winnerPosition.position, winnerPosition.rotation);
-            
-            // 카메라 위치 설정
             SetCameraPosition();
-            
-            Debug.Log($"🏆 승자 플레이어가 winnerPosition으로 이동 완료: {winnerPlayer.name}");
         }
     }
 
     /// <summary>
-    /// 모든 플레이어의 컨트롤을 비활성화
+    /// 로컬 플레이어만 컨트롤 비활성화
     /// </summary>
-    private void DisableAllPlayersControls()
+    private void DisableLocalPlayerControls()
     {
-        Debug.Log("🚫 모든 플레이어 컨트롤 비활성화 시작");
-        
-        // 모든 플레이어 찾기
         GameObject[] allPlayerObjects = GameObject.FindGameObjectsWithTag("Player");
         
         foreach(GameObject playerObj in allPlayerObjects)
         {
             PhotonView pv = playerObj.GetComponent<PhotonView>();
-            if(pv != null)
+            if(pv != null && pv.IsMine) // 로컬 플레이어만
             {
-                // MoveController 비활성화
                 MoveController moveController = playerObj.GetComponent<MoveController>();
                 if(moveController != null)
                 {
                     moveController.DisableAllControls();
-                    Debug.Log($"🚫 플레이어 {pv.Owner.ActorNumber} MoveController 비활성화");
                 }
                 
-                // CameraController 비활성화 (로컬 플레이어만)
-                if(pv.IsMine)
+                CameraController cameraController = playerObj.GetComponent<CameraController>();
+                if(cameraController != null)
                 {
-                    CameraController cameraController = playerObj.GetComponent<CameraController>();
-                    if(cameraController != null)
-                    {
-                        cameraController.DisableCameraControl();
-                        // CameraController 컴포넌트 비활성화
-                        cameraController.enabled = false;
-                        Debug.Log($"🚫 로컬 플레이어 CameraController 비활성화");
-                    }
+                    cameraController.DisableCameraControl();
+                    cameraController.enabled = false;
                 }
+                break; // 로컬 플레이어 하나만 처리하고 종료
             }
         }
         
-        // 전역 사격 시스템 비활성화
-        TestShoot.SetIsShooting(false);
-        
-        // 마우스 커서 표시
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
-        
-        Debug.Log("✅ 모든 플레이어 컨트롤 비활성화 완료");
     }
+
+    /// <summary>
+    /// 승자가 아닌 플레이어들을 위한 게임 오버 처리
+    /// </summary>
+    private IEnumerator SetupNonWinnerView()
+    {
+        // 로컬 플레이어 컨트롤 비활성화
+        DisableLocalPlayerControls();
+        
+        yield return new WaitForSeconds(0.5f);
+        
+        // 카메라를 cameraPosition으로 이동
+        SetCameraPosition();
+    }
+
 
     /// <summary>
     /// 간단한 플레이어 텔레포트

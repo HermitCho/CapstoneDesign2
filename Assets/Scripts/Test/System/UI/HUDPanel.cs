@@ -518,6 +518,18 @@ public class HUDPanel : MonoBehaviourPunCallbacks, IPunObservable
     public float GetCurrentScore() => currentScore;
     
     /// <summary>
+    /// 현재 점수판 데이터 리스트 반환 (GameOverController용)
+    /// </summary>
+    public List<PlayerScoreData> GetPlayerScoreDataList()
+    {
+        // 최신 점수판 데이터 수집
+        CollectAllPlayersData();
+        SortPlayersByScore();
+        
+        return playerScoreDataList;
+    }
+    
+    /// <summary>
     /// 외부 호환성을 위한 메서드들
     /// </summary>
     
