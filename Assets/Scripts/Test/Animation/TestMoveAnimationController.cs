@@ -103,6 +103,7 @@ public class TestMoveAnimationController : MonoBehaviourPun
     private void Update()
     {
         if (!photonView.IsMine) return;
+        if(GameManager.Instance.IsGameOver()) return;
         HandleMovementAnimation();
         HandleJumpAnimation();
         HandleTeddyBearWeaponState();
@@ -162,11 +163,13 @@ public class TestMoveAnimationController : MonoBehaviourPun
 
     private void OnStunned()
     {
+        if(GameManager.Instance.IsGameOver()) return;
         animator.SetTrigger("Death");
     }
 
     private void OnRevive()
     {
+        if(GameManager.Instance.IsGameOver()) return;
         animator.SetTrigger("Revive");
         // 부활 시 스턴 상태 해제
         if (moveController != null)
@@ -178,6 +181,7 @@ public class TestMoveAnimationController : MonoBehaviourPun
     // 재장전시 트리거 실행
     void OnReloadInput()
     {
+        if(GameManager.Instance.IsGameOver()) return;
         isReloading = true;
         gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.RightHand, gunIK.rightHandTarget, 0f, 0f);
         // aimIK.enabled = false;
@@ -229,6 +233,7 @@ public class TestMoveAnimationController : MonoBehaviourPun
     // 조준 시작 시 호출
     void OnZoomInput()
     {
+        if(GameManager.Instance.IsGameOver()) return;
         gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.Body, gunIK.bodyTarget, 0.04f);
         gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.RightFoot, gunIK.rightLegTarget, 0.3f);
         gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftFoot, gunIK.leftLegTarget, 0.3f);
@@ -249,7 +254,7 @@ public class TestMoveAnimationController : MonoBehaviourPun
     // 스피드 스킬
     void OnSkillInput()
     {
-        
+        if(GameManager.Instance.IsGameOver()) return;
         if (skill != null && skill.CanUse)
         {   
             animator.SetTrigger(skillAnimationTriggerName);
@@ -272,6 +277,7 @@ public class TestMoveAnimationController : MonoBehaviourPun
     // 아이템 스킬
     void OnItemInput()
     {
+        if(GameManager.Instance.IsGameOver()) return;
         if (itemSkill != null && itemSkill.CanUse)
         {
             animator.SetTrigger(itemSkill.SkillAnimationTriggerName);

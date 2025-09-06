@@ -355,6 +355,7 @@ public class MoveController : MonoBehaviourPun
     void OnMoveInput(Vector2 moveInput)
     {
         if(!photonView.IsMine) return;
+        if(GameManager.Instance.IsGameOver()) return;
         // ✅ 움직임 제어 확인
         if (!canMove || isStunned)
         {
@@ -372,6 +373,7 @@ public class MoveController : MonoBehaviourPun
     void OnMouseInput(Vector2 mouseInput)
     {
         if(!photonView.IsMine) return;
+        if(GameManager.Instance.IsGameOver()) return;
         // ✅ 마우스 조작 제어 확인
         if (!canRotate || isStunned)
         {
@@ -417,6 +419,7 @@ public class MoveController : MonoBehaviourPun
     void OnJumpInput()
     {      
         if(!photonView.IsMine) return;
+        if(GameManager.Instance.IsGameOver()) return;
         // ✅ 점프 제어 확인
         if (!canJump || isStunned)
         {
@@ -669,6 +672,7 @@ public class MoveController : MonoBehaviourPun
     // InputManager에서 스킬 입력 받기
     void OnSkillInput()
     {
+        if(GameManager.Instance.IsGameOver()) return;
         UseSkill();
     }
 
@@ -821,6 +825,7 @@ public class MoveController : MonoBehaviourPun
     // InputManager에서 아이템 입력 받기
     void OnItemInput()
     {      
+        if(GameManager.Instance.IsGameOver()) return;
         // 상점이 열려있으면 아이템 사용 차단
         ShopController shopController = GetComponent<ShopController>();
         if (shopController != null && shopController.IsShopOpen())
