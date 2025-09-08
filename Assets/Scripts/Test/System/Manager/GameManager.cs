@@ -621,6 +621,10 @@ public class GameManager : Singleton<GameManager>
         
         // 플레이어 조작 비활성화
         DisablePlayerControls();
+        
+        // 승리포즈 애니메이션 실행
+        PlayVictoryPose();
+        
         // UI 표시
         ShowGameOverUI(finalScore);
         
@@ -996,6 +1000,36 @@ public class GameManager : Singleton<GameManager>
     #region 점수판 메서드
 
 
+
+    #endregion
+
+    #region 애니메이션 제어 메서드
+
+    /// <summary>
+    /// 게임 종료 시 승리포즈 애니메이션 실행
+    /// </summary>
+    private void PlayVictoryPose()
+    {
+        if (localPlayerLivingEntity != null)
+        {
+            // TestMoveAnimationController 컴포넌트 찾기
+            TestMoveAnimationController animationController = localPlayerLivingEntity.GetComponent<TestMoveAnimationController>();
+            
+            if (animationController != null)
+            {
+                animationController.PlayVictoryPose();
+                Debug.Log("승리포즈 애니메이션 실행 요청됨");
+            }
+            else
+            {
+                Debug.LogWarning("TestMoveAnimationController를 찾을 수 없습니다.");
+            }
+        }
+        else
+        {
+            Debug.LogWarning("로컬 플레이어 LivingEntity를 찾을 수 없습니다.");
+        }
+    }
 
     #endregion
 }

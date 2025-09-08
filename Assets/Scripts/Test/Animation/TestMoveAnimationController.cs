@@ -301,4 +301,34 @@ public class TestMoveAnimationController : MonoBehaviourPun
     {
         gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 1f, 1f);
     }
+
+    /// <summary>
+    /// 게임 종료 시 승리포즈 애니메이션 실행
+    /// </summary>
+    public void PlayVictoryPose()
+    {
+        if (photonView.IsMine)
+        {
+            // 승리포즈 애니메이션 트리거 실행
+            animator.SetTrigger("Victory");
+            
+            // 상체 레이어 가중치를 0으로 설정하여 승리포즈가 우선되도록 함
+            animator.SetLayerWeight(upperBodyLayerIndex, 0f);
+            
+            // 총기 IK 비활성화
+            if (gunIK != null)
+            {
+                gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 0f, 0f);
+                gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.RightHand, gunIK.rightHandTarget, 0f, 0f);
+            }
+            
+            // 조준 IK 비활성화
+            if (aimIK != null)
+            {
+                aimIK.enabled = false;
+            }
+            
+            Debug.Log("승리포즈 애니메이션 실행됨");
+        }
+    }
 }
