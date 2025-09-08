@@ -179,6 +179,8 @@ public class TestMoveAnimationController : MonoBehaviourPun
     // 재장전시 트리거 실행
     void OnReloadInput()
     {
+        if (isReloading)
+            return;
         isReloading = true;
         // gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.RightHand, gunIK.rightHandTarget, 1f, 0f);
         // aimIK.enabled = false;
