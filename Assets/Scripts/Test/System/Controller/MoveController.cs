@@ -36,7 +36,7 @@ public class MoveController : MonoBehaviourPun
     // 벽 통과 방지를 위한 변수 추가
     private LayerMask wallLayerMask = -1; // 벽으로 인식할 레이어
     private Vector3 lastValidPosition; // 마지막 유효한 위치 저장
-    
+
     // 🎯 Wall Penetration Ray 개선을 위한 변수들
     private float rayHeightOffset = 1.0f; // 캐릭터 허리 높이 (발 기준 +1m)
     private float capsuleRadius = 0.5f; // 캐릭터 반지름
@@ -59,10 +59,10 @@ public class MoveController : MonoBehaviourPun
 
 
     private float rotationAmount;
-    
+
     // 마우스 입력 타이머 (마우스 입력이 없으면 정지)
     private float lastMouseInputTime;
-    
+
     // 점프 관련 변수 
     private float lastJumpTime = 0f;
     private float jumpBufferTimer = 0f;
@@ -70,11 +70,13 @@ public class MoveController : MonoBehaviourPun
     private bool wasGrounded = false;
     private bool isAgainstWall = false; // 벽에 붙어있는 상태 추적
     private Vector3 wallNormal = Vector3.zero; // 벽의 법선 벡터 저장
-    
+
     // 카메라 참조
     private Camera mainCamera;
 
     // ✅ 기절/조작 제어 관련 변수들
+    private float slowMultiplier = 1f;
+    private bool isSlowed = false;
     private bool isStunned = false;
     private bool canMove = true;
     private bool canRotate = true;
@@ -94,7 +96,7 @@ public class MoveController : MonoBehaviourPun
     // InputManager 이벤트 구독
     void OnEnable()
     {
-        if(!photonView.IsMine) return;
+        if (!photonView.IsMine) return;
         // InputManager 이벤트 구독
         InputManager.OnMoveInput += OnMoveInput;
         InputManager.OnXMouseInput += OnMouseInput;
@@ -108,7 +110,7 @@ public class MoveController : MonoBehaviourPun
 
     void OnDisable()
     {
-        if(!photonView.IsMine) return;
+        if (!photonView.IsMine) return;
         // InputManager 이벤트 구독 해제
         InputManager.OnMoveInput -= OnMoveInput;
         InputManager.OnXMouseInput -= OnMouseInput;
@@ -119,10 +121,10 @@ public class MoveController : MonoBehaviourPun
     }
 
 
-    
+
     void Start()
     {
-        if(photonView.IsMine)
+        if (photonView.IsMine)
         {               // 메인 카메라 찾기
             mainCamera = Camera.main;
             if (mainCamera == null)
@@ -130,15 +132,15 @@ public class MoveController : MonoBehaviourPun
                 mainCamera = FindObjectOfType<Camera>();
             }
             playerRigidbody = GetComponent<Rigidbody>();
-            skill = GetComponent<Skill>();              
+            skill = GetComponent<Skill>();
             // 마지막 유효한 위치 초기화
-            lastValidPosition = transform.position;         
-        } 
+            lastValidPosition = transform.position;
+        }
         // DataBase 정보 안전하게 캐싱 (Start에서 지연 실행)
         CacheDataBaseInfo();
         CacheDictionary();
     }
-    
+
     void CacheDataBaseInfo()
     {
         try
@@ -150,7 +152,7 @@ public class MoveController : MonoBehaviourPun
                 StartCoroutine(RetryCacheDataBaseInfo());
                 return;
             }
-            
+
             if (DataBase.Instance.playerMoveData != null && DataBase.Instance.playerData != null && DataBase.Instance.itemData != null)
             {
                 playerMoveData = DataBase.Instance.playerMoveData;
@@ -187,7 +189,7 @@ public class MoveController : MonoBehaviourPun
             dataBaseCached = false;
         }
     }
-    
+
     /// <summary>
     /// DataBase 캐싱 재시도 코루틴
     /// </summary>
@@ -195,20 +197,20 @@ public class MoveController : MonoBehaviourPun
     {
         int maxRetries = 10;
         int currentRetry = 0;
-        
+
         while (currentRetry < maxRetries)
         {
             yield return new WaitForSeconds(0.1f); // 0.1초 대기
-            
+
             if (DataBase.Instance != null)
             {
                 CacheDataBaseInfo(); // 재귀 호출로 다시 시도
                 yield break;
             }
-            
+
             currentRetry++;
         }
-        
+
         Debug.LogError("❌ MoveController - DataBase 캐싱 최대 재시도 횟수 초과, 기본값 사용");
         dataBaseCached = false;
     }
@@ -219,13 +221,13 @@ public class MoveController : MonoBehaviourPun
         skillDictionary.Clear();
         itemDictionary.Clear();
 
-        if(Skills == null || Skills.Count() == 0) return;
-        foreach(var skill in Skills)
+        if (Skills == null || Skills.Count() == 0) return;
+        foreach (var skill in Skills)
         {
             skillDictionary.Add(skill.Index, skill);
         }
-        if(Items == null || Items.Count() == 0) return;
-        foreach(var item in Items)
+        if (Items == null || Items.Count() == 0) return;
+        foreach (var item in Items)
         {
             itemDictionary.Add(item.Index, item);
         }
@@ -233,13 +235,13 @@ public class MoveController : MonoBehaviourPun
 
     void Update()
     {
-        if(!photonView.IsMine) return;
+        if (!photonView.IsMine) return;
         UpdateGroundedState();
         HandleMovement();
         HandleRotation();
         UpdateJumpBuffer();
         HandleLanding();
-        
+
         // 벽 통과 방지 체크 (HandleMovement 이후에 실행)
         CheckWallPenetration();
     }
@@ -248,15 +250,53 @@ public class MoveController : MonoBehaviourPun
     // 지면 상태 업데이트
     void UpdateGroundedState()
     {
-        if(!photonView.IsMine) return;
+        if (!photonView.IsMine) return;
         wasGrounded = isGrounded;
         isGrounded = CheckGrounded();
+    }
+
+    /// <summary>
+    /// 모든 클라이언트에게 속도 감소 효과를 적용하는 RPC.
+    /// </summary>
+    [PunRPC]
+    public void ApplySlowEffect(float slowAmount)
+    {
+        // 이미 슬로우 상태가 아니라면
+        if (!isSlowed)
+        {
+            // 속도 배수를 적용하고 상태 변경
+            slowMultiplier = 1.0f - slowAmount;
+            isSlowed = true;
+            UpdateSpeed();
+        }
+    }
+
+    /// <summary>
+    /// 모든 클라이언트에게 속도 감소 효과를 제거하는 RPC.
+    /// </summary>
+    [PunRPC]
+    public void RemoveSlowEffect()
+    {
+        // 슬로우 상태라면
+        if (isSlowed)
+        {
+            // 속도 배수를 원래대로 되돌리고 상태 변경
+            slowMultiplier = 1.0f;
+            isSlowed = false;
+            UpdateSpeed();
+        }
+    }
+
+    // 실제 이동 속도를 업데이트하는 함수
+    private void UpdateSpeed()
+    {
+        cachedSpeed = playerMoveData.Speed * slowMultiplier;
     }
 
     //움직임 처리
     void HandleMovement()
     {
-        if(!photonView.IsMine) return;
+        if (!photonView.IsMine) return;
         if (rawMoveInput.magnitude < 0.1f) return;
 
         Vector3 playerRelativeMovement = GetPlayerRelativeMovement(rawMoveInput);
@@ -277,10 +317,10 @@ public class MoveController : MonoBehaviourPun
     // 공중 이동
     void HandleAirMovement(Vector3 wishDirection)
     {
-        if(!photonView.IsMine) return;
+        if (!photonView.IsMine) return;
         Vector3 currentVelocity = playerRigidbody.velocity;
         Vector3 horizontalVelocity = new Vector3(currentVelocity.x, 0, currentVelocity.z);
-        
+
         // 벽에 붙어있는 상태에서 벽 쪽으로 이동하려고 하면 차단
         if (isAgainstWall)
         {
@@ -291,25 +331,25 @@ public class MoveController : MonoBehaviourPun
                 // 벽 쪽으로 이동하려고 하면 그 방향 성분을 제거
                 wishDirection = wishDirection - Vector3.Project(wishDirection, wallNormal);
                 wishDirection = wishDirection.normalized;
-                
+
                 // 벽 방향 성분이 제거되어 이동 방향이 거의 없으면 리턴
                 if (wishDirection.magnitude < 0.1f)
                     return;
             }
         }
-        
+
         // 현재 속도와 원하는 방향의 내적
         float currentSpeed = Vector3.Dot(horizontalVelocity, wishDirection);
-        
+
         // 가속할 수 있는 속도 계산 (캐싱된 값 사용)
         float addSpeed = cachedAirMaxSpeed - currentSpeed;
         if (addSpeed <= 0) return;
-        
+
         // 가속도 적용 (캐싱된 값 사용)
         float accelerationSpeed = cachedAirAcceleration * Time.deltaTime;
         if (accelerationSpeed > addSpeed)
             accelerationSpeed = addSpeed;
-        
+
         // 힘 적용
         Vector3 force = wishDirection * accelerationSpeed;
         playerRigidbody.AddForce(force, ForceMode.VelocityChange);
@@ -318,11 +358,11 @@ public class MoveController : MonoBehaviourPun
     // 점프 버퍼 업데이트
     void UpdateJumpBuffer()
     {
-        if(!photonView.IsMine) return;
+        if (!photonView.IsMine) return;
         if (jumpBufferTimer > 0)
         {
             jumpBufferTimer -= Time.deltaTime;
-            
+
             // 착지했고 점프 버퍼가 활성화되어 있으면 점프 실행
             if (isGrounded && jumpBufferTimer > 0)
             {
@@ -335,16 +375,16 @@ public class MoveController : MonoBehaviourPun
     // 착지 처리
     void HandleLanding()
     {
-        if(!photonView.IsMine) return;
+        if (!photonView.IsMine) return;
         // 공중에서 땅으로 착지한 순간
         if (!wasGrounded && isGrounded)
         {
             Vector3 currentVelocity = playerRigidbody.velocity;
             Vector3 horizontalVelocity = new Vector3(currentVelocity.x, 0, currentVelocity.z);
             Vector3 reducedVelocity = horizontalVelocity * cachedLandingFriction; // 캐싱된 값 사용
-            
+
             playerRigidbody.velocity = new Vector3(reducedVelocity.x, currentVelocity.y, reducedVelocity.z);
-            
+
             // 착지 시 벽 상태 해제
             isAgainstWall = false;
             wallNormal = Vector3.zero;
@@ -354,37 +394,37 @@ public class MoveController : MonoBehaviourPun
     // InputManager에서 이동 입력 받기
     void OnMoveInput(Vector2 moveInput)
     {
-        if(!photonView.IsMine) return;
+        if (!photonView.IsMine) return;
         // ✅ 움직임 제어 확인
         if (!canMove || isStunned)
         {
             rawMoveInput = Vector2.zero;
             return;
         }
-        
+
         // 🔒 네트워크 권한 체크 - 자신의 플레이어만 조작 가능
         if (!PhotonView.Get(this).IsMine) return;
-        
+
         rawMoveInput = moveInput;
     }
 
     // InputManager에서 마우스 입력 받기
     void OnMouseInput(Vector2 mouseInput)
     {
-        if(!photonView.IsMine) return;
+        if (!photonView.IsMine) return;
         // ✅ 마우스 조작 제어 확인
         if (!canRotate || isStunned)
         {
             rotationAmount = 0;
             return;
         }
-        
+
         // 🔒 네트워크 권한 체크 - 자신의 플레이어만 조작 가능
         if (!PhotonView.Get(this).IsMine) return;
-        
+
         float mouseX = mouseInput.x;
-       
-        
+
+
         rotationAmount = mouseX * Time.deltaTime * cachedRotationSpeed; // 캐싱된 값 사용
 
         if (CameraController.isZoomed)
@@ -397,15 +437,15 @@ public class MoveController : MonoBehaviourPun
 
     // 회전 처리
     void HandleRotation()
-    {   
-        if(!photonView.IsMine) return;
+    {
+        if (!photonView.IsMine) return;
         // ✅ 회전 제어 확인
         if (!canRotate || isStunned)
         {
             rotationAmount = 0;
             return;
         }
-        
+
         if (Time.time - lastMouseInputTime > cachedMouseInputTimeout) // 캐싱된 값 사용
         {
             rotationAmount = 0;
@@ -415,17 +455,17 @@ public class MoveController : MonoBehaviourPun
 
     // InputManager에서 점프 입력 받기
     void OnJumpInput()
-    {      
-        if(!photonView.IsMine) return;
+    {
+        if (!photonView.IsMine) return;
         // ✅ 점프 제어 확인
         if (!canJump || isStunned)
         {
             return;
         }
-        
+
         // 🔒 네트워크 권한 체크 - 자신의 플레이어만 조작 가능
         if (!PhotonView.Get(this).IsMine) return;
-        
+
         if (isGrounded)
         {
             // 즉시 점프
@@ -441,18 +481,18 @@ public class MoveController : MonoBehaviourPun
     // 점프 실행
     void PerformJump()
     {
-        if(!photonView.IsMine) return;
+        if (!photonView.IsMine) return;
         if (Time.time - lastJumpTime < cachedJumpCooldown) return; // 캐싱된 값 사용
 
         // 수직 속도만 리셋 (수평 속도는 유지)
         Vector3 currentVelocity = playerRigidbody.velocity;
-        
+
         // 점프 높이를 직접 계산 (캐싱된 값 사용)
         float jumpVelocity = Mathf.Sqrt(2f * cachedJumpHeight * Mathf.Abs(Physics.gravity.y));
-            
+
         // 수평 관성 유지하면서 수직 속도만 변경
         playerRigidbody.velocity = new Vector3(currentVelocity.x, jumpVelocity, currentVelocity.z);
-        
+
         lastJumpTime = Time.time;
         isGrounded = false; // 점프 시 즉시 공중 상태로 변경
     }
@@ -461,7 +501,7 @@ public class MoveController : MonoBehaviourPun
     private bool CheckGrounded()
     {
         RaycastHit hit;
-        
+
         return Physics.Raycast(transform.position, Vector3.down, out hit, cachedGroundCheckDistance);
     }
 
@@ -470,42 +510,42 @@ public class MoveController : MonoBehaviourPun
     /// </summary>
     private void CheckWallPenetration()
     {
-        if(!photonView.IsMine) return;
+        if (!photonView.IsMine) return;
         if (GameManager.Instance.IsGameOver()) return;
         Vector3 currentPosition = transform.position;
         Vector3 moveVector = currentPosition - lastValidPosition;
         float moveDistance = moveVector.magnitude;
-        
+
         // 이동 거리가 임계값을 초과하거나 빠른 이동이 감지되면 체크
         if (moveDistance > cachedMaxMoveDistance * Time.deltaTime || moveDistance > 0.1f)
         {
             // 🎯 수평 방향으로만 이동 벡터 계산 (Y축 제거)
             Vector3 horizontalMoveVector = new Vector3(moveVector.x, 0f, moveVector.z);
             float horizontalDistance = horizontalMoveVector.magnitude;
-            
+
             // 수평 이동이 거의 없으면 체크하지 않음
             if (horizontalDistance < 0.01f)
             {
                 lastValidPosition = currentPosition;
                 return;
             }
-            
+
             Vector3 horizontalDirection = horizontalMoveVector.normalized;
-            
+
             // 🎯 여러 높이에서 수평 Ray 체크 (발목, 허리, 가슴)
             float[] checkHeights = { 0.2f, rayHeightOffset, rayHeightOffset * 1.5f };
             bool hitDetected = false;
             RaycastHit closestHit = new RaycastHit();
             float closestDistance = float.MaxValue;
-            
+
             foreach (float height in checkHeights)
             {
                 Vector3 rayStart = lastValidPosition + Vector3.up * height;
                 RaycastHit hit;
-                
+
                 // 땅바닥 제외하고 벽만 감지하도록 LayerMask 조정
                 LayerMask effectiveWallMask = wallLayerMask & ~groundLayerMask;
-                
+
                 if (Physics.Raycast(rayStart, horizontalDirection, out hit, horizontalDistance + capsuleRadius, effectiveWallMask))
                 {
                     // 플레이어 자신이거나 Trigger 콜라이더는 무시
@@ -522,16 +562,16 @@ public class MoveController : MonoBehaviourPun
                     }
                 }
             }
-            
+
             // 충돌이 감지되면 안전한 위치로 이동
             if (hitDetected)
             {
                 // 🎯 안전한 위치 계산 (캐릭터 반지름 + 여유 공간 확보)
                 Vector3 safePosition = closestHit.point - horizontalDirection * (capsuleRadius + 0.1f);
                 safePosition.y = currentPosition.y; // Y 좌표는 현재 위치 유지
-                
+
                 transform.position = safePosition;
-                
+
                 // Rigidbody 속도 조정 (수평 방향만)
                 if (playerRigidbody != null)
                 {
@@ -540,24 +580,24 @@ public class MoveController : MonoBehaviourPun
                     Vector3 horizontalNormal = new Vector3(closestHit.normal.x, 0f, closestHit.normal.z).normalized;
                     Vector3 horizontalVelocity = new Vector3(currentVelocity.x, 0f, currentVelocity.z);
                     Vector3 velocityAlongNormal = Vector3.Project(horizontalVelocity, horizontalNormal);
-                    
+
                     // 수정된 수평 속도 적용 (Y 속도는 유지)
                     Vector3 correctedHorizontalVelocity = horizontalVelocity - velocityAlongNormal;
                     playerRigidbody.velocity = new Vector3(correctedHorizontalVelocity.x, currentVelocity.y, correctedHorizontalVelocity.z);
                 }
-                
+
                 lastValidPosition = safePosition;
                 return;
             }
         }
-        
+
         // 유효한 이동이면 마지막 위치 업데이트
         lastValidPosition = currentPosition;
     }
 
     public void MouseLock()
     {
-        if(!photonView.IsMine) return;
+        if (!photonView.IsMine) return;
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
     }
@@ -565,7 +605,7 @@ public class MoveController : MonoBehaviourPun
     // 벽 충돌 시 자연스럽게 떨어지도록 처리
     void OnCollisionEnter(Collision collision)
     {
-        if(!photonView.IsMine) return;
+        if (!photonView.IsMine) return;
         //if (GameManager.Instance.IsGameOver()) return;
         // 공중에 있을 때만 처리
         if (!isGrounded)
@@ -574,20 +614,20 @@ public class MoveController : MonoBehaviourPun
             if (!collision.gameObject.CompareTag("Player"))
             {
                 Vector3 currentVelocity = playerRigidbody.velocity;
-                
+
                 // 벽 상태 설정
                 isAgainstWall = true;
                 wallNormal = collision.contacts[0].normal;
-                
+
                 // 위쪽으로 올라가는 속도가 있을 때만 처리 (떨어지는 중이면 그대로 둠)
                 if (currentVelocity.y > 0)
                 {
                     // 수직 속도만 0으로 만들어서 중력이 자연스럽게 작용하도록 함
                     playerRigidbody.velocity = new Vector3(currentVelocity.x, 0, currentVelocity.z);
-                    
+
                     // 플레이어의 이동 방향을 기준으로 밀어내기 방향 계산
                     Vector3 horizontalVelocity = new Vector3(currentVelocity.x, 0, currentVelocity.z);
-                    
+
                     if (horizontalVelocity.magnitude > 0.1f)
                     {
                         // 플레이어가 이동하던 방향의 반대로 밀어내기
@@ -606,11 +646,11 @@ public class MoveController : MonoBehaviourPun
             }
         }
     }
-    
+
     // 벽에 계속 붙어있는 상태 방지
     void OnCollisionStay(Collision collision)
     {
-        if(!photonView.IsMine) return;
+        if (!photonView.IsMine) return;
         //if (GameManager.Instance.IsGameOver()) return;
         // 공중에 있고 수직 속도가 거의 0일 때 (벽에 붙어있는 상태)
         if (!isGrounded)
@@ -618,11 +658,11 @@ public class MoveController : MonoBehaviourPun
             if (!collision.gameObject.CompareTag("Player"))
             {
                 Vector3 currentVelocity = playerRigidbody.velocity;
-                
+
                 // 벽 상태 유지
                 isAgainstWall = true;
                 wallNormal = collision.contacts[0].normal;
-                
+
                 // 수직 속도가 거의 없고 공중에 있으면 벽에 붙어있는 상태
                 if (Mathf.Abs(currentVelocity.y) < 0.5f)
                 {
@@ -634,7 +674,7 @@ public class MoveController : MonoBehaviourPun
             }
         }
     }
-    
+
     // 벽에서 떨어졌을 때
     void OnCollisionExit(Collision collision)
     {
@@ -643,13 +683,13 @@ public class MoveController : MonoBehaviourPun
             // 벽 상태 해제
             isAgainstWall = false;
             wallNormal = Vector3.zero;
-            }            
+        }
     }
 
     // ========================================
     // === DataBase 캐싱 유틸리티 메서드들 ===
     // ========================================
-    
+
     /// <summary>
     /// DataBase가 성공적으로 캐싱되었는지 확인
     /// </summary>
@@ -657,7 +697,7 @@ public class MoveController : MonoBehaviourPun
     {
         return dataBaseCached;
     }
-    
+
     /// <summary>
     /// DataBase 정보 강제 새로고침
     /// </summary>
@@ -674,7 +714,7 @@ public class MoveController : MonoBehaviourPun
 
     public void UseSkill()
     {
-        if(skill != null)
+        if (skill != null)
         {
             skill.ActivateSkill(this);
         }
@@ -682,7 +722,7 @@ public class MoveController : MonoBehaviourPun
 
     public void UseItem()
     {
-        if(activeItem != null)
+        if (activeItem != null)
         {
             activeItem.ActivateItem(this);
         }
@@ -692,7 +732,7 @@ public class MoveController : MonoBehaviourPun
     public void ExecuteSkill(int skillIndex, Vector3 pos, Vector3 dir)
     {
         // 실질 동작은 자기 자신만
-        if(photonView.IsMine && skill != null && skill.Index == skillIndex)
+        if (photonView.IsMine && skill != null && skill.Index == skillIndex)
         {
             skill.Execute(this, pos, dir);
         }
@@ -700,16 +740,16 @@ public class MoveController : MonoBehaviourPun
         // 이펙트/사운드는 모든 클라이언트에서 실행
         PlaySkillEffectByIndex(skillIndex, pos, dir);
     }
-    
+
     /// <summary>
     /// 스킬 타입 이름으로 이펙트 재생
     /// </summary>
     private void PlaySkillEffectByIndex(int skillIndex, Vector3 pos, Vector3 dir)
     {
-        if(skillDictionary == null || skillDictionary.Count() == 0) return;
+        if (skillDictionary == null || skillDictionary.Count() == 0) return;
         // 현재 플레이어의 스킬 컴포넌트 찾기
         Skill targetSkill = skillDictionary[skillIndex];
-        
+
         if (targetSkill != null)
         {
             Debug.Log($"✅ ExecuteSkill - 스킬 '{skillIndex}' 이펙트 재생");
@@ -725,7 +765,7 @@ public class MoveController : MonoBehaviourPun
     public void CastExecuteSkill(int skillIndex, Vector3 pos, Vector3 dir)
     {
         // 실질 동작은 자기 자신만
-        if(photonView.IsMine && skill != null && skill.Index == skillIndex)
+        if (photonView.IsMine && skill != null && skill.Index == skillIndex)
         {
             skill.CastExecute(this, pos, dir);
         }
@@ -733,16 +773,16 @@ public class MoveController : MonoBehaviourPun
         // 캐스팅 이펙트/사운드는 모든 클라이언트에서 실행
         PlaySkillCastEffectByIndex(skillIndex, pos, dir);
     }
-    
+
     /// <summary>
     /// 스킬 타입 이름으로 캐스팅 이펙트 재생
     /// </summary>
     private void PlaySkillCastEffectByIndex(int skillIndex, Vector3 pos, Vector3 dir)
     {
-        if(skillDictionary == null || skillDictionary.Count() == 0) return;
+        if (skillDictionary == null || skillDictionary.Count() == 0) return;
         // 현재 플레이어의 스킬 컴포넌트 찾기
         Skill targetSkill = skillDictionary[skillIndex];
-        
+
         if (targetSkill != null)
         {
             Debug.Log($"✅ CastExecuteSkill - 스킬 '{skillIndex}' 캐스팅 이펙트 재생");
@@ -757,24 +797,24 @@ public class MoveController : MonoBehaviourPun
     [PunRPC]
     public void ExecuteItem(int itemIndex, Vector3 pos, Vector3 dir)
     {
-        if(photonView.IsMine && activeItem != null && activeItem.Index == itemIndex)
+        if (photonView.IsMine && activeItem != null && activeItem.Index == itemIndex)
         {
             activeItem.Execute(this, pos, dir);
         }
-        
+
         // 이펙트/사운드는 모든 클라이언트에서 실행
         PlayItemEffectByIndex(itemIndex, pos, dir);
     }
-    
+
     /// <summary>
     /// 아이템 타입 이름으로 이펙트 재생
     /// </summary>
     private void PlayItemEffectByIndex(int itemIndex, Vector3 pos, Vector3 dir)
     {
-        if(itemDictionary == null || itemDictionary.Count() == 0) return;
+        if (itemDictionary == null || itemDictionary.Count() == 0) return;
         // 현재 플레이어의 아이템 컴포넌트 찾기
         Skill targetItem = itemDictionary[itemIndex];
-        
+
         if (targetItem != null)
         {
             Debug.Log($"✅ ExecuteItem - 아이템 '{itemIndex}' 이펙트 재생");
@@ -786,10 +826,10 @@ public class MoveController : MonoBehaviourPun
         }
     }
 
-        [PunRPC]
+    [PunRPC]
     public void CastExecuteItem(int itemIndex, Vector3 pos, Vector3 dir)
     {
-        if(photonView.IsMine && activeItem != null && activeItem.Index == itemIndex)
+        if (photonView.IsMine && activeItem != null && activeItem.Index == itemIndex)
         {
             activeItem.CastExecute(this, pos, dir);
         }
@@ -797,16 +837,16 @@ public class MoveController : MonoBehaviourPun
         // 캐스팅 이펙트/사운드는 모든 클라이언트에서 실행
         PlayItemCastEffectByIndex(itemIndex, pos, dir);
     }
-    
+
     /// <summary>
     /// 아이템 타입 이름으로 캐스팅 이펙트 재생
     /// </summary>
     private void PlayItemCastEffectByIndex(int itemIndex, Vector3 pos, Vector3 dir)
     {
-        if(itemDictionary == null || itemDictionary.Count() == 0) return;
+        if (itemDictionary == null || itemDictionary.Count() == 0) return;
         // 현재 플레이어의 아이템 컴포넌트 찾기
         Skill targetItem = itemDictionary[itemIndex];
-        
+
         if (targetItem != null)
         {
             Debug.Log($"✅ CastExecuteItem - 아이템 '{itemIndex}' 캐스팅 이펙트 재생");
@@ -820,14 +860,14 @@ public class MoveController : MonoBehaviourPun
 
     // InputManager에서 아이템 입력 받기
     void OnItemInput()
-    {      
+    {
         // 상점이 열려있으면 아이템 사용 차단
         ShopController shopController = GetComponent<ShopController>();
         if (shopController != null && shopController.IsShopOpen())
         {
             return;
         }
-        
+
         // 현재 플레이어의 활성화된 아이템 찾기
         ItemController itemController = FindCurrentPlayerItemController();
         if (itemController == null)
@@ -835,7 +875,7 @@ public class MoveController : MonoBehaviourPun
             Debug.LogWarning("⚠️ MoveController - ItemController를 찾을 수 없습니다.");
             return;
         }
-        
+
         // 활성화된 아이템 가져오기
         activeItem = itemController.GetFirstActiveItem();
 
@@ -878,13 +918,13 @@ public class MoveController : MonoBehaviourPun
         {
             itemController = GetComponentInChildren<ItemController>();
         }
-        
+
         if (itemController != null)
         {
             Debug.Log($"✅ MoveController - ItemController 찾음: {itemController.name}");
             return itemController;
         }
-        
+
         // Fallback: 태그 기반 탐색 (기존 방식)
         GameObject currentPlayer = GameObject.FindGameObjectWithTag("Player");
         if (currentPlayer != null)
@@ -900,7 +940,7 @@ public class MoveController : MonoBehaviourPun
                 return itemController;
             }
         }
-        
+
         Debug.LogWarning("⚠️ MoveController - 플레이어의 ItemController를 찾을 수 없습니다.");
         return null;
     }
@@ -911,17 +951,17 @@ public class MoveController : MonoBehaviourPun
         // 플레이어 기준 방향 벡터 계산
         Vector3 playerForward = transform.forward;
         Vector3 playerRight = transform.right;
-        
+
         // Y축 제거 (수평 이동만)
         playerForward.y = 0;
         playerRight.y = 0;
-        
+
         playerForward = playerForward.normalized;
         playerRight = playerRight.normalized;
-        
+
         // 입력에 따른 이동 방향 계산
         Vector3 moveDirection = playerForward * input.y + playerRight * input.x;
-        
+
         return moveDirection.normalized;
     }
 
@@ -932,7 +972,7 @@ public class MoveController : MonoBehaviourPun
         {
             return new Vector3(input.x, 0, input.y).normalized;
         }
-       
+
         return GetCameraForwardRightMovement(input);
     }
 
@@ -941,15 +981,15 @@ public class MoveController : MonoBehaviourPun
     {
         Vector3 cameraForward = mainCamera.transform.forward;
         Vector3 cameraRight = mainCamera.transform.right;
-        
+
         cameraForward.y = 0;
         cameraRight.y = 0;
-        
+
         cameraForward = cameraForward.normalized;
         cameraRight = cameraRight.normalized;
-        
+
         Vector3 moveDirection = cameraForward * input.y + cameraRight * input.x;
-        
+
         return moveDirection.normalized;
     }
 
@@ -978,14 +1018,14 @@ public class MoveController : MonoBehaviourPun
     public void SetStunned(bool stunned)
     {
         isStunned = stunned;
-        
+
         if (stunned)
         {
             // 기절 시 모든 입력 차단 및 움직임 정지
             rawMoveInput = Vector2.zero;
             rotationAmount = 0;
             jumpBufferTimer = 0;
-            
+
             Debug.Log("✅ 캐릭터 기절 상태 - 모든 조작 차단");
         }
         else
@@ -1192,4 +1232,4 @@ public class MoveController : MonoBehaviourPun
         Debug.Log($"스킬: {canUseSkill && !isStunned}");
         Debug.Log($"아이템: {canUseItem && !isStunned}");
     }
-}   
+}

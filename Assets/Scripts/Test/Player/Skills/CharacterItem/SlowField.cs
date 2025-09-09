@@ -31,7 +31,7 @@ public class SlowField : MonoBehaviour
         if (player != null && !slowedPlayers.Contains(player))
         {
             // 속도 감소 적용
-            player.photonView.RPC("SetSpeedMultiplier", RpcTarget.All, slowAmountMultiplier);
+            player.photonView.RPC("ApplySlowEffect", RpcTarget.All, slowAmountMultiplier);
             slowedPlayers.Add(player);
         }
     }
@@ -46,7 +46,7 @@ public class SlowField : MonoBehaviour
         if (player != null && slowedPlayers.Contains(player))
         {
             // 원래 속도로 복구
-            player.photonView.RPC("SetSpeedMultiplier", RpcTarget.All, 1 / slowAmountMultiplier);
+            player.photonView.RPC("RemoveSlowEffect", RpcTarget.All);
             slowedPlayers.Remove(player);
         }
     }
