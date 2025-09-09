@@ -692,6 +692,11 @@ public class MoveController : MonoBehaviourPun
         }
     }
 
+    public Skill GetActiveItem()
+    {
+        return activeItem;
+    }
+
     [PunRPC]
     public void ExecuteSkill(int skillIndex, Vector3 pos, Vector3 dir)
     {

@@ -27,6 +27,7 @@ public class TestMoveAnimationController : MonoBehaviourPun
     // 캐릭터 이동 정보를 가져오는 컴포넌트
     private MoveController moveController;
     private CameraController cameraController;
+    private ItemController itemController;
 
     // 테디베어 총기 부착 관련
     [SerializeField] private Crown teddyBear;
@@ -47,19 +48,20 @@ public class TestMoveAnimationController : MonoBehaviourPun
     private Skill itemSkill;
     private Coroutine speedSkillCoroutine;
     private string skillAnimationTriggerName = "None";
+    private string itemSkillAnimationTriggerName = "None";
 
     private void Awake()
     {
         animator = GetComponent<Animator>();
         moveController = GetComponent<MoveController>();
         cameraController = GetComponent<CameraController>();
+        itemController = GetComponent<ItemController>();
         rb = GetComponent<Rigidbody>();
         upperBodyLayerIndex = animator.GetLayerIndex("UpperBody");
         gunIK = GetComponent<GunIK>();
         livingEntity = GetComponent<LivingEntity>();
         footstepSoundPlayer = GetComponent<FootstepSoundPlayer>();
         skill = GetComponent<Skill>();
-        itemSkill = GetComponent<Skill>();
         aimIK = GetComponent<AimIK>();
         photonView = GetComponent<PhotonView>();
         animator.SetFloat("SpeedMultiplier", 1.2f);
@@ -278,6 +280,11 @@ public class TestMoveAnimationController : MonoBehaviourPun
     void OnItemInput()
     {
         if(GameManager.Instance.IsGameOver()) return;
+        itemSkill = itemController.GetFirstActiveItem();
+        itemSkillAnimationTriggerName = itemSkill.SkillAnimationTriggerName;
+
+
+
         if (itemSkill != null && itemSkill.CanUse)
         {
             animator.SetTrigger(itemSkill.SkillAnimationTriggerName);
