@@ -471,6 +471,7 @@ public class MoveController : MonoBehaviourPun
     private void CheckWallPenetration()
     {
         if(!photonView.IsMine) return;
+        if (GameManager.Instance.IsGameOver()) return;
         Vector3 currentPosition = transform.position;
         Vector3 moveVector = currentPosition - lastValidPosition;
         float moveDistance = moveVector.magnitude;
@@ -565,6 +566,7 @@ public class MoveController : MonoBehaviourPun
     void OnCollisionEnter(Collision collision)
     {
         if(!photonView.IsMine) return;
+        //if (GameManager.Instance.IsGameOver()) return;
         // 공중에 있을 때만 처리
         if (!isGrounded)
         {
@@ -609,6 +611,7 @@ public class MoveController : MonoBehaviourPun
     void OnCollisionStay(Collision collision)
     {
         if(!photonView.IsMine) return;
+        //if (GameManager.Instance.IsGameOver()) return;
         // 공중에 있고 수직 속도가 거의 0일 때 (벽에 붙어있는 상태)
         if (!isGrounded)
         {

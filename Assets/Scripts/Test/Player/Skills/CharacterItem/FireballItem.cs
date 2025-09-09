@@ -18,7 +18,7 @@ public class FireballItem : Skill
     public override void Execute(MoveController executor, Vector3 pos, Vector3 dir)
     {
         // 발사 위치가 지정되지 않았으면 플레이어의 위치를 사용
-        Vector3 spawnPosition = launchPoint != null ? launchPoint.position : executor.transform.position + executor.transform.forward * 1.5f;
+        Vector3 spawnPosition = launchPoint != null ? launchPoint.position : executor.transform.position + executor.transform.forward * 1.5f + executor.transform.up * 1.5f;
 
         // 네트워크 상에 파이어볼 프리팹을 생성
         GameObject fireballInstance = PhotonNetwork.Instantiate(
@@ -34,7 +34,8 @@ public class FireballItem : Skill
                 "InitializeAndLaunch",
                 RpcTarget.All,
                 executor.photonView.OwnerActorNr,
-                executor.transform.forward
+                executor.GetComponent<TestShoot>().CalculateShotDirection(),
+                fireballScript.GetFireballSpeed()
             );
         }
     }

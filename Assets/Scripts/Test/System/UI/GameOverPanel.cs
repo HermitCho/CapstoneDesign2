@@ -9,247 +9,139 @@ using Photon.Pun;
 
 public class GameOverPanel : MonoBehaviour
 {
-    [Header("점수 표시 UI")]
-    [SerializeField] private TextMeshProUGUI[] finalScoreTexts;
-    
-    [Header("버튼 컴포넌트")]
-    [SerializeField] private ButtonManager mainMenuButton;
 
-    [Header("모달 매니저 컴포넌트")]
-    [SerializeField] private ModalWindowManager modalWindowManager;
+    [Header("winner 텍스트")]
+    [Tooltip("winner 이름 텍스트")]
+    [SerializeField] private TextMeshProUGUI winnerNameText;
+    [Space(10)]
 
-    private float currentFinalScore = 0f;
-    private float bestScore = 0f;
-    private const string BEST_SCORE_KEY = "BestScore";
-    private float modalDelayTime = 5f;
+    [Header("리더보드 텍스트")]
+    [Tooltip("1등 점수 텍스트")]
+    [SerializeField] private TextMeshProUGUI _1stScoreText;
+    [Tooltip("1등 이름 텍스트")]
+    [SerializeField] private TextMeshProUGUI _1stNameText;
 
-    private List<PlayerScoreData> allPlayerScores = new List<PlayerScoreData>();
-    private bool isModalOpened = false;
-    
-    [System.Serializable]
-    public struct PlayerScoreData
-    {
-        public string playerName;
-        public float score;
-        public bool isLocalPlayer;
-        
-        public PlayerScoreData(string name, float playerScore, bool isLocal = false)
-        {
-            playerName = name;
-            score = playerScore;
-            isLocalPlayer = isLocal;
-        }
-    }
-    
-    void Awake()
-    {
-        currentFinalScore = 0f;
-        isModalOpened = false;
-        LoadBestScore();
-        SetupButtons();
-    }
-    
+    [Space(10)]
+    [Tooltip("2등 점수 텍스트")]
+    [SerializeField] private TextMeshProUGUI _2ndScoreText;
+    [Tooltip("2등 이름 텍스트")]
+    [SerializeField] private TextMeshProUGUI _2ndNameText;
+
+    [Space(10)]
+    [Tooltip("3등 점수 텍스트")]
+    [SerializeField] private TextMeshProUGUI _3rdScoreText;
+    [Tooltip("3등 이름 텍스트")]
+    [SerializeField] private TextMeshProUGUI _3rdNameText;
+
+    [Space(10)]
+    [Tooltip("4등 점수 텍스트")]
+    [SerializeField] private TextMeshProUGUI _4thScoreText;
+    [Tooltip("4등 이름 텍스트")]
+    [SerializeField] private TextMeshProUGUI _4thNameText;
+
+
+
+
+    [Header("게임 오버 컨트롤러")]
+    [SerializeField] private GameOverController gameOverController;
+
+
+#region Unity 생명주기
+
     void OnEnable()
     {
-        currentFinalScore = 0f;
-        isModalOpened = false;
-        GameManager.OnGameOver += OnGameOverReceived;
+        if(gameOverController != null)
+        {
+            gameOverController.SetWinnerPlayer();
+        }
     }
     
     void OnDisable()
     {
-        GameManager.OnGameOver -= OnGameOverReceived;
-    }
-    
-    void SetupButtons()
-    {
-        if (mainMenuButton != null)
+        if(gameOverController != null)
         {
-            mainMenuButton.onClick.AddListener(OnMainMenuButtonClicked);
+            gameOverController.ResetWinnerPlayer();
         }
     }
-    
-    void OnGameOverReceived(float finalScore)
+
+#endregion
+
+
+#region UI 업데이트
+
+    public void UpdateUI()
     {
-        float latestScore = finalScore;
-        if (GameManager.Instance != null)
+        
+    }
+
+    /// <summary>
+    /// 플레이어 순위 정보 설정
+    /// </summary>
+    public void SetPlayerRankings(List<GameOverController.PlayerRankData> rankings)
+    {
+        Debug.Log($"📋 GameOverPanel: 순위 정보 업데이트 - {rankings.Count}명");
+
+        // 승자 정보 설정
+        if(rankings.Count > 0)
         {
-            latestScore = GameManager.Instance.GetTeddyBearScore();
+            var winner = rankings[0];
+            if(winnerNameText != null)
+                winnerNameText.text = winner.nickname;
         }
-        
-        currentFinalScore = latestScore;
-        isModalOpened = false;
-        
-        UpdateBestScore(latestScore);
-        
-        allPlayerScores.Clear();
-        allPlayerScores.Add(new PlayerScoreData("Player", latestScore, true));
-        
-        UpdateScoreUI();
-        StartCoroutine(ShowResultModalAfterDelay());
+
+        // 순위별 정보 설정
+        SetRankInfo(0, rankings, _1stNameText, _1stScoreText);
+        SetRankInfo(1, rankings, _2ndNameText, _2ndScoreText);
+        SetRankInfo(2, rankings, _3rdNameText, _3rdScoreText);
+        SetRankInfo(3, rankings, _4thNameText, _4thScoreText);
     }
-    
-    void UpdateScoreUI()
+
+    /// <summary>
+    /// 특정 순위의 정보 설정
+    /// </summary>
+    private void SetRankInfo(int rankIndex, List<GameOverController.PlayerRankData> rankings, 
+                            TextMeshProUGUI nameText, TextMeshProUGUI scoreText)
     {
-        if (finalScoreTexts != null && finalScoreTexts.Length > 0 && finalScoreTexts[0] != null)
+        if(rankIndex < rankings.Count)
         {
-            finalScoreTexts[0].text = $"최종 점수: {currentFinalScore:F0}";
-        }
-    }
-    
-    void LoadBestScore()
-    {
-        bestScore = PlayerPrefs.GetFloat(BEST_SCORE_KEY, 0f);
-    }
-    
-    void UpdateBestScore(float newScore)
-    {
-        if (newScore > bestScore)
-        {
-            bestScore = newScore;
-            PlayerPrefs.SetFloat(BEST_SCORE_KEY, bestScore);
-            PlayerPrefs.Save();
-        }
-    }
-    
-    public float GetFinalScore() => currentFinalScore;
-    public float GetBestScore() => bestScore;
-    
-    IEnumerator ShowResultModalAfterDelay()
-    {
-        yield return new WaitForSeconds(modalDelayTime);
-        ShowResultModal();
-    }
-    
-    void ShowResultModal()
-    {
-        if (modalWindowManager != null && !isModalOpened)
-        {
-            modalWindowManager.OpenWindow();
-            isModalOpened = true;
-            UpdateModalScoreDisplay();
-        }
-    }
-    
-    void UpdateModalScoreDisplay()
-    {
-        if (finalScoreTexts == null || finalScoreTexts.Length == 0) return;
-        
-        for (int i = 0; i < allPlayerScores.Count && i < finalScoreTexts.Length; i++)
-        {
-            if (finalScoreTexts[i] != null)
+            var playerData = rankings[rankIndex];
+            string displayName = playerData.nickname;
+            
+            // 로컬 플레이어인 경우 하이라이트
+            if(playerData.isLocalPlayer)
             {
-                PlayerScoreData playerData = allPlayerScores[i];
-                TextAnimator_TMP textAnimator = finalScoreTexts[i].GetComponent<TextAnimator_TMP>();
-                
-                string rankText = GetRankDisplay(i + 1);
-                string scoreText = $"{rankText} {playerData.playerName}: {playerData.score:F0}점";
-                
-                if (playerData.isLocalPlayer)
-                {
-                    if (textAnimator != null)
-                    {
-                        scoreText = $"<bounce>{rankText}</bounce> {playerData.playerName}: {playerData.score:F0}점";
-                    }
-                    scoreText = $"<color=white>{scoreText}</color>";
-                }
-                
-                if (textAnimator != null)
-                {
-                    textAnimator.SetText(scoreText);
-                }
-                else
-                {
-                    finalScoreTexts[i].text = scoreText;
-                }
-                
-                finalScoreTexts[i].gameObject.SetActive(true);
+                displayName = $"<color=yellow>{displayName}</color>";
             }
-        }
-        
-        for (int i = allPlayerScores.Count; i < finalScoreTexts.Length; i++)
-        {
-            if (finalScoreTexts[i] != null)
-            {
-                finalScoreTexts[i].gameObject.SetActive(false);
-            }
-        }
-    }
-    
-    public void SetMultiPlayerScores(List<PlayerScoreData> playerScores)
-    {
-        if (playerScores == null || playerScores.Count == 0) return;
-        
-        allPlayerScores.Clear();
-        allPlayerScores.AddRange(playerScores);
-        allPlayerScores.Sort((a, b) => b.score.CompareTo(a.score));
-        
-        if (isModalOpened)
-        {
-            UpdateModalScoreDisplay();
-        }
-    }
-    
-    public void AddPlayerScore(string playerName, float score, bool isLocal = false)
-    {
-        int existingIndex = allPlayerScores.FindIndex(p => p.playerName == playerName);
-        
-        if (existingIndex >= 0)
-        {
-            PlayerScoreData updatedData = allPlayerScores[existingIndex];
-            updatedData.score = score;
-            allPlayerScores[existingIndex] = updatedData;
+
+            if(nameText != null)
+                nameText.text = displayName;
+            if(scoreText != null)
+                scoreText.text = $"{playerData.score:F0}";
+
+            Debug.Log($"🏅 {rankIndex + 1}등: {playerData.nickname} - {playerData.score:F0}점 {(playerData.isLocalPlayer ? "[나]" : "")}");
         }
         else
         {
-            allPlayerScores.Add(new PlayerScoreData(playerName, score, isLocal));
-        }
-        
-        allPlayerScores.Sort((a, b) => b.score.CompareTo(a.score));
-        
-        if (isModalOpened)
-        {
-            UpdateModalScoreDisplay();
+            // 플레이어가 없는 순위는 비워둠
+            if(nameText != null)
+                nameText.text = "";
+            if(scoreText != null)
+                scoreText.text = "";
         }
     }
-    
-    public int GetPlayerRank(string playerName)
-    {
-        for (int i = 0; i < allPlayerScores.Count; i++)
-        {
-            if (allPlayerScores[i].playerName == playerName)
-            {
-                return i + 1;
-            }
-        }
-        return -1;
-    }
-    
-    public int GetRequiredTextCount() => allPlayerScores.Count;
-    
-    public List<PlayerScoreData> GetAllPlayerScores()
-    {
-        return new List<PlayerScoreData>(allPlayerScores);
-    }
-    
-    string GetRankDisplay(int rank)
-    {
-        switch (rank)
-        {
-            case 1: return "1st";
-            case 2: return "2nd";
-            case 3: return "3rd";
-            default: return $"{rank}th";
-        }
-    }
-    
-    void OnMainMenuButtonClicked()
-    {
-        currentFinalScore = 0f;
-        isModalOpened = false;
-        
+
+#endregion
+
+
+
+#region 버튼 클릭 이벤트
+
+    public void OnMainMenuButtonClicked()
+    {  
         PhotonNetwork.LeaveRoom();
         PhotonNetwork.Disconnect();
         UnityEngine.SceneManagement.SceneManager.LoadScene("Lobby");
     }
+
+#endregion
 }
