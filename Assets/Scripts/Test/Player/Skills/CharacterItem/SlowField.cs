@@ -6,7 +6,7 @@ using Photon.Pun;
 public class SlowField : MonoBehaviour
 {
     private List<MoveController> slowedPlayers = new List<MoveController>();
-    private float slowAmountMultiplier = 0.5f;
+    private float slowAmountMultiplier = 0.9f;
     private float fieldLifeTime = 5f;
 
     void Awake()
@@ -49,5 +49,21 @@ public class SlowField : MonoBehaviour
             player.photonView.RPC("RemoveSlowEffect", RpcTarget.All);
             slowedPlayers.Remove(player);
         }
+    }
+
+    [PunRPC]
+    private void OnDestroy()
+    {
+        // 오브젝트가 파괴될 때 모든 플레이어의 슬로우 효과를 해제
+        if (!PhotonNetwork.IsMasterClient) return;
+
+        foreach (MoveController player in slowedPlayers)
+        {
+            if (player != null)
+            {
+                player.photonView.RPC("RemoveSlowEffect", RpcTarget.All);
+            }
+        }
+        slowedPlayers.Clear(); // 리스트 초기화
     }
 }

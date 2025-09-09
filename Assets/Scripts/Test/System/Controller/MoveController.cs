@@ -394,8 +394,7 @@ public class MoveController : MonoBehaviourPun
     // InputManager에서 이동 입력 받기
     void OnMoveInput(Vector2 moveInput)
     {
-        if(!photonView.IsMine) return;
-        if(GameManager.Instance.IsGameOver()) return;
+        if (!photonView.IsMine) return;
         // ✅ 움직임 제어 확인
         if (!canMove || isStunned)
         {
@@ -412,8 +411,7 @@ public class MoveController : MonoBehaviourPun
     // InputManager에서 마우스 입력 받기
     void OnMouseInput(Vector2 mouseInput)
     {
-        if(!photonView.IsMine) return;
-        if(GameManager.Instance.IsGameOver()) return;
+        if (!photonView.IsMine) return;
         // ✅ 마우스 조작 제어 확인
         if (!canRotate || isStunned)
         {
@@ -457,9 +455,8 @@ public class MoveController : MonoBehaviourPun
 
     // InputManager에서 점프 입력 받기
     void OnJumpInput()
-    {      
-        if(!photonView.IsMine) return;
-        if(GameManager.Instance.IsGameOver()) return;
+    {
+        if (!photonView.IsMine) return;
         // ✅ 점프 제어 확인
         if (!canJump || isStunned)
         {
@@ -712,7 +709,6 @@ public class MoveController : MonoBehaviourPun
     // InputManager에서 스킬 입력 받기
     void OnSkillInput()
     {
-        if(GameManager.Instance.IsGameOver()) return;
         UseSkill();
     }
 
@@ -730,11 +726,6 @@ public class MoveController : MonoBehaviourPun
         {
             activeItem.ActivateItem(this);
         }
-    }
-
-    public Skill GetActiveItem()
-    {
-        return activeItem;
     }
 
     [PunRPC]
@@ -869,8 +860,7 @@ public class MoveController : MonoBehaviourPun
 
     // InputManager에서 아이템 입력 받기
     void OnItemInput()
-    {      
-        if(GameManager.Instance.IsGameOver()) return;
+    {
         // 상점이 열려있으면 아이템 사용 차단
         ShopController shopController = GetComponent<ShopController>();
         if (shopController != null && shopController.IsShopOpen())
