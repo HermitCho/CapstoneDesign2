@@ -11,16 +11,20 @@ public class Fireball : MonoBehaviourPun
     [SerializeField] private float damage = 30f;
     [SerializeField] private float speed = 50f;
     [SerializeField] private float lifetime = 5f; // 파이어볼 수명
-    [SerializeField] private GameObject explosionEffectPrefab; // 폭발 이펙트 프리팹
     [SerializeField] private float explosionRadius = 5f; // 폭발 반경
 
     private Rigidbody rb;
+    private AudioSource aS;
+    [SerializeField] private AudioClip burningSound;
+    [SerializeField] private GameObject explosionEffectPrefab; // 폭발 이펙트 프리팹
     private int ownerActorNumber; // 발사한 플레이어의 ActorNumber
     private bool hasExploded = false; // 중복 폭발 방지 플래그
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
+        aS = GetComponent<AudioSource>();
+        StartCoroutine(PlayBurningSound());
     }
 
     /// <summary>
@@ -46,6 +50,7 @@ public class Fireball : MonoBehaviourPun
             hasExploded = true;
             Vector3 explosionPosition = transform.position;
 
+            photonView.RPC("PlayExplosionSound", RpcTarget.All, explosionPosition);
             // 모든 클라이언트에서 폭발 효과 및 범위 데미지 처리
             photonView.RPC("ExplodeAndApplyAreaDamageRPC", RpcTarget.All, explosionPosition);
         }
@@ -115,6 +120,25 @@ public class Fireball : MonoBehaviourPun
             hasExploded = true;
             Vector3 explosionPosition = transform.position;
             photonView.RPC("ExplodeAndApplyAreaDamageRPC", RpcTarget.All, explosionPosition);
+        }
+    }
+
+    [PunRPC]
+    IEnumerator PlayBurningSound()
+    {
+        aS.PlayOneShot(burningSound, 2.0f);
+        yield return new WaitForSeconds(burningSound.length);
+    }
+
+    [SerializeField] private GameObject explosionSoundPrefab;
+
+    [PunRPC]
+    void PlayExplosionSound(Vector3 explosionPosition)
+    {
+        if (explosionSoundPrefab != null)
+        {
+            // 폭발 위치에 프리팹을 생성
+            Instantiate(explosionSoundPrefab, explosionPosition, Quaternion.identity);
         }
     }
 
