@@ -487,6 +487,16 @@ public class DataBase : Singleton<DataBase>
             set { scoreLossRate = value; }
             get { return scoreLossRate; }
         }
+
+        [Space(10)]
+        [Header("상점 시간 설정")]
+        [Range(0f, 360f)]
+        [SerializeField] private float shopTime = 30f;
+        public float ShopTime
+        {
+            set { shopTime = value; }
+            get { return shopTime; }
+        }
     }
 
     [System.Serializable]

@@ -16,8 +16,17 @@ public class ShopPanel : MonoBehaviour
     [Header("ShopPanel UI 컴포넌트들")]
     [SerializeField] private TextMeshProUGUI coinText;
 
+    [Header("ShopPanel 상점 시간 텍스트")]
+    [SerializeField] private TextMeshProUGUI shopTimeText;
+
     [Header("Item Description 모달 컴포넌트")]
     [SerializeField] private ModalWindowManager itemDescriptionModal;
+
+    [Header("ShopPanel 구매된 아이템 이미지")]
+    [SerializeField] private Image purchasedItemImage;
+
+    [Header("ShopPanel 구매된 아이템 텍스트")]
+    [SerializeField] private TextMeshProUGUI purchasedItemText;
 
 
     void Start()

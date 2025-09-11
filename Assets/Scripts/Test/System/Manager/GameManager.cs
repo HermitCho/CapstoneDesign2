@@ -21,6 +21,10 @@ public class GameManager : Singleton<GameManager>
     // 게임 시간 관리
     private float gameStartTime = 0f;
 
+    // 상점  관리
+    private float shopStartTime = 0f;
+    private GameObject[] randomShopItemData;
+
     // 플레이어 상태 관리
     private float playerHealth = 100f;
     private float maxPlayerHealth = 100f;
@@ -47,7 +51,10 @@ public class GameManager : Singleton<GameManager>
     private float cachedScoreIncreaseRate = 2f; // 기본
     private float cachedInitialScore = 1f; // 기본
     private float cachedPlayTime = 360f; // 기본
+    private float cachedShopTime = 30f; // 기본
+    private GameObject[] cachedItemData;
     private bool dataBaseCached = false;
+    
 
     #endregion
 
@@ -79,6 +86,9 @@ public class GameManager : Singleton<GameManager>
     public static event Action<int, float> OnSkillCooldownStarted;
 
     public static event Action OnCharacterSpawned;
+
+    // 상점 이벤트
+    public static event Action OnShopTimeUpdated;
     
     // 게임 오버 이벤트
     public static event Action<float> OnGameOver; // 최종 점수와 함께 게임 오버 알림
@@ -341,12 +351,14 @@ public class GameManager : Singleton<GameManager>
     {
         try
         {
-            if (DataBase.Instance != null && DataBase.Instance.teddyBearData != null && DataBase.Instance.gameData != null)
+            if (DataBase.Instance != null && DataBase.Instance.teddyBearData != null && DataBase.Instance.gameData != null && DataBase.Instance.itemData != null)
             {
                 cachedScoreIncreaseTime = DataBase.Instance.teddyBearData.ScoreIncreaseTime;
                 cachedScoreIncreaseRate = DataBase.Instance.teddyBearData.ScoreIncreaseRate;
                 cachedInitialScore = DataBase.Instance.teddyBearData.InitialScore;
                 cachedPlayTime = DataBase.Instance.gameData.PlayTime;
+                cachedShopTime = DataBase.Instance.gameData.ShopTime;
+                cachedItemData = DataBase.Instance.itemData.ItemPrefabData.ToArray();
                 dataBaseCached = true;
             }
             else
@@ -530,6 +542,11 @@ public class GameManager : Singleton<GameManager>
     public float GetGameTime()
     {
         return Time.time - gameStartTime;
+    }
+
+    public float GetShopTime()
+    {
+        return Time.time - shopStartTime;
     }
 
     #endregion
@@ -1023,6 +1040,13 @@ public class GameManager : Singleton<GameManager>
         // 이벤트를 통해 HUD에 알림 (직접 호출 대신)
         OnCharacterSpawned?.Invoke();
     }
+
+    #endregion
+
+
+
+    #region 상점 시간 관리 메서드
+
 
     #endregion
 }
