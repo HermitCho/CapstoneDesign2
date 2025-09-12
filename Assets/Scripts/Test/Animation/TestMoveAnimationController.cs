@@ -48,7 +48,8 @@ public class TestMoveAnimationController : MonoBehaviourPun
     private Skill itemSkill;
     private Coroutine speedSkillCoroutine;
     private string skillAnimationTriggerName = "None";
-    private string itemSkillAnimationTriggerName = "None";
+    private float nextReloadAllowedTime = 0f;
+    private float reloadDebounceSeconds = 0.2f;
 
     private void Awake()
     {
@@ -62,10 +63,16 @@ public class TestMoveAnimationController : MonoBehaviourPun
         livingEntity = GetComponent<LivingEntity>();
         footstepSoundPlayer = GetComponent<FootstepSoundPlayer>();
         skill = GetComponent<Skill>();
+        itemSkill = GetComponent<Skill>();
         aimIK = GetComponent<AimIK>();
         photonView = GetComponent<PhotonView>();
         animator.SetFloat("SpeedMultiplier", 1.2f);
         skillAnimationTriggerName = skill.SkillAnimationTriggerName;
+
+        if (upperBodyLayerIndex >= 0 && animator != null)
+        {
+            animator.SetLayerWeight(upperBodyLayerIndex, 0f);
+        }
     }
 
     private void OnEnable()
@@ -83,6 +90,8 @@ public class TestMoveAnimationController : MonoBehaviourPun
             livingEntity.OnDeath += OnStunned;
             livingEntity.OnRevive += OnRevive;
         }
+
+        HandleUpperBodyLayer();
     }
 
     private void OnDisable()
@@ -105,12 +114,12 @@ public class TestMoveAnimationController : MonoBehaviourPun
     private void Update()
     {
         if (!photonView.IsMine) return;
-        if(GameManager.Instance.IsGameOver()) return;
         HandleMovementAnimation();
         HandleJumpAnimation();
         HandleTeddyBearWeaponState();
         HandleHealthBasedAnimation();
         HandleUpperBodyLayer();
+        PlayVictoryPose();
     }
 
     private void HandleUpperBodyLayer()
@@ -122,10 +131,22 @@ public class TestMoveAnimationController : MonoBehaviourPun
             return;
         }
 
-        bool isInMovement = animator.GetCurrentAnimatorStateInfo(0).IsName("Movement");
-        bool isJumping = animator.GetBool("JumpUp");
+        // JumpStart 상태에서는 상체 레이어 영향 제거
+        bool isJumpStart = animator.GetCurrentAnimatorStateInfo(0).IsName("JumpStart");
+        if (isJumpStart)
+        {
+            animator.SetLayerWeight(upperBodyLayerIndex, 0f);
+            return;
+        }
 
-        animator.SetLayerWeight(upperBodyLayerIndex, isInMovement || isJumping ? 1f : 0f);        
+        if (moveController != null && !moveController.IsGrounded())
+        {
+            animator.SetLayerWeight(upperBodyLayerIndex, 0f);
+            return;
+        }
+
+        bool isInMovement = animator.GetCurrentAnimatorStateInfo(0).IsName("Movement");
+        animator.SetLayerWeight(upperBodyLayerIndex, isInMovement ? 1f : 0f);
     }
 
     // 체력 기반 애니메이션 처리
@@ -165,13 +186,11 @@ public class TestMoveAnimationController : MonoBehaviourPun
 
     private void OnStunned()
     {
-        if(GameManager.Instance.IsGameOver()) return;
         animator.SetTrigger("Death");
     }
 
     private void OnRevive()
     {
-        if(GameManager.Instance.IsGameOver()) return;
         animator.SetTrigger("Revive");
         // 부활 시 스턴 상태 해제
         if (moveController != null)
@@ -183,10 +202,15 @@ public class TestMoveAnimationController : MonoBehaviourPun
     // 재장전시 트리거 실행
     void OnReloadInput()
     {
-        if(GameManager.Instance.IsGameOver()) return;
+        if (GameManager.Instance != null && GameManager.Instance.IsGameOver())
+            return;
+
+        // 이미 장전 중이거나, 막 장전이 끝난 직후의 디바운스 시간에는 입력 무시
+        if (isReloading || Time.time < nextReloadAllowedTime)
+            return;
+
         isReloading = true;
-        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.RightHand, gunIK.rightHandTarget, 0f, 0f);
-        // aimIK.enabled = false;
+        animator.ResetTrigger("Reload");
         animator.SetTrigger("Reload");
 
     }
@@ -202,7 +226,8 @@ public class TestMoveAnimationController : MonoBehaviourPun
     {
         Debug.Log("OnReloadEnd 호출됨");
         isReloading = false;
-        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.RightHand, gunIK.rightHandTarget, 1f, 0.5f);
+        nextReloadAllowedTime = Time.time + reloadDebounceSeconds;
+        // gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.RightHand, gunIK.rightHandTarget, 1f, 0.5f);
         // aimIK.enabled = true;
         //animator.SetLayerWeight(upperBodyLayerIndex, 0f);
 
@@ -235,7 +260,6 @@ public class TestMoveAnimationController : MonoBehaviourPun
     // 조준 시작 시 호출
     void OnZoomInput()
     {
-        if(GameManager.Instance.IsGameOver()) return;
         gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.Body, gunIK.bodyTarget, 0.04f);
         gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.RightFoot, gunIK.rightLegTarget, 0.3f);
         gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftFoot, gunIK.leftLegTarget, 0.3f);
@@ -256,7 +280,7 @@ public class TestMoveAnimationController : MonoBehaviourPun
     // 스피드 스킬
     void OnSkillInput()
     {
-        if(GameManager.Instance.IsGameOver()) return;
+        
         if (skill != null && skill.CanUse)
         {   
             animator.SetTrigger(skillAnimationTriggerName);
@@ -280,11 +304,6 @@ public class TestMoveAnimationController : MonoBehaviourPun
     void OnItemInput()
     {
         if(GameManager.Instance.IsGameOver()) return;
-        itemSkill = itemController.GetFirstActiveItem();
-        itemSkillAnimationTriggerName = itemSkill.SkillAnimationTriggerName;
-
-
-
         if (itemSkill != null && itemSkill.CanUse)
         {
             animator.SetTrigger(itemSkill.SkillAnimationTriggerName);
@@ -312,5 +331,15 @@ public class TestMoveAnimationController : MonoBehaviourPun
     public void OnSkillEnd()
     {
         gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 1f, 1f);
+    }
+
+    public void PlayVictoryPose()
+    {
+        if(GameManager.Instance.IsGameOver())
+        {
+            animator.SetTrigger("Victory");
+            animator.SetLayerWeight(upperBodyLayerIndex, 0f);
+            gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 0f, 0f);
+        }
     }
 }
