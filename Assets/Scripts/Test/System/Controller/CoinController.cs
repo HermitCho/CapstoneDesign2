@@ -193,10 +193,16 @@ public class CoinController : MonoBehaviourPun
     /// <summary>
     /// 현재 코인 수 가져오기
     /// </summary>
-    /// <returns>현재 코인 수</returns>
+    /// <returns>현재 코인 수 (다른 플레이어인 경우 -1 반환)</returns>
     public int GetCoin()
     {
-        return currentCoin;
+        // PhotonView가 없는 경우 (싱글플레이) 또는 로컬 플레이어인 경우
+        if (photonView == null || photonView.IsMine)
+        {
+            return currentCoin;
+        }
+        
+        return -1; // 다른 플레이어의 코인은 접근 불가
     }
 
     /// <summary>

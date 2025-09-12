@@ -197,7 +197,7 @@ public class ShopController : MonoBehaviourPun
     #region 아이템 구매 시스템
 
     /// <summary>
-    /// 아이템 구매 처리 (HeatUI ShopButtonManager의 onClick 이벤트에서 호출)
+    /// 아이템 구매 처리 - GameManager 시스템으로 위임
     /// </summary>
     /// <param name="itemIndex">구매할 아이템 인덱스</param>
     public void PurchaseItem(int itemIndex)
@@ -209,60 +209,10 @@ public class ShopController : MonoBehaviourPun
             return;
         }
 
-        if (!dataBaseCached || itemIndex < 0 || itemIndex >= cachedItemData.Length)
+        // GameManager를 통해 구매 처리
+        if (GameManager.Instance != null)
         {
-            return;
-        }
-
-        // ✅ 중복 아이템 체크 (SkillName으로 비교)
-        Skill itemComponent = cachedItemData[itemIndex].GetComponent<Skill>();
-        if (itemComponent != null && itemComponent.Index >= 0)
-        {
-            int index = itemComponent.Index;
-            if (playerItemController.HasItemByIndex(index))
-            {
-                Debug.LogWarning($"⚠️ ShopController - 이미 보유하고 있는 아이템입니다: {index}");
-                return;
-            }
-        }
-
-        // 아이템 슬롯 확인
-        if (playerItemController.GetItemSlotIndex() >= playerItemController.GetMaxItemSlot())
-        {
-            Debug.LogWarning("⚠️ ShopController - 아이템 슬롯이 가득 찼습니다.");
-            return;
-        }
-
-        // 아이템 가격 확인 (itemComponent는 이미 위에서 가져왔으므로 재사용)
-        if (itemComponent == null)
-        {
-            return;
-        }
-
-        int itemPrice = itemComponent.Price;
-        int playerCoins = playerCoinController.GetCoin();
-
-        // 코인 확인
-        if (playerCoins < itemPrice)
-        {
-            return;
-        }
-
-        // 구매 처리
-        try
-        {
-            // 코인 차감
-            playerCoinController.SubtractCoin(itemPrice);
-
-            // 아이템 슬롯에 추가 (프리팹 인스턴스화)
-            if (cachedItemData[itemIndex] != null)
-            {
-                playerItemController.AttachItem(cachedItemData[itemIndex]);
-            }
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"❌ ShopController - 아이템 구매 중 오류: {e.Message}");
+            GameManager.Instance.PurchaseShopItem(itemIndex, playerCoinController, playerItemController);
         }
     }
 
