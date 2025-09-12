@@ -81,10 +81,12 @@ public class Shop : MonoBehaviour
     /// <param name="itemIndex">구매할 아이템 인덱스</param>
     public void PurchaseItem(int itemIndex)
     {
-        if (currentPlayerShopController == null) return;
-        
-        // ShopController를 통해 아이템 구매 처리
-        currentPlayerShopController.PurchaseItem(itemIndex);
+        // ShopPanel에서 직접 구매 처리하도록 변경
+        ShopPanel shopPanel = FindObjectOfType<ShopPanel>();
+        if (shopPanel != null)
+        {
+            shopPanel.OnPurchaseItem(itemIndex);
+        }
     }
     
     #endregion
