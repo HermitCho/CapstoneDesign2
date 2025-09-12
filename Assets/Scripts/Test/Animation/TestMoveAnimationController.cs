@@ -68,11 +68,6 @@ public class TestMoveAnimationController : MonoBehaviourPun
         photonView = GetComponent<PhotonView>();
         animator.SetFloat("SpeedMultiplier", 1.2f);
         skillAnimationTriggerName = skill.SkillAnimationTriggerName;
-
-        if (upperBodyLayerIndex >= 0 && animator != null)
-        {
-            animator.SetLayerWeight(upperBodyLayerIndex, 0f);
-        }
     }
 
     private void OnEnable()
@@ -90,8 +85,6 @@ public class TestMoveAnimationController : MonoBehaviourPun
             livingEntity.OnDeath += OnStunned;
             livingEntity.OnRevive += OnRevive;
         }
-
-        HandleUpperBodyLayer();
     }
 
     private void OnDisable()
@@ -125,26 +118,28 @@ public class TestMoveAnimationController : MonoBehaviourPun
     private void HandleUpperBodyLayer()
     {
 
-        if (isReloading)
+        // if (isReloading)
+        // {
+        //     animator.SetLayerWeight(upperBodyLayerIndex, 1f);
+        //     return;
+        // }
+
+        // JumpStart 상태에서는 상체 레이어 영향 제거
+        bool isJumpStart = animator.GetCurrentAnimatorStateInfo(0).IsName("JumpStart");
+        bool isJumpDown = animator.GetCurrentAnimatorStateInfo(0).IsName("JumpDown");
+
+        if (isJumpStart || isJumpDown)
         {
             animator.SetLayerWeight(upperBodyLayerIndex, 1f);
             return;
         }
 
-        // JumpStart 상태에서는 상체 레이어 영향 제거
-        bool isJumpStart = animator.GetCurrentAnimatorStateInfo(0).IsName("JumpStart");
-        if (isJumpStart)
-        {
-            animator.SetLayerWeight(upperBodyLayerIndex, 0f);
-            return;
-        }
-
         if (moveController != null && !moveController.IsGrounded())
         {
-            animator.SetLayerWeight(upperBodyLayerIndex, 0f);
+            animator.SetLayerWeight(upperBodyLayerIndex, 1f);
             return;
         }
-
+        
         bool isInMovement = animator.GetCurrentAnimatorStateInfo(0).IsName("Movement");
         animator.SetLayerWeight(upperBodyLayerIndex, isInMovement ? 1f : 0f);
     }
