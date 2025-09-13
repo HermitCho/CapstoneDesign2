@@ -23,6 +23,12 @@ public class TestMoveAnimationController : MonoBehaviourPun
     
     // 재장전 관련
     private bool isReloading = false;
+    
+    // 점프 상태 추적
+    private bool isJumping = false;
+    
+    // 총을 쏘는 상태 추적
+    private bool isShooting = false;
 
     // 캐릭터 이동 정보를 가져오는 컴포넌트
     private MoveController moveController;
@@ -80,6 +86,9 @@ public class TestMoveAnimationController : MonoBehaviourPun
         InputManager.OnReloadPressed += OnReloadInput;
         InputManager.OnSkillPressed += OnSkillInput;
         InputManager.OnItemPressed += OnItemInput;
+        InputManager.OnShootPressed += OnShootInput;
+        InputManager.OnShootCanceledPressed += OnShootCanceledInput;
+
         if (livingEntity != null)
         {
             livingEntity.OnDeath += OnStunned;
@@ -97,6 +106,9 @@ public class TestMoveAnimationController : MonoBehaviourPun
         InputManager.OnReloadPressed -= OnReloadInput;
         InputManager.OnSkillPressed -= OnSkillInput;
         InputManager.OnItemPressed -= OnItemInput;
+        InputManager.OnShootPressed -= OnShootInput;
+        InputManager.OnShootCanceledPressed -= OnShootCanceledInput;
+
         if (livingEntity != null)
         {
             livingEntity.OnDeath -= OnStunned;
@@ -117,25 +129,16 @@ public class TestMoveAnimationController : MonoBehaviourPun
 
     private void HandleUpperBodyLayer()
     {
-
-        // JumpStart 상태에서는 상체 레이어 영향 제거
-        bool isJumpStart = animator.GetCurrentAnimatorStateInfo(0).IsName("JumpStart");
-        bool isJumpDown = animator.GetCurrentAnimatorStateInfo(0).IsName("JumpDown");
-
-        if (isJumpStart || isJumpDown)
+        bool isInMovement = animator.GetCurrentAnimatorStateInfo(0).IsName("Movement");
+        float weight = 0f;
+        
+        // 장전 중이거나 (점프 중이면서 총을 쏘는 중)이거나 Movement 상태일 때 상체 레이어 활성화
+        if (isReloading || (isJumping && isShooting) || isInMovement)
         {
-            animator.SetLayerWeight(upperBodyLayerIndex, 1f);
-            return;
-        }
-
-        if (moveController != null && !moveController.IsGrounded())
-        {
-            animator.SetLayerWeight(upperBodyLayerIndex, 1f);
-            return;
+            weight = 1f;
         }
         
-        bool isInMovement = animator.GetCurrentAnimatorStateInfo(0).IsName("Movement");
-        animator.SetLayerWeight(upperBodyLayerIndex, isInMovement ? 1f : 0f);
+        animator.SetLayerWeight(upperBodyLayerIndex, weight);
     }
 
     // 체력 기반 애니메이션 처리
@@ -193,17 +196,24 @@ public class TestMoveAnimationController : MonoBehaviourPun
     // 재장전시 트리거 실행
     void OnReloadInput()
     {
-        if (GameManager.Instance != null && GameManager.Instance.IsGameOver())
-            return;
+        if (GameManager.Instance != null && GameManager.Instance.IsGameOver()) return;
+        if (isReloading) return;
+
+        // 점프 중에 재장전을 하면 즉시 재장전 상태로 설정
+        if (isJumping)
+        {
+            isReloading = true;
+            animator.SetLayerWeight(upperBodyLayerIndex, 1f);
+        }
 
         animator.SetTrigger("Reload");
-
     }
 
     // 재장전 시작
     void OnReloadStart()
     {
-        
+        Debug.Log("OnReloadStart 호출됨");
+        isReloading = true;
     }
 
     // 재장전 종료
@@ -211,7 +221,6 @@ public class TestMoveAnimationController : MonoBehaviourPun
     {
         Debug.Log("OnReloadEnd 호출됨");
         isReloading = false;
-
     }
 
     void HandleJumpAnimation()
@@ -220,6 +229,7 @@ public class TestMoveAnimationController : MonoBehaviourPun
 
         if (!moveController.IsGrounded())
         {
+            isJumping = true; // 점프 중 상태로 설정
             if (rb.velocity.y > 0.05f)
             {
                 animator.SetBool("JumpUp", true);
@@ -233,9 +243,20 @@ public class TestMoveAnimationController : MonoBehaviourPun
         }
         else
         {
+            isJumping = false; // 착지 시 점프 상태 해제
             animator.SetBool("JumpUp", false);
             animator.SetBool("JumpDown", false);
         }
+    }
+
+    private void OnShootInput()
+    {
+        isShooting = true;
+    }
+
+    private void OnShootCanceledInput()
+    {
+        isShooting = false;
     }
     
     // 조준 시작 시 호출
