@@ -1115,6 +1115,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1040060191287191804, guid: 55ed6241dd5f79144a150f41631fb7ef,
         type: 3}
+      propertyPath: solver.IKPositionWeight
+      value: 0.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 1040060191287191804, guid: 55ed6241dd5f79144a150f41631fb7ef,
+        type: 3}
       propertyPath: solver.effectors.Array.data[6].target
       value: 
       objectReference: {fileID: 1237730157}
@@ -4379,6 +4384,7 @@ MonoBehaviour:
     playTime: 30
     coinLossRate: 0.3
     scoreLossRate: 0.3
+    shopTime: 30
   uiData:
     crosshairNormalColor: {r: 1, g: 1, b: 1, a: 1}
     crosshairTargetColor: {r: 1, g: 0, b: 0, a: 1}
@@ -5426,6 +5432,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   panelManager: {fileID: 0}
+  gameOverModalWindowManager: {fileID: 0}
   hudPanelName: HUD
   shopPanelName: Shop
   pausePanelName: Pause

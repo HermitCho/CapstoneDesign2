@@ -345,9 +345,15 @@ public class TestMoveAnimationController : MonoBehaviourPun
     {
         if(GameManager.Instance.IsGameOver())
         {
-            animator.SetTrigger("Victory");
-            animator.SetLayerWeight(upperBodyLayerIndex, 0f);
-            gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 0f, 0f);
+            StartCoroutine(PlayVictoryPoseAfterDelay());
         }
+    }
+
+    private IEnumerator PlayVictoryPoseAfterDelay()
+    {
+        yield return new WaitForSeconds(5f);
+        animator.SetTrigger("Victory");
+        animator.SetLayerWeight(upperBodyLayerIndex, 0f);
+        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 0f, 0f);
     }
 }
