@@ -117,24 +117,6 @@ public class HitEffectUI : MonoBehaviour
     // 테스트용 메서드 (키보드 입력으로 테스트)
     void Update()
     {
-        // 테스트: T 키를 누르면 위쪽에서 공격받은 것처럼
-        if (Input.GetKeyDown(KeyCode.T))
-        {
-            Debug.Log("T키 눌림 - 앞쪽에서 공격 테스트");
-            ShowHit(Vector3.forward); // 앞쪽에서 공격 (화면 아래쪽에 효과)
-        }
-        // 테스트: Y 키를 누르면 오른쪽에서 공격받은 것처럼
-        if (Input.GetKeyDown(KeyCode.Y))
-        {
-            Debug.Log("Y키 눌림 - 오른쪽에서 공격 테스트");
-            ShowHit(Vector3.right); // 오른쪽에서 공격 (화면 왼쪽에 효과)
-        }
-        // 추가 테스트 키들
-        if (Input.GetKeyDown(KeyCode.U))
-        {
-            Debug.Log("U키 눌림 - 뒤쪽에서 공격 테스트");
-            ShowHit(-Vector3.forward); // 뒤쪽에서 공격 (화면 위쪽에 효과)
-        }
         if (Input.GetKeyDown(KeyCode.I))
         {
             Debug.Log("I키 눌림 - 왼쪽에서 공격 테스트");

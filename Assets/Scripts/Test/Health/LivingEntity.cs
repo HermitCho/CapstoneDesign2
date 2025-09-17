@@ -107,44 +107,7 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
         CurrentHealth = newHealth;
         OnAnyLivingEntityHealthChanged?.Invoke(CurrentHealth, StartingHealth, this);
     }
-
-    // [PunRPC]
-    // public virtual void OnDamage(float damage, Vector3 hitPoint, Vector3 hitNormal, int attackerViewId)
-    // {
-    //     // 마스터 클라이언트에서만 데미지 계산 처리
-    //     if (!PhotonNetwork.IsMasterClient) return;
-
-    //     // 이미 사망한 상태라면 데미지 처리하지 않음
-    //     if (IsDead) return;
-
-    //     // 체력이 0 이하라면 이미 사망한 상태
-    //     if (CurrentHealth <= 0f) return;
-
-    //     // ViewID를 통해 attacker LivingEntity 찾기
-    //     PhotonView attackerPV = PhotonView.Find(attackerViewId);
-    //     LivingEntity attacker = attackerPV?.GetComponent<LivingEntity>();
-
-
-    //     // 데미지 적용
-    //     float previousHealth = CurrentHealth;
-    //     CurrentHealth = Mathf.Max(0f, CurrentHealth - damage);
-
-    //     Debug.Log($"[LivingEntity:Master] {gameObject.name} 데미지 적용 완료 - 이전 체력: {previousHealth} -> 현재 체력: {CurrentHealth}");
-
-    //     // 모든 클라이언트에게 체력 변경을 동기화
-    //     photonView.RPC("RPC_UpdateHealth", RpcTarget.All, CurrentHealth);
-
-    //     // 사망 처리
-    //     if (CurrentHealth <= 0f && !IsDead)
-    //     {
-    //         currentAttacker = attacker;
-    //         Debug.Log($"[LivingEntity] {gameObject.name} 사망 처리 시작 - attacker: {attacker?.name ?? "null"}");
-
-    //         // 사망 처리 RPC 호출
-    //         int attackerId = attacker != null ? attacker.photonView.ViewID : -1;
-    //         photonView.RPC("RPC_Die", RpcTarget.All, attackerId);
-    //     }
-    // }
+    
     [PunRPC]
     public virtual void OnDamage(float damage, Vector3 hitPoint, Vector3 hitNormal, int attackerViewId)
     {
