@@ -33,7 +33,9 @@ public class HitEffectUI : MonoBehaviour
     void OnEnable()
     {
         // 이벤트 구독
+
         GameEvents.OnLocalPlayerHit += OnPlayerHit;
+        Debug.Log("구독 완료");
     }
 
     void OnDisable()
