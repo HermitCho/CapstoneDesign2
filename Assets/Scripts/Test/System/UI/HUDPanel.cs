@@ -299,7 +299,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks, IPunObservable
         
         if (healthText != null)
         {
-            healthText.text = $"{currentHealth:F0} / {maxHealth:F0}";
+            healthText.text = $"{currentHealth:F0}";
         }
     }
     

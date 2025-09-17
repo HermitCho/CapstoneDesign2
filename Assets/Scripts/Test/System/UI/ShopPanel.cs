@@ -44,6 +44,9 @@ public class ShopPanel : MonoBehaviour
     private GameObject localPlayer;
     private CoinController localCoinController;
     private ItemController localItemController;
+    
+    // 버튼 아이템 컴포넌트 캐싱 (모달창 표시용)
+    private Skill[] buttonItemComponents = new Skill[5];
 
 
     void Start()
@@ -208,6 +211,9 @@ public class ShopPanel : MonoBehaviour
         UpdateItemUI(3, itemIcon4, itemText4);
         UpdateItemUI(4, itemIcon5, itemText5);
         
+        // 아이템 컴포넌트 캐싱 (모달창 표시용)
+        CacheItemComponents();
+        
         // 버튼 상태 업데이트
         if (ShopButtons != null)
         {
@@ -242,6 +248,24 @@ public class ShopPanel : MonoBehaviour
                 {
                     ShopButtons[i].gameObject.SetActive(false);
                 }
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 아이템 컴포넌트 캐싱 (모달창 표시 최적화)
+    /// </summary>
+    private void CacheItemComponents()
+    {
+        for (int i = 0; i < buttonItemComponents.Length; i++)
+        {
+            if (i < currentShopItems.Length && currentShopItems[i] != null)
+            {
+                buttonItemComponents[i] = currentShopItems[i].GetComponent<Skill>();
+            }
+            else
+            {
+                buttonItemComponents[i] = null;
             }
         }
     }
@@ -295,12 +319,8 @@ public class ShopPanel : MonoBehaviour
     public void OnHoverItemButton(int index)
     {
         if (itemDescriptionModal == null) return;
-        if (currentShopItems == null || index >= currentShopItems.Length || currentShopItems[index] == null)
-        {
-            itemDescriptionModal.CloseWindow();
-            return;
-        }
-
+        if (index < 0 || index >= buttonItemComponents.Length) return; // buttonItemComponents를 사용하여 범위 확인
+        
         // 구매된 아이템은 호버 정보 표시하지 않음
         if (index < itemPurchasedStatus.Length && itemPurchasedStatus[index])
         {
@@ -308,11 +328,15 @@ public class ShopPanel : MonoBehaviour
             return;
         }
         
-        Skill itemComponent = currentShopItems[index].GetComponent<Skill>();
+        Skill itemComponent = buttonItemComponents[index]; // 캐싱된 아이템 컴포넌트 사용
         if (itemComponent != null)
         {
+            // ModalWindowManager의 올바른 필드 설정
             itemDescriptionModal.icon = itemComponent.SkillIcon;
+            itemDescriptionModal.titleText = itemComponent.SkillName; // 아이템 이름을 제목으로
             itemDescriptionModal.descriptionText = itemComponent.SkillDescription;
+            
+            // UI 업데이트 후 모달 열기
             itemDescriptionModal.UpdateUI();
             itemDescriptionModal.OpenWindow();
         }
@@ -406,6 +430,9 @@ public class ShopPanel : MonoBehaviour
         {
             itemPurchasedStatus = new bool[5];
         }
+        
+        // 아이템 컴포넌트 캐싱 업데이트
+        CacheItemComponents();
         
         // 상점창이 활성화되어 있을 때만 UI 업데이트
         if (gameObject.activeInHierarchy)

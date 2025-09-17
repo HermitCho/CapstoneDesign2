@@ -14,6 +14,9 @@ public class SelectCharController : MonoBehaviour
 
     [Header("로비 캐릭터 스폰 위치")]
     [SerializeField] private GameObject currentSpawnedLobbyCharacter;
+    
+    [Header("캐릭터 선택 버튼들")]
+    [SerializeField] private ClickableButton[] characterButtons;
 
     void Awake()
     {
@@ -37,8 +40,12 @@ public class SelectCharController : MonoBehaviour
         else
         {
             // 저장된 인덱스가 유효하지 않으면 기본값(0번째) 사용
+            currentSelectedIndex = 0;
             currentSpawnedLobbyCharacter = Instantiate(cachedPlayerPrefabData[0], currentSpawnedLobbyCharacter.transform.position, currentSpawnedLobbyCharacter.transform.rotation);
         }
+        
+        // 초기 선택된 버튼 상태 설정
+        UpdateButtonStates();
     }
 
    void CacheDataBaseInfo()
@@ -74,6 +81,9 @@ public class SelectCharController : MonoBehaviour
         // 선택한 캐릭터 인덱스 저장
         PlayerPrefs.SetInt("SelectChar_CurrentIndex", currentSelectedIndex);
         PlayerPrefs.Save();
+        
+        // 버튼 상태 업데이트
+        UpdateButtonStates();
     }
 
 
@@ -88,6 +98,31 @@ public class SelectCharController : MonoBehaviour
             }
 
             currentSpawnedLobbyCharacter = Instantiate(currentSelectedPrefab, currentSpawnedLobbyCharacter.transform.position, currentSpawnedLobbyCharacter.transform.rotation);
+        }
+    }
+    
+    /// <summary>
+    /// 버튼 상태를 업데이트합니다. 현재 선택된 버튼만 클릭 상태로 유지합니다.
+    /// </summary>
+    private void UpdateButtonStates()
+    {
+        if (characterButtons == null) return;
+        
+        for (int i = 0; i < characterButtons.Length; i++)
+        {
+            if (characterButtons[i] != null)
+            {
+                if (i == currentSelectedIndex)
+                {
+                    // 현재 선택된 버튼은 클릭 상태로 설정 (Highlighted 유지)
+                    characterButtons[i].SetClicked();
+                }
+                else
+                {
+                    // 다른 버튼들은 클릭 상태 해제
+                    characterButtons[i].SetUnclicked();
+                }
+            }
         }
     }
 }
