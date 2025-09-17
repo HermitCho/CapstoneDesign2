@@ -11,7 +11,7 @@ using Michsky.UI.Heat;
 /// 생명체의 기본 기능을 담당하는 클래스 (포톤 멀티플레이 고려)
 /// 체력, 방어막, 데미지 처리, 사망 처리 등을 관리
 /// </summary>
-public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable  , IPunObservable // ✅ IPunObservable 추가
+public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservable // ✅ IPunObservable 추가
 {
     // photonView는 MonoBehaviourPunCallbacks가 가지고 있습니다.
     // private PhotonView photonView; // ❌ 중복 선언이므로 제거 (this.photonView 사용)
@@ -38,7 +38,7 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable  , IPunObserv
     public static event Action<LivingEntity> OnPlayerDied;
 
     public event Action OnRevive;
-    
+
 
 
     [Header("스턴 제어")]
@@ -107,40 +107,34 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable  , IPunObserv
         CurrentHealth = newHealth;
         OnAnyLivingEntityHealthChanged?.Invoke(CurrentHealth, StartingHealth, this);
     }
-
+    
     [PunRPC]
     public virtual void OnDamage(float damage, Vector3 hitPoint, Vector3 hitNormal, int attackerViewId)
     {
-        // 마스터 클라이언트에서만 데미지 계산 처리
         if (!PhotonNetwork.IsMasterClient) return;
-        
-        // 이미 사망한 상태라면 데미지 처리하지 않음
         if (IsDead) return;
-
-        // 체력이 0 이하라면 이미 사망한 상태
         if (CurrentHealth <= 0f) return;
 
-        // ViewID를 통해 attacker LivingEntity 찾기
         PhotonView attackerPV = PhotonView.Find(attackerViewId);
         LivingEntity attacker = attackerPV?.GetComponent<LivingEntity>();
 
-        
-        // 데미지 적용
         float previousHealth = CurrentHealth;
         CurrentHealth = Mathf.Max(0f, CurrentHealth - damage);
-        
-        Debug.Log($"[LivingEntity:Master] {gameObject.name} 데미지 적용 완료 - 이전 체력: {previousHealth} -> 현재 체력: {CurrentHealth}");
 
-        // 모든 클라이언트에게 체력 변경을 동기화
         photonView.RPC("RPC_UpdateHealth", RpcTarget.All, CurrentHealth);
-        
-        // 사망 처리
+
+        if (photonView.IsMine)
+        {
+            Vector3 damageDir = attacker != null ?
+                (transform.position - attacker.transform.position).normalized :
+                -hitNormal.normalized;
+
+            GameEvents.OnLocalPlayerHit?.Invoke(damageDir);
+        }
+
         if (CurrentHealth <= 0f && !IsDead)
         {
             currentAttacker = attacker;
-            Debug.Log($"[LivingEntity] {gameObject.name} 사망 처리 시작 - attacker: {attacker?.name ?? "null"}");
-            
-            // 사망 처리 RPC 호출
             int attackerId = attacker != null ? attacker.photonView.ViewID : -1;
             photonView.RPC("RPC_Die", RpcTarget.All, attackerId);
         }
@@ -186,7 +180,7 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable  , IPunObserv
     public virtual bool RPC_Die(int attackerViewId)
     {
         // 이미 사망한 상태라면 처리하지 않음
-        if (IsDead) 
+        if (IsDead)
         {
             Debug.Log($"[LivingEntity] {gameObject.name} 이미 사망한 상태 - 중복 사망 처리 방지");
             return false;
@@ -195,13 +189,13 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable  , IPunObserv
         // ViewID를 통해 attacker LivingEntity 찾기
         PhotonView attackerPV = PhotonView.Find(attackerViewId);
         LivingEntity attacker = attackerPV?.GetComponent<LivingEntity>();
-        
+
         // 사망 상태 설정
         IsDead = true;
         currentAttacker = attacker;
-        
+
         Debug.Log($"[LivingEntity] {gameObject.name} 사망 처리 완료 - attacker: {currentAttacker?.name ?? "null"}, IsDead: {IsDead}");
-        
+
         OnDeath?.Invoke(); // 이벤트는 각 클라이언트에서 개별적으로 발생
 
         // MoveController는 로컬에서만 제어해도 무방합니다. (stunned 상태가 물리적인 움직임에만 영향)
@@ -227,25 +221,25 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable  , IPunObserv
     private IEnumerator ReviveAfterDelay(float delay)
     {
         Debug.Log($"[LivingEntity] {gameObject.name} 부활 대기 시작 - {delay}초 (마스터 클라이언트에서 실행)");
-        
+
         yield return new WaitForSeconds(delay);
-        
+
         // 부활 중에 마스터 클라이언트가 변경될 수 있으므로 다시 체크
         if (!PhotonNetwork.IsMasterClient)
         {
             Debug.Log($"[LivingEntity] {gameObject.name} 마스터 클라이언트가 아니므로 부활 처리 중단");
             yield break;
         }
-        
+
         // 이미 부활한 상태인지 체크
         if (!IsDead)
         {
             Debug.Log($"[LivingEntity] {gameObject.name} 이미 부활한 상태 - 부활 처리 중단");
             yield break;
         }
-        
+
         Debug.Log($"[LivingEntity] {gameObject.name} 부활 대기 완료 - 부활 RPC 호출");
-        
+
         // 부활 RPC 호출 (마스터 클라이언트에서만)
         photonView.RPC("RPC_Revive", RpcTarget.All);
         Debug.Log($"[LivingEntity] {gameObject.name} 부활 RPC 호출 완료");
@@ -255,19 +249,19 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable  , IPunObserv
     public void RPC_Revive()
     {
         Debug.Log($"[LivingEntity] {gameObject.name} RPC_Revive 호출됨 - 현재 IsDead: {IsDead}");
-        
-        if (!IsDead) 
+
+        if (!IsDead)
         {
             Debug.Log($"[LivingEntity] {gameObject.name} 이미 살아있는 상태 - 부활 처리 건너뜀");
             return;
         }
-        
+
         Debug.Log($"[LivingEntity] {gameObject.name} 부활 처리 시작");
-        
+
         // 사망 상태 해제
         IsDead = false;
         currentAttacker = null; // 공격자 정보 초기화
-        
+
         // 체력 및 상태 초기화
         InitializeEntity();
 
@@ -293,7 +287,7 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable  , IPunObserv
         return currentAttacker;
     }
 
-    
+
 
 
 
