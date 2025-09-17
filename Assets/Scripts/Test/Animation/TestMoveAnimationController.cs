@@ -23,6 +23,12 @@ public class TestMoveAnimationController : MonoBehaviourPun
     
     // 재장전 관련
     private bool isReloading = false;
+    
+    // 점프 상태 추적
+    private bool isJumping = false;
+    
+    // 총을 쏘는 상태 추적
+    private bool isShooting = false;
 
     // 캐릭터 이동 정보를 가져오는 컴포넌트
     private MoveController moveController;
@@ -49,6 +55,8 @@ public class TestMoveAnimationController : MonoBehaviourPun
     private Coroutine speedSkillCoroutine;
     private string skillAnimationTriggerName = "None";
     private string itemSkillAnimationTriggerName = "None";
+
+    
 
     private void Awake()
     {
@@ -78,6 +86,9 @@ public class TestMoveAnimationController : MonoBehaviourPun
         InputManager.OnReloadPressed += OnReloadInput;
         InputManager.OnSkillPressed += OnSkillInput;
         InputManager.OnItemPressed += OnItemInput;
+        InputManager.OnShootPressed += OnShootInput;
+        InputManager.OnShootCanceledPressed += OnShootCanceledInput;
+
         if (livingEntity != null)
         {
             livingEntity.OnDeath += OnStunned;
@@ -95,6 +106,9 @@ public class TestMoveAnimationController : MonoBehaviourPun
         InputManager.OnReloadPressed -= OnReloadInput;
         InputManager.OnSkillPressed -= OnSkillInput;
         InputManager.OnItemPressed -= OnItemInput;
+        InputManager.OnShootPressed -= OnShootInput;
+        InputManager.OnShootCanceledPressed -= OnShootCanceledInput;
+
         if (livingEntity != null)
         {
             livingEntity.OnDeath -= OnStunned;
@@ -115,17 +129,16 @@ public class TestMoveAnimationController : MonoBehaviourPun
 
     private void HandleUpperBodyLayer()
     {
-
-        if (isReloading)
-        {
-            animator.SetLayerWeight(upperBodyLayerIndex, 1f);
-            return;
-        }
-
         bool isInMovement = animator.GetCurrentAnimatorStateInfo(0).IsName("Movement");
-        bool isJumping = animator.GetBool("JumpUp");
-
-        animator.SetLayerWeight(upperBodyLayerIndex, isInMovement || isJumping ? 1f : 0f);        
+        float weight = 0f;
+        
+        // 장전 중이거나 (점프 중이면서 총을 쏘는 중)이거나 Movement 상태일 때 상체 레이어 활성화
+        if (isReloading || (isJumping && isShooting) || isInMovement)
+        {
+            weight = 1f;
+        }
+        
+        animator.SetLayerWeight(upperBodyLayerIndex, weight);
     }
 
     // 체력 기반 애니메이션 처리
@@ -183,18 +196,24 @@ public class TestMoveAnimationController : MonoBehaviourPun
     // 재장전시 트리거 실행
     void OnReloadInput()
     {
-        if(GameManager.Instance.IsGameOver()) return;
-        isReloading = true;
-        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.RightHand, gunIK.rightHandTarget, 0f, 0f);
-        // aimIK.enabled = false;
-        animator.SetTrigger("Reload");
+        if (GameManager.Instance != null && GameManager.Instance.IsGameOver()) return;
+        if (isReloading) return;
 
+        // 점프 중에 재장전을 하면 즉시 재장전 상태로 설정
+        if (isJumping)
+        {
+            isReloading = true;
+            animator.SetLayerWeight(upperBodyLayerIndex, 1f);
+        }
+
+        animator.SetTrigger("Reload");
     }
 
     // 재장전 시작
     void OnReloadStart()
     {
-        
+        Debug.Log("OnReloadStart 호출됨");
+        isReloading = true;
     }
 
     // 재장전 종료
@@ -202,10 +221,6 @@ public class TestMoveAnimationController : MonoBehaviourPun
     {
         Debug.Log("OnReloadEnd 호출됨");
         isReloading = false;
-        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.RightHand, gunIK.rightHandTarget, 1f, 0.5f);
-        // aimIK.enabled = true;
-        //animator.SetLayerWeight(upperBodyLayerIndex, 0f);
-
     }
 
     void HandleJumpAnimation()
@@ -214,6 +229,7 @@ public class TestMoveAnimationController : MonoBehaviourPun
 
         if (!moveController.IsGrounded())
         {
+            isJumping = true; // 점프 중 상태로 설정
             if (rb.velocity.y > 0.05f)
             {
                 animator.SetBool("JumpUp", true);
@@ -227,9 +243,20 @@ public class TestMoveAnimationController : MonoBehaviourPun
         }
         else
         {
+            isJumping = false; // 착지 시 점프 상태 해제
             animator.SetBool("JumpUp", false);
             animator.SetBool("JumpDown", false);
         }
+    }
+
+    private void OnShootInput()
+    {
+        isShooting = true;
+    }
+
+    private void OnShootCanceledInput()
+    {
+        isShooting = false;
     }
     
     // 조준 시작 시 호출
@@ -312,5 +339,21 @@ public class TestMoveAnimationController : MonoBehaviourPun
     public void OnSkillEnd()
     {
         gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 1f, 1f);
+    }
+
+    public void PlayVictoryPose()
+    {
+        if(GameManager.Instance.IsGameOver())
+        {
+            StartCoroutine(PlayVictoryPoseAfterDelay());
+        }
+    }
+
+    private IEnumerator PlayVictoryPoseAfterDelay()
+    {
+        yield return new WaitForSeconds(5f);
+        animator.SetTrigger("Victory");
+        animator.SetLayerWeight(upperBodyLayerIndex, 0f);
+        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 0f, 0f);
     }
 }
