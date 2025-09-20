@@ -88,6 +88,10 @@ public class MoveController : MonoBehaviourPun
     private float lastItemUseTime = 0f; // 마지막 아이템 사용 시간
     private const float itemUseCooldown = 0.5f; // 아이템 사용 쿨타임 (0.5초)
 
+    // 프리뷰 관련 변수
+    private bool isPreviewActive = false;
+    private Skill currentPreviewSkill = null;
+
 
     void Awake()
     {
@@ -243,6 +247,9 @@ public class MoveController : MonoBehaviourPun
 
         // 벽 통과 방지 체크 (HandleMovement 이후에 실행)
         CheckWallPenetration();
+
+        // 프리뷰 업데이트
+        UpdatePreview();
     }
 
 
@@ -503,7 +510,7 @@ public class MoveController : MonoBehaviourPun
 
         return Physics.Raycast(transform.position, Vector3.down, out hit, cachedGroundCheckDistance);
     }
-
+    
     /// <summary>
     /// 벽 통과 방지 체크 메서드 (개선된 버전)
     /// </summary>
@@ -542,10 +549,10 @@ public class MoveController : MonoBehaviourPun
                 Vector3 rayStart = lastValidPosition + Vector3.up * height;
                 RaycastHit hit;
 
-                // 땅바닥 제외하고 벽만 감지하도록 LayerMask 조정
-                LayerMask effectiveWallMask = wallLayerMask & ~groundLayerMask;
+                // 땅바닥과 벽을 모두 감지하도록 LayerMask 조정
+                LayerMask effectiveWallAndGroundMask = wallLayerMask | groundLayerMask;
 
-                if (Physics.Raycast(rayStart, horizontalDirection, out hit, horizontalDistance + capsuleRadius, effectiveWallMask))
+                if (Physics.Raycast(rayStart, horizontalDirection, out hit, horizontalDistance + capsuleRadius, effectiveWallAndGroundMask))
                 {
                     // 플레이어 자신이거나 Trigger 콜라이더는 무시
                     if (!hit.collider.CompareTag("Player") && !hit.collider.isTrigger)
@@ -883,13 +890,26 @@ public class MoveController : MonoBehaviourPun
             Debug.LogWarning("⚠️ MoveController - 활성화된 아이템이 없습니다.");
             return;
         }
-        // 쿨타임 업데이트
-        lastItemUseTime = Time.time;
 
-        UseItem();
-        //아이템 사용 후 쓰레기통으로 이동
-        itemController.MoveUsedItemToTemp(activeItem.gameObject);
-        Destroy(activeItem.gameObject, activeItem.DestroyTime);
+        // 프리뷰가 활성화되어 있으면 아이템 사용, 아니면 프리뷰 시작
+        if (isPreviewActive)
+        {
+            // 쿨타임 업데이트
+            lastItemUseTime = Time.time;
+
+            UseItem();
+            //아이템 사용 후 쓰레기통으로 이동
+            itemController.MoveUsedItemToTemp(activeItem.gameObject);
+            Destroy(activeItem.gameObject, activeItem.DestroyTime);
+
+            // 프리뷰 종료
+            EndPreview();
+        }
+        else
+        {
+            // 프리뷰 시작
+            StartPreview(activeItem);
+        }
     }
 
     void OnChangeItemInput()
@@ -1230,5 +1250,75 @@ public class MoveController : MonoBehaviourPun
         Debug.Log($"점프: {canJump && !isStunned}");
         Debug.Log($"스킬: {canUseSkill && !isStunned}");
         Debug.Log($"아이템: {canUseItem && !isStunned}");
+    }
+
+    // ========================================
+    // === 프리뷰 관련 메서드들 ===
+    // ========================================
+
+    /// <summary>
+    /// 프리뷰 시작
+    /// </summary>
+    private void StartPreview(Skill skill)
+    {
+        if (skill == null) return;
+
+        currentPreviewSkill = skill;
+        isPreviewActive = true;
+        skill.EnterTargeting(this);
+
+        Debug.Log($"✅ 프리뷰 시작: {skill.SkillName}");
+    }
+
+    /// <summary>
+    /// 프리뷰 업데이트
+    /// </summary>
+    private void UpdatePreview()
+    {
+        if (!isPreviewActive || currentPreviewSkill == null) return;
+
+        // TestShoot 컴포넌트를 통해 정확한 조준 방향 계산
+        TestShoot testShoot = GetComponent<TestShoot>();
+        Vector3 direction = testShoot != null ? testShoot.CalculateShotDirection() : transform.forward;
+
+        Vector3 origin = transform.position + transform.forward * 1.5f + transform.up * 1.5f;
+        float initialSpeed = 50f; // 파이어볼의 실제 속도
+
+        currentPreviewSkill.UpdateTargeting(this, origin, direction, initialSpeed);
+    }
+
+    /// <summary>
+    /// 프리뷰 종료
+    /// </summary>
+    private void EndPreview()
+    {
+        if (currentPreviewSkill != null)
+        {
+            currentPreviewSkill.ExitTargeting(this);
+        }
+
+        currentPreviewSkill = null;
+        isPreviewActive = false;
+
+        Debug.Log("✅ 프리뷰 종료");
+    }
+
+    /// <summary>
+    /// ESC 키로 프리뷰 취소 (InputManager에서 호출)
+    /// </summary>
+    public void CancelPreview()
+    {
+        if (isPreviewActive)
+        {
+            EndPreview();
+        }
+    }
+
+    /// <summary>
+    /// 프리뷰가 활성화되어 있는지 확인 (TestGun에서 사용)
+    /// </summary>
+    public bool IsPreviewActive()
+    {
+        return isPreviewActive;
     }
 }

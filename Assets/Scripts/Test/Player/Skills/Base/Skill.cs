@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Photon.Pun;
+using System.Linq;
 
 public abstract class Skill : MonoBehaviour
 {
@@ -13,19 +14,21 @@ public abstract class Skill : MonoBehaviour
     [Tooltip("스킬 설명")]
     [SerializeField] protected string skillDescription = "스킬 설명";
     [Tooltip("재사용 대기시간")]
-    [SerializeField] protected float cooldown; 
+    [SerializeField] protected int count;
+    [Tooltip("스킬 사용 가능 횟수(아이템 스킬)")]
+    [SerializeField] protected float cooldown;
     [Tooltip("스킬 지속시간")]
     [SerializeField] protected float duration = 0f; // 스킬 지속시간
     [Tooltip("이펙트 지속시간")]
-    [SerializeField] protected float effectDuration = 0f; 
+    [SerializeField] protected float effectDuration = 0f;
     [Tooltip("캐스팅 이펙트 지속시간")]
-    [SerializeField] protected float effectCastingDuration = 0f; 
+    [SerializeField] protected float effectCastingDuration = 0f;
     [Tooltip("시전 시간 (0이면 즉시 발동)")]
-    [SerializeField] protected float castTime = 0f; 
+    [SerializeField] protected float castTime = 0f;
     [Tooltip("아이템 사용 시 삭제 시간 (-1이면 삭제 안함)")]
     [SerializeField] protected float destroyTime = -1f; // 스킬 삭제 시간
     [Tooltip("스킬 이펙트 및 사운드가 플레이어를 따라가는지 여부")]
-    [SerializeField] protected bool isFollowing = false; 
+    [SerializeField] protected bool isFollowing = false;
     [Tooltip("캐스팅 중 스킬 이펙트 및 사운드가 플레이어를 따라가는지 여부")]
     [SerializeField] protected bool isCastingFollowing = false;
 
@@ -62,6 +65,7 @@ public abstract class Skill : MonoBehaviour
     public string SkillName => skillName;
     public string SkillDescription => skillDescription;
     public float Cooldown => cooldown;
+    public int Count => count;
     public float Duration => duration;
     public float EffectDuration => effectDuration;
     public float EffectCastingDuration => effectCastingDuration;
@@ -77,19 +81,80 @@ public abstract class Skill : MonoBehaviour
     public int Index => index;
     public string SkillAnimationTriggerName => skillAnimationTriggerName;
 
+
+    private IUsableCount _usableCount;
+    private IProjectilePreview _projPreview;
+    private IPlacementPreview _placementPreview;
     #endregion
 
     private float lastUseTime;
 
-    public bool CanUse => Time.time - lastUseTime >= cooldown;
     public bool IsCasting => Time.time - lastUseTime < castTime;
+
+    private void Awake()
+    {
+        // 컴포넌트 캐싱 — 성능 개선
+        var comps = GetComponents<MonoBehaviour>();
+        foreach (var c in comps)
+        {
+            if (c is IProjectilePreview pp) _projPreview = pp;
+            if (c is IPlacementPreview pl) _placementPreview = pl;
+            if (c is IUsableCount uc) _usableCount = uc;
+        }
+    }
+    // 안전하게 찾는 헬퍼 (Awake에서 안찾혔을 경우를 대비)
+    private IUsableCount GetUsableCountComponent()
+    {
+        if (_usableCount != null) return _usableCount;
+
+        var comps = GetComponents<MonoBehaviour>();
+        foreach (var c in comps)
+        {
+            if (c is IUsableCount uc)
+            {
+                _usableCount = uc;
+                break;
+            }
+        }
+        return _usableCount;
+    }
+
+    // (선택) CanUse에 사용 횟수 반영하려면 아래처럼.
+    // 주의: 이 코드는 GetUsableCountComponent()를 호출하므로 성능 상
+    // Awake에서 미리 캐싱하는 것을 권장합니다.
+    public bool CanUse
+    {
+        get
+        {
+            // 쿨다운 체크
+            if (Time.time - lastUseTime < cooldown) return false;
+
+            // 사용 가능 횟수 체크 (있다면)
+            var usable = _usableCount ?? GetUsableCountComponent();
+            if (usable != null && usable.Remaining <= 0) return false;
+
+            return true;
+        }
+    }
 
     public void ActivateSkill(MoveController executor)
     {
         if (!CanUse) return;
+
+        // 사용 횟수 컴포넌트가 있으면 실제로 "Use()" 를 호출해서 감소시키자.
+        var usable = _usableCount ?? GetUsableCountComponent();
+        if (usable != null)
+        {
+            // Use()는 내부에서 Remaining 검사 후 성공 시 -1 하고 true 반환하도록 구현되어야 합니다.
+            if (!usable.Use())
+            {
+                // 사용 불가(남은 횟수 없음) => UI 토스트 등
+                return;
+            }
+        }
         lastUseTime = Time.time;
 
-        if(castTime > 0f)
+        if (castTime > 0f)
         {
             executor.photonView.RPC(
                 "CastExecuteSkill",
@@ -98,10 +163,10 @@ public abstract class Skill : MonoBehaviour
                 executor.transform.position,
                 executor.transform.forward
             );
-            StartCoroutine(DelaySkillExecute(executor, castTime));
+            //StartCoroutine(DelaySkillExecute(executor, castTime));
         }
         else
-        {       
+        {
             executor.photonView.RPC(
             "ExecuteSkill",
             RpcTarget.All,
@@ -115,9 +180,20 @@ public abstract class Skill : MonoBehaviour
     public void ActivateItem(MoveController executor)
     {
         if (!CanUse) return;
-        lastUseTime = Time.time;
+
+        var usable = _usableCount ?? GetUsableCountComponent();
+        if (usable != null)
+        {
+            if (!usable.Use())
+            {
+                // 사용 불가
+                return;
+            }
+        }
         
-        if(castTime > 0f)
+        lastUseTime = Time.time;
+
+        if (castTime > 0f)
         {
             executor.photonView.RPC(
                 "CastExecuteItem",
@@ -126,11 +202,11 @@ public abstract class Skill : MonoBehaviour
                 executor.transform.position,
                 executor.transform.forward
             );
-            StartCoroutine(DelayItemExecute(executor, castTime));
+            //StartCoroutine(DelayItemExecute(executor, castTime));
         }
         else
         {
-            
+
             executor.photonView.RPC(
             "ExecuteItem",
             RpcTarget.All,
@@ -141,29 +217,29 @@ public abstract class Skill : MonoBehaviour
         }
     }
 
-    private IEnumerator DelaySkillExecute(MoveController executor, float delay)
-    {
-        yield return new WaitForSeconds(delay);
-        executor.photonView.RPC(
-            "ExecuteSkill",
-            RpcTarget.All,
-            this.index,
-            executor.transform.position,
-            executor.transform.forward
-        );
-    }
+    // private IEnumerator DelaySkillExecute(MoveController executor, float delay)
+    // {
+    //     yield return new WaitForSeconds(delay);
+    //     executor.photonView.RPC(
+    //         "ExecuteSkill",
+    //         RpcTarget.All,
+    //         this.index,
+    //         executor.transform.position,
+    //         executor.transform.forward
+    //     );
+    // }
 
-    private IEnumerator DelayItemExecute(MoveController executor, float delay)
-    {
-        yield return new WaitForSeconds(delay);
-        executor.photonView.RPC(
-            "ExecuteItem",
-            RpcTarget.All,
-            this.index,
-            executor.transform.position,
-            executor.transform.forward
-        );
-    }
+    // private IEnumerator DelayItemExecute(MoveController executor, float delay)
+    // {
+    //     yield return new WaitForSeconds(delay);
+    //     executor.photonView.RPC(
+    //         "ExecuteItem",
+    //         RpcTarget.All,
+    //         this.index,
+    //         executor.transform.position,
+    //         executor.transform.forward
+    //     );
+    // }
 
     // 실제 동작: 자기 자신만 실행
     public virtual void Execute(MoveController executor, Vector3 pos, Vector3 dir) { }
@@ -193,7 +269,7 @@ public abstract class Skill : MonoBehaviour
     {
         if (skillEffect != null)
         {
-            if(isFollowing)
+            if (isFollowing)
             {
                 SpawnEffectFollow(skillEffect, executor.transform, effectDuration);
                 if (skillSound != null && AudioManager.Inst != null)
@@ -212,20 +288,20 @@ public abstract class Skill : MonoBehaviour
     {
         if (castTimeSkillEffect != null)
         {
-            if(isCastingFollowing)
+            if (isCastingFollowing)
             {
                 SpawnEffectFollow(castTimeSkillEffect, executor.transform, effectCastingDuration);
                 if (castTimeSkillSound != null && AudioManager.Inst != null)
                     AudioManager.Inst.PlayClipAtPoint(castTimeSkillSound, executor.transform.position, 1f, 1f, null, executor.transform);
-        }
-        else
-        {
-            SpawnEffectAtPosition(castTimeSkillEffect, pos, Quaternion.identity, effectCastingDuration);
-            if (castTimeSkillSound != null && AudioManager.Inst != null)
-                AudioManager.Inst.PlayClipAtPoint(castTimeSkillSound, pos, 1f, 1f, null, executor.transform);
+            }
+            else
+            {
+                SpawnEffectAtPosition(castTimeSkillEffect, pos, Quaternion.identity, effectCastingDuration);
+                if (castTimeSkillSound != null && AudioManager.Inst != null)
+                    AudioManager.Inst.PlayClipAtPoint(castTimeSkillSound, pos, 1f, 1f, null, executor.transform);
+            }
         }
     }
-}
 
     public float RemainingCooldown
     {
@@ -235,5 +311,58 @@ public abstract class Skill : MonoBehaviour
             return Mathf.Max(0f, cooldown - elapsed);
         }
     }
+
+    #region UseInterface
+    public void EnterTargeting(MoveController owner)
+    {
+        if (!owner.photonView.IsMine) return;
+        
+        // FireballItem 같은 경우 직접 호출
+        if (this is FireballItem fireballItem)
+        {
+            fireballItem.StartPreview(owner);
+        }
+        else
+        {
+            _projPreview?.StartPreview(owner);
+        }
+        
+        _placementPreview?.StartPreview(owner);
+    }
+
+    public void UpdateTargeting(MoveController owner, Vector3 origin, Vector3 direction, float initialSpeed = 10f)
+    {
+        if (!owner.photonView.IsMine) return;
+        
+        // FireballItem 같은 경우 직접 호출
+        if (this is FireballItem fireballItem)
+        {
+            fireballItem.UpdatePreview(origin, direction, initialSpeed);
+        }
+        else
+        {
+            _projPreview?.UpdatePreview(origin, direction, initialSpeed);
+        }
+        
+        _placementPreview?.UpdatePreview(origin, Quaternion.LookRotation(direction));
+    }
+
+    public void ExitTargeting(MoveController owner)
+    {
+        if (!owner.photonView.IsMine) return;
+        
+        // FireballItem 같은 경우 직접 호출
+        if (this is FireballItem fireballItem)
+        {
+            fireballItem.EndPreview();
+        }
+        else
+        {
+            _projPreview?.EndPreview();
+        }
+        
+        _placementPreview?.EndPreview();
+    }
+    #endregion
 
 }

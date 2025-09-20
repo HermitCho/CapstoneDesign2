@@ -148,8 +148,20 @@ public class TestGun : MonoBehaviourPun
     {
         return CurrentState == GunState.Ready &&
            !moveController.IsStunned() &&
+           !IsSkillBeingUsed() &&
            Time.time >= lastFireTime + gunData.fireRate &&
            CurrentMagAmmo > 0;
+    }
+
+    /// <summary>
+    /// 스킬이 사용 중인지 확인
+    /// </summary>
+    private bool IsSkillBeingUsed()
+    {
+        if (moveController == null) return false;
+        
+        // MoveController에서 프리뷰가 활성화되어 있거나 스킬 사용이 차단된 상태인지 확인
+        return !moveController.CanUseSkill() || moveController.IsPreviewActive();
     }
 
     [PunRPC]
