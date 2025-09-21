@@ -1,63 +1,115 @@
-# Unity 데이터베이스 로그인 시스템 설정 가이드
+# Unity 구글 시트 서비스 계정 로그인 시스템 설정 가이드
 
 ## 📋 개요
-이 시스템은 Unity에서 MySQL/MariaDB를 사용한 로그인/회원가입 기능을 제공합니다.
+이 시스템은 Unity에서 구글 시트 API를 서비스 계정으로 사용하여 로그인/회원가입 및 게임 통계 관리 기능을 제공합니다.
 
 ## 🛠️ 필요 구성요소
 
-### 1. MariaDB 설치 (권장 버전: 10.5.10)
-- [MariaDB 다운로드](https://dlm.mariadb.com/browse/mariadb_server/)
-- Windows: `mariadb-10.5.10-winx64.msi` 설치
-- 설치 시 주의사항:
-  - Root 계정 비밀번호 설정
-  - "Use UTF8 as default server's character set" 체크
-  - 포트: 3306 (기본값)
+### 1. Google Cloud Console 설정
 
-### 2. MySQL Connector/NET 설치
-- [MySQL Connector/NET 다운로드](https://downloads.mysql.com/archives/c-net/)
-- 권장 버전: `mysql-connector-net-8.0.25.msi`
-- 설치 경로: `C:\Program Files (x86)\MySQL\MySQL Connector Net 8.0.25\Assemblies\v4.5.2`
+#### Step 1: 프로젝트 생성
+1. [Google Cloud Console](https://console.cloud.google.com/)에 접속
+2. 새 프로젝트 생성 또는 기존 프로젝트 선택
 
-### 3. Unity 프로젝트 설정
-1. `MySql.Data.dll` 파일을 `Assets/Plugins/` 폴더에 복사
-2. 다음 스크립트들이 프로젝트에 포함되어 있는지 확인:
-   - `DatabaseManager.cs`
-   - `UserData.cs`
-   - `LoginButtonController.cs`
-   - `NickNameController.cs` (업데이트됨)
+#### Step 2: Google Sheets API 활성화
+1. **API 및 서비스 > 라이브러리**로 이동
+2. "Google Sheets API" 검색 후 선택
+3. **"사용 설정"** 클릭
 
-## 🗄️ 데이터베이스 구조
+#### Step 3: 서비스 계정 생성
+1. **API 및 서비스 > 사용자 인증 정보**로 이동
+2. **"+ 사용자 인증 정보 만들기" > "서비스 계정"** 선택
+3. 서비스 계정 정보 입력:
+   - **서비스 계정 이름**: `unity-sheets-service`
+   - **서비스 계정 ID**: 자동 생성됨
+   - **설명**: `Unity Google Sheets 연동용 서비스 계정`
+4. **"만들기"** 클릭
 
-### 자동 생성되는 테이블: `users`
-```sql
-CREATE TABLE users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id VARCHAR(50) NOT NULL UNIQUE,
-    nickname VARCHAR(20) NOT NULL,
-    password VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_login TIMESTAMP NULL DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+#### Step 4: 서비스 계정 키 생성
+1. 생성된 서비스 계정 클릭
+2. **"키"** 탭으로 이동
+3. **"키 추가" > "새 키 만들기"** 선택
+4. **JSON** 형식 선택 후 **"만들기"** 클릭
+5. **JSON 파일 다운로드** (안전한 곳에 보관)
+
+#### Step 5: JSON 파일에서 정보 추출
+다운로드한 JSON 파일을 열어서 다음 정보를 확인:
+```json
+{
+  "type": "service_account",
+  "project_id": "your-project-id",
+  "private_key_id": "여기가 Private Key ID",
+  "private_key": "-----BEGIN PRIVATE KEY-----\n여기가 Private Key\n-----END PRIVATE KEY-----\n",
+  "client_email": "여기가 Service Account Email",
+  "client_id": "client-id",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token"
+}
 ```
 
-## ⚙️ 설정 방법
+### 2. 구글 시트 준비
 
-### 1. DatabaseManager 설정
-`DatabaseManager.cs`의 연결 설정을 환경에 맞게 수정:
+#### Step 1: 스프레드시트 생성
+1. [Google Sheets](https://sheets.google.com/)에서 새 스프레드시트 생성
+2. 첫 번째 행에 다음 헤더 추가:
+   ```
+   | ID | Password | Nickname | Win | Lose | Rate |
+   ```
+
+#### Step 2: 서비스 계정에 권한 부여 (중요!)
+1. 스프레드시트에서 **"공유"** 버튼 클릭
+2. **JSON 파일의 `client_email` 값을 복사**
+3. 공유 대상에 **서비스 계정 이메일 추가**
+4. 권한을 **"편집자"**로 설정
+5. **"전송"** 클릭
+
+#### Step 3: 스프레드시트 ID 확인
+- URL에서 스프레드시트 ID 복사
+- 예: `https://docs.google.com/spreadsheets/d/1hAEhskFqhVJhzuly7l1c6xTNfdz0m3filSbBDMC6nRk/edit`
+- → `1hAEhskFqhVJhzuly7l1c6xTNfdz0m3filSbBDMC6nRk`
+
+## 📊 구글 시트 구조
+
+### 필수 컬럼 구조
+| ID | Password | Nickname | Win | Lose | Rate |
+|----|----------|----------|-----|------|------|
+| 사용자 아이디 | 비밀번호 | 닉네임 | 승리 횟수 | 패배 횟수 | 레이팅 |
+
+**컬럼 설명:**
+- **ID**: 로그인용 사용자 아이디 (중복 불가)
+- **Password**: 로그인용 비밀번호
+- **Nickname**: 게임 내 닉네임 (5글자 이하)
+- **Win**: 게임에서 1등 달성 횟수
+- **Lose**: 게임에서 2,3,4등 달성 횟수  
+- **Rate**: 레이팅 점수 (시작: 1000점, 최소: 0점)
+
+### 레이팅 시스템
+- **1등**: +14점
+- **2등**: +6점
+- **3등**: ±0점
+- **4등**: -9점
+- **최소값**: 0점 (음수 불가)
+
+## 🎮 Unity 설정
+
+### 1. GoogleSheetsManager 설정
+Inspector에서 다음 정보를 입력:
 
 ```csharp
-[Header("데이터베이스 연결 설정")]
-[SerializeField] private string server = "127.0.0.1";      // 서버 주소
-[SerializeField] private string database = "gamedb";        // 데이터베이스 이름
-[SerializeField] private string uid = "root";               // 사용자명
-[SerializeField] private string password = "root";          // 비밀번호
-[SerializeField] private int port = 3306;                   // 포트
+[Header("구글 시트 설정")]
+[SerializeField] private string spreadsheetId = "1hAEhskFqhVJhzuly7l1c6xTNfdz0m3filSbBDMC6nRk"; // 실제 스프레드시트 ID
+[SerializeField] private string sheetName = "Sheet1"; // 시트 이름
+
+[Header("서비스 계정 인증")]
+[SerializeField] private string serviceAccountEmail = "unity-sheets-service@your-project.iam.gserviceaccount.com"; // JSON의 client_email
+[SerializeField] private string privateKeyId = "abc123def456..."; // JSON의 private_key_id
+[SerializeField] private string privateKey = "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC...\n-----END PRIVATE KEY-----\n"; // JSON의 private_key (개행 포함)
 ```
 
 ### 2. LoginButtonController 설정
 Inspector에서 다음 요소들을 연결:
 
-**회원가입 화면 설정:**
+**회원가입 화면:**
 - `createNicknameInputField`: 닉네임 입력 필드
 - `createIdInputField`: 아이디 입력 필드
 - `createpPasswordInputField`: 비밀번호 입력 필드
@@ -65,130 +117,78 @@ Inspector에서 다음 요소들을 연결:
 - `createButton`: 회원가입 시도 버튼 (ButtonManager)
 - `createCancelButton`: 취소 버튼 (ButtonManager)
 
-**로그인 화면 설정:**
+**로그인 화면:**
 - `loginIdInputField`: 아이디 입력 필드
 - `loginPasswordInputField`: 비밀번호 입력 필드
 - `loginButton`: 로그인 버튼 (ButtonManager)
 - `signUpButton`: 회원가입 버튼 (ButtonManager)
 
-**모달창 설정:**
+**모달창:**
 - `signUpSuccessModalWindowManager`: 회원가입 성공 모달
 - `signUpFailModalWindowManager`: 회원가입 실패 모달
 - `loginFailModalWindowManager`: 로그인 실패 모달
 
 **패널 관리:**
-- `panelManager`: PanelManager 컴포넌트
-- `loginPanelName`: 로그인 패널 이름 (기본값: "Login")
-- `signUpPanelName`: 회원가입 패널 이름 (기본값: "SignUp")
+- `panelManager`: 패널 매니저 (PanelManager)
+- `loginPanelName`: "Login" (로그인 패널 이름)
+- `signUpPanelName`: "SignUp" (회원가입 패널 이름)
 
-**로딩 UI:**
-- `loadingIndicator`: 로딩 인디케이터 GameObject
+## 🔧 사용법
 
-### 3. Heat UI ButtonManager 설정
-이 시스템은 Heat UI의 `ButtonManager` 컴포넌트를 사용합니다:
+### 기본 사용법
+1. Unity에서 플레이 모드 실행
+2. 회원가입 또는 로그인 시도
+3. Console에서 연결 상태 확인
 
-- **자동 이벤트 연결**: `Start()` 메서드에서 자동으로 버튼 이벤트가 연결됩니다
-- **상태 관리**: `isInteractable` 속성으로 버튼 활성화/비활성화 제어
-- **Inspector 설정**: 각 버튼은 `ButtonManager` 컴포넌트가 있는 GameObject를 할당해야 합니다
+### 디버깅 및 진단
+**GoogleSheetsManager 컴포넌트에서:**
+1. **우클릭** → **"연결 진단"** 선택
+2. Console에서 설정 상태 확인
 
-**주의사항:**
-- Unity 기본 `Button` 컴포넌트가 아닌 Heat UI의 `ButtonManager`를 사용해야 합니다
-- Inspector에서 버튼 이벤트를 수동으로 연결할 필요가 없습니다 (코드에서 자동 연결)
+## ⚠️ 주의사항
 
-## 🎮 사용 방법
+### 보안
+- **개인 키는 절대 공개하지 마세요!**
+- 프로덕션 환경에서는 개인 키를 암호화하여 저장
+- JSON 파일을 버전 관리에 포함하지 마세요
 
-### 로그인 프로세스
-1. 사용자가 아이디/비밀번호 입력
-2. `OnClickLoginButton()` 호출
-3. 데이터베이스에서 사용자 인증
-4. 성공 시 `CurrentUser`에 사용자 정보 저장
-5. Intro 씬으로 자동 전환
+### 제한사항
+- Google Sheets API는 분당 100회 요청 제한
+- 대용량 데이터에는 적합하지 않음
+- 실시간 동기화에는 한계가 있음
 
-### 회원가입 프로세스
-1. `OnClickSignUpButton()`으로 회원가입 패널 이동
-2. 사용자 정보 입력 (아이디, 닉네임, 비밀번호, 비밀번호 확인)
-3. `OnClickSignUpTryButton()` 호출
-4. 입력 검증 (닉네임 5글자 이하, 아이디 중복 검사 등)
-5. 성공 시 성공 모달 표시
-6. `OnClickLoginCancelButton()`으로 로그인 패널 복귀
+## 🚨 문제 해결
 
-### 유효성 검사 규칙
-- **아이디**: 중복 불가, 필수 입력
-- **닉네임**: 5글자 이하, 필수 입력
-- **비밀번호**: 4자 이상, 확인 비밀번호와 일치
+### 일반적인 오류들
 
-## 🔧 디버깅
+#### 1. "인증 실패" 오류
+- 서비스 계정 이메일이 스프레드시트에 공유되었는지 확인
+- JSON 파일의 정보가 올바르게 입력되었는지 확인
+- 개인 키에 개행 문자(`\n`)가 포함되었는지 확인
 
-### DatabaseManager 디버그 메서드
-```csharp
-[ContextMenu("데이터베이스 연결 테스트")]
-private void TestDatabaseConnection()
+#### 2. "데이터 로드 실패" 오류
+- 스프레드시트 ID가 올바른지 확인
+- 시트 이름이 정확한지 확인
+- Google Sheets API가 활성화되었는지 확인
 
-[ContextMenu("현재 사용자 정보 확인")]
-private void CheckCurrentUser()
-```
+#### 3. "권한 오류" 오류
+- 서비스 계정에 스프레드시트 편집 권한이 있는지 확인
+- 스프레드시트가 삭제되지 않았는지 확인
 
-### 로그 메시지 확인
-- ✅: 성공 메시지
-- ❌: 오류 메시지
-- ⚠️: 경고 메시지
-- 🔐: 로그인 관련
-- 📝: 회원가입 관련
-- 🎬: 씬 전환 관련
+### 디버깅 단계
+1. **연결 진단** 실행
+2. Console 로그 확인
+3. 서비스 계정 설정 재확인
+4. 스프레드시트 권한 재확인
 
-## 🔒 보안 고려사항
+## 📞 지원
 
-### 현재 구현된 보안 기능
-- 비밀번호 해시화 (Base64 + Salt)
-- SQL Injection 방지 (Parameterized Query)
-- 입력 검증
+문제가 지속되면 다음을 확인하세요:
+1. Google Cloud Console 프로젝트 상태
+2. 서비스 계정 활성 상태
+3. 스프레드시트 공유 설정
+4. Unity Console 오류 메시지
 
-### 프로덕션 환경 권장사항
-- BCrypt 등 더 강력한 해시 알고리즘 사용
-- HTTPS 연결 사용
-- 데이터베이스 연결 정보 암호화
-- 비밀번호 복잡도 정책 강화
+---
 
-## 🚀 성능 최적화
-
-### 현재 적용된 최적화
-- 연결 풀링 (MySqlConnection using 문)
-- 비동기 처리 (Coroutine)
-- 중복 요청 방지 (isProcessing 플래그)
-- 자동 테이블 생성
-
-### 추가 최적화 방안
-- 연결 풀 설정
-- 캐싱 시스템 도입
-- 배치 처리
-
-## 📞 문제 해결
-
-### 자주 발생하는 오류
-
-1. **"Assembly will not be loaded due to errors"**
-   - MySql.Data.dll 버전 호환성 문제
-   - 제공된 dll 파일 사용 권장
-
-2. **"The TCP Port you selected is already in use"**
-   - 기존 MySQL 서비스와 충돌
-   - 서비스에서 MySQL 중지 후 MariaDB 설치
-
-3. **"데이터베이스 연결에 실패했습니다"**
-   - 연결 정보 확인 (서버, 포트, 사용자명, 비밀번호)
-   - MariaDB 서비스 실행 상태 확인
-
-## 📝 변경 사항
-
-### NickNameController 업데이트
-- 데이터베이스 기반 닉네임 시스템과 호환
-- 로그인된 사용자의 경우 DB 닉네임 우선 사용
-- InputField 읽기 전용 모드 지원
-- 기존 시스템과의 하위 호환성 유지
-
-## 🎯 향후 개선 계획
-- 이메일 인증 시스템
-- 비밀번호 재설정 기능
-- 사용자 프로필 관리
-- 게임 통계 저장
-- 친구 시스템
+**✅ 설정이 완료되면 Unity에서 로그인/회원가입 시스템을 사용할 수 있습니다!**

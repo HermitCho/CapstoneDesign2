@@ -1,25 +1,20 @@
 using System;
 
 /// <summary>
-/// 사용자 데이터 모델 클래스
-/// 데이터베이스에서 가져온 사용자 정보를 저장하는 구조체
+/// 기본 사용자 데이터 모델 클래스 (기존 호환성 유지)
 /// </summary>
 [Serializable]
 public class UserData
 {
-    public int id;              // 데이터베이스 기본키
+    public int id;              // 기본키
     public string userId;       // 사용자 아이디 (로그인용)
     public string nickname;     // 게임 내 닉네임
-    public DateTime createdAt;  // 계정 생성일
-    public DateTime lastLogin;  // 마지막 로그인 시간
 
     public UserData()
     {
         id = 0;
         userId = "";
         nickname = "";
-        createdAt = DateTime.Now;
-        lastLogin = DateTime.Now;
     }
 
     public UserData(int id, string userId, string nickname)
@@ -27,8 +22,6 @@ public class UserData
         this.id = id;
         this.userId = userId;
         this.nickname = nickname;
-        this.createdAt = DateTime.Now;
-        this.lastLogin = DateTime.Now;
     }
 
     /// <summary>
@@ -45,6 +38,78 @@ public class UserData
     public override string ToString()
     {
         return $"UserData[ID: {id}, UserId: {userId}, Nickname: {nickname}]";
+    }
+}
+
+/// <summary>
+/// 게임 통계를 포함한 확장 사용자 데이터 모델 클래스
+/// 구글 스프레드시트의 모든 컬럼 데이터를 포함
+/// </summary>
+[Serializable]
+public class UserGameData : UserData
+{
+    public string password;     // 비밀번호 (실제로는 해시화 권장)
+    public int win;            // 승리 횟수 (1등)
+    public int lose;           // 패배 횟수 (2,3,4등)
+    public int rate;           // 레이팅 점수
+
+    public UserGameData() : base()
+    {
+        password = "";
+        win = 0;
+        lose = 0;
+        rate = 1000; // 시작 레이팅
+    }
+
+    public UserGameData(int id, string userId, string nickname, string password, int win, int lose, int rate) 
+        : base(id, userId, nickname)
+    {
+        this.password = password;
+        this.win = win;
+        this.lose = lose;
+        this.rate = rate;
+    }
+
+    /// <summary>
+    /// 총 게임 수 반환
+    /// </summary>
+    public int GetTotalGames()
+    {
+        return win + lose;
+    }
+
+    /// <summary>
+    /// 승률 계산 (0.0 ~ 1.0)
+    /// </summary>
+    public float GetWinRate()
+    {
+        int totalGames = GetTotalGames();
+        if (totalGames == 0) return 0f;
+        return (float)win / totalGames;
+    }
+
+    /// <summary>
+    /// 승률 퍼센트 반환 (0 ~ 100)
+    /// </summary>
+    public float GetWinRatePercent()
+    {
+        return GetWinRate() * 100f;
+    }
+
+    /// <summary>
+    /// 기본 UserData로 변환
+    /// </summary>
+    public UserData ToUserData()
+    {
+        return new UserData(id, userId, nickname);
+    }
+
+    /// <summary>
+    /// 디버그용 문자열 반환 (확장 정보 포함)
+    /// </summary>
+    public override string ToString()
+    {
+        return $"UserGameData[ID: {id}, UserId: {userId}, Nickname: {nickname}, Win: {win}, Lose: {lose}, Rate: {rate}, WinRate: {GetWinRatePercent():F1}%]";
     }
 }
 
@@ -66,27 +131,55 @@ public class CurrentUser
         }
     }
 
-    private UserData _userData;
+    private UserGameData _userGameData;
     private bool _isLoggedIn = false;
 
     private CurrentUser() { }
 
     /// <summary>
-    /// 사용자 로그인 정보 설정
+    /// 사용자 로그인 정보 설정 (확장 데이터 포함)
     /// </summary>
-    public void SetUserData(UserData userData)
+    public void SetUserGameData(UserGameData userData)
     {
-        _userData = userData;
+        _userGameData = userData;
         _isLoggedIn = userData != null && userData.IsValid();
         
         if (_isLoggedIn)
         {
-            // 로컬에 닉네임 저장 (기존 시스템과의 호환성을 위해)
+            // 로컬에 정보 저장 (기존 시스템과의 호환성을 위해)
             UnityEngine.PlayerPrefs.SetString("NickName", userData.nickname);
             UnityEngine.PlayerPrefs.SetString("UserId", userData.userId);
+            UnityEngine.PlayerPrefs.SetInt("UserRate", userData.rate);
+            UnityEngine.PlayerPrefs.SetInt("UserWin", userData.win);
+            UnityEngine.PlayerPrefs.SetInt("UserLose", userData.lose);
             UnityEngine.PlayerPrefs.Save();
             
             UnityEngine.Debug.Log($"CurrentUser: 사용자 로그인 - {userData}");
+        }
+    }
+
+    /// <summary>
+    /// 기존 호환성을 위한 UserData 설정 메서드
+    /// </summary>
+    public void SetUserData(UserData userData)
+    {
+        if (userData is UserGameData gameData)
+        {
+            SetUserGameData(gameData);
+        }
+        else
+        {
+            // 기본 UserData를 UserGameData로 변환
+            var gameUserData = new UserGameData
+            {
+                id = userData.id,
+                userId = userData.userId,
+                nickname = userData.nickname,
+                win = 0,
+                lose = 0,
+                rate = 1000
+            };
+            SetUserGameData(gameUserData);
         }
     }
 
@@ -95,12 +188,15 @@ public class CurrentUser
     /// </summary>
     public void Logout()
     {
-        _userData = null;
+        _userGameData = null;
         _isLoggedIn = false;
         
         // 로컬 저장된 정보 삭제
         UnityEngine.PlayerPrefs.DeleteKey("NickName");
         UnityEngine.PlayerPrefs.DeleteKey("UserId");
+        UnityEngine.PlayerPrefs.DeleteKey("UserRate");
+        UnityEngine.PlayerPrefs.DeleteKey("UserWin");
+        UnityEngine.PlayerPrefs.DeleteKey("UserLose");
         UnityEngine.PlayerPrefs.Save();
         
         UnityEngine.Debug.Log("CurrentUser: 사용자 로그아웃 완료");
@@ -111,15 +207,23 @@ public class CurrentUser
     /// </summary>
     public bool IsLoggedIn()
     {
-        return _isLoggedIn && _userData != null && _userData.IsValid();
+        return _isLoggedIn && _userGameData != null && _userGameData.IsValid();
     }
 
     /// <summary>
-    /// 현재 사용자 데이터 가져오기
+    /// 현재 사용자 게임 데이터 가져오기
+    /// </summary>
+    public UserGameData GetUserGameData()
+    {
+        return _userGameData;
+    }
+
+    /// <summary>
+    /// 기존 호환성을 위한 UserData 반환
     /// </summary>
     public UserData GetUserData()
     {
-        return _userData;
+        return _userGameData?.ToUserData();
     }
 
     /// <summary>
@@ -127,7 +231,7 @@ public class CurrentUser
     /// </summary>
     public string GetNickname()
     {
-        return _userData?.nickname ?? "Player";
+        return _userGameData?.nickname ?? "Player";
     }
 
     /// <summary>
@@ -135,7 +239,7 @@ public class CurrentUser
     /// </summary>
     public string GetUserId()
     {
-        return _userData?.userId ?? "";
+        return _userGameData?.userId ?? "";
     }
 
     /// <summary>
@@ -143,6 +247,59 @@ public class CurrentUser
     /// </summary>
     public int GetId()
     {
-        return _userData?.id ?? 0;
+        return _userGameData?.id ?? 0;
+    }
+
+    /// <summary>
+    /// 현재 사용자 레이팅 가져오기
+    /// </summary>
+    public int GetRate()
+    {
+        return _userGameData?.rate ?? 1000;
+    }
+
+    /// <summary>
+    /// 현재 사용자 승리 횟수 가져오기
+    /// </summary>
+    public int GetWin()
+    {
+        return _userGameData?.win ?? 0;
+    }
+
+    /// <summary>
+    /// 현재 사용자 패배 횟수 가져오기
+    /// </summary>
+    public int GetLose()
+    {
+        return _userGameData?.lose ?? 0;
+    }
+
+    /// <summary>
+    /// 현재 사용자 승률 가져오기 (퍼센트)
+    /// </summary>
+    public float GetWinRatePercent()
+    {
+        return _userGameData?.GetWinRatePercent() ?? 0f;
+    }
+
+    /// <summary>
+    /// 게임 결과 업데이트 후 로컬 데이터 갱신
+    /// </summary>
+    public void UpdateGameStats(int win, int lose, int rate)
+    {
+        if (_userGameData != null)
+        {
+            _userGameData.win = win;
+            _userGameData.lose = lose;
+            _userGameData.rate = rate;
+            
+            // PlayerPrefs 업데이트
+            UnityEngine.PlayerPrefs.SetInt("UserRate", rate);
+            UnityEngine.PlayerPrefs.SetInt("UserWin", win);
+            UnityEngine.PlayerPrefs.SetInt("UserLose", lose);
+            UnityEngine.PlayerPrefs.Save();
+            
+            UnityEngine.Debug.Log($"CurrentUser: 게임 통계 업데이트 - Win: {win}, Lose: {lose}, Rate: {rate}");
+        }
     }
 }

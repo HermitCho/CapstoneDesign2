@@ -7557,7 +7557,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 515121509}
-  - component: {fileID: 515121508}
+  - component: {fileID: 515121510}
   m_Layer: 0
   m_Name: DBManager
   m_TagString: Untagged
@@ -7565,23 +7565,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &515121508
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 515121507}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 02eeeed34acc6e443a85861d76650adb, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  server: 192.168.0.106
-  database: test
-  uid: root
-  password: 8789
-  port: 3306
 --- !u!4 &515121509
 Transform:
   m_ObjectHideFlags: 0
@@ -7597,6 +7580,24 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &515121510
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 515121507}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ed014e4165aa660419a15835fd0f2719, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  spreadsheetId: 1HhzhKkGS-JTvEzzsOSPnzrYs53F9boRXuQw2818RCdk
+  sheetName: Login
+  serviceAccountEmail: id-0201763@capstone2025-472712.iam.gserviceaccount.com
+  privateKeyId: afa18c26a293b0d0007386e3764d0a9c4d115735
+  privateKey: -----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCScMgls6Q6SOcQ\nE3GQ7yiTjbYXLdOuTBXbYuZAGYASNC1Ihze9zPQG6aaj4awnVvzYc7h4rDaxe09q\nZjTlaCq6PVyfBpbCvXsEc+DPj1KKFaBzZ4L+he0HjtQzhnylQuTld13aagNocyAU\n8iOmNUZsc0FLG6fJdL9kiKFMJCGk7VuXxO3DS8x11jZMioKiOdcRayCKTciCBzLC\n3BxzNAW3vNQM+/rhJaCKZvEdH4sJ360DCBFYQda6zRJWtIvqa7bC8dUivLVbS/VD\ns8mna2sHuIixYGQiNQeYMvaqoBlCrhu2R6U17cMQqCiI/KhrXNPTL7JrWCq4cuRB\nK9Nkn9DHAgMBAAECggEAJcZdAsizuOs8W3vAhFQFAgcArTr/i0sKKlT5MxjA3jFC\nax6iRN4dJrlX6Jdaqq04PPeg4tP9qcu2wSoLRBAaUX9pqIXxFtv84zmnCLOeZYtN\nn+dYNaLDcXspBv+OoKzAUeb4OVK2fVeRM4YApyu/9lLGyYKhRgjNJDhQb000to+1\n4CawalJy3pJoJLZCf1zO1nHpP9wXVwUf5yvS1XrZF+xGe0/9qWfAufMEzTOAJQec\nPzWHKqMOJ2Zls7guOf2ztr6cAMbJ+yQs7ozVR0cTmOjJQHhmDbx4CrgyPTFscb52\nmHkexOv4FHTN8x3Npcjlhk9oQ/QfJ+pT7uwmyTEebQKBgQDKLe613ERsei5YcJr4\ndU/tiM5EwMSs2PlzRPfyyZLvb1/n14SeIUkypovT/5V62r83AKrteJf9P65dGG2p\nUJMDp917b3OZ+Hgb0tJqw0Fa9lhKC9jNCVAS1VGgO0ATzGCtYCEjP7PyjqjukMjR\nFSs9itIGiBZI9TzQj4GjZVnu1QKBgQC5bF9MpAAYh8zOAprVjjH/WdMc67c7CPRx\n+lNP8nTtzxO87lrqpBUfZpys4ySw1AHrwaGDPecPisjcWxp2x7sZexirgxqLwXgL\nOFrnRmge5KFRvuBy8Pgw6fnRIgWtFcRpeBFGBIJ4d6+0U4DenoA4T0WrK6hiGVJ4\n69H4+jlnKwKBgDOT2jT811vRI6eeOnqt+tD/OJfjkYkC5UhZzONcNybsA8xyd7ub\nhD/uqvdPWYP48BUJD5H7VNLffwzy4W7zRj4FggQuX5BlCccXVmS0ISUieU2SjiFo\ngcv8LZGx69vhJLy2LF4Ar1huunv55bEpNFnD42aVKxI7teMC6TCU94dtAoGANbm1\n3zIBqRnn+KT+kfQSfodbSRzvSVat5Tx/2UFKKgF/GZYCl8wVJrUHnnxuDCJRsCq5\njppoEbPHwTlQcKwshRSKsF9bWLUlADNC+5IF5zWdnF7vD77MWvfgX305Ic6Vy21z\nq9LwrtEXAuvTAi3wvuARMqiCsHHf2JOTkk2GRmMCgYEAsFeFYUy3S5GQ/KPX6P3n\nPgVnlaRqAlY/JUqeXCacQo/Iv+JSdWZEbqBanyGuSHDJb2iihU8Q9L5Gi6g4Ekog\nvWxnuqdu/O7vqg/GK1CFfGNALidJbmEvQK+GKbgsLdGcR97vYq7NlkNVtzZI6tUv\nViDErhsrxDmWWduTHXEQGz0=\n-----END
+    PRIVATE KEY-----\n
 --- !u!1 &519030051
 GameObject:
   m_ObjectHideFlags: 0

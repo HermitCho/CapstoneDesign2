@@ -41,10 +41,10 @@ public class LoginButtonController : MonoBehaviour
 
     void Start()
     {
-        // 데이터베이스 매니저 초기화 확인
-        if (DatabaseManager.Instance == null)
+        // 구글 스프레드시트 매니저 초기화 확인
+        if (GoogleSheetsManager.Instance == null)
         {
-            Debug.LogError("LoginButtonController: DatabaseManager를 찾을 수 없습니다!");
+            Debug.LogError("LoginButtonController: GoogleSheetsManager를 찾을 수 없습니다!");
         }
 
         // 로딩 인디케이터 초기 상태 설정
@@ -194,10 +194,10 @@ public class LoginButtonController : MonoBehaviour
 
         Debug.Log($"로그인 시도: {userId}");
 
-        // 데이터베이스 연결 확인
-        if (!DatabaseManager.Instance.IsConnected())
+        // 구글 스프레드시트 연결 확인
+        if (!GoogleSheetsManager.Instance.IsConnected())
         {
-            ShowLoginFailModal("데이터베이스 연결에 실패했습니다.");
+            ShowLoginFailModal("구글 스프레드시트 연결에 실패했습니다.");
             SetProcessingState(false);
             ShowLoadingIndicator(false);
             yield break;
@@ -206,10 +206,10 @@ public class LoginButtonController : MonoBehaviour
         bool loginCompleted = false;
         bool loginSuccess = false;
         string loginMessage = "";
-        UserData userData = null;
+        UserGameData userData = null;
 
         // 로그인 시도
-        DatabaseManager.Instance.LoginUser(userId, password, (success, message, user) =>
+        GoogleSheetsManager.Instance.LoginUser(userId, password, (success, message, user) =>
         {
             loginSuccess = success;
             loginMessage = message;
@@ -229,7 +229,7 @@ public class LoginButtonController : MonoBehaviour
             Debug.Log($"로그인 성공: {userData}");
             
             // 현재 사용자 정보 설정
-            CurrentUser.Instance.SetUserData(userData);
+            CurrentUser.Instance.SetUserGameData(userData);
             
             // Intro 씬으로 전환
             StartCoroutine(LoadIntroScene());
@@ -252,10 +252,10 @@ public class LoginButtonController : MonoBehaviour
 
         Debug.Log($"회원가입 시도: {userId} - {nickname}");
 
-        // 데이터베이스 연결 확인
-        if (!DatabaseManager.Instance.IsConnected())
+        // 구글 스프레드시트 연결 확인
+        if (!GoogleSheetsManager.Instance.IsConnected())
         {
-            ShowSignUpFailModal("데이터베이스 연결에 실패했습니다.");
+            ShowSignUpFailModal("구글 스프레드시트 연결에 실패했습니다.");
             SetProcessingState(false);
             ShowLoadingIndicator(false);
             yield break;
@@ -266,7 +266,7 @@ public class LoginButtonController : MonoBehaviour
         string signUpMessage = "";
 
         // 회원가입 시도
-        DatabaseManager.Instance.RegisterUser(userId, nickname, password, (success, message) =>
+        GoogleSheetsManager.Instance.RegisterUser(userId, nickname, password, (success, message) =>
         {
             signUpSuccess = success;
             signUpMessage = message;
@@ -468,18 +468,18 @@ public class LoginButtonController : MonoBehaviour
     /// <summary>
     /// 현재 연결 상태 확인 (디버깅용)
     /// </summary>
-    [ContextMenu("데이터베이스 연결 테스트")]
-    private void TestDatabaseConnection()
+    [ContextMenu("구글 스프레드시트 연결 테스트")]
+    private void TestGoogleSheetsConnection()
     {
-        if (DatabaseManager.Instance != null)
+        if (GoogleSheetsManager.Instance != null)
         {
-            bool isConnected = DatabaseManager.Instance.IsConnected();
-            Debug.Log($"데이터베이스 연결 상태: {(isConnected ? "연결됨" : "연결 안됨")}");
-            Debug.Log($"연결 문자열: {DatabaseManager.Instance.GetConnectionString()}");
+            bool isConnected = GoogleSheetsManager.Instance.IsConnected();
+            Debug.Log($"구글 스프레드시트 연결 상태: {(isConnected ? "연결됨" : "연결 안됨")}");
+            GoogleSheetsManager.Instance.DiagnoseConnection();
         }
         else
         {
-            Debug.LogError("DatabaseManager 인스턴스를 찾을 수 없습니다!");
+            Debug.LogError("GoogleSheetsManager 인스턴스를 찾을 수 없습니다!");
         }
     }
 
