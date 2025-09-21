@@ -91,6 +91,12 @@ public class SelectCharController : MonoBehaviour
     public void OnUpdateButton()
     {
         currentSelectedIndex = PlayerPrefs.GetInt("SelectChar_CurrentIndex", 0);
+        StartCoroutine(OnUpdateButtonCoroutine());
+    }
+
+    IEnumerator OnUpdateButtonCoroutine()
+    {
+        yield return new WaitForSeconds(0.2f);
         UpdateButtonStates();
     }
 
