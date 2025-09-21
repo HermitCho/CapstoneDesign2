@@ -10,36 +10,67 @@ public class NickNameController : MonoBehaviour
     [Header("UI References")]
     [SerializeField] private TMP_InputField nicknameInputField;
     /// <summary>
-    /// 닉네임 설정 (로컬 저장 + Photon Custom Properties)
+    /// 닉네임 설정 (데이터베이스 기반 시스템 호환)
+    /// 현재 로그인된 사용자의 닉네임을 사용
     /// </summary>
-    /// <param name="name">설정할 닉네임</param>
+    /// <param name="name">설정할 닉네임 (데이터베이스 시스템에서는 무시됨)</param>
     public void SetNickName(string name) 
-    { 
-        // 로컬에 저장
-        PlayerPrefs.SetString("NickName", name);
-        PlayerPrefs.Save();
-        
-        // Photon Custom Properties에도 저장 (멀티플레이어용)
-        if (PhotonNetwork.IsConnected && PhotonNetwork.LocalPlayer != null)
+    {
+        // 데이터베이스 기반 시스템에서는 CurrentUser에서 닉네임을 가져옴
+        if (CurrentUser.Instance.IsLoggedIn())
         {
-            var props = new ExitGames.Client.Photon.Hashtable();
-            props["nickname"] = name;
-            PhotonNetwork.LocalPlayer.SetCustomProperties(props);
+            string dbNickname = CurrentUser.Instance.GetNickname();
             
-            Debug.Log($"✅ NickNameController: 닉네임 설정 완료 - {name}");
+            // 로컬에 저장 (기존 시스템과의 호환성을 위해)
+            PlayerPrefs.SetString("NickName", dbNickname);
+            PlayerPrefs.Save();
+            
+            // Photon Custom Properties에도 저장 (멀티플레이어용)
+            if (PhotonNetwork.IsConnected && PhotonNetwork.LocalPlayer != null)
+            {
+                var props = new ExitGames.Client.Photon.Hashtable();
+                props["nickname"] = dbNickname;
+                PhotonNetwork.LocalPlayer.SetCustomProperties(props);
+                
+                Debug.Log($"NickNameController: 데이터베이스 닉네임 설정 완료 - {dbNickname}");
+            }
+            else
+            {
+                Debug.LogWarning("NickNameController: Photon 연결되지 않음, 로컬에만 저장");
+            }
         }
         else
         {
-            Debug.LogWarning("⚠️ NickNameController: Photon 연결되지 않음, 로컬에만 저장");
+            // 로그인되지 않은 경우 기존 방식 사용 (하위 호환성)
+            PlayerPrefs.SetString("NickName", name);
+            PlayerPrefs.Save();
+            
+            if (PhotonNetwork.IsConnected && PhotonNetwork.LocalPlayer != null)
+            {
+                var props = new ExitGames.Client.Photon.Hashtable();
+                props["nickname"] = name;
+                PhotonNetwork.LocalPlayer.SetCustomProperties(props);
+                
+                Debug.Log($"NickNameController: 기존 방식 닉네임 설정 완료 - {name}");
+            }
+            
+            Debug.LogWarning("NickNameController: 로그인되지 않은 상태에서 닉네임 설정");
         }
     }
     
     /// <summary>
-    /// 닉네임 가져오기 (로컬 저장소에서)
+    /// 닉네임 가져오기 (데이터베이스 기반 시스템 우선)
     /// </summary>
     /// <returns>저장된 닉네임 (기본값: "Player")</returns>
     public string GetNickName() 
-    { 
+    {
+        // 데이터베이스 기반 시스템에서 로그인된 경우 DB 닉네임 우선 사용
+        if (CurrentUser.Instance.IsLoggedIn())
+        {
+            return CurrentUser.Instance.GetNickname();
+        }
+        
+        // 로그인되지 않은 경우 기존 방식 사용
         return PlayerPrefs.GetString("NickName", "Player"); 
     }
 
@@ -55,7 +86,7 @@ public class NickNameController : MonoBehaviour
         if (name.Length > 12)
         {
             name = name.Substring(0, 12);
-            Debug.LogWarning($"⚠️ NickNameController: 닉네임이 12자로 제한됨 - {name}");
+            Debug.LogWarning($"NickNameController: 닉네임이 12자로 제한됨 - {name}");
         }
         
         SetNickName(name); 
@@ -81,11 +112,25 @@ public class NickNameController : MonoBehaviour
     {
         string savedNickname = GetNickName();
         
-        // InputField에 저장된 닉네임 표시
-        if (nicknameInputField != null && !string.IsNullOrWhiteSpace(savedNickname) && savedNickname != "Player")
+        // 데이터베이스 기반 시스템에서는 InputField를 읽기 전용으로 처리
+        if (CurrentUser.Instance.IsLoggedIn())
         {
-            nicknameInputField.text = savedNickname;
-            Debug.Log($"✅ NickNameController: 저장된 닉네임 로드 완료 - {savedNickname}");
+            if (nicknameInputField != null)
+            {
+                nicknameInputField.text = savedNickname;
+                nicknameInputField.interactable = false; // 데이터베이스 닉네임은 수정 불가
+                Debug.Log($"NickNameController: 데이터베이스 닉네임 로드 완료 - {savedNickname} (읽기 전용)");
+            }
+        }
+        else
+        {
+            // 기존 방식: InputField에 저장된 닉네임 표시 (수정 가능)
+            if (nicknameInputField != null && !string.IsNullOrWhiteSpace(savedNickname) && savedNickname != "Player")
+            {
+                nicknameInputField.text = savedNickname;
+                nicknameInputField.interactable = true;
+                Debug.Log($"NickNameController: 기존 방식 닉네임 로드 완료 - {savedNickname}");
+            }
         }
         
         // Photon에 동기화 (연결되어 있다면)
@@ -112,7 +157,7 @@ public class NickNameController : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("⚠️ NickNameController: InputField를 찾을 수 없습니다.");
+            Debug.LogWarning("NickNameController: InputField를 찾을 수 없습니다.");
         }
     }
     

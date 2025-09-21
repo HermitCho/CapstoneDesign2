@@ -107,7 +107,7 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
         CurrentHealth = newHealth;
         OnAnyLivingEntityHealthChanged?.Invoke(CurrentHealth, StartingHealth, this);
     }
-    
+
     [PunRPC]
     public virtual void OnDamage(float damage, Vector3 hitPoint, Vector3 hitNormal, int attackerViewId)
     {
@@ -123,14 +123,13 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
 
         photonView.RPC("RPC_UpdateHealth", RpcTarget.All, CurrentHealth);
 
-        if (photonView.IsMine)
-        {
-            Vector3 damageDir = attacker != null ?
-                (transform.position - attacker.transform.position).normalized :
-                -hitNormal.normalized;
+        // 피격 방향 계산
+        Vector3 damageDir = attacker != null ?
+            (transform.position - attacker.transform.position).normalized :
+            -hitNormal.normalized;
 
-            GameEvents.OnLocalPlayerHit?.Invoke(damageDir);
-        }
+        // 피격당한 플레이어에게만 UI 이벤트 RPC 전송
+        photonView.RPC("RPC_OnHitEffect", photonView.Owner, -damageDir);
 
         if (CurrentHealth <= 0f && !IsDead)
         {
@@ -287,8 +286,15 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
         return currentAttacker;
     }
 
-
-
+    [PunRPC]
+    public void RPC_OnHitEffect(Vector3 hitDirection)
+    {
+        // 해당 클라이언트에서만 실행되는 UI 이벤트
+        if (photonView.IsMine)
+        {
+            GameEvents.OnLocalPlayerHit?.Invoke(hitDirection);
+        }
+    }
 
 
 
