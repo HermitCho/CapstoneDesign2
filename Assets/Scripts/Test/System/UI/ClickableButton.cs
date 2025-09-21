@@ -100,4 +100,9 @@ public class ClickableButton : MonoBehaviour, IPointerExitHandler, IDeselectHand
             buttonManager.StartCoroutine("SetHighlight");
         }
     }
+
+    public void SetIsClicked(bool value)
+    {
+        isClicked = value;
+    }
 }

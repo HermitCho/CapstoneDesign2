@@ -134,6 +134,11 @@ public class GameManager : Singleton<GameManager>
             // 게임 씬에서 필요한 컴포넌트들이 null인지 주기적으로 체크
             CheckAndFindMissingComponents();
             
+            if (inGameUIManager == null || currentTeddyBear == null)
+            {
+                return; 
+            }
+            
             CheckGameTimeForGameOver();
             
             // 상점 타이머 업데이트
