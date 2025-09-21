@@ -2594,8 +2594,9 @@ GameObject:
   m_Component:
   - component: {fileID: 3087775997737003409}
   - component: {fileID: 8951422393623688171}
+  - component: {fileID: -1868159058495429735}
   m_Layer: 0
-  m_Name: C09
+  m_Name: Char4 Bot
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2634,7 +2635,7 @@ Animator:
   m_GameObject: {fileID: 2419043527781987115}
   m_Enabled: 1
   m_Avatar: {fileID: 9000000, guid: 503415fc3fea44f7bb0eebf41e58e8be, type: 3}
-  m_Controller: {fileID: 9100000, guid: 7466400ba5d940d882bbb7dee5ef9201, type: 2}
+  m_Controller: {fileID: 9100000, guid: 0b0bdedcce5a22f4a8e8189115a5d7a0, type: 2}
   m_CullingMode: 1
   m_UpdateMode: 0
   m_ApplyRootMotion: 1
@@ -2645,6 +2646,25 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &-1868159058495429735
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2419043527781987115}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 90c99db622f51dd40bc481cc10b47bb8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  animator: {fileID: 8951422393623688171}
+  animationPlayRate: 1
+  secWaitTime: 10
+  triggerNames:
+  - LookingAround
+  - Waving
+  - Shrugging
 --- !u!1 &2439646248035847138
 GameObject:
   m_ObjectHideFlags: 0
