@@ -41,14 +41,12 @@ public class ProjectilePreviewComponent : MonoBehaviour, IProjectilePreview
             activeForLocal = true;
             lr.enabled = true;
             targetMarkerInstance.SetActive(true);
-            Debug.Log("ProjectilePreviewComponent 초기화 성공!!!!" + owner != null && owner.photonView != null && owner.photonView.IsMine);
         }
         else
         {
             activeForLocal = false;
             lr.enabled = false;
             targetMarkerInstance.SetActive(false);
-            Debug.Log("ProjectilePreviewComponent 초기화 실패ㅠㅜㅜ " + owner != null && owner.photonView != null && owner.photonView.IsMine);
         }
     }
 
@@ -67,7 +65,7 @@ public class ProjectilePreviewComponent : MonoBehaviour, IProjectilePreview
         Vector3 g = Physics.gravity;
         Vector3 previousPosition = origin;
         lastValidPosition = origin;
-        hitDetected = false; // 이번 프레임의 충돌 감지 시작
+        hitDetected = false;
         Debug.Log("dfdffdf"+ initialSpeed);
 
         for (int i = 0; i < segments; i++)
@@ -89,7 +87,6 @@ public class ProjectilePreviewComponent : MonoBehaviour, IProjectilePreview
 
                 targetMarkerInstance.transform.position = hit.point;
                 targetMarkerInstance.SetActive(true);
-                //Debug.Log($"충돌 감지 - 마커 위치: {hit.point}, 마커 활성화: {targetMarker.activeInHierarchy}, 마커 Scale: {targetMarker.transform.localScale}");
                 hitDetected = true;
                 break; // 궤적 그리기 중단
             }
@@ -100,7 +97,6 @@ public class ProjectilePreviewComponent : MonoBehaviour, IProjectilePreview
             lastValidPosition = currentPosition;
             previousPosition = currentPosition;
 
-            // 최대 거리 제한
             if (Vector3.Distance(origin, currentPosition) > maxDistance)
             {
                 break;

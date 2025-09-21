@@ -348,6 +348,24 @@ public abstract class Skill : MonoBehaviour
         }
         else
         {
+            //placementPreviewComponent?.GetGhostPrefab()
+            placementPreviewComponent?.StartPreview(owner);
+        }
+    }
+
+    //placementPreviewComponent가 설치할 프리팹 전달용
+    public virtual void StartPreview(MoveController owner, GameObject? placementPrefab)
+    {
+        if (!owner.photonView.IsMine) return;
+
+        if (projectilePreviewComponent != null)
+        {
+            Debug.Log("Skill _projPreview를 찾음!!!" + projectilePreviewComponent);
+            projectilePreviewComponent.StartPreview(owner);
+        }
+        else
+        {
+            placementPreviewComponent?.GetGhostPrefab(placementPrefab);
             placementPreviewComponent?.StartPreview(owner);
         }
     }
@@ -355,8 +373,6 @@ public abstract class Skill : MonoBehaviour
     public virtual void UpdatePreview(MoveController owner, Vector3 origin, Vector3 direction, float initialSpeed = 10f)
     {
         if (!owner.photonView.IsMine) return;
-
-
 
         if (projectilePreviewComponent != null)
         {
