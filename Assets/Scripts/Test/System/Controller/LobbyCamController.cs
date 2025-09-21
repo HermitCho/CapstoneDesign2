@@ -19,6 +19,11 @@ public class LobbyCamController : MonoBehaviour
 
     [Tooltip("설정 카메라 위치")]
     public Transform SettingCamPosition;
+    [Space(10)]
+
+    [Tooltip("리더보드 카메라 위치")]
+    public Transform LeaderboardCamPosition;
+    [Space(10)]
 
     private int currentIndex = 0;
 
@@ -59,5 +64,10 @@ public class LobbyCamController : MonoBehaviour
     public void OnSettingCam()
     {
         Cam.transform.position = SettingCamPosition.position;
+    }
+
+    public void OnLeaderboardCam()
+    {
+        Cam.transform.position = LeaderboardCamPosition.position;
     }
 }

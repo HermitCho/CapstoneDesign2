@@ -1360,6 +1360,30 @@ public class GoogleSheetsManager : MonoBehaviour
     }
 
     /// <summary>
+    /// 모든 사용자 데이터 반환 (리더보드용)
+    /// </summary>
+    public List<UserGameData> GetAllUserData()
+    {
+        return new List<UserGameData>(userDataCache);
+    }
+
+    /// <summary>
+    /// 데이터 로드 상태 확인
+    /// </summary>
+    public bool IsDataLoaded()
+    {
+        return isDataLoaded;
+    }
+
+    /// <summary>
+    /// 사용자 수 반환
+    /// </summary>
+    public int GetUserCount()
+    {
+        return userDataCache.Count;
+    }
+
+    /// <summary>
     /// 연결 상태 진단
     /// </summary>
     [ContextMenu("연결 진단")]
