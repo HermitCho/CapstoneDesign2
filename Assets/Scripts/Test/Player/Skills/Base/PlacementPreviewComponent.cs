@@ -2,9 +2,14 @@ using UnityEngine;
 
 public class PlacementPreviewComponent : MonoBehaviour, IPlacementPreview
 {
-    [SerializeField] GameObject ghostPrefab;
-    GameObject ghostInstance;
+    protected GameObject ghostPrefab;
+    protected GameObject ghostInstance;
 
+
+    public void GetGhostPrefab(GameObject placementPrefab)
+    {
+        ghostPrefab = placementPrefab;
+    }
     public void StartPreview(MoveController owner)
     {
         if (ghostPrefab == null) return;
