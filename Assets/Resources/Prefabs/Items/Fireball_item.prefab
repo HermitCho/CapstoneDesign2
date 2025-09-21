@@ -71,9 +71,7 @@ MonoBehaviour:
     type: 3}
   launchPoint: {fileID: 0}
   fireballSpeed: 50
-  aimLinePrefab: {fileID: 0}
-  targetMarkerPrefab: {fileID: 9032990641331341168, guid: 39d2f99a5bbd5a64dacfcba0afed92f4,
-    type: 3}
+  previewComponent: {fileID: 0}
 --- !u!120 &-7931855031085073831
 LineRenderer:
   serializedVersion: 2
@@ -191,6 +189,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   segments: 30
-  timeStep: 0.1
-  targetMarker: {fileID: 9032990641331341168, guid: 39d2f99a5bbd5a64dacfcba0afed92f4,
+  timeStep: 0.05
+  maxDistance: 100
+  targetMarkerPrefab: {fileID: 9032990641331341168, guid: 39d2f99a5bbd5a64dacfcba0afed92f4,
     type: 3}
+  showMarkerOnNoHit: 1

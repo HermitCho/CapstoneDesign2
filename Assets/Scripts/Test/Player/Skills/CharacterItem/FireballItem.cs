@@ -7,15 +7,16 @@ public class FireballItem : Skill
     [SerializeField] private GameObject fireballPrefab;
     [SerializeField] private Transform launchPoint;
     [SerializeField] private float fireballSpeed = 50f; // 파이어볼 속도 (Fireball.cs와 동일)
+    Vector3 spawnPosition;
 
     [Header("프리뷰 설정")]
     [SerializeField] private ProjectilePreviewComponent previewComponent;
 
     public override void CastExecute(MoveController executor, Vector3 pos, Vector3 dir)
     {
-        Vector3 spawnPosition = launchPoint != null
-            ? launchPoint.position
-            : executor.transform.position + executor.transform.forward * 1.5f + executor.transform.up * 1.5f;
+        spawnPosition = launchPoint != null
+           ? launchPoint.position
+           : executor.transform.position + executor.transform.forward * 1.5f + executor.transform.up * 1.5f;
 
         GameObject fireballInstance = PhotonNetwork.Instantiate(
             "Prefabs/Skill/" + fireballPrefab.name,
@@ -35,59 +36,36 @@ public class FireballItem : Skill
         }
     }
 
-    private void Awake()
+    protected void Awake()
     {
-        // ProjectilePreviewComponent 자동 찾기
-        if (previewComponent == null)
-        {
-            previewComponent = GetComponent<ProjectilePreviewComponent>();
-            Debug.Log($"Awake에서 ProjectilePreviewComponent 찾음: {previewComponent?.name}");
-        }
+        base.Awake();
+    }
+    public override void StartPreview(MoveController owner)
+    {
+        // 부모 클래스의 기본 프리뷰 로직을 실행
+        base.StartPreview(owner);
+        // 필요하다면 여기에 FireballItem에 특화된 추가 로직을 넣을 수 있습니다.
+        Debug.Log("FireballItem 전용 StartPreview 로직 실행");
     }
 
-    /// <summary>
-    /// 프리뷰 시작 (Skill.cs에서 호출)
-    /// </summary>
-    public void StartPreview(MoveController owner)
+    public override void UpdatePreview(MoveController owner, Vector3 origin, Vector3 direction, float initialSpeed = 10f)
     {
-        Debug.Log($"FireballItem StartPreview 호출됨 - previewComponent: {previewComponent?.name}");
-        
-        if (previewComponent != null)
-        {
-            previewComponent.StartPreview(owner);
-        }
-        else
-        {
-            Debug.LogWarning("PreviewComponent가 null입니다!");
-        }
+        // 부모 클래스의 UpdatePreview 메서드를 호출하며 Fireball의 고유 속도 전달
+        base.UpdatePreview(owner, origin, direction, GetProjectileSpeed());
+        Debug.Log("[FireballItem] 방향 " + direction);
     }
 
-    /// <summary>
-    /// 프리뷰 업데이트 (Skill.cs에서 호출)
-    /// </summary>
-    public void UpdatePreview(Vector3 origin, Vector3 direction, float initialSpeed)
+    public override void EndPreview(MoveController owner)
     {
-        Debug.Log($"FireballItem UpdatePreview 호출됨 - previewComponent: {previewComponent?.name}");
-        
-        if (previewComponent != null)
-        {
-            // 파이어볼의 실제 속도 사용
-            previewComponent.UpdatePreview(origin, direction, fireballSpeed);
-        }
-        else
-        {
-            Debug.LogWarning("PreviewComponent가 null입니다!");
-        }
+        // 부모 클래스의 기본 프리뷰 종료 로직을 실행
+        base.EndPreview(owner);
+        // 필요하다면 여기에 FireballItem에 특화된 추가 로직을 넣을 수 있습니다.
+        Debug.Log("FireballItem 전용 EndPreview 로직 실행");
     }
 
-    /// <summary>
-    /// 프리뷰 종료 (Skill.cs에서 호출)
-    /// </summary>
-    public void EndPreview()
+
+    public override float GetProjectileSpeed()
     {
-        if (previewComponent != null)
-        {
-            previewComponent.EndPreview();
-        }
+        return fireballSpeed;
     }
 }

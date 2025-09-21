@@ -1265,7 +1265,7 @@ public class MoveController : MonoBehaviourPun
 
         currentPreviewSkill = skill;
         isPreviewActive = true;
-        skill.EnterTargeting(this);
+        skill.StartPreview(this);
 
         Debug.Log($"✅ 프리뷰 시작: {skill.SkillName}");
     }
@@ -1282,9 +1282,8 @@ public class MoveController : MonoBehaviourPun
         Vector3 direction = testShoot != null ? testShoot.CalculateShotDirection() : transform.forward;
 
         Vector3 origin = transform.position + transform.forward * 1.5f + transform.up * 1.5f;
-        float initialSpeed = 50f; // 파이어볼의 실제 속도
 
-        currentPreviewSkill.UpdateTargeting(this, origin, direction, initialSpeed);
+        currentPreviewSkill.UpdatePreview(this, origin, direction);
     }
 
     /// <summary>
@@ -1294,7 +1293,7 @@ public class MoveController : MonoBehaviourPun
     {
         if (currentPreviewSkill != null)
         {
-            currentPreviewSkill.ExitTargeting(this);
+            currentPreviewSkill.EndPreview(this);
         }
 
         currentPreviewSkill = null;

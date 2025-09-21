@@ -85,13 +85,15 @@ public abstract class Skill : MonoBehaviour
     private IUsableCount _usableCount;
     private IProjectilePreview _projPreview;
     private IPlacementPreview _placementPreview;
+    private ProjectilePreviewComponent projectilePreviewComponent;
+    private PlacementPreviewComponent placementPreviewComponent;
+    private UsableCountComponent usableCountComponent;
     #endregion
 
     private float lastUseTime;
-
     public bool IsCasting => Time.time - lastUseTime < castTime;
 
-    private void Awake()
+    protected void Awake()
     {
         // 컴포넌트 캐싱 — 성능 개선
         var comps = GetComponents<MonoBehaviour>();
@@ -100,6 +102,26 @@ public abstract class Skill : MonoBehaviour
             if (c is IProjectilePreview pp) _projPreview = pp;
             if (c is IPlacementPreview pl) _placementPreview = pl;
             if (c is IUsableCount uc) _usableCount = uc;
+
+            // 컴포넌트 캐싱 — 성능 개선
+            if (TryGetComponent(out ProjectilePreviewComponent ppc))
+            {
+                projectilePreviewComponent = ppc;
+                Debug.Log("[Skill] 찾음 " + projectilePreviewComponent);
+            }
+
+            if (TryGetComponent(out PlacementPreviewComponent plc))
+            {
+                placementPreviewComponent = plc;
+                Debug.Log("[Skill] 찾음 " + projectilePreviewComponent);
+            }
+
+            if (TryGetComponent(out UsableCountComponent ucc))
+            {
+                usableCountComponent = ucc;
+                Debug.Log("[Skill] 못찾음 ");
+            }
+            Debug.Log("[Skill] 찾음 " + projectilePreviewComponent);
         }
     }
     // 안전하게 찾는 헬퍼 (Awake에서 안찾혔을 경우를 대비)
@@ -190,7 +212,7 @@ public abstract class Skill : MonoBehaviour
                 return;
             }
         }
-        
+
         lastUseTime = Time.time;
 
         if (castTime > 0f)
@@ -312,56 +334,54 @@ public abstract class Skill : MonoBehaviour
         }
     }
 
+    public virtual float GetProjectileSpeed() { return 10f; } //기본 값
+
     #region UseInterface
-    public void EnterTargeting(MoveController owner)
+    public virtual void StartPreview(MoveController owner)
     {
         if (!owner.photonView.IsMine) return;
-        
-        // FireballItem 같은 경우 직접 호출
-        if (this is FireballItem fireballItem)
+
+        if (projectilePreviewComponent != null)
         {
-            fireballItem.StartPreview(owner);
+            Debug.Log("Skill _projPreview를 찾음!!!" + projectilePreviewComponent);
+            projectilePreviewComponent.StartPreview(owner);
         }
         else
         {
-            _projPreview?.StartPreview(owner);
+            placementPreviewComponent?.StartPreview(owner);
         }
-        
-        _placementPreview?.StartPreview(owner);
     }
 
-    public void UpdateTargeting(MoveController owner, Vector3 origin, Vector3 direction, float initialSpeed = 10f)
+    public virtual void UpdatePreview(MoveController owner, Vector3 origin, Vector3 direction, float initialSpeed = 10f)
     {
         if (!owner.photonView.IsMine) return;
-        
-        // FireballItem 같은 경우 직접 호출
-        if (this is FireballItem fireballItem)
+
+
+
+        if (projectilePreviewComponent != null)
         {
-            fireballItem.UpdatePreview(origin, direction, initialSpeed);
+            Debug.Log("Skill _projPreview를 찾음!!!" + projectilePreviewComponent);
+            projectilePreviewComponent.UpdatePreview(origin, direction, GetProjectileSpeed());
         }
         else
         {
-            _projPreview?.UpdatePreview(origin, direction, initialSpeed);
+            placementPreviewComponent?.UpdatePreview(origin, Quaternion.LookRotation(direction));
         }
-        
-        _placementPreview?.UpdatePreview(origin, Quaternion.LookRotation(direction));
     }
 
-    public void ExitTargeting(MoveController owner)
+    public virtual void EndPreview(MoveController owner)
     {
         if (!owner.photonView.IsMine) return;
-        
-        // FireballItem 같은 경우 직접 호출
-        if (this is FireballItem fireballItem)
+
+        if (projectilePreviewComponent != null)
         {
-            fireballItem.EndPreview();
+            Debug.Log("Skill _projPreview를 찾음!!!" + projectilePreviewComponent);
+            projectilePreviewComponent.EndPreview();
         }
         else
         {
-            _projPreview?.EndPreview();
+            placementPreviewComponent?.EndPreview();
         }
-        
-        _placementPreview?.EndPreview();
     }
     #endregion
 
