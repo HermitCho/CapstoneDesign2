@@ -48,6 +48,8 @@ public class SelectCharController : MonoBehaviour
         UpdateButtonStates();
     }
 
+
+
    void CacheDataBaseInfo()
    {
     try
@@ -83,6 +85,12 @@ public class SelectCharController : MonoBehaviour
         PlayerPrefs.Save();
         
         // 버튼 상태 업데이트
+        UpdateButtonStates();
+    }
+
+    public void OnUpdateButton()
+    {
+        currentSelectedIndex = PlayerPrefs.GetInt("SelectChar_CurrentIndex", 0);
         UpdateButtonStates();
     }
 
