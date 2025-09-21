@@ -12,7 +12,7 @@ public class FireballItem : Skill
     [Header("프리뷰 설정")]
     [SerializeField] private ProjectilePreviewComponent previewComponent;
 
-    public override void CastExecute(MoveController executor, Vector3 pos, Vector3 dir)
+    public override void CastExecute(SkillController executor, Vector3 pos, Vector3 dir)
     {
         spawnPosition = launchPoint != null
            ? launchPoint.position
@@ -40,7 +40,7 @@ public class FireballItem : Skill
     {
         base.Awake();
     }
-    public override void StartPreview(MoveController owner)
+    public override void StartPreview(SkillController owner)
     {
         // 부모 클래스의 기본 프리뷰 로직을 실행
         base.StartPreview(owner);
@@ -48,14 +48,14 @@ public class FireballItem : Skill
         Debug.Log("FireballItem 전용 StartPreview 로직 실행");
     }
 
-    public override void UpdatePreview(MoveController owner, Vector3 origin, Vector3 direction, float initialSpeed = 10f)
+    public override void UpdatePreview(SkillController owner, Vector3 origin, Vector3 direction, float initialSpeed = 10f)
     {
         // 부모 클래스의 UpdatePreview 메서드를 호출하며 Fireball의 고유 속도 전달
         base.UpdatePreview(owner, origin, direction, GetProjectileSpeed());
         Debug.Log("[FireballItem] 방향 " + direction);
     }
 
-    public override void EndPreview(MoveController owner)
+    public override void EndPreview(SkillController owner)
     {
         // 부모 클래스의 기본 프리뷰 종료 로직을 실행
         base.EndPreview(owner);

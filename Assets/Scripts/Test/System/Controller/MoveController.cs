@@ -22,17 +22,10 @@ public class MoveController : MonoBehaviourPun
 {
     private DataBase.PlayerMoveData playerMoveData;
     private DataBase.PlayerData playerData;
-    private DataBase.ItemData itemData;
     private Rigidbody playerRigidbody;
     private Vector2 rawMoveInput; // 원본 입력값 저장
     private PhotonView photonView;
-    private Skill skill;
-    private Skill activeItem;
-    private Skill[] Skills;
-    private Skill[] Items;
 
-    private Dictionary<int, Skill> skillDictionary = new Dictionary<int, Skill>();
-    private Dictionary<int, Skill> itemDictionary = new Dictionary<int, Skill>();
     // 벽 통과 방지를 위한 변수 추가
     private LayerMask wallLayerMask = -1; // 벽으로 인식할 레이어
     private Vector3 lastValidPosition; // 마지막 유효한 위치 저장
@@ -81,17 +74,6 @@ public class MoveController : MonoBehaviourPun
     private bool canMove = true;
     private bool canRotate = true;
     private bool canJump = true;
-    private bool canUseSkill = true;
-    private bool canUseItem = true;
-
-    // 아이템 사용 쿨타임 관련 변수
-    private float lastItemUseTime = 0f; // 마지막 아이템 사용 시간
-    private const float itemUseCooldown = 0.5f; // 아이템 사용 쿨타임 (0.5초)
-
-    // 프리뷰 관련 변수
-    private bool isPreviewActive = false;
-    private Skill currentPreviewSkill = null;
-
 
     void Awake()
     {
@@ -105,9 +87,6 @@ public class MoveController : MonoBehaviourPun
         InputManager.OnMoveInput += OnMoveInput;
         InputManager.OnXMouseInput += OnMouseInput;
         InputManager.OnJumpPressed += OnJumpInput;
-        InputManager.OnSkillPressed += OnSkillInput;
-        InputManager.OnItemPressed += OnItemInput; // 아이템 사용 중앙 관리
-        InputManager.OnChangeItemPressed += OnChangeItemInput;
 
         MouseLock();
     }
@@ -119,9 +98,6 @@ public class MoveController : MonoBehaviourPun
         InputManager.OnMoveInput -= OnMoveInput;
         InputManager.OnXMouseInput -= OnMouseInput;
         InputManager.OnJumpPressed -= OnJumpInput;
-        InputManager.OnSkillPressed -= OnSkillInput;
-        InputManager.OnItemPressed -= OnItemInput; // 아이템 사용 중앙 관리
-        InputManager.OnChangeItemPressed -= OnChangeItemInput;
     }
 
 
@@ -136,13 +112,12 @@ public class MoveController : MonoBehaviourPun
                 mainCamera = FindObjectOfType<Camera>();
             }
             playerRigidbody = GetComponent<Rigidbody>();
-            skill = GetComponent<Skill>();
+
             // 마지막 유효한 위치 초기화
             lastValidPosition = transform.position;
         }
         // DataBase 정보 안전하게 캐싱 (Start에서 지연 실행)
         CacheDataBaseInfo();
-        CacheDictionary();
     }
 
     void CacheDataBaseInfo()
@@ -161,7 +136,6 @@ public class MoveController : MonoBehaviourPun
             {
                 playerMoveData = DataBase.Instance.playerMoveData;
                 playerData = DataBase.Instance.playerData;
-                itemData = DataBase.Instance.itemData;
                 // 자주 사용되는 값들을 개별 변수로 캐싱
                 cachedSpeed = playerMoveData.Speed;
                 cachedRotationSpeed = playerMoveData.RotationSpeed;
@@ -175,8 +149,6 @@ public class MoveController : MonoBehaviourPun
                 cachedAirMaxSpeed = playerMoveData.AirMaxSpeed;
                 cachedLandingFriction = playerMoveData.LandingFriction;
                 cachedMaxMoveDistance = playerMoveData.MaxMoveDistance;
-                Skills = playerData.PlayerPrefabData.Select(prefab => prefab.transform.GetComponent<Skill>()).Where(skill => skill != null).ToArray();
-                Items = itemData.ItemPrefabData.Select(prefab => prefab.transform.GetComponent<Skill>()).Where(item => item != null).ToArray();
                 dataBaseCached = true;
                 Debug.Log("✅ MoveController - DataBase 정보 캐싱 완료");
             }
@@ -219,23 +191,6 @@ public class MoveController : MonoBehaviourPun
     }
 
 
-    void CacheDictionary()
-    {
-        skillDictionary.Clear();
-        itemDictionary.Clear();
-
-        if (Skills == null || Skills.Count() == 0) return;
-        foreach (var skill in Skills)
-        {
-            skillDictionary.Add(skill.Index, skill);
-        }
-        if (Items == null || Items.Count() == 0) return;
-        foreach (var item in Items)
-        {
-            itemDictionary.Add(item.Index, item);
-        }
-    }
-
     void Update()
     {
         if (!photonView.IsMine) return;
@@ -247,9 +202,6 @@ public class MoveController : MonoBehaviourPun
 
         // 벽 통과 방지 체크 (HandleMovement 이후에 실행)
         CheckWallPenetration();
-
-        // 프리뷰 업데이트
-        UpdatePreview();
     }
 
 
@@ -510,7 +462,7 @@ public class MoveController : MonoBehaviourPun
 
         return Physics.Raycast(transform.position, Vector3.down, out hit, cachedGroundCheckDistance);
     }
-    
+
     /// <summary>
     /// 벽 통과 방지 체크 메서드 (개선된 버전)
     /// </summary>
@@ -712,257 +664,6 @@ public class MoveController : MonoBehaviourPun
         CacheDataBaseInfo();
     }
 
-    // InputManager에서 스킬 입력 받기
-    void OnSkillInput()
-    {
-        UseSkill();
-    }
-
-    public void UseSkill()
-    {
-        if (skill != null)
-        {
-            skill.ActivateSkill(this);
-        }
-    }
-
-    public void UseItem()
-    {
-        if (activeItem != null)
-        {
-            activeItem.ActivateItem(this);
-        }
-    }
-
-    [PunRPC]
-    public void ExecuteSkill(int skillIndex, Vector3 pos, Vector3 dir)
-    {
-        // 실질 동작은 자기 자신만
-        if (photonView.IsMine && skill != null && skill.Index == skillIndex)
-        {
-            skill.Execute(this, pos, dir);
-        }
-
-        // 이펙트/사운드는 모든 클라이언트에서 실행
-        PlaySkillEffectByIndex(skillIndex, pos, dir);
-    }
-
-    /// <summary>
-    /// 스킬 타입 이름으로 이펙트 재생
-    /// </summary>
-    private void PlaySkillEffectByIndex(int skillIndex, Vector3 pos, Vector3 dir)
-    {
-        if (skillDictionary == null || skillDictionary.Count() == 0) return;
-        // 현재 플레이어의 스킬 컴포넌트 찾기
-        Skill targetSkill = skillDictionary[skillIndex];
-
-        if (targetSkill != null)
-        {
-            Debug.Log($"✅ ExecuteSkill - 스킬 '{skillIndex}' 이펙트 재생");
-            targetSkill.PlayEffectAtRemote(this, pos, dir);
-        }
-        else
-        {
-            Debug.LogWarning($"⚠️ ExecuteSkill - 스킬 인덱스 '{skillIndex}'을 찾을 수 없습니다.");
-        }
-    }
-
-    [PunRPC]
-    public void CastExecuteSkill(int skillIndex, Vector3 pos, Vector3 dir)
-    {
-        // 실질 동작은 자기 자신만
-        if (photonView.IsMine && skill != null && skill.Index == skillIndex)
-        {
-            skill.CastExecute(this, pos, dir);
-        }
-
-        // 캐스팅 이펙트/사운드는 모든 클라이언트에서 실행
-        PlaySkillCastEffectByIndex(skillIndex, pos, dir);
-    }
-
-    /// <summary>
-    /// 스킬 타입 이름으로 캐스팅 이펙트 재생
-    /// </summary>
-    private void PlaySkillCastEffectByIndex(int skillIndex, Vector3 pos, Vector3 dir)
-    {
-        if (skillDictionary == null || skillDictionary.Count() == 0) return;
-        // 현재 플레이어의 스킬 컴포넌트 찾기
-        Skill targetSkill = skillDictionary[skillIndex];
-
-        if (targetSkill != null)
-        {
-            Debug.Log($"✅ CastExecuteSkill - 스킬 '{skillIndex}' 캐스팅 이펙트 재생");
-            targetSkill.PlayCastEffectAtRemote(this, pos, dir);
-        }
-        else
-        {
-            Debug.LogWarning($"⚠️ CastExecuteSkill - 스킬 인덱스 '{skillIndex}'을 찾을 수 없습니다.");
-        }
-    }
-
-    [PunRPC]
-    public void ExecuteItem(int itemIndex, Vector3 pos, Vector3 dir)
-    {
-        if (photonView.IsMine && activeItem != null && activeItem.Index == itemIndex)
-        {
-            activeItem.Execute(this, pos, dir);
-        }
-
-        // 이펙트/사운드는 모든 클라이언트에서 실행
-        PlayItemEffectByIndex(itemIndex, pos, dir);
-    }
-
-    /// <summary>
-    /// 아이템 타입 이름으로 이펙트 재생
-    /// </summary>
-    private void PlayItemEffectByIndex(int itemIndex, Vector3 pos, Vector3 dir)
-    {
-        if (itemDictionary == null || itemDictionary.Count() == 0) return;
-        // 현재 플레이어의 아이템 컴포넌트 찾기
-        Skill targetItem = itemDictionary[itemIndex];
-
-        if (targetItem != null)
-        {
-            Debug.Log($"✅ ExecuteItem - 아이템 '{itemIndex}' 이펙트 재생");
-            targetItem.PlayEffectAtRemote(this, pos, dir);
-        }
-        else
-        {
-            Debug.LogWarning($"⚠️ ExecuteItem - 아이템 인덱스 '{itemIndex}'을 찾을 수 없습니다.");
-        }
-    }
-
-    [PunRPC]
-    public void CastExecuteItem(int itemIndex, Vector3 pos, Vector3 dir)
-    {
-        if (photonView.IsMine && activeItem != null && activeItem.Index == itemIndex)
-        {
-            activeItem.CastExecute(this, pos, dir);
-        }
-
-        // 캐스팅 이펙트/사운드는 모든 클라이언트에서 실행
-        PlayItemCastEffectByIndex(itemIndex, pos, dir);
-    }
-
-    /// <summary>
-    /// 아이템 타입 이름으로 캐스팅 이펙트 재생
-    /// </summary>
-    private void PlayItemCastEffectByIndex(int itemIndex, Vector3 pos, Vector3 dir)
-    {
-        if (itemDictionary == null || itemDictionary.Count() == 0) return;
-        // 현재 플레이어의 아이템 컴포넌트 찾기
-        Skill targetItem = itemDictionary[itemIndex];
-
-        if (targetItem != null)
-        {
-            Debug.Log($"✅ CastExecuteItem - 아이템 '{itemIndex}' 캐스팅 이펙트 재생");
-            targetItem.PlayCastEffectAtRemote(this, pos, dir);
-        }
-        else
-        {
-            Debug.LogWarning($"⚠️ CastExecuteItem - 아이템 인덱스 '{itemIndex}'을 찾을 수 없습니다.");
-        }
-    }
-
-    // InputManager에서 아이템 입력 받기
-    void OnItemInput()
-    {
-        // 상점이 열려있으면 아이템 사용 차단
-        ShopController shopController = GetComponent<ShopController>();
-        if (shopController != null && shopController.IsShopOpen())
-        {
-            return;
-        }
-
-        // 현재 플레이어의 활성화된 아이템 찾기
-        ItemController itemController = FindCurrentPlayerItemController();
-        if (itemController == null)
-        {
-            Debug.LogWarning("⚠️ MoveController - ItemController를 찾을 수 없습니다.");
-            return;
-        }
-
-        // 활성화된 아이템 가져오기
-        activeItem = itemController.GetFirstActiveItem();
-
-        if (activeItem == null)
-        {
-            Debug.LogWarning("⚠️ MoveController - 활성화된 아이템이 없습니다.");
-            return;
-        }
-
-        // 프리뷰가 활성화되어 있으면 아이템 사용, 아니면 프리뷰 시작
-        if (isPreviewActive)
-        {
-            // 쿨타임 업데이트
-            lastItemUseTime = Time.time;
-
-            UseItem();
-            //아이템 사용 후 쓰레기통으로 이동
-            itemController.MoveUsedItemToTemp(activeItem.gameObject);
-            Destroy(activeItem.gameObject, activeItem.DestroyTime);
-
-            // 프리뷰 종료
-            EndPreview();
-        }
-        else
-        {
-            // 프리뷰 시작
-            StartPreview(activeItem);
-        }
-    }
-
-    void OnChangeItemInput()
-    {
-        ItemController itemController = FindCurrentPlayerItemController();
-        if (itemController == null)
-        {
-            Debug.LogWarning("⚠️ MoveController - ItemController를 찾을 수 없습니다.");
-            return;
-        }
-
-        itemController.SwapFirstAndSecondItems();
-
-    }
-
-    /// <summary>
-    /// 현재 플레이어의 ItemController 찾기
-    /// </summary>
-    /// <returns>현재 플레이어의 ItemController</returns>
-    private ItemController FindCurrentPlayerItemController()
-    {
-        // 자신 기준으로 ItemController 찾기 (태그 기반 탐색 대신)
-        ItemController itemController = GetComponent<ItemController>();
-        if (itemController == null)
-        {
-            itemController = GetComponentInChildren<ItemController>();
-        }
-
-        if (itemController != null)
-        {
-            Debug.Log($"✅ MoveController - ItemController 찾음: {itemController.name}");
-            return itemController;
-        }
-
-        // Fallback: 태그 기반 탐색 (기존 방식)
-        GameObject currentPlayer = GameObject.FindGameObjectWithTag("Player");
-        if (currentPlayer != null)
-        {
-            itemController = currentPlayer.GetComponent<ItemController>();
-            if (itemController == null)
-            {
-                itemController = currentPlayer.GetComponentInChildren<ItemController>();
-            }
-            if (itemController != null)
-            {
-                Debug.Log($"⚠️ MoveController - 태그 기반으로 ItemController 찾음: {itemController.name}");
-                return itemController;
-            }
-        }
-
-        Debug.LogWarning("⚠️ MoveController - 플레이어의 ItemController를 찾을 수 없습니다.");
-        return null;
-    }
 
     // 플레이어 기준 이동 방향 계산
     Vector3 GetPlayerRelativeMovement(Vector2 input)
@@ -1152,90 +853,28 @@ public class MoveController : MonoBehaviourPun
         return canJump && !isStunned;
     }
 
-    // --- 스킬 제어 메서드들 ---
-
-    /// <summary>
-    /// 스킬 사용 차단
-    /// </summary>
-    public void DisableSkill()
-    {
-        canUseSkill = false;
-        Debug.Log("✅ 스킬 사용 차단");
-    }
-
-    /// <summary>
-    /// 스킬 사용 허용
-    /// </summary>
-    public void EnableSkill()
-    {
-        canUseSkill = true;
-        Debug.Log("✅ 스킬 사용 허용");
-    }
-
-    /// <summary>
-    /// 스킬 사용 가능 여부 확인
-    /// </summary>
-    /// <returns>스킬 사용 가능 여부</returns>
-    public bool CanUseSkill()
-    {
-        return canUseSkill && !isStunned;
-    }
-
-    // --- 아이템 제어 메서드들 ---
-
-    /// <summary>
-    /// 아이템 사용 차단
-    /// </summary>
-    public void DisableItem()
-    {
-        canUseItem = false;
-        Debug.Log("✅ 아이템 사용 차단");
-    }
-
-    /// <summary>
-    /// 아이템 사용 허용
-    /// </summary>
-    public void EnableItem()
-    {
-        canUseItem = true;
-        Debug.Log("✅ 아이템 사용 허용");
-    }
-
-    /// <summary>
-    /// 아이템 사용 가능 여부 확인
-    /// </summary>
-    /// <returns>아이템 사용 가능 여부</returns>
-    public bool CanUseItem()
-    {
-        return canUseItem && !isStunned;
-    }
-
     // --- 통합 제어 메서드들 ---
 
     /// <summary>
     /// 모든 조작 차단 (기절 제외)
     /// </summary>
-    public void DisableAllControls()
+    public void DisableMoveControls()
     {
         DisableMovement();
         DisableMouseControl();
         DisableJump();
-        DisableSkill();
-        DisableItem();
-        Debug.Log("✅ 모든 조작 차단");
+        Debug.Log("✅ 움직임 조작 차단");
     }
 
     /// <summary>
     /// 모든 조작 허용
     /// </summary>
-    public void EnableAllControls()
+    public void EnableMoveControls()
     {
         EnableMovement();
         EnableMouseControl();
         EnableJump();
-        EnableSkill();
-        EnableItem();
-        Debug.Log("✅ 모든 조작 허용");
+        Debug.Log("✅ 움직임 조작 허용");
     }
 
     /// <summary>
@@ -1248,76 +887,5 @@ public class MoveController : MonoBehaviourPun
         Debug.Log($"움직임: {canMove && !isStunned}");
         Debug.Log($"마우스 조작: {canRotate && !isStunned}");
         Debug.Log($"점프: {canJump && !isStunned}");
-        Debug.Log($"스킬: {canUseSkill && !isStunned}");
-        Debug.Log($"아이템: {canUseItem && !isStunned}");
-    }
-
-    // ========================================
-    // === 프리뷰 관련 메서드들 ===
-    // ========================================
-
-    /// <summary>
-    /// 프리뷰 시작
-    /// </summary>
-    private void StartPreview(Skill skill)
-    {
-        if (skill == null) return;
-
-        currentPreviewSkill = skill;
-        isPreviewActive = true;
-        skill.StartPreview(this);
-
-        Debug.Log($"✅ 프리뷰 시작: {skill.SkillName}");
-    }
-
-    /// <summary>
-    /// 프리뷰 업데이트
-    /// </summary>
-    private void UpdatePreview()
-    {
-        if (!isPreviewActive || currentPreviewSkill == null) return;
-
-        // TestShoot 컴포넌트를 통해 정확한 조준 방향 계산
-        TestShoot testShoot = GetComponent<TestShoot>();
-        Vector3 direction = testShoot != null ? testShoot.CalculateShotDirection() : transform.forward;
-
-        Vector3 origin = transform.position + transform.forward * 1.5f + transform.up * 1.5f;
-
-        currentPreviewSkill.UpdatePreview(this, origin, direction);
-    }
-
-    /// <summary>
-    /// 프리뷰 종료
-    /// </summary>
-    private void EndPreview()
-    {
-        if (currentPreviewSkill != null)
-        {
-            currentPreviewSkill.EndPreview(this);
-        }
-
-        currentPreviewSkill = null;
-        isPreviewActive = false;
-
-        Debug.Log("✅ 프리뷰 종료");
-    }
-
-    /// <summary>
-    /// ESC 키로 프리뷰 취소 (InputManager에서 호출)
-    /// </summary>
-    public void CancelPreview()
-    {
-        if (isPreviewActive)
-        {
-            EndPreview();
-        }
-    }
-
-    /// <summary>
-    /// 프리뷰가 활성화되어 있는지 확인 (TestGun에서 사용)
-    /// </summary>
-    public bool IsPreviewActive()
-    {
-        return isPreviewActive;
     }
 }

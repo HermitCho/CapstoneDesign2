@@ -13,7 +13,7 @@ public class Dash : Skill
     [Tooltip("대시 후 최대 대기 시간 (무한 루프 방지)")]
     public float maxDashTime = 2f;
 
-    public override void Execute(MoveController executor, Vector3 pos, Vector3 dir)
+    public override void Execute(SkillController executor, Vector3 pos, Vector3 dir)
     {
         base.Execute(executor, pos, dir);
 
@@ -33,7 +33,7 @@ public class Dash : Skill
     /// <summary>
     /// 대시 후 바닥 착지를 감지하여 속도를 0으로 만드는 코루틴
     /// </summary>
-    IEnumerator DashStopRoutine(MoveController executor)
+    IEnumerator DashStopRoutine(SkillController executor)
     {
         if (!executor.photonView.IsMine) yield break;
         
@@ -78,7 +78,7 @@ public class Dash : Skill
         Debug.Log("⚠️ Dash - 최대 시간 초과, 강제 정지");
     }
 
-    public override void CastExecute(MoveController executor, Vector3 pos, Vector3 dir)
+    public override void CastExecute(SkillController executor, Vector3 pos, Vector3 dir)
     {
         base.CastExecute(executor, pos, dir);
         if (executor.photonView.IsMine)

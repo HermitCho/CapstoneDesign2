@@ -15,8 +15,8 @@ public class SlowballItem : Skill
     /// <summary>
     /// 플레이어가 아이템을 사용했을 때 호출되는 메서드.
     /// </summary>
-    /// <param name="player">아이템을 사용하는 플레이어의 MoveController.</param>
-    public override void Execute(MoveController executor, Vector3 pos, Vector3 dir)
+    /// <param name="player">아이템을 사용하는 플레이어의 SkillController.</param>
+    public override void Execute(SkillController executor, Vector3 pos, Vector3 dir)
     {
         // 발사 위치가 지정되지 않았으면 플레이어의 위치를 사용
         Vector3 spawnPosition = launchPoint != null ? launchPoint.position : executor.transform.position + executor.transform.forward * 1.5f + executor.transform.up * 1.5f;

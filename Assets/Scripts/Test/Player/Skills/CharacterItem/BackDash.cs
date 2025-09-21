@@ -7,7 +7,7 @@ public class BackDash : Skill
     [Header("백대시 파워 설정")]
     public float dashForce = 10f;
 
-    public override void Execute(MoveController executor, Vector3 pos, Vector3 dir)
+    public override void Execute(SkillController executor, Vector3 pos, Vector3 dir)
     {
         base.Execute(executor, pos, dir);
 
@@ -20,7 +20,7 @@ public class BackDash : Skill
         // SpawnEffectAtPosition(trailEffectPrefab, pos, Quaternion.identity, 1f);
     }
 
-    public override void CastExecute(MoveController executor, Vector3 pos, Vector3 dir)
+    public override void CastExecute(SkillController executor, Vector3 pos, Vector3 dir)
     {
         base.CastExecute(executor, pos, dir);
         if (executor.photonView.IsMine)

@@ -148,9 +148,11 @@ public class GameOverController : MonoBehaviour
             if(pv != null && pv.IsMine) // 로컬 플레이어만
             {
                 MoveController moveController = playerObj.GetComponent<MoveController>();
-                if(moveController != null)
+                SkillController skillController = playerObj.GetComponent<SkillController>();
+                if(moveController != null && skillController != null)
                 {
-                    moveController.DisableAllControls();
+                    moveController.DisableMoveControls();
+                    skillController.DisableSkillControls();
                 }
                 
                 CameraController cameraController = playerObj.GetComponent<CameraController>();

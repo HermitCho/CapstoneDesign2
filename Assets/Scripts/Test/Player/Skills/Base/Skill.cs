@@ -159,7 +159,7 @@ public abstract class Skill : MonoBehaviour
         }
     }
 
-    public void ActivateSkill(MoveController executor)
+    public void ActivateSkill(SkillController executor)
     {
         if (!CanUse) return;
 
@@ -199,7 +199,7 @@ public abstract class Skill : MonoBehaviour
         }
     }
 
-    public void ActivateItem(MoveController executor)
+    public void ActivateItem(SkillController executor)
     {
         if (!CanUse) return;
 
@@ -239,7 +239,7 @@ public abstract class Skill : MonoBehaviour
         }
     }
 
-    // private IEnumerator DelaySkillExecute(MoveController executor, float delay)
+    // private IEnumerator DelaySkillExecute(SkillController executor, float delay)
     // {
     //     yield return new WaitForSeconds(delay);
     //     executor.photonView.RPC(
@@ -251,7 +251,7 @@ public abstract class Skill : MonoBehaviour
     //     );
     // }
 
-    // private IEnumerator DelayItemExecute(MoveController executor, float delay)
+    // private IEnumerator DelayItemExecute(SkillController executor, float delay)
     // {
     //     yield return new WaitForSeconds(delay);
     //     executor.photonView.RPC(
@@ -264,8 +264,10 @@ public abstract class Skill : MonoBehaviour
     // }
 
     // 실제 동작: 자기 자신만 실행
-    public virtual void Execute(MoveController executor, Vector3 pos, Vector3 dir) { }
-    public virtual void CastExecute(MoveController executor, Vector3 pos, Vector3 dir) { }
+    public virtual void Execute(SkillController executor, Vector3 pos, Vector3 dir) { }
+    public virtual void Execute(SkillController executorSkill, MoveController executorSkillMove, Vector3 pos, Vector3 dir) { }
+    public virtual void CastExecute(SkillController executor, Vector3 pos, Vector3 dir) { }
+    public virtual void CastExecute(SkillController executorSkill, MoveController executorSkillMove, Vector3 pos, Vector3 dir) { }
 
     protected void SpawnEffectFollow(ParticleSystem effectPrefab, Transform followTarget, float destroyDelay)
     {
@@ -287,7 +289,7 @@ public abstract class Skill : MonoBehaviour
 
 
     // 원격 클라이언트에서도 실행되는 이펙트/사운드
-    public void PlayEffectAtRemote(MoveController executor, Vector3 pos, Vector3 dir)
+    public void PlayEffectAtRemote(SkillController executor, Vector3 pos, Vector3 dir)
     {
         if (skillEffect != null)
         {
@@ -306,7 +308,7 @@ public abstract class Skill : MonoBehaviour
         }
     }
 
-    public void PlayCastEffectAtRemote(MoveController executor, Vector3 pos, Vector3 dir)
+    public void PlayCastEffectAtRemote(SkillController executor, Vector3 pos, Vector3 dir)
     {
         if (castTimeSkillEffect != null)
         {
@@ -335,9 +337,10 @@ public abstract class Skill : MonoBehaviour
     }
 
     public virtual float GetProjectileSpeed() { return 10f; } //기본 값
+    public virtual GameObject GetPlacementPrefab() { return null; }
 
     #region UseInterface
-    public virtual void StartPreview(MoveController owner)
+    public virtual void StartPreview(SkillController owner)
     {
         if (!owner.photonView.IsMine) return;
 
@@ -348,29 +351,12 @@ public abstract class Skill : MonoBehaviour
         }
         else
         {
-            //placementPreviewComponent?.GetGhostPrefab()
+            placementPreviewComponent?.GetGhostPrefab(GetPlacementPrefab());
             placementPreviewComponent?.StartPreview(owner);
         }
     }
 
-    //placementPreviewComponent가 설치할 프리팹 전달용
-    public virtual void StartPreview(MoveController owner, GameObject? placementPrefab)
-    {
-        if (!owner.photonView.IsMine) return;
-
-        if (projectilePreviewComponent != null)
-        {
-            Debug.Log("Skill _projPreview를 찾음!!!" + projectilePreviewComponent);
-            projectilePreviewComponent.StartPreview(owner);
-        }
-        else
-        {
-            placementPreviewComponent?.GetGhostPrefab(placementPrefab);
-            placementPreviewComponent?.StartPreview(owner);
-        }
-    }
-
-    public virtual void UpdatePreview(MoveController owner, Vector3 origin, Vector3 direction, float initialSpeed = 10f)
+    public virtual void UpdatePreview(SkillController owner, Vector3 origin, Vector3 direction, float initialSpeed = 10f)
     {
         if (!owner.photonView.IsMine) return;
 
@@ -385,7 +371,7 @@ public abstract class Skill : MonoBehaviour
         }
     }
 
-    public virtual void EndPreview(MoveController owner)
+    public virtual void EndPreview(SkillController owner)
     {
         if (!owner.photonView.IsMine) return;
 

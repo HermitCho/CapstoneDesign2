@@ -18,7 +18,7 @@ public interface IUsableCount
 
 public interface IProjectilePreview
 {
-    void StartPreview(MoveController owner);
+    void StartPreview(SkillController owner);
 
     void UpdatePreview(Vector3 origin, Vector3 direction, float initialSpeed);
 
@@ -28,7 +28,7 @@ public interface IProjectilePreview
 
 public interface IPlacementPreview
 {
-    void StartPreview(MoveController owner);
+    void StartPreview(SkillController owner);
     void UpdatePreview(Vector3 worldPos, Quaternion rot);
     void EndPreview();
 }
