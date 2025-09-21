@@ -36,6 +36,10 @@ public class LoginButtonController : MonoBehaviour
     [Header("로딩 UI")]
     [SerializeField] private GameObject loadingIndicator; //로딩 인디케이터
 
+    [Header("페이드 효과")]
+    [SerializeField] private GameObject fadeOverlay; //페이드 오버레이 (검은색 이미지)
+    [SerializeField] private float fadeOutDuration = 1.0f; //페이드 아웃 지속 시간
+
     // 내부 상태 관리
     private bool isProcessing = false;
 
@@ -51,6 +55,12 @@ public class LoginButtonController : MonoBehaviour
         if (loadingIndicator != null)
         {
             loadingIndicator.SetActive(false);
+        }
+
+        // 페이드 오버레이 초기 상태 설정
+        if (fadeOverlay != null)
+        {
+            fadeOverlay.SetActive(false);
         }
 
         // ButtonManager 이벤트 리스너 설정
@@ -301,11 +311,11 @@ public class LoginButtonController : MonoBehaviour
     {
         Debug.Log("Intro 씬으로 전환 중...");
         
-        // 페이드 아웃 효과 등을 추가할 수 있음
-        yield return new WaitForSeconds(0.5f);
+        // 페이드 아웃 효과 시작
+        yield return StartCoroutine(FadeOut());
         
-        // Intro 씬 로드
-        SceneManager.LoadScene("Intro");
+        // Lobby 씬 로드
+        SceneManager.LoadScene("Lobby");
     }
 
     #endregion
@@ -375,6 +385,57 @@ public class LoginButtonController : MonoBehaviour
         {
             loadingIndicator.SetActive(show);
         }
+    }
+
+    /// <summary>
+    /// 페이드 아웃 효과 코루틴
+    /// </summary>
+    private IEnumerator FadeOut()
+    {
+        if (fadeOverlay == null)
+        {
+            Debug.LogWarning("LoginButtonController: 페이드 오버레이가 설정되지 않았습니다!");
+            yield return new WaitForSeconds(0.5f); // 기본 대기 시간
+            yield break;
+        }
+
+        // 페이드 오버레이 활성화
+        fadeOverlay.SetActive(true);
+
+        // Image 컴포넌트 가져오기
+        Image fadeImage = fadeOverlay.GetComponent<Image>();
+        if (fadeImage == null)
+        {
+            Debug.LogError("LoginButtonController: 페이드 오버레이에 Image 컴포넌트가 없습니다!");
+            yield return new WaitForSeconds(0.5f); // 기본 대기 시간
+            yield break;
+        }
+
+        // 초기 알파값 설정 (투명)
+        Color startColor = fadeImage.color;
+        startColor.a = 0f;
+        fadeImage.color = startColor;
+
+        // 페이드 아웃 애니메이션 (투명 -> 불투명)
+        float elapsedTime = 0f;
+        while (elapsedTime < fadeOutDuration)
+        {
+            elapsedTime += Time.deltaTime;
+            float alpha = Mathf.Clamp01(elapsedTime / fadeOutDuration);
+            
+            Color currentColor = fadeImage.color;
+            currentColor.a = alpha;
+            fadeImage.color = currentColor;
+            
+            yield return null;
+        }
+
+        // 최종 알파값 설정 (완전 불투명)
+        Color finalColor = fadeImage.color;
+        finalColor.a = 1f;
+        fadeImage.color = finalColor;
+
+        Debug.Log("페이드 아웃 효과 완료");
     }
 
     /// <summary>
