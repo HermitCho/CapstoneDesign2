@@ -6,6 +6,7 @@ public class TrapItem : Skill
     [Header("Trap Settings")]
     [SerializeField] private GameObject trapPrefab;   // 설치할 함정 프리팹
     [SerializeField] private float trapLifetime = 15f; // 설치 후 지속 시간
+    private int useItemCount = 3;
 
     protected override void Awake()
     {
@@ -13,20 +14,21 @@ public class TrapItem : Skill
 
         if (usableCountComponent == null)
             usableCountComponent = gameObject.AddComponent<UsableCountComponent>();
-            _usableCount = usableCountComponent;
+        _usableCount = usableCountComponent;
 
-        (usableCountComponent as UsableCountComponent).SetMaxUses(1); // 1회용
+        (usableCountComponent as UsableCountComponent).SetMaxUses(useItemCount); // 1회용
     }
     public override void CastExecute(SkillController executor, Vector3 pos, Vector3 dir)
     {
         // 설치 위치 (예: 발 밑 조금 앞쪽)
-        Vector3 spawnPos = executor.transform.position + executor.transform.forward * 1.5f;
+        Vector3 spawnPos = placementPreviewComponent.GetPlacementPosition();
+        Quaternion spawnRot = placementPreviewComponent.GetPlacementRotation();
 
         // 네트워크 상에 설치
         GameObject trapObj = PhotonNetwork.Instantiate(
             "Prefabs/Skill/" + trapPrefab.name, // 반드시 Resources/Prefabs/Skill 경로에 있어야 함
             spawnPos,
-            Quaternion.identity
+            spawnRot  
         );
 
         if (trapObj.TryGetComponent<Trap>(out Trap trap))

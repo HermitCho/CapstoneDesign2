@@ -78,7 +78,7 @@ public class ProjectilePreviewComponent : MonoBehaviour, IProjectilePreview
             Vector3 rayDirection = (currentPosition - previousPosition).normalized;
             float distance = Vector3.Distance(previousPosition, currentPosition);
 
-            if (distance > 0.01f && Physics.Raycast(previousPosition, rayDirection, out hit, distance))
+            if (distance > 0.01f && Physics.Raycast(previousPosition, rayDirection, out hit, distance, -1, QueryTriggerInteraction.Ignore))
             {
                 // 충돌 지점 찾음
                 lr.positionCount = i + 1;

@@ -33,4 +33,6 @@ public interface IPlacementPreview
     void StartPreview(SkillController owner);
     void UpdatePreview(Vector3 worldPos, Quaternion rot);
     void EndPreview();
+    Vector3 GetPlacementPosition();
+    Quaternion GetPlacementRotation();
 }
