@@ -1,9 +1,6 @@
 using System;
 using System.Collections;
 using UnityEngine;
-using Michsky.UI.Heat;
-using TMPro;
-using UnityEngine.UI;
 using Photon.Pun;
 
 public class ShopController : MonoBehaviourPun
@@ -11,30 +8,29 @@ public class ShopController : MonoBehaviourPun
     #region 변수
 
     [Header("상점 설정")]
-    [SerializeField] private string shopPanelName = "Shop";
     [SerializeField] private bool isShopOpen = false;
+    [SerializeField] private float raycastDistance = 10f;
+    [SerializeField] private LayerMask itemLayerMask = -1;
+    
+    [Header("구매 설정")]
+    [SerializeField] private float purchaseHoldTime = 1f;
 
-    [Header("UI 컴포넌트")]
-    private InGameUIManager inGameUIManager;
     private Shop shopObject;
-
     private PhotonView photonView;
+    
+    // 시선 추적 관련
+    private Camera playerCamera;
+    private ShopStand currentLookingShopStand;
+    private float purchaseHoldTimer = 0f;
+    private bool isPurchaseHolding = false;
 
     #endregion
 
     #region 내부 상태 변수
-    private Collider shopCollider;
     private CoinController playerCoinController;
     private ItemController playerItemController;
-    #endregion
-
-    #region 데이터베이스 참조
-    private DataBase.ItemData itemData;
-    #endregion
-
-    #region 캐싱된 값들 (성능 최적화)
-    private GameObject[] cachedItemData;
-    private bool dataBaseCached = false;
+    private MoveController moveController;
+    private CameraController cameraController;
     #endregion
 
 
@@ -49,7 +45,17 @@ public class ShopController : MonoBehaviourPun
         if (!photonView.IsMine) return;
 
         InitializeShopController();
-        CacheDataBaseInfo();
+    }
+    
+    void Update()
+    {
+        if (!photonView.IsMine) return;
+        
+        if (isShopOpen)
+        {
+            HandleItemLooking();
+            HandlePurchaseInput();
+        }
     }
 
     #endregion
@@ -61,10 +67,17 @@ public class ShopController : MonoBehaviourPun
     /// </summary>
     void InitializeShopController()
     {
-        shopCollider = GetComponent<Collider>();
-        if (inGameUIManager == null)
+        // 필요한 컴포넌트들 찾기
+        playerCoinController = GetComponent<CoinController>();
+        playerItemController = GetComponent<ItemController>();
+        moveController = GetComponent<MoveController>();
+        cameraController = GetComponent<CameraController>();
+        
+        // 플레이어 카메라 찾기
+        playerCamera = GetComponentInChildren<Camera>();
+        if (playerCamera == null)
         {
-            inGameUIManager = FindObjectOfType<InGameUIManager>();
+            playerCamera = Camera.main;
         }
 
         // Shop 오브젝트 찾기
@@ -72,30 +85,19 @@ public class ShopController : MonoBehaviourPun
         {
             shopObject = FindObjectOfType<Shop>();
         }
+        
+        // 입력 이벤트 구독
+        InputManager.OnShootPressed += OnShootPressed;
+        InputManager.OnShootCanceledPressed += OnShootCanceled;
 
-        Debug.Log("✅ ShopController - 초기화 완료");
+        Debug.Log("ShopController - 초기화 완료");
     }
-
-    /// <summary>
-    /// DataBase 정보 캐싱
-    /// </summary>
-    void CacheDataBaseInfo()
+    
+    void OnDestroy()
     {
-        try
-        {
-            if (!dataBaseCached && DataBase.Instance != null)
-            {
-                itemData = DataBase.Instance.itemData;
-                cachedItemData = itemData.ItemPrefabData.ToArray();
-                dataBaseCached = true;
-                Debug.Log("✅ ShopController - DataBase 정보 캐싱 완료");
-            }
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"❌ ShopController: DataBase 캐싱 중 오류: {e.Message}");
-            dataBaseCached = false;
-        }
+        // 입력 이벤트 구독 해제
+        InputManager.OnShootPressed -= OnShootPressed;
+        InputManager.OnShootCanceledPressed -= OnShootCanceled;
     }
 
     #endregion
@@ -135,16 +137,11 @@ public class ShopController : MonoBehaviourPun
     /// <summary>
     /// 상점 열기
     /// </summary>
-    /// <param name="Shop">상점 오브젝트</param>
     void OpenShop()
     {
         if (!photonView.IsMine) return;
 
         isShopOpen = true;
-
-        // 플레이어 컴포넌트 찾기
-        playerItemController = GetComponent<ItemController>();
-        playerCoinController = GetComponent<CoinController>();
 
         // Shop 오브젝트와 연결
         if (shopObject != null)
@@ -152,15 +149,16 @@ public class ShopController : MonoBehaviourPun
             shopObject.ConnectShopController(this);
         }
 
-        // 상점 패널 표시
-        if (inGameUIManager != null)
+        // 게임 입력 차단
+        DisableGameInput();
+        
+        // 오디오 재생
+        if (AudioManager.Inst != null)
         {
-            inGameUIManager.ShowShopPanel();
             AudioManager.Inst.PlayOneShot("SFX_UI_OpenShop");
         }
 
-        // 게임 입력 차단
-        DisableGameInput();
+        Debug.Log("ShopController: 상점 진입");
     }
 
     /// <summary>
@@ -173,47 +171,235 @@ public class ShopController : MonoBehaviourPun
         if (isShopOpen)
         {
             isShopOpen = false;
-            EnableGameInput();
+            
+            // 현재 보고 있던 상점 스탠드 정리
+            if (currentLookingShopStand != null)
+            {
+                currentLookingShopStand.OnPlayerStopLooking(this);
+                currentLookingShopStand = null;
+            }
+            
+            // 구매 상태 초기화
+            isPurchaseHolding = false;
+            purchaseHoldTimer = 0f;
 
             // Shop 오브젝트와의 연결 해제
             if (shopObject != null)
             {
-                shopObject.DisconnectShopController();
+                shopObject.DisconnectShopController(this);
             }
 
-            playerCoinController = null;
-            playerItemController = null;
-
-            if (inGameUIManager != null)
+            // 게임 입력 복원
+            EnableGameInput();
+            
+            // 오디오 재생
+            if (AudioManager.Inst != null)
             {
-                inGameUIManager.ShowHUDPanel();
                 AudioManager.Inst.PlayOneShot("SFX_UI_CloseShop");
             }
+
+            Debug.Log("ShopController: 상점 퇴장");
         }
     }
 
     #endregion
 
-    #region 아이템 구매 시스템
+    #region 시선 추적 및 구매 시스템
 
     /// <summary>
-    /// 아이템 구매 처리 - GameManager 시스템으로 위임
+    /// 상점 스탠드 시선 추적 처리
     /// </summary>
-    /// <param name="itemIndex">구매할 아이템 인덱스</param>
-    public void PurchaseItem(int itemIndex)
+    void HandleItemLooking()
     {
-        if (!photonView.IsMine) return;
+        if (playerCamera == null) return;
 
-        if (!isShopOpen || playerCoinController == null || playerItemController == null)
+        ShopStand hitShopStand = CalculateShopStandDirection();
+
+        // 이전에 보던 상점 스탠드와 다른 경우
+        if (currentLookingShopStand != hitShopStand)
         {
+            // 이전 상점 스탠드 정리
+            if (currentLookingShopStand != null)
+            {
+                currentLookingShopStand.OnPlayerStopLooking(this);
+            }
+
+            // 새 상점 스탠드 설정
+            currentLookingShopStand = hitShopStand;
+            
+            if (currentLookingShopStand != null)
+            {
+                currentLookingShopStand.OnPlayerStartLooking(this);
+            }
+            
+            // 구매 상태 초기화
+            isPurchaseHolding = false;
+            purchaseHoldTimer = 0f;
+        }
+    }
+
+    /// <summary>
+    /// TestShoot의 CalculateShotDirection 방식으로 ShopStand 찾기
+    /// </summary>
+    /// <returns>히트된 ShopStand, 없으면 null</returns>
+    private ShopStand CalculateShopStandDirection()
+    {
+        // 화면 중앙에서 카메라 레이캐스트
+        Ray cameraRay = playerCamera.ScreenPointToRay(new Vector3(Screen.width * 0.5f, Screen.height * 0.5f, 0));
+        RaycastHit hit;
+        int layerMask = ~LayerMask.GetMask("PlayerPosition", "Shop");
+
+        Vector3 targetPosition;
+
+        // 카메라에서 레이캐스트로 목표 지점 찾기
+        if (Physics.Raycast(cameraRay, out hit, raycastDistance, layerMask))
+        {
+            targetPosition = hit.point;
+            
+            // 히트된 오브젝트에서 ShopStand 찾기
+            return ProcessHitObject(hit);
+        }
+        else
+        {
+            // 레이캐스트가 히트하지 않으면 카메라 방향으로 최대 거리 지점을 목표로 설정
+            targetPosition = cameraRay.origin + cameraRay.direction * raycastDistance;
+        }
+
+        // 디버깅용 레이캐스트 시각화
+        Debug.DrawRay(cameraRay.origin, cameraRay.direction * raycastDistance, Color.red, 0.1f);
+        
+        return null;
+    }
+
+    /// <summary>
+    /// 히트된 오브젝트에서 ShopStand 찾기
+    /// </summary>
+    /// <param name="hit">히트 정보</param>
+    /// <returns>찾은 ShopStand, 없으면 null</returns>
+    private ShopStand ProcessHitObject(RaycastHit hit)
+    {
+        // 1. 직접 ShopStand 컴포넌트가 있는지 확인
+        ShopStand shopStand = hit.collider.GetComponent<ShopStand>();
+        if (shopStand != null && shopStand.GetCurrentItem() != null)
+        {
+            return shopStand;
+        }
+
+        // 2. 부모에서 ShopStand 찾기
+        shopStand = hit.collider.GetComponentInParent<ShopStand>();
+        if (shopStand != null && shopStand.GetCurrentItem() != null)
+        {
+            return shopStand;
+        }
+
+        // 3. Item 컴포넌트가 있는지 확인하고 해당 Item이 ShopStand에 속하는지 확인
+        Item hitItem = hit.collider.GetComponent<Item>();
+        if (hitItem != null)
+        {
+            // Item의 부모에서 ShopStand 찾기
+            shopStand = hit.collider.GetComponentInParent<ShopStand>();
+            if (shopStand != null && shopStand.GetCurrentItem() == hit.collider.gameObject)
+            {
+                return shopStand;
+            }
+        }
+
+        // 4. itemObject에서 Skill 컴포넌트가 있는지 확인 (Item의 자식 오브젝트)
+        if (hitItem != null && hitItem.ItemObject != null)
+        {
+            // itemObject의 부모에서 ShopStand 찾기
+            shopStand = hitItem.ItemObject.GetComponentInParent<ShopStand>();
+            if (shopStand != null && shopStand.GetCurrentItem() == hitItem.gameObject)
+            {
+                return shopStand;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 구매 입력 처리
+    /// </summary>
+    void HandlePurchaseInput()
+    {
+        if (currentLookingShopStand == null) return;
+
+        if (isPurchaseHolding)
+        {
+            purchaseHoldTimer += Time.deltaTime;
+            Debug.Log($"ShopController: 구매 진행 중 - {purchaseHoldTimer:F2}초 / {purchaseHoldTime}초");
+            
+            // 구매 시간이 충족되면 구매 시도
+            if (purchaseHoldTimer >= purchaseHoldTime)
+            {
+                Debug.Log("ShopController: 구매 시간 충족 - 구매 시도");
+                TryPurchaseCurrentItem();
+                isPurchaseHolding = false;
+                purchaseHoldTimer = 0f;
+            }
+        }
+    }
+
+    /// <summary>
+    /// 현재 보고 있는 아이템 구매 시도
+    /// </summary>
+    void TryPurchaseCurrentItem()
+    {
+        if (currentLookingShopStand == null) 
+        {
+            Debug.Log("ShopController: TryPurchaseCurrentItem 실패 - currentLookingShopStand가 null");
             return;
         }
 
-        // GameManager를 통해 구매 처리
-        if (GameManager.Instance != null)
+        Debug.Log($"ShopController: {currentLookingShopStand.name}에서 아이템 구매 시도");
+        bool purchaseSuccess = currentLookingShopStand.TryPurchaseItem(this);
+        
+        if (purchaseSuccess)
         {
-            GameManager.Instance.PurchaseShopItem(itemIndex, playerCoinController, playerItemController);
+            Debug.Log("ShopController: 구매 요청 성공");
+            // 구매 성공 시 현재 상점 스탠드 참조 해제 (아이템이 파괴될 예정)
+            currentLookingShopStand = null;
         }
+        else
+        {
+            Debug.Log("ShopController: 구매 요청 실패");
+        }
+    }
+
+    /// <summary>
+    /// 발사 버튼 눌림 (구매 시작)
+    /// </summary>
+    void OnShootPressed()
+    {
+        Debug.Log($"ShopController: OnShootPressed 호출됨 - isShopOpen: {isShopOpen}, currentLookingShopStand: {currentLookingShopStand != null}");
+        
+        if (!isShopOpen)
+        {
+            Debug.Log("ShopController: 상점이 열려있지 않음");
+            return;
+        }
+        
+        if (currentLookingShopStand == null)
+        {
+            Debug.Log("ShopController: 보고 있는 상점 스탠드가 없음");
+            return;
+        }
+
+        Debug.Log("ShopController: 구매 홀드 시작");
+        isPurchaseHolding = true;
+        purchaseHoldTimer = 0f;
+    }
+
+    /// <summary>
+    /// 발사 버튼 해제 (구매 취소)
+    /// </summary>
+    void OnShootCanceled()
+    {
+        if (!isShopOpen) return;
+
+        isPurchaseHolding = false;
+        purchaseHoldTimer = 0f;
     }
 
     #endregion
@@ -225,7 +411,19 @@ public class ShopController : MonoBehaviourPun
     /// </summary>
     void DisableGameInput()
     {
+        // 총 발사 비활성화
         TestShoot.SetIsShooting(false);
+        
+        // 플레이어 이동 제한 (필요 시)
+        if (moveController != null)
+        {
+            // moveController.DisableMovement(); // 이동을 막고 싶다면 구현
+        }
+        
+        // 아이템/스킬 사용 차단
+        // ItemController나 SkillController에서 상점 상태 확인하도록 구현 가능
+        
+        Debug.Log("ShopController: 게임 입력 차단됨");
     }
 
     /// <summary>
@@ -233,7 +431,16 @@ public class ShopController : MonoBehaviourPun
     /// </summary>
     void EnableGameInput()
     {
+        // 총 발사 활성화
         TestShoot.SetIsShooting(true);
+        
+        // 플레이어 이동 복원
+        if (moveController != null)
+        {
+            // moveController.EnableMovement(); // 이동 제한을 했다면 복원
+        }
+        
+        Debug.Log("ShopController: 게임 입력 복원됨");
     }
 
     #endregion
@@ -257,21 +464,38 @@ public class ShopController : MonoBehaviourPun
     {
         return playerCoinController != null ? playerCoinController.GetCoin() : 0;
     }
+    
+    /// <summary>
+    /// 현재 보고 있는 상점 스탠드 가져오기
+    /// </summary>
+    /// <returns>현재 보고 있는 상점 스탠드</returns>
+    public ShopStand GetCurrentLookingShopStand()
+    {
+        return currentLookingShopStand;
+    }
 
     /// <summary>
-    /// 아이템 가격 가져오기
+    /// 상점 스탠드 시선 추적 해제 (ShopStand에서 호출)
     /// </summary>
-    /// <param name="itemIndex">아이템 인덱스</param>
-    /// <returns>아이템 가격</returns>
-    public int GetItemPrice(int itemIndex)
+    /// <param name="shopStand">시선을 해제할 상점 스탠드</param>
+    public void OnShopStandStopLooking(ShopStand shopStand)
     {
-        if (!dataBaseCached || itemIndex < 0 || itemIndex >= cachedItemData.Length)
+        if (currentLookingShopStand == shopStand)
         {
-            return 0;
+            currentLookingShopStand = null;
+            isPurchaseHolding = false;
+            purchaseHoldTimer = 0f;
         }
-
-        Skill itemComponent = cachedItemData[itemIndex].GetComponent<Skill>();
-        return itemComponent != null ? itemComponent.Price : 0;
+    }
+    
+    /// <summary>
+    /// 구매 진행 상태 가져오기
+    /// </summary>
+    /// <returns>구매 진행률 (0~1)</returns>
+    public float GetPurchaseProgress()
+    {
+        if (!isPurchaseHolding) return 0f;
+        return Mathf.Clamp01(purchaseHoldTimer / purchaseHoldTime);
     }
 
     #endregion
