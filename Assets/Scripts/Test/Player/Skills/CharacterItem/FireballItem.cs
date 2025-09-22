@@ -11,6 +11,18 @@ public class FireballItem : Skill
 
     [Header("프리뷰 설정")]
     [SerializeField] private ProjectilePreviewComponent previewComponent;
+    protected override void Awake()
+    {
+        base.Awake();
+
+        if (usableCountComponent == null)
+        {
+            usableCountComponent = gameObject.AddComponent<UsableCountComponent>();
+            _usableCount = usableCountComponent;
+        }
+
+        (usableCountComponent as UsableCountComponent).SetMaxUses(1); // 1회용
+    }
 
     public override void CastExecute(SkillController executor, Vector3 pos, Vector3 dir)
     {
@@ -36,10 +48,6 @@ public class FireballItem : Skill
         }
     }
 
-    protected void Awake()
-    {
-        base.Awake();
-    }
     public override void StartPreview(SkillController owner)
     {
         // 부모 클래스의 기본 프리뷰 로직을 실행

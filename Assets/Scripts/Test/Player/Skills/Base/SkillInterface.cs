@@ -13,7 +13,9 @@ public interface IUsableCount
     void Restore(int amount);
 
     /// <summary>남은 횟수 변화 알림 (인자: 현재 남은 횟수, -1이면 무한)</summary>
-    event Action<int> OnRemainingChanged;
+    void SetRemaining(int newRemaining);
+    ///
+    void SetMaxUses(int newMaxUses, int? newStartUses);
 }
 
 public interface IProjectilePreview

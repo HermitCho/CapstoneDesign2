@@ -828,7 +828,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks, IPunObservable
         // Photon 네트워크의 모든 플레이어 가져오기
         var allPlayers = PhotonNetwork.PlayerList;
         
-        Debug.Log($"🔍 플레이어 데이터 수집 시작 - 총 {allPlayers.Length}명");
+        //Debug.Log($"🔍 플레이어 데이터 수집 시작 - 총 {allPlayers.Length}명");
         
         foreach (var player in allPlayers)
         {
@@ -863,10 +863,10 @@ public class HUDPanel : MonoBehaviourPunCallbacks, IPunObservable
             
             playerScoreDataList.Add(playerData);
             
-            Debug.Log($"📊 플레이어 데이터: {nickname} (ID: {player.ActorNumber}) - 점수: {playerScore} {(isLocal ? "[로컬]" : "[원격]")}");
+            //Debug.Log($"📊 플레이어 데이터: {nickname} (ID: {player.ActorNumber}) - 점수: {playerScore} {(isLocal ? "[로컬]" : "[원격]")}");
         }
         
-        Debug.Log($"✅ HUD: 플레이어 데이터 수집 완료 - {playerScoreDataList.Count}명");
+        //Debug.Log($"✅ HUD: 플레이어 데이터 수집 완료 - {playerScoreDataList.Count}명");
     }
     
     /// <summary>
@@ -903,7 +903,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks, IPunObservable
                 if (coinController != null)
                 {
                     float localScore = coinController.GetCurrentScore();
-                    Debug.Log($"💰 로컬 플레이어 점수: {localScore}");
+                    //Debug.Log($"💰 로컬 플레이어 점수: {localScore}");
                     return localScore;
                 }
             }

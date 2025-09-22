@@ -62,6 +62,7 @@ public class SkillController : MonoBehaviourPun
     {
         skill = GetComponent<Skill>();
         CacheDataBaseInfo();
+        CacheDictionary();
     }
 
     void Update()
@@ -149,11 +150,21 @@ public class SkillController : MonoBehaviourPun
         foreach (var skill in Skills)
         {
             skillDictionary.Add(skill.Index, skill);
+            Debug.Log("[CacheDictionary] 캐시 스킬 " + skillDictionary.Count);
+            foreach (var skill2 in skillDictionary)
+            {
+                Debug.Log($"[SkillDictionary] Key: {skill2.Key}, Value: {skill2.Value}");
+            }
         }
         if (Items == null || Items.Count() == 0) return;
         foreach (var item in Items)
         {
             itemDictionary.Add(item.Index, item);
+            Debug.Log("[CacheDictionary] 캐시 스킬 " + itemDictionary.Count);
+            foreach (var item2 in skillDictionary)
+            {
+                Debug.Log($"[SkillDictionary] Key: {item2.Key}, Value: {item2.Value}");
+            }
         }
     }
 
@@ -173,7 +184,7 @@ public class SkillController : MonoBehaviourPun
 
 
 
-    #region 스킬 관련
+    #region 고유 스킬 관련
     // InputManager에서 스킬 입력 받기
     void OnSkillInput()
     {
@@ -182,17 +193,23 @@ public class SkillController : MonoBehaviourPun
 
     public void UseSkill()
     {
-        if (skill != null)
+        if (skill == null) return;
+
+        if (skill.HasPreview)
+        {
+            if (isPreviewActive)
+            {
+                skill.ActivateSkill(this);
+                EndPreview();
+            }
+            else
+            {
+                StartPreview(skill);
+            }
+        }
+        else
         {
             skill.ActivateSkill(this);
-        }
-    }
-
-    public void UseItem()
-    {
-        if (activeItem != null)
-        {
-            activeItem.ActivateItem(this);
         }
     }
 
@@ -261,12 +278,58 @@ public class SkillController : MonoBehaviourPun
             Debug.LogWarning($"⚠️ CastExecuteSkill - 스킬 인덱스 '{skillIndex}'을 찾을 수 없습니다.");
         }
     }
+    #endregion
+
+
+
+
+    #region 아이템 사용
+    public void UseItem(ItemController itemController)
+    {
+        if (activeItem == null) return;
+
+        if (activeItem.HasPreview)
+        {
+            if (isPreviewActive)
+            {
+                Debug.Log("[SkillController] UI 표시 아이템 사용!");
+                activeItem.ActivateItem(this);
+
+                // ✅ 남은 횟수가 0이면 삭제
+                if (activeItem.RemainingUses <= 0)
+                {
+                    itemController.MoveUsedItemToTemp(activeItem.gameObject);
+                    Destroy(activeItem.gameObject, activeItem.DestroyTime);
+                }
+
+                EndPreview();
+            }
+            else
+            {
+                Debug.Log("[SkillController] UI 표시 아이템");
+                StartPreview(activeItem);
+            }
+        }
+        else
+        {
+            Debug.Log("[SkillController] 즉발 아이템");
+            activeItem.ActivateItem(this);
+
+            // ✅ 남은 횟수가 0이면 삭제
+            if (activeItem.RemainingUses <= 0)
+            {
+                itemController.MoveUsedItemToTemp(activeItem.gameObject);
+                Destroy(activeItem.gameObject, activeItem.DestroyTime);
+            }
+        }
+    }
 
     [PunRPC]
     public void ExecuteItem(int itemIndex, Vector3 pos, Vector3 dir)
     {
         if (photonView.IsMine && activeItem != null && activeItem.Index == itemIndex)
         {
+            Debug.Log("[SkillController] 아이템 사용!");
             activeItem.Execute(this, pos, dir);
         }
 
@@ -353,25 +416,8 @@ public class SkillController : MonoBehaviourPun
             return;
         }
 
-        // 프리뷰가 활성화되어 있으면 아이템 사용, 아니면 프리뷰 시작
-        if (isPreviewActive)
-        {
-            // 쿨타임 업데이트
-            lastItemUseTime = Time.time;
-
-            UseItem();
-            //아이템 사용 후 쓰레기통으로 이동
-            itemController.MoveUsedItemToTemp(activeItem.gameObject);
-            Destroy(activeItem.gameObject, activeItem.DestroyTime);
-
-            // 프리뷰 종료
-            EndPreview();
-        }
-        else
-        {
-            // 프리뷰 시작
-            StartPreview(activeItem);
-        }
+        lastItemUseTime = Time.time;
+        UseItem(itemController);
     }
 
     void OnChangeItemInput()

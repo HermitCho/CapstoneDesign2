@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: -5929017585117990963}
   - component: {fileID: -7931855031085073831}
   - component: {fileID: -9137718435142067186}
+  - component: {fileID: -332753569556886482}
   m_Layer: 0
   m_Name: Fireball_item
   m_TagString: Untagged
@@ -49,7 +50,6 @@ MonoBehaviour:
   skillName: "\uD30C\uC774\uC5B4\uBCFC"
   skillDescription: "\uB2FF\uC73C\uBA74 \uD3ED\uBC1C\uD558\uB294 \uD30C\uC774\uC5B4\uBCFC\uC744
     \uB358\uC9C4\uB2E4."
-  count: 0
   cooldown: 0
   duration: 0
   effectDuration: 0
@@ -194,3 +194,17 @@ MonoBehaviour:
   targetMarkerPrefab: {fileID: 9032990641331341168, guid: 39d2f99a5bbd5a64dacfcba0afed92f4,
     type: 3}
   showMarkerOnNoHit: 1
+--- !u!114 &-332753569556886482
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5829680253115518611}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 326a1037688daca45b4ef81a6147712a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxUses: -1
+  startUses: -1

@@ -5590,6 +5590,7 @@ GameObject:
   - component: {fileID: 1776397893467648709}
   - component: {fileID: 8884642147104760792}
   - component: {fileID: 4502502757090122189}
+  - component: {fileID: 3595771427681086661}
   m_Layer: 0
   m_Name: C20
   m_TagString: Player
@@ -6566,16 +6567,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 45c75c37a44ee4141a9e3388bd831c3f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  skillName: "\uAE30\uBCF8 \uC2A4\uD0AC"
+  skillName: "\uB300\uC26C \uC2A4\uD0AC"
   skillDescription: "\uC2A4\uD0AC \uC124\uBA85"
   count: 0
-  cooldown: 0
+  cooldown: 15
   duration: 0
-  effectDuration: 0
+  effectDuration: 1
   effectCastingDuration: 0
   castTime: 0
   destroyTime: -1
-  isFollowing: 0
+  isFollowing: 1
   isCastingFollowing: 0
   index: 0
   skillIcon: {fileID: 0}
@@ -6608,6 +6609,18 @@ MonoBehaviour:
   rightLegTarget: {fileID: 0}
   leftLegTarget: {fileID: 0}
   headTarget: {fileID: 0}
+--- !u!114 &3595771427681086661
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4284878663624485605}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cbd005cc3ac573d44907f40d79ff5182, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &4406857901978735519
 GameObject:
   m_ObjectHideFlags: 0

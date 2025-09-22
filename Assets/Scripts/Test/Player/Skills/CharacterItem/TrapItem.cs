@@ -7,6 +7,16 @@ public class TrapItem : Skill
     [SerializeField] private GameObject trapPrefab;   // 설치할 함정 프리팹
     [SerializeField] private float trapLifetime = 15f; // 설치 후 지속 시간
 
+    protected override void Awake()
+    {
+        base.Awake();
+
+        if (usableCountComponent == null)
+            usableCountComponent = gameObject.AddComponent<UsableCountComponent>();
+            _usableCount = usableCountComponent;
+
+        (usableCountComponent as UsableCountComponent).SetMaxUses(1); // 1회용
+    }
     public override void CastExecute(SkillController executor, Vector3 pos, Vector3 dir)
     {
         // 설치 위치 (예: 발 밑 조금 앞쪽)

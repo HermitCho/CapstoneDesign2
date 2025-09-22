@@ -7,15 +7,26 @@ public class BackDash : Skill
     [Header("백대시 파워 설정")]
     public float dashForce = 10f;
 
+    protected override void Awake()
+    {
+        base.Awake();
+
+        if (usableCountComponent == null)
+            usableCountComponent = gameObject.AddComponent<UsableCountComponent>();
+        _usableCount = usableCountComponent; // 반드시 인터페이스 캐싱
+
+        (usableCountComponent as UsableCountComponent).SetMaxUses(1); // 1회용
+    }
+
     public override void Execute(SkillController executor, Vector3 pos, Vector3 dir)
     {
         base.Execute(executor, pos, dir);
 
         if (!executor.photonView.IsMine) return;
-        
+
         var rb = executor.GetComponent<Rigidbody>();
         rb.AddForce(-dir * dashForce, ForceMode.VelocityChange);
-        
+
         // 순간적으로 바닥에 남는 흔적 같은 이펙트도 추가 가능
         // SpawnEffectAtPosition(trailEffectPrefab, pos, Quaternion.identity, 1f);
     }
