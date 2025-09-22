@@ -950,8 +950,8 @@ MonoBehaviour:
       planeRotationOffset: {x: 0, y: 0, z: 0, w: 1}
     - bone: {fileID: 2778036993261523852}
       target: {fileID: 544791639612520580}
-      positionWeight: 0.4
-      rotationWeight: 0.2
+      positionWeight: 0
+      rotationWeight: 0
       position: {x: 0, y: 0, z: 0}
       rotation: {x: 0, y: 0, z: 0, w: 1}
       positionOffset: {x: 0, y: 0, z: 0}
@@ -1485,6 +1485,9 @@ MonoBehaviour:
   - Type: 9
     SynchronizeType: 0
     Name: Victory
+  - Type: 4
+    SynchronizeType: 0
+    Name: isReloading
   m_SynchronizeLayers:
   - SynchronizeType: 0
     LayerIndex: 0
