@@ -51,6 +51,11 @@ public class Shop : MonoBehaviourPun
         {
             StartItemGeneration();
         }
+        else
+        {
+            // 다른 클라이언트는 마스터 클라이언트에게 초기 아이템 요청
+            photonView.RPC("RequestInitialItems", RpcTarget.MasterClient);
+        }
     }
     
     /// <summary>
@@ -81,7 +86,6 @@ public class Shop : MonoBehaviourPun
         if (pv != null && !pv.IsMine) return;
         
         connectedPlayers.Add(shopController);
-        Debug.Log($"Shop: 플레이어 {shopController.name} 연결됨");
     }
     
     /// <summary>
@@ -93,6 +97,30 @@ public class Shop : MonoBehaviourPun
         {
             connectedPlayers.Remove(shopController);
             Debug.Log($"Shop: 플레이어 {shopController.name} 연결 해제됨");
+        }
+    }
+    
+    /// <summary>
+    /// 다른 클라이언트가 초기 아이템을 요청할 때 호출
+    /// </summary>
+    [PunRPC]
+    void RequestInitialItems()
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+        
+        Debug.Log("Shop: 다른 클라이언트가 초기 아이템 요청");
+        
+        // 현재 생성된 아이템들을 모든 클라이언트에게 동기화
+        for (int i = 0; i < currentItems.Length; i++)
+        {
+            if (currentItems[i] != null)
+            {
+                PhotonView itemPV = currentItems[i].GetComponent<PhotonView>();
+                if (itemPV != null)
+                {
+                    photonView.RPC("SyncItemToShopStand", RpcTarget.All, i, itemPV.ViewID);
+                }
+            }
         }
     }
     
@@ -117,7 +145,11 @@ public class Shop : MonoBehaviourPun
         if (currentItems[positionIndex] != null)
         {
             shopStand.ClearCurrentItem();
-            PhotonNetwork.Destroy(currentItems[positionIndex]);
+            // 마스터 클라이언트만 PhotonNetwork.Destroy 호출
+            if (PhotonNetwork.IsMasterClient)
+            {
+                PhotonNetwork.Destroy(currentItems[positionIndex]);
+            }
             currentItems[positionIndex] = null;
         }
         
@@ -217,7 +249,6 @@ public class Shop : MonoBehaviourPun
         if (shopStand != null)
         {
             shopStand.SetItem(item);
-            Debug.Log($"Shop: 위치 {positionIndex}에 아이템 {item.name} 동기화 완료");
         }
     }
     
@@ -232,72 +263,32 @@ public class Shop : MonoBehaviourPun
     /// <param name="buyer">구매자</param>
     public void PurchaseItem(GameObject item, ShopController buyer)
     {
-        Debug.Log($"Shop: PurchaseItem 호출됨 - item: {item != null}, buyer: {buyer != null}");
+        if (item == null || buyer == null) return;
         
-        if (item == null)
-        {
-            Debug.Log("Shop: item이 null");
-            return;
-        }
-        
-        if (buyer == null)
-        {
-            Debug.Log("Shop: buyer가 null");
-            return;
-        }
-        
-        // 마스터 클라이언트에게 구매 요청
         PhotonView buyerPV = buyer.GetComponent<PhotonView>();
-        if (buyerPV != null)
+        PhotonView itemPV = item.GetComponent<PhotonView>();
+        
+        if (buyerPV != null && itemPV != null)
         {
-            PhotonView itemPV = item.GetComponent<PhotonView>();
-            if (itemPV != null)
-            {
-                Debug.Log($"Shop: RPC RequestPurchaseItem 전송 - itemViewID: {itemPV.ViewID}, buyerViewID: {buyerPV.ViewID}");
-                photonView.RPC("RequestPurchaseItem", RpcTarget.MasterClient, 
-                    itemPV.ViewID, buyerPV.ViewID);
-            }
-            else
-            {
-                Debug.LogError("Shop: item에 PhotonView가 없음");
-            }
-        }
-        else
-        {
-            Debug.LogError("Shop: buyer에 PhotonView가 없음");
+            // 마스터 클라이언트에게 구매 요청 (모든 클라이언트에서 가능)
+            photonView.RPC("RequestPurchaseItem", RpcTarget.MasterClient, 
+                itemPV.ViewID, buyerPV.ViewID);
         }
     }
     
     [PunRPC]
     void RequestPurchaseItem(int itemViewID, int buyerViewID)
     {
-        Debug.Log($"Shop: RequestPurchaseItem RPC 수신 - itemViewID: {itemViewID}, buyerViewID: {buyerViewID}");
-        
-        if (!PhotonNetwork.IsMasterClient)
-        {
-            Debug.Log("Shop: 마스터 클라이언트가 아님");
-            return;
-        }
+        if (!PhotonNetwork.IsMasterClient) return;
         
         PhotonView itemPV = PhotonView.Find(itemViewID);
         PhotonView buyerPV = PhotonView.Find(buyerViewID);
         
-        if (itemPV == null)
-        {
-            Debug.LogError($"Shop: itemViewID {itemViewID}에 해당하는 PhotonView를 찾을 수 없음");
-            return;
-        }
         
-        if (buyerPV == null)
-        {
-            Debug.LogError($"Shop: buyerViewID {buyerViewID}에 해당하는 PhotonView를 찾을 수 없음");
-            return;
-        }
+        if (itemPV == null || buyerPV == null) return;
         
         GameObject item = itemPV.gameObject;
         ShopController buyer = buyerPV.GetComponent<ShopController>();
-        
-        Debug.Log($"Shop: 아이템과 구매자 확인 - item: {item.name}, buyer: {buyer.name}");
         
         if (item == null || buyer == null) return;
         
@@ -312,109 +303,46 @@ public class Shop : MonoBehaviourPun
             }
         }
         
-        if (positionIndex == -1)
-        {
-            Debug.LogError($"Shop: 아이템 {item.name}이 현재 상점에 없음");
-            return;
-        }
+        if (positionIndex == -1) return;
         
-        Debug.Log($"Shop: 아이템 위치 확인 - positionIndex: {positionIndex}");
-        
-        // 구매 처리
+        // 구매 처리 - 구매자 클라이언트에서 직접 처리하도록 RPC 전송
         Item itemComponent = item.GetComponent<Item>();
         Skill skillComponent = itemComponent.ItemObject.GetComponent<Skill>();
         
-        if (itemComponent == null)
-        {
-            Debug.LogError($"Shop: 아이템 {item.name}에 Item 컴포넌트가 없음");
-            return;
-        }
+        if (itemComponent == null || skillComponent == null) return;
         
-        if (skillComponent == null)
-        {
-            Debug.LogError($"Shop: 아이템 {item.name}에 Skill 컴포넌트가 없음");
-            return;
-        }
-        
-        Debug.Log($"Shop: 컴포넌트 확인 완료 - Item: {itemComponent.name}, Skill: {skillComponent.SkillName}");
-        
-        // 플레이어의 코인 및 아이템 컨트롤러 확인
-        CoinController coinController = buyer.GetComponent<CoinController>();
-        ItemController itemController = buyer.GetComponent<ItemController>();
-        
-        if (coinController == null)
-        {
-            Debug.LogError($"Shop: 구매자 {buyer.name}에 CoinController가 없음");
-            return;
-        }
-        
-        if (itemController == null)
-        {
-            Debug.LogError($"Shop: 구매자 {buyer.name}에 ItemController가 없음");
-            return;
-        }
-        
-        Debug.Log($"Shop: 컨트롤러 확인 완료 - Coin: {coinController.GetCoin()}, Price: {skillComponent.Price}");
-        
-        // 구매 조건 확인
-        if (coinController.GetCoin() < skillComponent.Price)
-        {
-            Debug.Log($"Shop: 코인 부족 - 현재: {coinController.GetCoin()}, 필요: {skillComponent.Price}");
-            return;
-        }
-        
-        if (itemController.HasItemByIndex(skillComponent.Index))
-        {
-            Debug.Log($"Shop: 이미 보유한 아이템 - Index: {skillComponent.Index}");
-            return;
-        }
-        
-        if (itemController.GetItemSlotIndex() >= itemController.GetMaxItemSlot())
-        {
-            Debug.Log($"Shop: 아이템 슬롯 부족 - 현재: {itemController.GetItemSlotIndex()}, 최대: {itemController.GetMaxItemSlot()}");
-            return;
-        }
-        
-        Debug.Log("Shop: 모든 구매 조건 통과 - 구매 처리 시작");
-        
-        // 구매 성공
-        coinController.SubtractCoin(skillComponent.Price);
-        Debug.Log($"Shop: 코인 차감 완료 - 남은 코인: {coinController.GetCoin()}");
-        
-        // itemObject만 플레이어에게 부착 (실제 Skill 컴포넌트가 있는 오브젝트)
-        GameObject itemObject = itemComponent.ItemObject;
-        if (itemObject != null)
-        {
-            Debug.Log($"Shop: itemObject 부착 시도 - {itemObject.name}");
-            itemController.AttachItemObject(itemObject);
-        }
-        else
-        {
-            Debug.LogError($"Shop: {item.name}의 itemObject가 null입니다.");
-        }
-        
-        // 아이템 제거 및 갱신 예약
-        photonView.RPC("OnItemPurchased", RpcTarget.All, positionIndex);
+        // 구매자에게 구매 처리 RPC 전송 (구매자의 ShopController에서 직접 처리)
+        buyerPV.RPC("ProcessPurchase", buyerPV.Owner, 
+            skillComponent.Price, 
+            skillComponent.Index, 
+            itemComponent.ItemObject.name,
+            positionIndex);
         
         Debug.Log($"Shop: 플레이어 {buyer.name}가 아이템 {item.name} 구매 완료");
     }
     
+    
     [PunRPC]
     void OnItemPurchased(int positionIndex)
     {
+        if (!PhotonNetwork.IsMasterClient) return;
         if (positionIndex < 0 || positionIndex >= currentItems.Length) return;
         
         ShopStand shopStand = shopStands[positionIndex];
         if (shopStand == null) return;
         
-        // 모든 클라이언트에서 ShopStand 정리
+        Debug.Log($"Shop: 마스터 클라이언트에서 아이템 제거 처리 - PositionIndex: {positionIndex}");
+        
+        // ShopStand 정리
         shopStand.ClearCurrentItem();
         
-        // 구매된 아이템 제거
+        // 구매된 아이템 제거 (마스터 클라이언트만 PhotonNetwork.Destroy 호출)
         if (currentItems[positionIndex] != null)
         {
-            if (PhotonNetwork.IsMasterClient)
+            PhotonView itemPV = currentItems[positionIndex].GetComponent<PhotonView>();
+            if (itemPV != null && itemPV.IsMine)
             {
+                Debug.Log($"Shop: 아이템 파괴 - ViewID: {itemPV.ViewID}");
                 PhotonNetwork.Destroy(currentItems[positionIndex]);
             }
             currentItems[positionIndex] = null;
@@ -427,17 +355,11 @@ public class Shop : MonoBehaviourPun
             renewCoroutines[positionIndex] = null;
         }
         
-        // 마스터 클라이언트만 새 아이템 생성 예약
-        if (PhotonNetwork.IsMasterClient)
-        {
-            // 구매된 아이템의 renewTime을 사용하여 새 아이템 생성 예약
-            // 이미 아이템이 제거되었으므로 기본값 사용
-            float renewTime = 10f; // 기본값 10초 (또는 DataBase에서 가져오기)
-            
-            renewCoroutines[positionIndex] = StartCoroutine(RenewItemAfterTime(positionIndex, renewTime));
-        }
+        // 새 아이템 생성 예약
+        float renewTime = 10f; // 기본값 10초
+        renewCoroutines[positionIndex] = StartCoroutine(RenewItemAfterTime(positionIndex, renewTime));
         
-        Debug.Log($"Shop: 위치 {positionIndex} 아이템 구매 처리 완료 (모든 클라이언트)");
+        Debug.Log($"Shop: 위치 {positionIndex} 아이템 구매 처리 완료");
     }
     
     #endregion

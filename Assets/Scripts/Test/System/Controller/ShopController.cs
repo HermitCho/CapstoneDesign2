@@ -157,8 +157,6 @@ public class ShopController : MonoBehaviourPun
         {
             AudioManager.Inst.PlayOneShot("SFX_UI_OpenShop");
         }
-
-        Debug.Log("ShopController: 상점 진입");
     }
 
     /// <summary>
@@ -372,7 +370,7 @@ public class ShopController : MonoBehaviourPun
     /// </summary>
     void OnShootPressed()
     {
-        Debug.Log($"ShopController: OnShootPressed 호출됨 - isShopOpen: {isShopOpen}, currentLookingShopStand: {currentLookingShopStand != null}");
+    
         
         if (!isShopOpen)
         {
@@ -441,6 +439,131 @@ public class ShopController : MonoBehaviourPun
         }
         
         Debug.Log("ShopController: 게임 입력 복원됨");
+    }
+
+    #endregion
+
+    #region 구매 처리
+
+    /// <summary>
+    /// 구매 처리 RPC (Shop.cs에서 호출)
+    /// </summary>
+    /// <param name="price">아이템 가격</param>
+    /// <param name="itemIndex">아이템 인덱스</param>
+    /// <param name="itemObjectName">아이템 오브젝트 이름</param>
+    /// <param name="positionIndex">상점 위치 인덱스</param>
+    [PunRPC]
+    void ProcessPurchase(int price, int itemIndex, string itemObjectName, int positionIndex)
+    {
+        Debug.Log($"ShopController: RPC 구매 처리 시작 - Price: {price}, Index: {itemIndex}, ItemObject: {itemObjectName}");
+        
+        bool purchaseSuccess = ProcessPurchaseLocal(price, itemIndex, itemObjectName);
+        
+        if (purchaseSuccess)
+        {
+            // 구매 성공 시 Shop에게 아이템 제거 요청
+            Shop shop = FindObjectOfType<Shop>();
+            if (shop != null)
+            {
+                shop.GetComponent<PhotonView>().RPC("OnItemPurchased", RpcTarget.MasterClient, positionIndex);
+                Debug.Log("ShopController: 구매 성공 - Shop에게 아이템 제거 요청");
+            }
+        }
+        else
+        {
+            Debug.Log("ShopController: 구매 실패 - 조건 불만족");
+        }
+    }
+
+    /// <summary>
+    /// 로컬 구매 처리 (ShopController.cs에서 호출)
+    /// </summary>
+    /// <param name="price">아이템 가격</param>
+    /// <param name="itemIndex">아이템 인덱스</param>
+    /// <param name="itemObjectName">아이템 오브젝트 이름</param>
+    /// <returns>구매 성공 여부</returns>
+    public bool ProcessPurchaseLocal(int price, int itemIndex, string itemObjectName)
+    {
+        // 컴포넌트 확인
+        if (playerCoinController == null || playerItemController == null)
+        {
+            Debug.LogError("ShopController: 필요한 컴포넌트가 없음");
+            return false;
+        }
+        
+        // 구매 조건 재확인 (로컬에서)
+        if (playerCoinController.GetCoin() < price)
+        {
+            Debug.Log($"ShopController: 코인 부족 - 필요: {price}, 보유: {playerCoinController.GetCoin()}");
+            return false;
+        }
+        
+        if (playerItemController.HasItemByIndex(itemIndex))
+        {
+            Debug.Log($"ShopController: 이미 보유한 아이템 - Index: {itemIndex}");
+            return false;
+        }
+        
+        if (playerItemController.GetItemSlotIndex() >= playerItemController.GetMaxItemSlot())
+        {
+            Debug.Log($"ShopController: 아이템 슬롯 부족 - 현재: {playerItemController.GetItemSlotIndex()}, 최대: {playerItemController.GetMaxItemSlot()}");
+            return false;
+        }
+        
+        // 구매 처리
+        playerCoinController.SubtractCoin(price);
+        Debug.Log($"ShopController: 코인 차감 완료 - {price}코인");
+        
+        // 아이템 오브젝트 찾기 및 부착
+        GameObject itemObject = FindItemObjectByName(itemObjectName);
+        if (itemObject != null)
+        {
+            playerItemController.AttachItemObject(itemObject);
+            Debug.Log($"ShopController: 아이템 부착 완료 - {itemObjectName}");
+            return true;
+        }
+        else
+        {
+            Debug.LogError($"ShopController: 아이템 오브젝트를 찾을 수 없음 - {itemObjectName}");
+            return false;
+        }
+    }
+    
+    /// <summary>
+    /// 아이템 오브젝트 이름으로 프리팹 찾기
+    /// </summary>
+    /// <param name="itemObjectName">찾을 아이템 오브젝트 이름</param>
+    /// <returns>아이템 오브젝트 프리팹</returns>
+    GameObject FindItemObjectByName(string itemObjectName)
+    {
+        // Shop 오브젝트에서 itemPrefabs 가져오기
+        Shop shop = FindObjectOfType<Shop>();
+        if (shop == null)
+        {
+            Debug.LogError("ShopController: Shop 오브젝트를 찾을 수 없음");
+            return null;
+        }
+        
+        // Shop의 itemPrefabs를 직접 접근할 수 없으므로 다른 방법 사용
+        // Resources 폴더에서 찾거나 다른 방식으로 구현해야 함
+        
+        // 임시로 모든 프리팹을 검색하는 방식 사용
+        GameObject[] allPrefabs = Resources.LoadAll<GameObject>("");
+        foreach (GameObject prefab in allPrefabs)
+        {
+            if (prefab == null) continue;
+            
+            Item itemComponent = prefab.GetComponent<Item>();
+            if (itemComponent != null && itemComponent.ItemObject != null)
+            {
+                if (itemComponent.ItemObject.name == itemObjectName)
+                {
+                    return itemComponent.ItemObject;
+                }
+            }
+        }
+        
+        return null;
     }
 
     #endregion

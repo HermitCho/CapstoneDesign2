@@ -24,6 +24,7 @@ public class ShopStand : MonoBehaviour
     
     // 갱신 시간 관련
     private float remainingRenewTime = 0f;
+    private float purchaseHoldTime = 0f;
     private bool isRenewTimerActive = false;
 
     void Start()
@@ -182,10 +183,12 @@ public class ShopStand : MonoBehaviour
         {
             int remainingSeconds = Mathf.CeilToInt(remainingRenewTime);
             itemRenewTimeText.text = $"{remainingSeconds}초";
+            purchaseHoldTime = remainingSeconds;
         }
         else
         {
-            itemRenewTimeText.text = "No Item";
+            int remainingSeconds = Mathf.CeilToInt(purchaseHoldTime);
+            itemRenewTimeText.text = $"{remainingSeconds}초";
         }
     }
 
@@ -230,36 +233,13 @@ public class ShopStand : MonoBehaviour
     /// <returns>구매 성공 여부</returns>
     public bool TryPurchaseItem(ShopController buyer)
     {
-        Debug.Log($"ShopStand: TryPurchaseItem 호출됨 - buyer: {buyer != null}, currentItem: {currentItem != null}, currentItemSkill: {currentItemSkill != null}");
-        
-        if (buyer == null)
-        {
-            Debug.Log("ShopStand: buyer가 null");
-            return false;
-        }
-        
-        if (currentItem == null)
-        {
-            Debug.Log("ShopStand: currentItem이 null");
-            return false;
-        }
-        
-        if (currentItemSkill == null)
-        {
-            Debug.Log("ShopStand: currentItemSkill이 null");
-            return false;
-        }
+        if (buyer == null || currentItem == null || currentItemSkill == null) return false;
 
         // 상점 오브젝트 찾기
         Shop shop = FindObjectOfType<Shop>();
-        if (shop == null)
-        {
-            Debug.Log("ShopStand: Shop 오브젝트를 찾을 수 없음");
-            return false;
-        }
+        if (shop == null) return false;
 
-        Debug.Log($"ShopStand: Shop.PurchaseItem 호출 - {currentItem.name}");
-        // 상점을 통해 구매 처리
+        // 상점을 통해 구매 처리 (모든 클라이언트에서 마스터 클라이언트에게 요청)
         shop.PurchaseItem(currentItem, buyer);
         return true;
     }
