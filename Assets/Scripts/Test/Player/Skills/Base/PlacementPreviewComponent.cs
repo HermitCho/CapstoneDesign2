@@ -10,7 +10,7 @@ public class PlacementPreviewComponent : MonoBehaviour, IPlacementPreview
     {
         ghostPrefab = placementPrefab;
     }
-    public void StartPreview(MoveController owner)
+    public void StartPreview(SkillController owner)
     {
         if (ghostPrefab == null) return;
         ghostInstance = Instantiate(ghostPrefab);

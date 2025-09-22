@@ -13,12 +13,14 @@ public interface IUsableCount
     void Restore(int amount);
 
     /// <summary>남은 횟수 변화 알림 (인자: 현재 남은 횟수, -1이면 무한)</summary>
-    event Action<int> OnRemainingChanged;
+    void SetRemaining(int newRemaining);
+    ///
+    void SetMaxUses(int newMaxUses, int? newStartUses);
 }
 
 public interface IProjectilePreview
 {
-    void StartPreview(MoveController owner);
+    void StartPreview(SkillController owner);
 
     void UpdatePreview(Vector3 origin, Vector3 direction, float initialSpeed);
 
@@ -28,7 +30,7 @@ public interface IProjectilePreview
 
 public interface IPlacementPreview
 {
-    void StartPreview(MoveController owner);
+    void StartPreview(SkillController owner);
     void UpdatePreview(Vector3 worldPos, Quaternion rot);
     void EndPreview();
 }

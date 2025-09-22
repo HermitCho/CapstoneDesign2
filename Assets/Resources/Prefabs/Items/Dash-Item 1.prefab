@@ -9,7 +9,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6961788088059566015}
-  - component: {fileID: 3912430722775110686}
+  - component: {fileID: -2588695854252313272}
+  - component: {fileID: -2006373252072990134}
   m_Layer: 0
   m_Name: Dash-Item 1
   m_TagString: Untagged
@@ -32,7 +33,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &3912430722775110686
+--- !u!114 &-2588695854252313272
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -41,29 +42,44 @@ MonoBehaviour:
   m_GameObject: {fileID: 55746767992445694}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 45c75c37a44ee4141a9e3388bd831c3f, type: 3}
+  m_Script: {fileID: 11500000, guid: 9db721eb234dafa4cbbb4bf4ef966dc3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  skillName: "\uB300\uC2DC \uC544\uC774\uD15C"
-  skillDescription: "\uC55E\uC73C\uB85C \uB3CC\uC9C4"
-  cooldown: 0.3
+  skillName: "\uC810\uBA78 \uC2A4\uD0AC"
+  skillDescription: "\uC55E\uC73C\uB85C \uC810\uBA78"
+  cooldown: 0
   duration: 20
-  effectDuration: 5
-  effectCastingDuration: 5
+  effectDuration: 1
+  effectCastingDuration: 3
   castTime: 0
   destroyTime: 20
-  isFollowing: 0
-  isCastingFollowing: 0
+  isFollowing: 1
+  isCastingFollowing: 1
   index: 1
-  skillIcon: {fileID: 21300000, guid: f188e9f1c5c8449cf86dbb68ccc622e2, type: 3}
+  skillIcon: {fileID: 21300000, guid: a033cea4a39ce430ea12f95b9b9edb9e, type: 3}
   skillColor: {r: 1, g: 1, b: 1, a: 1}
-  skillEffect: {fileID: 4968802224325170221, guid: b80f55dff0c3d0e419d400db91c9e7a6,
+  skillEffect: {fileID: 34545940018427765, guid: 8ff992d01a5c0c44bae6fe6d48faed12,
     type: 3}
-  castTimeSkillEffect: {fileID: 0}
+  castTimeSkillEffect: {fileID: 4968802224325170221, guid: b80f55dff0c3d0e419d400db91c9e7a6,
+    type: 3}
   skillSound: {fileID: 8300000, guid: ddaff993cd19b9045aa2d507ebd7fbe6, type: 3}
-  castTimeSkillSound: {fileID: 0}
+  castTimeSkillSound: {fileID: 8300000, guid: 68858e8b2de8ca9408dd5ca934425766, type: 3}
   price: 1
   skillAnimationTriggerName: Item01
-  dashForce: 5
+  dashForce: 200
   groundCheckDistance: 0.1
   maxDashTime: 2
+--- !u!114 &-2006373252072990134
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 55746767992445694}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 326a1037688daca45b4ef81a6147712a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxUses: -1
+  startUses: -1

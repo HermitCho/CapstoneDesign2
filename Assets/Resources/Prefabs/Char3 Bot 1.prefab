@@ -7300,6 +7300,7 @@ GameObject:
   - component: {fileID: -3369757743354450740}
   - component: {fileID: 5071691809760099839}
   - component: {fileID: 2246843826142652448}
+  - component: {fileID: 4121951267749238364}
   m_Layer: 0
   m_Name: Char3 Bot 1
   m_TagString: Player
@@ -7882,7 +7883,7 @@ MonoBehaviour:
   solver:
     executedInEditor: 0
     IKPosition: {x: 3.5615978, y: 2.2046556, z: 2.4368544}
-    IKPositionWeight: 0.2
+    IKPositionWeight: 1
     root: {fileID: 5690197841959242218}
     target: {fileID: 7888351766706447623}
     tolerance: 0
@@ -8079,7 +8080,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fe6239a6b40a17f46b91b45ef71792ef, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  characterData: {fileID: 11400000, guid: c76b0bac50baf694685c79d5b035a154, type: 2}
+  characterData: {fileID: 0}
 --- !u!114 &5926342589526434390
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -8320,9 +8321,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 45c75c37a44ee4141a9e3388bd831c3f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  skillName: "\uAE30\uBCF8 \uC2A4\uD0AC"
+  skillName: "\uB300\uC26C"
   skillDescription: "\uC2A4\uD0AC \uC124\uBA85"
-  count: 0
   cooldown: 3
   duration: 1
   effectDuration: 1
@@ -8331,8 +8331,8 @@ MonoBehaviour:
   destroyTime: -1
   isFollowing: 1
   isCastingFollowing: 1
-  index: 6
-  skillIcon: {fileID: 21300000, guid: a033cea4a39ce430ea12f95b9b9edb9e, type: 3}
+  index: 3
+  skillIcon: {fileID: 21300000, guid: 8af8700e64b714e4da249bd0f983f178, type: 3}
   skillColor: {r: 1, g: 1, b: 1, a: 1}
   skillEffect: {fileID: 34545940018427765, guid: 8ff992d01a5c0c44bae6fe6d48faed12,
     type: 3}
@@ -8351,18 +8351,30 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5025019268175795024}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4b6e94521f27992488390ce06f1f0447, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   ik: {fileID: 8221458055000114753}
-  leftHandTarget: {fileID: 7467181971488297255}
+  leftHandTarget: {fileID: 0}
   rightHandTarget: {fileID: 0}
   bodyTarget: {fileID: 0}
   rightLegTarget: {fileID: 0}
   leftLegTarget: {fileID: 0}
   headTarget: {fileID: 0}
+--- !u!114 &4121951267749238364
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5025019268175795024}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cbd005cc3ac573d44907f40d79ff5182, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &5040938060442839961
 GameObject:
   m_ObjectHideFlags: 0

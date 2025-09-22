@@ -482,6 +482,7 @@ GameObject:
   - component: {fileID: -3527684016584383156}
   - component: {fileID: -1296924589757523842}
   - component: {fileID: 7809646460918469513}
+  - component: {fileID: 7687607219422462183}
   m_Layer: 0
   m_Name: Char1 Bot 1
   m_TagString: Player
@@ -1502,9 +1503,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 45c75c37a44ee4141a9e3388bd831c3f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  skillName: "\uAE30\uBCF8 \uC2A4\uD0AC"
+  skillName: "\uB300\uC26C"
   skillDescription: "\uC2A4\uD0AC \uC124\uBA85"
-  count: 0
   cooldown: 3
   duration: 1
   effectDuration: 1
@@ -1513,7 +1513,7 @@ MonoBehaviour:
   destroyTime: -1
   isFollowing: 1
   isCastingFollowing: 1
-  index: 5
+  index: 1
   skillIcon: {fileID: 21300000, guid: 8af8700e64b714e4da249bd0f983f178, type: 3}
   skillColor: {r: 1, g: 1, b: 1, a: 1}
   skillEffect: {fileID: 34545940018427765, guid: 8ff992d01a5c0c44bae6fe6d48faed12,
@@ -1545,6 +1545,18 @@ MonoBehaviour:
   rightLegTarget: {fileID: 3702619040616619318}
   leftLegTarget: {fileID: 2315846696525393107}
   headTarget: {fileID: 1705206261163883787}
+--- !u!114 &7687607219422462183
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 329088207215989243}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cbd005cc3ac573d44907f40d79ff5182, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &349119031024593202
 GameObject:
   m_ObjectHideFlags: 0

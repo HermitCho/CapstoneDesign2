@@ -684,9 +684,11 @@ public class GameManager : Singleton<GameManager>
                 {
                     // MoveController 비활성화
                     MoveController moveController = playerObj.GetComponent<MoveController>();
-                    if(moveController != null)
+                    SkillController skillController = playerObj.GetComponent<SkillController>();
+                    if(moveController != null && skillController != null)
                     {
-                        moveController.DisableAllControls();
+                        moveController.DisableMoveControls();
+                        skillController.DisableSkillControls();
                         Debug.Log($"🚫 플레이어 {pv.Owner.ActorNumber} MoveController 비활성화");
                     }
                     

@@ -7,7 +7,17 @@ public class TrapItem : Skill
     [SerializeField] private GameObject trapPrefab;   // 설치할 함정 프리팹
     [SerializeField] private float trapLifetime = 15f; // 설치 후 지속 시간
 
-    public override void CastExecute(MoveController executor, Vector3 pos, Vector3 dir)
+    protected override void Awake()
+    {
+        base.Awake();
+
+        if (usableCountComponent == null)
+            usableCountComponent = gameObject.AddComponent<UsableCountComponent>();
+            _usableCount = usableCountComponent;
+
+        (usableCountComponent as UsableCountComponent).SetMaxUses(1); // 1회용
+    }
+    public override void CastExecute(SkillController executor, Vector3 pos, Vector3 dir)
     {
         // 설치 위치 (예: 발 밑 조금 앞쪽)
         Vector3 spawnPos = executor.transform.position + executor.transform.forward * 1.5f;
@@ -30,18 +40,21 @@ public class TrapItem : Skill
         }
     }
 
+    public override GameObject GetPlacementPrefab() { return trapPrefab; }
+
     // 프리뷰 지원 (설치 전 위치 표시)
-    public override void StartPreview(MoveController owner, GameObject placementPrefab)
+    public override void StartPreview(SkillController owner)
     {
-        base.StartPreview(owner, placementPrefab);
+
+        base.StartPreview(owner);
     }
 
-    public override void UpdatePreview(MoveController owner, Vector3 origin, Vector3 direction, float initialSpeed = 10f)
+    public override void UpdatePreview(SkillController owner, Vector3 origin, Vector3 direction, float initialSpeed = 10f)
     {
         base.UpdatePreview(owner, origin, direction, initialSpeed);
     }
 
-    public override void EndPreview(MoveController owner)
+    public override void EndPreview(SkillController owner)
     {
         base.EndPreview(owner);
     }

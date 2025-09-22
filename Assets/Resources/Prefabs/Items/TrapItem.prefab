@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 6633809363998572306}
   - component: {fileID: 8273571741314792112}
+  - component: {fileID: 7945647120290168097}
   m_Layer: 0
   m_Name: TrapItem
   m_TagString: Untagged
@@ -48,12 +49,11 @@ MonoBehaviour:
   skillDescription: "\uBC1F\uC744 \uC2DC 3\uCD08\uAC04 \uD2B8\uB7A9 \uC0AC\uC6A9\uC790\uC5D0\uAC8C
     \uC704\uCE58\uAC00 \uBC1C\uAC01\uB418\uB294 \uC9C0\uB8B0\uB97C 60\uCD08\uAC04
     \uC124\uCE58\uD569\uB2C8\uB2E4. 3\uAC1C \uC18C\uC9C0"
-  count: 0
-  cooldown: 1
+  cooldown: 0
   duration: 3
   effectDuration: 0
   effectCastingDuration: 0
-  castTime: 0
+  castTime: 1
   destroyTime: 20
   isFollowing: 0
   isCastingFollowing: 0
@@ -69,3 +69,17 @@ MonoBehaviour:
   trapPrefab: {fileID: 1576379389378143963, guid: aba2768b899024f48b0b9b583a9fc348,
     type: 3}
   trapLifetime: 60
+--- !u!114 &7945647120290168097
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3231566993332599146}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 326a1037688daca45b4ef81a6147712a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxUses: -1
+  startUses: -1

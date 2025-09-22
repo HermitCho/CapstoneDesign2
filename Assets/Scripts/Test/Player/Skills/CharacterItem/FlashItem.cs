@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Dash : Skill
+public class FlashItem : Skill
 {
     [Header("대시 파워 설정")]
     public float dashForce = 10f;
@@ -17,9 +17,13 @@ public class Dash : Skill
     {
         base.Awake();
 
-        // 무한 사용 → UsableCountComponent 필요 없음
-        if (usableCountComponent != null) Destroy(usableCountComponent as Component);
+        if (usableCountComponent == null)
+            usableCountComponent = gameObject.AddComponent<UsableCountComponent>();
+        _usableCount = usableCountComponent; // 반드시 인터페이스 캐싱
+
+        (usableCountComponent as UsableCountComponent).SetMaxUses(1); // 1회용
     }
+    
     public override void Execute(SkillController executor, Vector3 pos, Vector3 dir)
     {
         base.Execute(executor, pos, dir);

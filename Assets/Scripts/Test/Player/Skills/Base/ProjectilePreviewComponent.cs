@@ -32,7 +32,7 @@ public class ProjectilePreviewComponent : MonoBehaviour, IProjectilePreview
         }
     }
 
-    public void StartPreview(MoveController owner)
+    public void StartPreview(SkillController owner)
     {
         hitDetected = false;
 

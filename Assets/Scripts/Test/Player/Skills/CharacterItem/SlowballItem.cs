@@ -11,12 +11,22 @@ public class SlowballItem : Skill
     [Header("발사 설정")]
     [SerializeField] private GameObject slowballPrefab;
     [SerializeField] private Transform launchPoint;
+    private float slowballSpeed = 20f;
+    protected override void Awake()
+    {
+        base.Awake();
 
+        if (usableCountComponent == null)
+            usableCountComponent = gameObject.AddComponent<UsableCountComponent>();
+            _usableCount = usableCountComponent; // 반드시 인터페이스 캐싱
+
+        (usableCountComponent as UsableCountComponent).SetMaxUses(1); // 1회용
+    }
     /// <summary>
     /// 플레이어가 아이템을 사용했을 때 호출되는 메서드.
     /// </summary>
-    /// <param name="player">아이템을 사용하는 플레이어의 MoveController.</param>
-    public override void Execute(MoveController executor, Vector3 pos, Vector3 dir)
+    /// <param name="player">아이템을 사용하는 플레이어의 SkillController.</param>
+    public override void CastExecute(SkillController executor, Vector3 pos, Vector3 dir)
     {
         // 발사 위치가 지정되지 않았으면 플레이어의 위치를 사용
         Vector3 spawnPosition = launchPoint != null ? launchPoint.position : executor.transform.position + executor.transform.forward * 1.5f + executor.transform.up * 1.5f;
@@ -39,5 +49,34 @@ public class SlowballItem : Skill
                 slowballScript.GetSlowballSpeed()
             );
         }
+    }
+
+    public override void StartPreview(SkillController owner)
+    {
+        // 부모 클래스의 기본 프리뷰 로직을 실행
+        base.StartPreview(owner);
+        // 필요하다면 여기에 FireballItem에 특화된 추가 로직을 넣을 수 있습니다.
+        Debug.Log("FireballItem 전용 StartPreview 로직 실행");
+    }
+
+    public override void UpdatePreview(SkillController owner, Vector3 origin, Vector3 direction, float initialSpeed = 10f)
+    {
+        // 부모 클래스의 UpdatePreview 메서드를 호출하며 Fireball의 고유 속도 전달
+        base.UpdatePreview(owner, origin, direction, GetProjectileSpeed());
+        Debug.Log("[FireballItem] 방향 " + direction);
+    }
+
+    public override void EndPreview(SkillController owner)
+    {
+        // 부모 클래스의 기본 프리뷰 종료 로직을 실행
+        base.EndPreview(owner);
+        // 필요하다면 여기에 FireballItem에 특화된 추가 로직을 넣을 수 있습니다.
+        Debug.Log("FireballItem 전용 EndPreview 로직 실행");
+    }
+
+
+    public override float GetProjectileSpeed()
+    {
+        return slowballSpeed;
     }
 }

@@ -33,6 +33,7 @@ public class TestGun : MonoBehaviourPun
     private Transform fireTransform;
 
     private MoveController moveController;
+    private SkillController skillController;
     private TestShoot testShoot; // TestShoot 스크립트 참조 추가
 
     #endregion
@@ -95,6 +96,7 @@ public class TestGun : MonoBehaviourPun
         lastFireTime = 0f;
         IsShouldering = false;
         moveController = GetComponentInParent<MoveController>();
+        skillController = GetComponentInParent<SkillController>();
     }
     #endregion
 
@@ -158,10 +160,10 @@ public class TestGun : MonoBehaviourPun
     /// </summary>
     private bool IsSkillBeingUsed()
     {
-        if (moveController == null) return false;
+        if (skillController == null ) return false;
         
         // MoveController에서 프리뷰가 활성화되어 있거나 스킬 사용이 차단된 상태인지 확인
-        return !moveController.CanUseSkill() || moveController.IsPreviewActive();
+        return !skillController.CanUseSkill() || skillController.IsPreviewActive();
     }
 
     [PunRPC]
