@@ -34,6 +34,8 @@ public class TestMoveAnimationController : MonoBehaviourPun
     private bool isJumping = false;
     private bool isShooting = false;
     private float upperBodyWeightVelocity;
+    private float reloadCooldown = 0f;
+    private bool firstReload = true;
 
     // --- 스킬 관련 ---
     private Coroutine speedSkillCoroutine;
@@ -120,6 +122,9 @@ public class TestMoveAnimationController : MonoBehaviourPun
         HandleTeddyBearWeaponState();
         HandleHealthBasedAnimation();
         HandleUpperBodyLayer();
+
+        if (reloadCooldown > 0f)
+            reloadCooldown -= Time.deltaTime;
 
     }
 
@@ -236,14 +241,27 @@ public class TestMoveAnimationController : MonoBehaviourPun
             Debug.Log("총알이 꽉 차서 재장전 불가");
             return;
         }
+        if (reloadCooldown > 0f) return; // 쿨타임 중이면 무시
 
         // 재장전 시작
         isReloading = true;
         animator.SetLayerWeight(upperBodyLayerIndex, 1f);
-        animator.SetTrigger("Reload");
+        animator.SetBool("Reload", true);
 
         // TestGun 재장전 호출
         gun.Reload();
+
+        // 첫 장전이면 쿨타임 0, 이후부터는 3.3초
+        if (firstReload)
+        {
+            reloadCooldown = 0f;
+            firstReload = false;
+        }
+        else
+        {
+            reloadCooldown = 3.3f; // 애니메이션 길이와 동일하게
+        }
+        
     }
 
     // 애니메이션 이벤트에서 호출
@@ -254,7 +272,7 @@ public class TestMoveAnimationController : MonoBehaviourPun
 
         // Reload 끝났으니 상태 초기화
         isReloading = false;
-        animator.ResetTrigger("Reload");
+        animator.SetBool("Reload", false);
     }
         
 
