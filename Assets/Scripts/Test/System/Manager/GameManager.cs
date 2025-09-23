@@ -21,11 +21,7 @@ public class GameManager : Singleton<GameManager>
     // 게임 시간 관리
     private float gameStartTime = 0f;
 
-    // 상점 관리
-    private float shopStartTime = 0f;
-    private float currentShopTime = 0f;
-    private GameObject[] randomShopItemData;
-    private bool[] shopItemPurchased; // 상점 아이템 구매 상태
+    // 상점 관리 (제거됨 - Shop.cs에서 직접 관리)
 
     // 플레이어 상태 관리
     private float playerHealth = 100f;
@@ -53,7 +49,7 @@ public class GameManager : Singleton<GameManager>
     private float cachedScoreIncreaseRate = 2f; // 기본
     private float cachedInitialScore = 1f; // 기본
     private float cachedPlayTime = 360f; // 기본
-    private float cachedShopTime = 30f; // 기본
+    // 상점 시간 캐싱 제거 (Shop.cs에서 직접 관리)
     private GameObject[] cachedItemData;
     private bool dataBaseCached = false;
     
@@ -89,10 +85,7 @@ public class GameManager : Singleton<GameManager>
 
     public static event Action OnCharacterSpawned;
 
-    // 상점 이벤트
-    public static event Action<float> OnShopTimeUpdated; // 남은 상점 시간
-    public static event Action<GameObject[]> OnShopItemsUpdated; // 상점 아이템 목록 업데이트
-    public static event Action<int> OnShopItemPurchased; // 아이템 구매 상태 업데이트
+    // 상점 이벤트 (제거됨 - Shop.cs에서 직접 관리)
     
     // 게임 오버 이벤트
     public static event Action<float> OnGameOver; // 최종 점수와 함께 게임 오버 알림
@@ -141,8 +134,7 @@ public class GameManager : Singleton<GameManager>
             
             CheckGameTimeForGameOver();
             
-            // 상점 타이머 업데이트
-            UpdateShopTimer();
+            // 상점 타이머 제거 (Shop.cs에서 직접 관리)
         }
     }
     
@@ -314,8 +306,7 @@ public class GameManager : Singleton<GameManager>
         currentPlayerCoinController = null;
         currentTeddyBear = null;
         inGameUIManager = null;
-        // 7. 상점 상태 초기화
-        InitializeShopSystem();
+        // 상점 상태 초기화 제거 (Shop.cs에서 직접 관리)
         
         // 8. UI 이벤트 발생 (초기값으로) - 약간의 지연을 두어 확실히 적용
         StartCoroutine(SendInitialUIEvents());
@@ -372,7 +363,7 @@ public class GameManager : Singleton<GameManager>
                 cachedScoreIncreaseRate = DataBase.Instance.teddyBearData.ScoreIncreaseRate;
                 cachedInitialScore = DataBase.Instance.teddyBearData.InitialScore;
                 cachedPlayTime = DataBase.Instance.gameData.PlayTime;
-                cachedShopTime = DataBase.Instance.gameData.ShopTime;
+                // 상점 시간 캐싱 제거 (Shop.cs에서 직접 관리)
                 cachedItemData = DataBase.Instance.itemData.ItemPrefabData.ToArray();
                 dataBaseCached = true;
             }
@@ -559,10 +550,7 @@ public class GameManager : Singleton<GameManager>
         return Time.time - gameStartTime;
     }
 
-    public float GetShopTime()
-    {
-        return Time.time - shopStartTime;
-    }
+    // GetShopTime 제거 (Shop.cs에서 직접 관리)
 
     #endregion
     
@@ -1062,168 +1050,6 @@ public class GameManager : Singleton<GameManager>
 
 
 
-    #region 상점 시간 관리 메서드
-    
-    /// <summary>
-    /// 상점 시스템 초기화
-    /// </summary>
-    void InitializeShopSystem()
-    {
-        shopStartTime = Time.time;
-        currentShopTime = cachedShopTime;
-        
-        GenerateRandomShopItems();
-    }
-    
-    /// <summary>
-    /// 상점 타이머 업데이트
-    /// </summary>
-    void UpdateShopTimer()
-    {
-        if (currentShopTime > 0f)
-        {
-            currentShopTime -= Time.deltaTime;
-            OnShopTimeUpdated?.Invoke(currentShopTime);
-            
-            if (currentShopTime <= 0f)
-            {
-                ResetShopItems();
-            }
-        }
-    }
-    
-    /// <summary>
-    /// 랜덤 상점 아이템 생성 (5개)
-    /// </summary>
-    void GenerateRandomShopItems()
-    {
-        if (!dataBaseCached || cachedItemData == null || cachedItemData.Length == 0)
-        {
-            return;
-        }
-        
-        const int shopItemCount = 5;
-        randomShopItemData = new GameObject[shopItemCount];
-        shopItemPurchased = new bool[shopItemCount];
-        
-        List<GameObject> availableItems = new List<GameObject>(cachedItemData);
-        
-        for (int i = 0; i < shopItemCount && availableItems.Count > 0; i++)
-        {
-            int randomIndex = UnityEngine.Random.Range(0, availableItems.Count);
-            randomShopItemData[i] = availableItems[randomIndex];
-            shopItemPurchased[i] = false;
-            availableItems.RemoveAt(randomIndex);
-        }
-        
-        OnShopItemsUpdated?.Invoke(randomShopItemData);
-        
-        // 모든 ShopPanel에 강제 업데이트 알림
-        ShopPanel[] allShopPanels = FindObjectsOfType<ShopPanel>(true);
-        foreach (ShopPanel panel in allShopPanels)
-        {
-            panel.ForceUpdateShopItems(randomShopItemData);
-        }
-    }
-    
-    /// <summary>
-    /// 상점 아이템 리셋
-    /// </summary>
-    void ResetShopItems()
-    {
-        currentShopTime = cachedShopTime;
-        GenerateRandomShopItems();
-    }
-    
-    /// <summary>
-    /// 상점 아이템 구매 처리
-    /// </summary>
-    public bool PurchaseShopItem(int itemIndex, CoinController coinController, ItemController itemController)
-    {
-        if (itemIndex < 0 || itemIndex >= randomShopItemData.Length)
-            return false;
-            
-        if (randomShopItemData[itemIndex] == null || shopItemPurchased[itemIndex])
-            return false;
-        
-        Skill itemComponent = randomShopItemData[itemIndex].GetComponent<Skill>();
-        if (itemComponent == null)
-            return false;
-        
-        // 중복 아이템 체크
-        if (itemController.HasItemByIndex(itemComponent.Index))
-            return false;
-        
-        // 슬롯 확인
-        if (itemController.GetItemSlotIndex() >= itemController.GetMaxItemSlot())
-            return false;
-        
-        // 코인 확인
-        if (coinController.GetCoin() < itemComponent.Price)
-            return false;
-        
-        // 구매 처리
-        coinController.SubtractCoin(itemComponent.Price);
-        itemController.AttachItem(randomShopItemData[itemIndex]);
-        
-        // 멀티플레이 동기화
-        PhotonView pv = GetComponent<PhotonView>();
-        if (pv != null)
-        {
-            pv.RPC("SyncShopItemPurchase", RpcTarget.All, itemIndex);
-        }
-        else
-        {
-            // 로컬에서만 업데이트 (싱글플레이 모드)
-            shopItemPurchased[itemIndex] = true;
-            OnShopItemPurchased?.Invoke(itemIndex);
-        }
-        
-        return true;
-
-    }
-    
-    [PunRPC]
-    private void SyncShopItemPurchase(int itemIndex)
-    {
-        if (itemIndex >= 0 && itemIndex < shopItemPurchased.Length)
-        {
-            shopItemPurchased[itemIndex] = true;
-            OnShopItemPurchased?.Invoke(itemIndex);
-            
-            // 모든 ShopPanel에 구매 상태 강제 업데이트
-            ShopPanel[] allShopPanels = FindObjectsOfType<ShopPanel>(true);
-            foreach (ShopPanel panel in allShopPanels)
-            {
-                panel.ForceUpdatePurchaseState(itemIndex);
-            }
-        }
-    }
-    
-    /// <summary>
-    /// 현재 상점 아이템 목록 가져오기
-    /// </summary>
-    public GameObject[] GetCurrentShopItems()
-    {
-        return randomShopItemData;
-    }
-    
-    /// <summary>
-    /// 상점 아이템 구매 상태 가져오기
-    /// </summary>
-    public bool[] GetShopItemPurchasedStatus()
-    {
-        return shopItemPurchased;
-    }
-    
-    /// <summary>
-    /// 현재 상점 시간 가져오기
-    /// </summary>
-    public float GetCurrentShopTime()
-    {
-        return currentShopTime;
-    }
-
-    #endregion
+    // 상점 시간 관리 메서드 제거 (Shop.cs에서 직접 관리)
 }
 

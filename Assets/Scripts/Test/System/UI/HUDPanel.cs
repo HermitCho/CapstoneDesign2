@@ -133,7 +133,6 @@ public class HUDPanel : MonoBehaviourPunCallbacks, IPunObservable
         {
             if (prop.Key.ToString().StartsWith("score_"))
             {
-                Debug.Log($"📡 플레이어 점수 프로퍼티 변경 감지: {targetPlayer.ActorNumber} -> {prop.Value}");
                 ForceUpdateScoreBoard();
                 break;
             }
@@ -359,7 +358,6 @@ public class HUDPanel : MonoBehaviourPunCallbacks, IPunObservable
             if (PhotonNetwork.IsConnected && PhotonNetwork.LocalPlayer != null)
             {
                 SyncPlayerScoreToNetwork(PhotonNetwork.LocalPlayer.ActorNumber, newScore);
-                Debug.Log($"🎯 점수 변경 감지: {previousScore} -> {newScore}");
             }
         }
     }
@@ -828,7 +826,6 @@ public class HUDPanel : MonoBehaviourPunCallbacks, IPunObservable
         // Photon 네트워크의 모든 플레이어 가져오기
         var allPlayers = PhotonNetwork.PlayerList;
         
-        //Debug.Log($"🔍 플레이어 데이터 수집 시작 - 총 {allPlayers.Length}명");
         
         foreach (var player in allPlayers)
         {
@@ -861,12 +858,8 @@ public class HUDPanel : MonoBehaviourPunCallbacks, IPunObservable
                 pv
             );
             
-            playerScoreDataList.Add(playerData);
-            
-            //Debug.Log($"📊 플레이어 데이터: {nickname} (ID: {player.ActorNumber}) - 점수: {playerScore} {(isLocal ? "[로컬]" : "[원격]")}");
+            playerScoreDataList.Add(playerData); 
         }
-        
-        //Debug.Log($"✅ HUD: 플레이어 데이터 수집 완료 - {playerScoreDataList.Count}명");
     }
     
     /// <summary>
@@ -903,7 +896,6 @@ public class HUDPanel : MonoBehaviourPunCallbacks, IPunObservable
                 if (coinController != null)
                 {
                     float localScore = coinController.GetCurrentScore();
-                    //Debug.Log($"💰 로컬 플레이어 점수: {localScore}");
                     return localScore;
                 }
             }
@@ -911,7 +903,6 @@ public class HUDPanel : MonoBehaviourPunCallbacks, IPunObservable
             {
                 // 원격 플레이어인 경우 네트워크에서 가져오기
                 float networkScore = GetPlayerScoreFromNetwork(pv.Owner);
-                Debug.Log($"🌐 원격 플레이어 점수: {networkScore} (Player {pv.Owner.ActorNumber})");
                 return networkScore;
             }
         }
@@ -990,7 +981,6 @@ public class HUDPanel : MonoBehaviourPunCallbacks, IPunObservable
             
             scoreBoardTexts[i].text = displayText;
             
-            Debug.Log($"🎯 점수판 업데이트: 순위 {i + 1} - {playerData.nickname} ({playerData.playerId}) : {playerData.score:F0}점 {(playerData.isLocalPlayer ? "[나]" : "")}");
         }
     }
     
@@ -1163,8 +1153,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks, IPunObservable
             // 모든 클라이언트에게 점수 변경 RPC 전송
             photonView.RPC("RPC_UpdatePlayerScore", RpcTarget.Others, playerId, score);
         }
-        
-        Debug.Log($"📡 점수 네트워크 동기화: Player {playerId} -> {score}점");
+
     }
     
     /// <summary>
@@ -1173,7 +1162,6 @@ public class HUDPanel : MonoBehaviourPunCallbacks, IPunObservable
     [PunRPC]
     private void RPC_UpdatePlayerScore(int playerId, float score)
     {
-        Debug.Log($"📨 점수 업데이트 수신: Player {playerId} -> {score}점");
         
         // 점수판 즉시 업데이트
         ForceUpdateScoreBoard();

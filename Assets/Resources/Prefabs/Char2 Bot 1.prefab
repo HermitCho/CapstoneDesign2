@@ -4377,8 +4377,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 72261baa9e614384694cb3725037288d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  shopPanelName: Shop
   isShopOpen: 0
+  raycastDistance: 20
+  itemLayerMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  purchaseHoldTime: 1
 --- !u!114 &3717505347226025687
 MonoBehaviour:
   m_ObjectHideFlags: 0

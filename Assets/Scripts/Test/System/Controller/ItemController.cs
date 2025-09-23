@@ -70,6 +70,53 @@ public class ItemController : MonoBehaviourPun
         AttachItemString(itemPrefab.name);
     }
 
+    /// <summary>
+    /// itemObject를 복사해서 부착 (상점 구매용)
+    /// </summary>
+    /// <param name="itemObject">복사할 itemObject</param>
+    public void AttachItemObject(GameObject itemObject)
+    {
+        Debug.Log($"ItemController: AttachItemObject 호출됨 - itemObject: {itemObject != null}, photonView.IsMine: {photonView.IsMine}");
+        
+        if (!photonView.IsMine)
+        {
+            Debug.Log("ItemController: 로컬 플레이어가 아님 - 부착 취소");
+            return;
+        }
+        
+        if (itemSlot1 == null)
+        {
+            Debug.LogError("ItemController: itemSlot1이 null");
+            return;
+        }
+        
+        if (itemObject == null)
+        {
+            Debug.LogError("ItemController: itemObject가 null");
+            return;
+        }
+
+        try
+        {
+            Debug.Log($"ItemController: itemObject 복사 및 부착 시작 - {itemObject.name}");
+            
+            // itemObject를 복사해서 새로 생성
+            GameObject copiedItemObject = Instantiate(itemObject, itemSlot1.transform);
+            copiedItemObject.transform.SetAsFirstSibling();
+            currentItemSlotIndex++;
+            
+            Debug.Log($"ItemController: Transform 설정 완료 - currentItemSlotIndex: {currentItemSlotIndex}");
+            
+            UpdateItemOrderAndActivation();
+            
+            Debug.Log($"ItemController: itemObject {copiedItemObject.name} 복사 및 부착 완료");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"ItemController: itemObject 부착 중 오류: {e.Message}");
+        }
+    }
+
     //[PunRPC]
     public void AttachItemString(string itemPrefabName)
     {
