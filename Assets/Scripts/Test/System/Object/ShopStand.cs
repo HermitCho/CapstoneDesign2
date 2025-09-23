@@ -97,6 +97,13 @@ public class ShopStand : MonoBehaviour
         item.transform.localPosition = Vector3.zero;
         item.transform.localRotation = Quaternion.Euler(0, 0, 90f); // z축으로 90도 회전
         
+        // 아이템에 회전 애니메이션 컴포넌트 추가
+        ItemRotator rotator = item.GetComponent<ItemRotator>();
+        if (rotator == null)
+        {
+            rotator = item.AddComponent<ItemRotator>();
+        }
+        
         // UI 업데이트
         UpdateItemUI();
     }
@@ -128,28 +135,19 @@ public class ShopStand : MonoBehaviour
             currentItemComponent = null;
             currentItemSkill = null;
             
-            // 타이머 비활성화
-            isRenewTimerActive = false;
-            remainingRenewTime = 0f;
+            // 타이머는 비활성화하지 않음 - Shop.cs에서 관리
+            // isRenewTimerActive = false; // 제거
+            // remainingRenewTime = 0f; // 제거
         }
     }
 
     /// <summary>
-    /// 갱신 타이머 업데이트
+    /// 갱신 타이머 업데이트 (Shop.cs에서 SyncRenewTimer로 관리됨)
     /// </summary>
     void UpdateRenewTimer()
     {
-        if (isRenewTimerActive && remainingRenewTime > 0f)
-        {
-            remainingRenewTime -= Time.deltaTime;
-            
-            if (remainingRenewTime <= 0f)
-            {
-                remainingRenewTime = 0f;
-                isRenewTimerActive = false;
-                // 타이머 종료 - 실제 갱신은 Shop.cs에서 처리
-            }
-        }
+        // 타이머 업데이트는 Shop.cs에서 관리하므로 여기서는 UI만 업데이트
+        // 실제 타이머 로직은 Shop.cs의 UpdateRenewTimers()에서 처리
     }
 
     /// <summary>
@@ -179,16 +177,22 @@ public class ShopStand : MonoBehaviour
     {
         if (itemRenewTimeText == null) return;
         
-        if (currentItem != null && isRenewTimerActive)
+        // 타이머가 활성화되어 있으면 항상 표시 (아이템이 있어도 없어도)
+        if (isRenewTimerActive && remainingRenewTime > 0f)
         {
             int remainingSeconds = Mathf.CeilToInt(remainingRenewTime);
             itemRenewTimeText.text = $"{remainingSeconds}초";
-            purchaseHoldTime = remainingSeconds;
+        }
+        else if (currentItem != null)
+        {
+            // 아이템이 있지만 타이머가 비활성화된 경우 (초기 상태)
+            int remainingSeconds = Mathf.CeilToInt(remainingRenewTime);
+            itemRenewTimeText.text = $"{remainingSeconds}초";
         }
         else
         {
-            int remainingSeconds = Mathf.CeilToInt(purchaseHoldTime);
-            itemRenewTimeText.text = $"{remainingSeconds}초";
+            // 아이템도 없고 타이머도 비활성화된 경우
+            itemRenewTimeText.text = "0초";
         }
     }
 
@@ -280,4 +284,16 @@ public class ShopStand : MonoBehaviour
     {
         return itemSpawnPoint;
     }
+    
+    /// <summary>
+    /// 갱신 타이머 설정 (Shop.cs에서 호출)
+    /// </summary>
+    /// <param name="remainingTime">남은 시간</param>
+    /// <param name="isActive">타이머 활성 상태</param>
+    public void SetRenewTimer(float remainingTime, bool isActive)
+    {
+        remainingRenewTime = remainingTime;
+        isRenewTimerActive = isActive;
+    }
 }
+

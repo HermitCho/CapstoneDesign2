@@ -302,31 +302,7 @@ public class GoogleSheetsManager : MonoBehaviour
         return base64.Replace('+', '-').Replace('/', '_').Replace("=", "");
     }
 
-    /// <summary>
-    /// BouncyCastle 라이브러리 설치 가이드
-    /// </summary>
-    [ContextMenu("BouncyCastle 설치 가이드")]
-    public void ShowBouncyCastleInstallGuide()
-    {
-        Debug.Log("=== BouncyCastle 라이브러리 설치 가이드 ===");
-        Debug.Log("1. NuGet 패키지 다운로드:");
-        Debug.Log("   - https://www.nuget.org/packages/BouncyCastle 방문");
-        Debug.Log("   - 'Download package' 클릭하여 .nupkg 파일 다운로드");
-        Debug.Log("   - .nupkg 파일을 .zip으로 확장자 변경 후 압축 해제");
-        Debug.Log("   - lib/net40/ 또는 lib/netstandard2.0/ 폴더에서 BouncyCastle.Crypto.dll 찾기");
-        Debug.Log("");
-        Debug.Log("2. Unity 프로젝트에 추가:");
-        Debug.Log("   - BouncyCastle.Crypto.dll을 Assets/Plugins/ 폴더에 복사");
-        Debug.Log("   - Unity에서 DLL 파일 선택 후 Inspector에서 설정 확인");
-        Debug.Log("");
-        Debug.Log("3. 코드 활성화:");
-        Debug.Log("   - GoogleSheetsManager.cs 파일 맨 위에 다음 라인 추가:");
-        Debug.Log("   - #define BOUNCY_CASTLE_AVAILABLE");
-        Debug.Log("");
-        Debug.Log("4. 대안 방법:");
-        Debug.Log("   - Unity Asset Store에서 'BouncyCastle' 검색");
-        Debug.Log("   - 또는 GitHub에서 Unity 호환 버전 다운로드");
-    }
+
 
     /// <summary>
     /// JWT 토큰 생성 테스트 (디버깅용)
@@ -881,7 +857,7 @@ public class GoogleSheetsManager : MonoBehaviour
         Debug.Log($"- Nickname: {testNickname}");
         Debug.Log($"- Password: {testPassword}");
         
-        RegisterUser(testUserId, testNickname, testPassword, (success, message) =>
+        RegisterUser(testUserId, testNickname, testPassword, (success, message, result) =>
         {
             if (success)
             {
@@ -1149,7 +1125,7 @@ public class GoogleSheetsManager : MonoBehaviour
     /// <summary>
     /// 사용자 등록
     /// </summary>
-    public void RegisterUser(string userId, string nickname, string password, System.Action<bool, string> callback)
+    public void RegisterUser(string userId, string nickname, string password, System.Action<bool, string, int> callback)
     {
         StartCoroutine(RegisterUserCoroutine(userId, nickname, password, callback));
     }
@@ -1157,7 +1133,7 @@ public class GoogleSheetsManager : MonoBehaviour
     /// <summary>
     /// 회원가입 처리 코루틴
     /// </summary>
-    private IEnumerator RegisterUserCoroutine(string userId, string nickname, string password, System.Action<bool, string> callback)
+    private IEnumerator RegisterUserCoroutine(string userId, string nickname, string password, System.Action<bool, string, int> callback)
     {
         if (!isDataLoaded)
         {
@@ -1166,14 +1142,21 @@ public class GoogleSheetsManager : MonoBehaviour
 
         if (!isDataLoaded)
         {
-            callback?.Invoke(false, "데이터 로드 실패");
+            callback?.Invoke(false, "데이터 로드 실패", 0);
             yield break;
         }
 
-        // 중복 확인
+        // 아이디 중복 확인
         if (userDataCache.Any(u => u.userId == userId))
         {
-            callback?.Invoke(false, "이미 존재하는 아이디입니다.");
+            callback?.Invoke(false, "이미 존재하는 아이디입니다.", 1);
+            yield break;
+        }
+
+        // 닉네임 중복 확인
+        if (userDataCache.Any(u => u.nickname == nickname))
+        {
+            callback?.Invoke(false, "이미 존재하는 닉네임입니다.", 2);
             yield break;
         }
 
@@ -1184,7 +1167,7 @@ public class GoogleSheetsManager : MonoBehaviour
     /// <summary>
     /// 시트에 새 사용자 추가
     /// </summary>
-    private IEnumerator AddUserToSheet(string userId, string nickname, string password, System.Action<bool, string> callback)
+    private IEnumerator AddUserToSheet(string userId, string nickname, string password, System.Action<bool, string, int> callback)
     {
         // 먼저 액세스 토큰 확인
         bool tokenSuccess = false;
@@ -1192,7 +1175,7 @@ public class GoogleSheetsManager : MonoBehaviour
         
         if (!tokenSuccess)
         {
-            callback?.Invoke(false, "인증 실패");
+            callback?.Invoke(false, "인증 실패", 3);
             yield break;
         }
 
@@ -1229,7 +1212,7 @@ public class GoogleSheetsManager : MonoBehaviour
                 userDataCache.Add(newUser);
                 
                 Debug.Log($"GoogleSheetsManager: 사용자 등록 성공 - {userId}");
-                callback?.Invoke(true, "회원가입이 완료되었습니다.");
+                callback?.Invoke(true, "회원가입이 완료되었습니다.",-1);
             }
             else
             {
@@ -1252,7 +1235,7 @@ public class GoogleSheetsManager : MonoBehaviour
                     Debug.LogError("해결 방법: 시트의 첫 번째 행에 'ID, Password, Nickname, Win, Lose, Rate' 헤더가 있는지 확인하세요.");
                 }
                 
-                callback?.Invoke(false, "회원가입 중 오류가 발생했습니다: " + request.error);
+                callback?.Invoke(false, "회원가입 중 오류가 발생했습니다: " + request.error, 4);
             }
         }
     }
@@ -1381,6 +1364,32 @@ public class GoogleSheetsManager : MonoBehaviour
     public int GetUserCount()
     {
         return userDataCache.Count;
+    }
+
+    /// <summary>
+    /// 아이디 중복 확인
+    /// </summary>
+    /// <param name="userId">확인할 아이디</param>
+    /// <returns>중복 여부 (true: 중복됨, false: 사용 가능)</returns>
+    public bool IsUserIdDuplicate(string userId)
+    {
+        if (string.IsNullOrEmpty(userId) || !isDataLoaded)
+            return false;
+
+        return userDataCache.Any(u => u.userId == userId);
+    }
+
+    /// <summary>
+    /// 닉네임 중복 확인
+    /// </summary>
+    /// <param name="nickname">확인할 닉네임</param>
+    /// <returns>중복 여부 (true: 중복됨, false: 사용 가능)</returns>
+    public bool IsNicknameDuplicate(string nickname)
+    {
+        if (string.IsNullOrEmpty(nickname) || !isDataLoaded)
+            return false;
+
+        return userDataCache.Any(u => u.nickname == nickname);
     }
 
     /// <summary>

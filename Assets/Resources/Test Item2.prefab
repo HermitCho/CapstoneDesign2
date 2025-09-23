@@ -15,6 +15,7 @@ GameObject:
   - component: {fileID: 8712676363590355750}
   - component: {fileID: -3460179541217655529}
   - component: {fileID: -2472349881158437908}
+  - component: {fileID: -8027193242113936512}
   m_Layer: 0
   m_Name: Test Item2
   m_TagString: Item
@@ -120,7 +121,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 730ec570e5c5d2545a9b4aa0dbd3ec08, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  renewTime: 30
+  renewTime: 10
   probability: 0.3
   itemObject: {fileID: 55746767992445694, guid: f6aee5f0550534f4cb09e8856075ff80,
     type: 3}
@@ -163,3 +164,20 @@ MonoBehaviour:
   m_SynchronizeRotation: 1
   m_SynchronizeScale: 1
   m_UseLocal: 1
+--- !u!114 &-8027193242113936512
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1765150647018871578}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 245524fa5bcf6bd4480ee0c8e62e17f7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  rotationSpeed: 20
+  rotationAxis: {x: 1, y: 0, z: 0}
+  useSineWave: 0
+  amplitude: 5
+  frequency: 1

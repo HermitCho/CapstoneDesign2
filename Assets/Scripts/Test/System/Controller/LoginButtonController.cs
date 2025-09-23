@@ -42,6 +42,7 @@ public class LoginButtonController : MonoBehaviour
 
     // 내부 상태 관리
     private bool isProcessing = false;
+    private int signUpResult = -1;
 
     void Start()
     {
@@ -62,6 +63,9 @@ public class LoginButtonController : MonoBehaviour
         {
             fadeOverlay.SetActive(false);
         }
+
+        // 비밀번호 입력 필드 마스킹 설정
+        SetupPasswordFields();
 
         // ButtonManager 이벤트 리스너 설정
         SetupButtonEvents();
@@ -158,6 +162,19 @@ public class LoginButtonController : MonoBehaviour
             return;
         }
 
+        // 아이디 검증: 영문+숫자 조합, 최소 6글자 이상
+        if (userId.Length < 6)
+        {
+            ShowSignUpFailModal("아이디는 6글자 이상 입력해주세요.");
+            return;
+        }
+
+        if (!IsValidUserId(userId))
+        {
+            ShowSignUpFailModal("아이디는 영문과 숫자를 모두 포함하여 입력해주세요.");
+            return;
+        }
+
         if (string.IsNullOrEmpty(nickname))
         {
             ShowSignUpFailModal("닉네임을 입력해주세요.");
@@ -187,6 +204,15 @@ public class LoginButtonController : MonoBehaviour
             ShowSignUpFailModal("비밀번호는 4자 이상 입력해주세요.");
             return;
         }
+
+        // 비밀번호 검증: 영문+숫자 조합
+        if (!IsValidPassword(password))
+        {
+            ShowSignUpFailModal("비밀번호는 영문과 숫자를 조합하여 입력해주세요.");
+            return;
+        }
+
+
 
         // 회원가입 시도
         StartCoroutine(SignUpProcess(userId, nickname, password));
@@ -276,10 +302,11 @@ public class LoginButtonController : MonoBehaviour
         string signUpMessage = "";
 
         // 회원가입 시도
-        GoogleSheetsManager.Instance.RegisterUser(userId, nickname, password, (success, message) =>
+        GoogleSheetsManager.Instance.RegisterUser(userId, nickname, password, (success, message, result) =>
         {
             signUpSuccess = success;
             signUpMessage = message;
+            signUpResult = result;
             signUpCompleted = true;
         });
 
@@ -294,14 +321,35 @@ public class LoginButtonController : MonoBehaviour
             // 회원가입 성공
             Debug.Log($"회원가입 성공: {userId} - {nickname}");
             ShowSignUpSuccessModal(signUpMessage);
-            ClearSignUpInputFields();
+            //signUpResult = -1;
         }
         else
         {
-            // 회원가입 실패
+            if(signUpResult == 0)
+            {
+                ShowSignUpFailModal("데이터 로드 실패");
+                createNicknameInputField.text = "";
+                createIdInputField.text = "";
+                createpPasswordInputField.text = "";
+                createPasswordConfirmInputField.text = "";
+                createNicknameInputField.Select();
+            }
+            else if(signUpResult == 1)
+            {
+                ShowSignUpFailModal("이미 존재하는 아이디입니다.");
+                createIdInputField.text = "";
+                createIdInputField.Select();
+            }
+            else if(signUpResult == 2)
+            {
+                ShowSignUpFailModal("이미 존재하는 닉네임입니다.");
+                createNicknameInputField.text = "";
+                createNicknameInputField.Select();
+            }
+             // 회원가입 실패
             Debug.Log($"회원가입 실패: {signUpMessage}");
-            ShowSignUpFailModal(signUpMessage);
-        }
+            // ShowSignUpFailModal(signUpMessage);
+        }          
     }
 
     /// <summary>
@@ -321,6 +369,38 @@ public class LoginButtonController : MonoBehaviour
     #endregion
 
     #region UI 관리 메서드
+
+    /// <summary>
+    /// 비밀번호 입력 필드 마스킹 설정
+    /// </summary>
+    private void SetupPasswordFields()
+    {
+        // 회원가입 비밀번호 필드
+        if (createpPasswordInputField != null)
+        {
+            createpPasswordInputField.contentType = TMP_InputField.ContentType.Password;
+            createpPasswordInputField.asteriskChar = '*';
+            createpPasswordInputField.characterLimit = 20; // 비밀번호 최대 길이 제한
+        }
+
+        // 회원가입 비밀번호 확인 필드
+        if (createPasswordConfirmInputField != null)
+        {
+            createPasswordConfirmInputField.contentType = TMP_InputField.ContentType.Password;
+            createPasswordConfirmInputField.asteriskChar = '*';
+            createPasswordConfirmInputField.characterLimit = 20; // 비밀번호 최대 길이 제한
+        }
+
+        // 로그인 비밀번호 필드
+        if (loginPasswordInputField != null)
+        {
+            loginPasswordInputField.contentType = TMP_InputField.ContentType.Password;
+            loginPasswordInputField.asteriskChar = '*';
+            loginPasswordInputField.characterLimit = 20; // 비밀번호 최대 길이 제한
+        }
+
+        Debug.Log("LoginButtonController: 비밀번호 필드 마스킹 설정 완료");
+    }
 
     /// <summary>
     /// ButtonManager 이벤트 리스너 설정
@@ -476,11 +556,12 @@ public class LoginButtonController : MonoBehaviour
     /// </summary>
     private void ShowLoginFailModal(string message)
     {
-        if (loginFailModalWindowManager != null)
+        if (loginFailModalWindowManager != null )
         {
             loginFailModalWindowManager.descriptionText = message;
             loginFailModalWindowManager.UpdateUI();
             loginFailModalWindowManager.OpenWindow();
+            ClearLoginInputFields();
         }
         else
         {
@@ -498,6 +579,7 @@ public class LoginButtonController : MonoBehaviour
             signUpSuccessModalWindowManager.descriptionText = message;
             signUpSuccessModalWindowManager.UpdateUI();
             signUpSuccessModalWindowManager.OpenWindow();
+            ClearSignUpInputFields();
         }
         else
         {
@@ -510,16 +592,93 @@ public class LoginButtonController : MonoBehaviour
     /// </summary>
     private void ShowSignUpFailModal(string message)
     {
-        if (signUpFailModalWindowManager != null)
+        if (signUpSuccessModalWindowManager.isOn)
+        {
+            return;
+        }
+
+        if (signUpFailModalWindowManager != null && !signUpSuccessModalWindowManager.isOn)
         {
             signUpFailModalWindowManager.descriptionText = message;
             signUpFailModalWindowManager.UpdateUI();
             signUpFailModalWindowManager.OpenWindow();
+            
+            
         }
         else
         {
             Debug.LogWarning($" 회원가입 실패 모달창이 설정되지 않았습니다: {message}");
         }
+    }
+
+    /// <summary>
+    /// 아이디 유효성 검증 (영문+숫자 조합, 6글자 이상)
+    /// </summary>
+    /// <param name="userId">검증할 아이디</param>
+    /// <returns>유효한 아이디인지 여부</returns>
+    private bool IsValidUserId(string userId)
+    {
+        if (string.IsNullOrEmpty(userId) || userId.Length < 6)
+            return false;
+
+        // 영문과 숫자만 허용
+        foreach (char c in userId)
+        {
+            if (!char.IsLetterOrDigit(c))
+                return false;
+        }
+
+        // 최소 하나의 영문과 하나의 숫자가 포함되어야 함
+        bool hasLetter = false;
+        bool hasDigit = false;
+
+        foreach (char c in userId)
+        {
+            if (char.IsLetter(c))
+                hasLetter = true;
+            else if (char.IsDigit(c))
+                hasDigit = true;
+
+            if (hasLetter && hasDigit)
+                return true;
+        }
+
+        return false; // 영문과 숫자가 모두 포함되지 않음
+    }
+
+    /// <summary>
+    /// 비밀번호 유효성 검증 (영문+숫자 조합)
+    /// </summary>
+    /// <param name="password">검증할 비밀번호</param>
+    /// <returns>유효한 비밀번호인지 여부</returns>
+    private bool IsValidPassword(string password)
+    {
+        if (string.IsNullOrEmpty(password) || password.Length < 4)
+            return false;
+
+        // 영문과 숫자만 허용
+        foreach (char c in password)
+        {
+            if (!char.IsLetterOrDigit(c))
+                return false;
+        }
+
+        // 최소 하나의 영문과 하나의 숫자가 포함되어야 함
+        bool hasLetter = false;
+        bool hasDigit = false;
+
+        foreach (char c in password)
+        {
+            if (char.IsLetter(c))
+                hasLetter = true;
+            else if (char.IsDigit(c))
+                hasDigit = true;
+
+            if (hasLetter && hasDigit)
+                return true;
+        }
+
+        return false; // 영문과 숫자가 모두 포함되지 않음
     }
 
     #endregion
