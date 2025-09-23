@@ -58,24 +58,16 @@ public class PlacementPreviewComponent : MonoBehaviour, IPlacementPreview
 
     void SetTransparent(GameObject go, float alpha)
     {
-        // 간단한 방법: 각 Renderer의 material color alpha 변경 (MaterialPropertyBlock 권장)
         var rends = go.GetComponentsInChildren<Renderer>();
         foreach (var r in rends)
         {
-            foreach (var mat in r.materials)
-            {
-                if (mat.HasProperty("_Color"))
-                {
-                    Color c = mat.color;
-                    c.a = alpha;
-                    mat.color = c;
-                    mat.SetOverrideTag("RenderType", "Transparent");
-                    mat.EnableKeyword("_ALPHABLEND_ON");
-                }
-            }
+            var block = new MaterialPropertyBlock();
+            r.GetPropertyBlock(block);
+            block.SetColor("_BaseColor", new Color(1f, 1f, 1f, alpha));
+            r.SetPropertyBlock(block);
         }
     }
-    
+
     // 인터페이스의 새로운 메서드 구현
     public Vector3 GetPlacementPosition()
     {

@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class Dash : Skill
@@ -8,39 +7,38 @@ public class Dash : Skill
     public float dashForce = 10f;
 
     [Header("착지 감지 설정")]
-    [Tooltip("바닥 감지용 Raycast 거리")]
     public float groundCheckDistance = 0.1f;
-    [Tooltip("대시 후 최대 대기 시간 (무한 루프 방지)")]
     public float maxDashTime = 2f;
 
     protected override void Awake()
     {
         base.Awake();
-
-        // 무한 사용 → UsableCountComponent 필요 없음
-        if (usableCountComponent != null) Destroy(usableCountComponent as Component);
+        // 무한 사용 → UsableCountComponent 제거
+        if (usableCountComponent != null)
+            Destroy(usableCountComponent as Component);
     }
+
+    // 실제 스킬 실행
     public override void Execute(SkillController executor, Vector3 pos, Vector3 dir)
     {
         base.Execute(executor, pos, dir);
 
+        // ✅ 내 캐릭터일 때만 물리 연산 실행
         if (executor.photonView.IsMine)
         {
             var rb = executor.GetComponent<Rigidbody>();
-            rb.AddForce(dir * dashForce * (executor.transform.forward.y + 1) / 2, ForceMode.VelocityChange);
-
-            // 대시 후 착지 감지 코루틴 시작
-            StartCoroutine(DashStopRoutine(executor));
+            if (rb != null)
+            {
+                rb.AddForce(dir * dashForce, ForceMode.VelocityChange);
+                StartCoroutine(DashStopRoutine(executor));
+            }
         }
 
-        // 순간적으로 바닥에 남는 흔적 같은 이펙트도 추가 가능
-        // SpawnEffectAtPosition(trailEffectPrefab, pos, Quaternion.identity, 1f);
+        // ✅ 이펙트는 모든 클라에서 실행
+        //SpawnEffectAtPosition(trailEffectPrefab, pos, Quaternion.identity, 1f);
     }
 
-    /// <summary>
-    /// 대시 후 바닥 착지를 감지하여 속도를 0으로 만드는 코루틴
-    /// </summary>
-    IEnumerator DashStopRoutine(SkillController executor)
+    private IEnumerator DashStopRoutine(SkillController executor)
     {
         if (!executor.photonView.IsMine) yield break;
 
@@ -48,49 +46,26 @@ public class Dash : Skill
         if (rb == null) yield break;
 
         float startTime = Time.time;
+        yield return new WaitForSeconds(0.5f); // 너무 빨리 체크 방지
 
-        // 대시 직후 잠깐 대기 (즉시 체크 방지)
-        yield return new WaitForSeconds(2f);
-
-        // 바닥에 착지할 때까지 또는 최대 시간까지 대기
         while (Time.time - startTime < maxDashTime)
         {
-            // 바닥 감지용 Raycast
-            RaycastHit hit;
-            bool isGrounded = Physics.Raycast(
-                executor.transform.position,
-                Vector3.down,
-                out hit,
-                groundCheckDistance
-            );
-
-            // 바닥에 착지했고, 수직 속도가 떨어지는 중이면 정지
-            if (isGrounded && rb.velocity.y <= 0.1f)
+            if (Physics.Raycast(executor.transform.position, Vector3.down, out RaycastHit hit, groundCheckDistance))
             {
-                // 수평 속도만 0으로 설정 (Y축 속도는 유지하여 자연스러운 착지)
-                Vector3 currentVelocity = rb.velocity;
-                rb.velocity = new Vector3(0f, currentVelocity.y, 0f);
-
-                Debug.Log("✅ Dash - 바닥 착지 감지, 수평 속도 정지");
-                yield break;
+                if (rb.velocity.y <= 0.1f)
+                {
+                    Vector3 currentVelocity = rb.velocity;
+                    rb.velocity = new Vector3(0f, currentVelocity.y, 0f);
+                    Debug.Log("✅ Dash - 바닥 착지 감지, 수평 속도 정지");
+                    yield break;
+                }
             }
-
-            // 매 프레임마다 체크
             yield return null;
         }
 
-        // 최대 시간 초과 시 강제 정지
+        // 시간 초과 시 강제 정지
         Vector3 finalVelocity = rb.velocity;
         rb.velocity = new Vector3(0f, finalVelocity.y, 0f);
         Debug.Log("⚠️ Dash - 최대 시간 초과, 강제 정지");
-    }
-
-    public override void CastExecute(SkillController executor, Vector3 pos, Vector3 dir)
-    {
-        base.CastExecute(executor, pos, dir);
-        if (executor.photonView.IsMine)
-        {
-            //스킬 시전 시간 중 실제 물리연산이 필요한 경우 위와 같이 사용
-        }
     }
 }

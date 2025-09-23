@@ -193,7 +193,7 @@ public class SkillController : MonoBehaviourPun
 
     public void UseSkill()
     {
-        if (skill == null) return;
+        if (skill == null || !photonView.IsMine) return;
 
         if (skill.HasPreview)
         {
@@ -286,7 +286,7 @@ public class SkillController : MonoBehaviourPun
     #region 아이템 사용
     public void UseItem(ItemController itemController)
     {
-        if (activeItem == null) return;
+        if (activeItem == null || !photonView.IsMine) return;
 
         if (activeItem.HasPreview)
         {
