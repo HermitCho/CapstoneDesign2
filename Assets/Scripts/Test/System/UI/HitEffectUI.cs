@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using System.Collections;
 
 public class HitEffectUI : MonoBehaviour
 {
@@ -23,10 +24,10 @@ public class HitEffectUI : MonoBehaviour
 
         mat = Instantiate(overlay.material);
         overlay.material = mat;
-        
+
         // 초기 상태에서는 투명하게
         mat.SetFloat("_Intensity", 0f);
-        
+
         Debug.Log("HitEffectUI 초기화 완료");
     }
 
@@ -73,49 +74,51 @@ public class HitEffectUI : MonoBehaviour
         // 공격 방향을 카메라 좌표계 기준으로 변환
         float rightComponent = Vector3.Dot(hitWorldDir, camRight);
         float upComponent = Vector3.Dot(hitWorldDir, camUp);
-        
+
         // UI 화면 좌표계로 변환 (X: 오른쪽이 양수, Y: 위쪽이 양수)
-        Vector2 screenDir = new Vector2(rightComponent, upComponent).normalized;
+        Vector2 screenDir = new Vector2(rightComponent, upComponent);
+        if (screenDir.sqrMagnitude > 0.0001f)
+            screenDir.Normalize();
+        else
+            screenDir = Vector2.up; // 기본값
 
         Debug.Log($"HitEffectUI - hitWorldDir: {hitWorldDir}");
         Debug.Log($"Camera - Right: {camRight}, Up: {camUp}, Forward: {camForward}");
         Debug.Log($"Components - Right: {rightComponent:F2}, Up: {upComponent:F2}");
         Debug.Log($"Final screenDir: {screenDir}");
-        
+
         // 셰이더 프로퍼티 설정
         mat.SetVector("_HitDir", new Vector4(screenDir.x, screenDir.y, 0, 0));
         mat.SetFloat("_Intensity", 1f);
-        mat.SetFloat("_Spread", 0.3f);      // 더 집중된 효과
-        mat.SetFloat("_EdgeFade", 0.5f);    // 가장자리 효과 증가
         mat.SetColor("_Color", new Color(1f, 0f, 0f, 0.8f)); // 빨간색, 약간 투명
-        
+
         // 디버깅: Inspector에서 Material 속성 확인용
         Debug.Log($"셰이더 속성 설정됨 - HitDir: {screenDir}, Intensity: 1.0, Spread: 0.3, EdgeFade: 0.5");
 
-        // 일정 시간 후 서서히 사라짐
-        CancelInvoke(nameof(FadeOut));
-        InvokeRepeating(nameof(FadeOut), 0.1f, 0.05f);
-        
+        StopAllCoroutines();
+        StartCoroutine(FadeOutCoroutine());
+
         Debug.Log("HitEffectUI 이펙트 시작!");
+
     }
 
-    void FadeOut()
+    IEnumerator FadeOutCoroutine()
     {
-        if (mat == null) return;
+        float t = 0f;
+        float duration = 1f; // 1초 동안 유지
+        mat.SetFloat("_Intensity", 1f);
 
-        float intensity = mat.GetFloat("_Intensity");
-        intensity -= Time.deltaTime * 1.5f; // 조금 더 천천히 사라지게
-        
-        if (intensity <= 0)
+        while (t < duration)
         {
-            intensity = 0;
-            CancelInvoke(nameof(FadeOut));
-            Debug.Log("HitEffectUI 이펙트 종료");
+            t += Time.deltaTime;
+            float intensity = Mathf.Lerp(1f, 0f, t / duration);
+            mat.SetFloat("_Intensity", intensity);
+            yield return null;
         }
-        
-        mat.SetFloat("_Intensity", intensity);
+
+        mat.SetFloat("_Intensity", 0f);
     }
-    
+
     // 테스트용 메서드 (키보드 입력으로 테스트)
     void Update()
     {
@@ -125,7 +128,7 @@ public class HitEffectUI : MonoBehaviour
             ShowHit(-Vector3.right); // 왼쪽에서 공격 (화면 오른쪽에 효과)
         }
     }
-    
+
     // 기본 가시성 테스트
     void TestBasicVisibility()
     {
@@ -134,29 +137,29 @@ public class HitEffectUI : MonoBehaviour
             Debug.LogError("overlay가 null입니다!");
             return;
         }
-        
+
         if (mat == null)
         {
             Debug.LogError("mat가 null입니다!");
             return;
         }
-        
+
         Debug.Log($"RawImage 활성화 상태: {overlay.gameObject.activeInHierarchy}");
         Debug.Log($"RawImage enabled: {overlay.enabled}");
         Debug.Log($"RawImage color: {overlay.color}");
         Debug.Log($"Canvas 활성화 상태: {overlay.canvas?.gameObject.activeInHierarchy}");
-        
+
         // 단순히 빨간색으로 채우기 테스트
         mat.SetFloat("_Intensity", 1f);
         mat.SetColor("_Color", Color.red);
         mat.SetVector("_HitDir", Vector4.one);
-        
+
         Debug.Log("기본 가시성 테스트 완료 - 빨간색이 보여야 함");
-        
+
         // 5초 후 원래대로
-        Invoke(nameof(ClearEffect), 5f);
+        Invoke(nameof(ClearEffect), 1f);
     }
-    
+
     void ClearEffect()
     {
         if (mat != null)

@@ -149,7 +149,10 @@ public class SkillController : MonoBehaviourPun
         if (Skills == null || Skills.Count() == 0) return;
         foreach (var skill in Skills)
         {
-            skillDictionary.Add(skill.Index, skill);
+            if (!skillDictionary.ContainsKey(skill.Index))
+                skillDictionary.Add(skill.Index, skill);
+            else
+                Debug.LogWarning($"중복된 Skill Index 발견: {skill.Index} ({skill.SkillName})");
             Debug.Log("[CacheDictionary] 캐시 스킬 " + skillDictionary.Count);
             foreach (var skill2 in skillDictionary)
             {
@@ -193,7 +196,7 @@ public class SkillController : MonoBehaviourPun
 
     public void UseSkill()
     {
-        if (skill == null) return;
+        if (skill == null || !photonView.IsMine) return;
 
         if (skill.HasPreview)
         {
@@ -223,6 +226,7 @@ public class SkillController : MonoBehaviourPun
         }
 
         // 이펙트/사운드는 모든 클라이언트에서 실행
+
         PlaySkillEffectByIndex(skillIndex, pos, dir);
     }
 
@@ -286,7 +290,7 @@ public class SkillController : MonoBehaviourPun
     #region 아이템 사용
     public void UseItem(ItemController itemController)
     {
-        if (activeItem == null) return;
+        if (activeItem == null || !photonView.IsMine) return;
 
         if (activeItem.HasPreview)
         {
