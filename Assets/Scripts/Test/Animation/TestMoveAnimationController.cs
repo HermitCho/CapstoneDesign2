@@ -153,8 +153,6 @@ public class TestMoveAnimationController : MonoBehaviourPun
         animator.SetLayerWeight(upperBodyLayerIndex, smoothedWeight);
     }
 
-
-
     private void HandleHealthBasedAnimation()
     {
         if (livingEntity == null || moveController == null) return;
@@ -349,7 +347,7 @@ public class TestMoveAnimationController : MonoBehaviourPun
 
     private IEnumerator PlayVictoryPoseAfterDelay()
     {
-        yield return new WaitForSeconds(5f);
+        yield return new WaitForSeconds(3f);
         animator.SetTrigger("Victory");
         animator.SetLayerWeight(upperBodyLayerIndex, 0f);
         gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 0f, 0f);
