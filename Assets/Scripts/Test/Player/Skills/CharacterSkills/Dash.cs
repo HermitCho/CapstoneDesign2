@@ -16,6 +16,7 @@ public class Dash : Skill
         // 무한 사용 → UsableCountComponent 제거
         if (usableCountComponent != null)
             Destroy(usableCountComponent as Component);
+        skillSound = GetComponent<AudioSource>().clip;
     }
 
     // 실제 스킬 실행
@@ -33,9 +34,6 @@ public class Dash : Skill
                 StartCoroutine(DashStopRoutine(executor));
             }
         }
-
-        // ✅ 이펙트는 모든 클라에서 실행
-        //SpawnEffectAtPosition(trailEffectPrefab, pos, Quaternion.identity, 1f);
     }
 
     private IEnumerator DashStopRoutine(SkillController executor)

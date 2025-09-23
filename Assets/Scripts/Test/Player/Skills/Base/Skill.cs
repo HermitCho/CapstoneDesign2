@@ -264,13 +264,23 @@ public abstract class Skill : MonoBehaviour
             {
                 SpawnEffectFollow(skillEffect, executor.transform, effectDuration);
                 if (skillSound != null && AudioManager.Inst != null)
+                {
+                    Debug.Log($"✅ PlayEffectAtRemote - isFollowing 사운드 재생");
+                    foreach (var a in FindObjectsOfType<AudioSource>())
+                        Debug.Log($"AudioSource: {a.gameObject.name}, clip={(a.clip ? a.clip.name : "null")}, isPlaying={a.isPlaying}");
+
                     AudioManager.Inst.PlayClipAtPoint(skillSound, executor.transform.position, 1f, 1f, null, executor.transform);
+                }
+
             }
             else
             {
                 SpawnEffectAtPosition(skillEffect, pos, Quaternion.identity, effectDuration);
                 if (skillSound != null && AudioManager.Inst != null)
+                {
+                    Debug.Log($"✅ PlayEffectAtRemote - 사운드 재생");
                     AudioManager.Inst.PlayClipAtPoint(skillSound, pos, 1f, 1f, null, executor.transform);
+                }
             }
         }
     }
@@ -283,13 +293,19 @@ public abstract class Skill : MonoBehaviour
             {
                 SpawnEffectFollow(castTimeSkillEffect, executor.transform, effectCastingDuration);
                 if (castTimeSkillSound != null && AudioManager.Inst != null)
+                {
+                    Debug.Log($"✅ PlayEffectAtRemote - isFollowing 사운드 재생");
                     AudioManager.Inst.PlayClipAtPoint(castTimeSkillSound, executor.transform.position, 1f, 1f, null, executor.transform);
+                }
             }
             else
             {
                 SpawnEffectAtPosition(castTimeSkillEffect, pos, Quaternion.identity, effectCastingDuration);
                 if (castTimeSkillSound != null && AudioManager.Inst != null)
+                {
+                    Debug.Log($"✅ PlayEffectAtRemote - 사운드 재생");
                     AudioManager.Inst.PlayClipAtPoint(castTimeSkillSound, pos, 1f, 1f, null, executor.transform);
+                }
             }
         }
     }
