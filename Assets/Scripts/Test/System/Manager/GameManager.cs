@@ -5,6 +5,8 @@ using UnityEngine.SceneManagement;
 using System;
 using System.Linq;
 using Photon.Pun;
+using ExitGames.Client.Photon;
+using PhotonHashtable = ExitGames.Client.Photon.Hashtable;
 
 public class GameManager : Singleton<GameManager>
 {
@@ -101,6 +103,13 @@ public class GameManager : Singleton<GameManager>
 
     void Awake()
     {
+        // 포톤 네트워크 설정 최적화
+        if (PhotonNetwork.IsConnected)
+        {
+            PhotonNetwork.SendRate = 20; // 20 FPS로 전송률 조정
+            PhotonNetwork.SerializationRate = 10; // 10 FPS로 직렬화율 조정
+        }
+        
         // 씬 로드 이벤트 구독 (싱글톤이므로 한번만 구독됨)
         SceneManager.sceneLoaded += OnSceneLoaded;
         
@@ -124,6 +133,12 @@ public class GameManager : Singleton<GameManager>
         // 게임 오버 상태가 아닐 때만 시간 체크
         if (!isGameOver)
         {
+            // 마스터 클라이언트는 권위적 시간 관리
+            if (PhotonNetwork.IsMasterClient)
+            {
+                UpdateMasterGameTime();
+            }
+            
             // 게임 씬에서 필요한 컴포넌트들이 null인지 주기적으로 체크
             CheckAndFindMissingComponents();
             
@@ -133,8 +148,6 @@ public class GameManager : Singleton<GameManager>
             }
             
             CheckGameTimeForGameOver();
-            
-            // 상점 타이머 제거 (Shop.cs에서 직접 관리)
         }
     }
     
@@ -286,6 +299,12 @@ public class GameManager : Singleton<GameManager>
         // 2. 게임 시간 완전 초기화
         gameStartTime = Time.time;
         isGameOver = false;
+        
+        // 마스터 클라이언트가 권위적 시간을 방 속성에 설정
+        if (PhotonNetwork.IsMasterClient)
+        {
+            SetMasterGameTime();
+        }
         
         // 3. 점수 완전 초기화
         // totalTeddyBearScore = 0f; // 점수 관련 필드 제거
@@ -547,10 +566,58 @@ public class GameManager : Singleton<GameManager>
     // 게임 시간 가져오기
     public float GetGameTime()
     {
+        // 방 속성에서 권위적 시간 가져오기 (마스터가 아닌 클라이언트용)
+        if (!PhotonNetwork.IsMasterClient && PhotonNetwork.CurrentRoom != null)
+        {
+            var props = PhotonNetwork.CurrentRoom.CustomProperties;
+            if (props.ContainsKey("gameStartTime") && props.ContainsKey("playTime"))
+            {
+                double masterStartTime = (double)props["gameStartTime"];
+                float playTime = (float)props["playTime"];
+                double elapsed = PhotonNetwork.Time - masterStartTime;
+                return (float)elapsed;
+            }
+        }
+        
+        // 마스터 클라이언트이거나 방 속성이 없는 경우 로컬 시간 사용
         return Time.time - gameStartTime;
     }
 
     // GetShopTime 제거 (Shop.cs에서 직접 관리)
+    
+    /// <summary>
+    /// 마스터 클라이언트가 권위적 게임 시간 설정
+    /// </summary>
+    private void SetMasterGameTime()
+    {
+        if (!PhotonNetwork.IsMasterClient || PhotonNetwork.CurrentRoom == null) return;
+        
+        PhotonHashtable props = new PhotonHashtable();
+        props["gameStartTime"] = PhotonNetwork.Time;
+        props["playTime"] = cachedPlayTime;
+        PhotonNetwork.CurrentRoom.SetCustomProperties(props);
+        
+        Debug.Log($"🕐 GameManager: 마스터가 게임 시간 설정 - PlayTime: {cachedPlayTime}초");
+    }
+    
+    /// <summary>
+    /// 마스터 클라이언트가 게임 시간을 주기적으로 업데이트
+    /// </summary>
+    private void UpdateMasterGameTime()
+    {
+        if (!PhotonNetwork.IsMasterClient || PhotonNetwork.CurrentRoom == null) return;
+        
+        // 5초마다 시간 동기화 업데이트
+        if (Time.time - lastTimeSync > 5f)
+        {
+            PhotonHashtable props = new PhotonHashtable();
+            props["currentGameTime"] = GetGameTime();
+            PhotonNetwork.CurrentRoom.SetCustomProperties(props);
+            lastTimeSync = Time.time;
+        }
+    }
+    
+    private float lastTimeSync = 0f;
 
     #endregion
     

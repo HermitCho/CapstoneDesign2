@@ -81,8 +81,8 @@ public class TestMoveAnimationController : MonoBehaviourPun
         if (!photonView.IsMine) return;
         InputManager.OnMoveInput += OnMoveInput;
         InputManager.OnXMouseInput += OnMouseInput;
-        InputManager.OnZoomPressed += OnZoomInput;
-        InputManager.OnZoomCanceledPressed += OnZoomCanceledInput;
+        //InputManager.OnZoomPressed += OnZoomInput;
+        //InputManager.OnZoomCanceledPressed += OnZoomCanceledInput;
         InputManager.OnReloadPressed += OnReloadInput;
         InputManager.OnSkillPressed += OnSkillInput;
         InputManager.OnItemPressed += OnItemInput;
@@ -101,8 +101,8 @@ public class TestMoveAnimationController : MonoBehaviourPun
         if (!photonView.IsMine) return;
         InputManager.OnMoveInput -= OnMoveInput;
         InputManager.OnXMouseInput -= OnMouseInput;
-        InputManager.OnZoomPressed -= OnZoomInput;
-        InputManager.OnZoomCanceledPressed -= OnZoomCanceledInput;
+        //InputManager.OnZoomPressed -= OnZoomInput;
+        //InputManager.OnZoomCanceledPressed -= OnZoomCanceledInput;
         InputManager.OnReloadPressed -= OnReloadInput;
         InputManager.OnSkillPressed -= OnSkillInput;
         InputManager.OnItemPressed -= OnItemInput;
@@ -259,26 +259,26 @@ public class TestMoveAnimationController : MonoBehaviourPun
         isShooting = false;
     }
     
-    // 조준 시작 시 호출
-    void OnZoomInput()
-    {
-        if(GameManager.Instance.IsGameOver()) return;
-        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.Body, gunIK.bodyTarget, 0.04f);
-        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.RightFoot, gunIK.rightLegTarget, 0.3f);
-        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftFoot, gunIK.leftLegTarget, 0.3f);
+    // // 조준 시작 시 호출
+    // void OnZoomInput()
+    // {
+    //     if(GameManager.Instance.IsGameOver()) return;
+    //     gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.Body, gunIK.bodyTarget, 0.04f);
+    //     gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.RightFoot, gunIK.rightLegTarget, 0.3f);
+    //     gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftFoot, gunIK.leftLegTarget, 0.3f);
 
-        animator.SetFloat("SpeedMultiplier", 0.6f); // 조준 시 이동 느리게
-    }
+    //     animator.SetFloat("SpeedMultiplier", 0.6f); // 조준 시 이동 느리게
+    // }
 
-    // 조준 해제 시 호출
-    void OnZoomCanceledInput()
-    {
-        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.Body, gunIK.bodyTarget, 0.01f);
-        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.RightFoot, gunIK.rightLegTarget, 0.2f);
-        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftFoot, gunIK.leftLegTarget, 0.2f);
+    // // 조준 해제 시 호출
+    // void OnZoomCanceledInput()
+    // {
+    //     gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.Body, gunIK.bodyTarget, 0.01f);
+    //     gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.RightFoot, gunIK.rightLegTarget, 0.2f);
+    //     gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftFoot, gunIK.leftLegTarget, 0.2f);
 
-        animator.SetFloat("SpeedMultiplier", 1.2f); // 조준 해제 시 원래 속도
-    }
+    //     animator.SetFloat("SpeedMultiplier", 1.2f); // 조준 해제 시 원래 속도
+    // }
 
     // 스피드 스킬
     void OnSkillInput()
@@ -288,7 +288,7 @@ public class TestMoveAnimationController : MonoBehaviourPun
         {   
             animator.SetTrigger(skillAnimationTriggerName);
             animator.SetLayerWeight(upperBodyLayerIndex, 0f);
-            gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 0f, 0f);
+            //gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 0f, 0f);
 
             if (speedSkillCoroutine != null)
                 StopCoroutine(speedSkillCoroutine);
@@ -316,7 +316,7 @@ public class TestMoveAnimationController : MonoBehaviourPun
         {
             animator.SetTrigger(itemSkill.SkillAnimationTriggerName);
             animator.SetLayerWeight(upperBodyLayerIndex, 0f);
-            gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 0f, 0f);
+            //gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 0f, 0f);
         }
     }
 
@@ -338,7 +338,7 @@ public class TestMoveAnimationController : MonoBehaviourPun
 
     public void OnSkillEnd()
     {
-        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 1f, 1f);
+        //gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 1f, 1f);
     }
 
     public void PlayVictoryPose()
@@ -354,6 +354,6 @@ public class TestMoveAnimationController : MonoBehaviourPun
         yield return new WaitForSeconds(5f);
         animator.SetTrigger("Victory");
         animator.SetLayerWeight(upperBodyLayerIndex, 0f);
-        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 0f, 0f);
+        //gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 0f, 0f);
     }
 }

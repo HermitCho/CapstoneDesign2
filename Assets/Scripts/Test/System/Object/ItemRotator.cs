@@ -25,7 +25,6 @@ public class ItemRotator : MonoBehaviour
         // 시간 오프셋을 랜덤하게 설정하여 각 아이템이 다른 패턴으로 회전하도록 함
         timeOffset = Random.Range(0f, 2f * Mathf.PI);
         
-        Debug.Log($"ItemRotator: {gameObject.name} 회전 애니메이션 시작");
     }
     
     void Update()

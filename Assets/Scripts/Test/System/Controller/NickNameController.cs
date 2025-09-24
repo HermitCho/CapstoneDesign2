@@ -34,10 +34,6 @@ public class NickNameController : MonoBehaviour
                 
                 Debug.Log($"NickNameController: 데이터베이스 닉네임 설정 완료 - {dbNickname}");
             }
-            else
-            {
-                Debug.LogWarning("NickNameController: Photon 연결되지 않음, 로컬에만 저장");
-            }
         }
         else
         {

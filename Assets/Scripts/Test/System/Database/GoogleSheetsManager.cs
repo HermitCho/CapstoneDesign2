@@ -24,6 +24,8 @@ using Org.BouncyCastle.Security;
 /// </summary>
 public class GoogleSheetsManager : MonoBehaviour
 {
+    // 구글 시트 업데이트 완료 이벤트
+    public static event System.Action OnSheetsWriteSuccess;
     private static GoogleSheetsManager _instance;
     public static GoogleSheetsManager Instance
     {
@@ -1212,6 +1214,10 @@ public class GoogleSheetsManager : MonoBehaviour
                 userDataCache.Add(newUser);
                 
                 Debug.Log($"GoogleSheetsManager: 사용자 등록 성공 - {userId}");
+                
+                // 구글 시트 업데이트 완료 이벤트 발생
+                OnSheetsWriteSuccess?.Invoke();
+                
                 callback?.Invoke(true, "회원가입이 완료되었습니다.",-1);
             }
             else
@@ -1323,6 +1329,10 @@ public class GoogleSheetsManager : MonoBehaviour
             if (request.result == UnityWebRequest.Result.Success)
             {
                 Debug.Log($"GoogleSheetsManager: 사용자 데이터 업데이트 성공 - {user.userId}");
+                
+                // 구글 시트 업데이트 완료 이벤트 발생
+                OnSheetsWriteSuccess?.Invoke();
+                
                 callback?.Invoke(true, "게임 결과가 업데이트되었습니다.");
             }
             else

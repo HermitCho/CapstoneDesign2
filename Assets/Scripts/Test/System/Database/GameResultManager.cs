@@ -49,6 +49,16 @@ public class GameResultManager : MonoBehaviourPunCallbacks
     /// <param name="playerRank">플레이어 순위 (1~4등)</param>
     public void UpdateCurrentUserGameResult(int playerRank)
     {
+        Debug.Log($"GameResultManager: 게임 결과 업데이트 시작 - 순위: {playerRank}등");
+        
+        // CurrentUser 인스턴스 확인
+        if (CurrentUser.Instance == null)
+        {
+            Debug.LogError("GameResultManager: CurrentUser 인스턴스가 없습니다.");
+            return;
+        }
+        
+        // 로그인 상태 확인
         if (!CurrentUser.Instance.IsLoggedIn())
         {
             Debug.LogWarning("GameResultManager: 로그인된 사용자가 없습니다.");
@@ -59,6 +69,21 @@ public class GameResultManager : MonoBehaviourPunCallbacks
         if (string.IsNullOrEmpty(userId))
         {
             Debug.LogError("GameResultManager: 사용자 ID가 비어있습니다.");
+            return;
+        }
+        
+        Debug.Log($"GameResultManager: 사용자 ID 확인 완료 - {userId}");
+
+        // GoogleSheetsManager 연결 상태 확인
+        if (GoogleSheetsManager.Instance == null)
+        {
+            Debug.LogError("GameResultManager: GoogleSheetsManager 인스턴스가 없습니다.");
+            return;
+        }
+        
+        if (!GoogleSheetsManager.Instance.IsConnected())
+        {
+            Debug.LogError("GameResultManager: GoogleSheetsManager가 연결되지 않았습니다.");
             return;
         }
 
@@ -82,7 +107,7 @@ public class GameResultManager : MonoBehaviourPunCallbacks
     }
 
     /// <summary>
-    /// 게임 결과 업데이트 코루틴
+    /// 게임 결과 업데이트 코루틴 (재시도 로직 포함)
     /// </summary>
     private IEnumerator UpdateGameResultCoroutine(string userId, int playerRank)
     {
@@ -102,34 +127,63 @@ public class GameResultManager : MonoBehaviourPunCallbacks
             yield break;
         }
 
-        bool updateCompleted = false;
+        // 최대 3번 재시도
+        int maxRetries = 3;
+        int currentRetry = 0;
         bool updateSuccess = false;
         string updateMessage = "";
 
-        // 구글 스프레드시트에 게임 결과 업데이트
-        GoogleSheetsManager.Instance.UpdateGameResult(userId, playerRank, (success, message) =>
+        while (currentRetry < maxRetries && !updateSuccess)
         {
-            updateSuccess = success;
-            updateMessage = message;
-            updateCompleted = true;
-        });
+            if (currentRetry > 0)
+            {
+                Debug.Log($"GameResultManager: 재시도 {currentRetry}/{maxRetries - 1}");
+                yield return new WaitForSeconds(2f); // 2초 대기 후 재시도
+            }
 
-        // 업데이트 완료까지 대기
-        yield return new WaitUntil(() => updateCompleted);
+            bool updateCompleted = false;
+
+            // 구글 스프레드시트에 게임 결과 업데이트
+            GoogleSheetsManager.Instance.UpdateGameResult(userId, playerRank, (success, message) =>
+            {
+                updateSuccess = success;
+                updateMessage = message;
+                updateCompleted = true;
+            });
+
+            // 업데이트 완료까지 대기 (최대 30초)
+            float timeout = 30f;
+            float timer = 0f;
+            
+            while (!updateCompleted && timer < timeout)
+            {
+                yield return new WaitForSeconds(0.1f);
+                timer += 0.1f;
+            }
+            
+            // 타임아웃 처리
+            if (!updateCompleted)
+            {
+                Debug.LogWarning($"GameResultManager: 업데이트 타임아웃 - 시도 {currentRetry + 1}");
+                updateMessage = "타임아웃";
+            }
+
+            currentRetry++;
+        }
 
         if (updateSuccess)
         {
-            Debug.Log($"GameResultManager: 게임 결과 업데이트 성공 - {userId}: {playerRank}등");
+            Debug.Log($"GameResultManager: 게임 결과 업데이트 성공 - {userId}: {playerRank}등 (시도: {currentRetry})");
             
             // 현재 로그인된 사용자인 경우 로컬 데이터도 업데이트
-            if (CurrentUser.Instance.IsLoggedIn() && CurrentUser.Instance.GetUserId() == userId)
+            if (CurrentUser.Instance != null && CurrentUser.Instance.IsLoggedIn() && CurrentUser.Instance.GetUserId() == userId)
             {
                 UpdateCurrentUserLocalData(playerRank);
             }
         }
         else
         {
-            Debug.LogError($"GameResultManager: 게임 결과 업데이트 실패 - {updateMessage}");
+            Debug.LogError($"GameResultManager: 게임 결과 업데이트 최종 실패 - {updateMessage} (총 {currentRetry}회 시도)");
         }
     }
 

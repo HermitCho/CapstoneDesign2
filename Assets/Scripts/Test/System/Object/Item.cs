@@ -39,8 +39,6 @@ public class Item : MonoBehaviour
             Debug.LogError($"Item: {itemObject.name}에 Skill 컴포넌트가 없습니다.");
             return;
         }
-        
-        Debug.Log($"Item: {itemObject.name} 초기화 완료 - Skill: {itemSkill.SkillName}");
     }
 
 

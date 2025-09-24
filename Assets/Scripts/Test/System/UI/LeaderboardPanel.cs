@@ -52,15 +52,22 @@ public class LeaderboardPanel : MonoBehaviour
 
     void OnEnable()
     {
-        // 패널이 활성화될 때마다 업데이트
+        // 구글 시트 업데이트 완료 이벤트 구독
+        GoogleSheetsManager.OnSheetsWriteSuccess += OnSheetsWriteSuccess;
+        
+        // 패널이 활성화될 때만 데이터 로드 (최적화)
         if (!isUpdating)
         {
+            Debug.Log("📋 LeaderboardPanel: 패널 활성화 - 최신 데이터 로드 시작");
             StartCoroutine(UpdateAllPanels());
         }
     }
 
     void OnDisable()
     {
+        // 구글 시트 업데이트 완료 이벤트 구독 해제
+        GoogleSheetsManager.OnSheetsWriteSuccess -= OnSheetsWriteSuccess;
+        
         // 패널이 비활성화될 때 업데이트 중단
         isUpdating = false;
     }
@@ -91,7 +98,7 @@ public class LeaderboardPanel : MonoBehaviour
     }
 
     /// <summary>
-    /// Google Sheets에서 최신 사용자 데이터 로드
+    /// Google Sheets에서 최신 사용자 데이터 로드 (강제 새로고침)
     /// </summary>
     private IEnumerator LoadLatestUserData()
     {
@@ -101,28 +108,49 @@ public class LeaderboardPanel : MonoBehaviour
             yield break;
         }
 
-        Debug.Log("📡 최신 사용자 데이터 로드 중...");
+        Debug.Log("📡 최신 사용자 데이터 강제 로드 중...");
         
-        // GoogleSheetsManager의 캐시된 데이터를 새로 로드
+        // 기존 캐시 데이터 클리어 (강제 새로고침을 위해)
+        allUserData.Clear();
+        
+        // GoogleSheetsManager의 캐시를 무효화하고 새로 로드
         GoogleSheetsManager.Instance.LoadUserData();
         
-        // 데이터 로드 완료까지 대기 (최대 5초)
-        float timeout = 5f;
+        // 데이터 로드 완료까지 대기 (최대 10초로 증가)
+        float timeout = 10f;
         float elapsed = 0f;
+        int previousCount = -1;
         
         while (elapsed < timeout)
         {
-            // GoogleSheetsManager에서 데이터를 가져옴 (private이므로 public 메서드 필요)
-            allUserData = GetAllUserDataFromManager();
+            // GoogleSheetsManager에서 데이터를 가져옴
+            var newData = GetAllUserDataFromManager();
             
-            if (allUserData.Count > 0)
+            if (newData.Count > 0)
             {
-                Debug.Log($"✅ 사용자 데이터 로드 완료 - {allUserData.Count}명");
-                break;
+                // 데이터가 실제로 변경되었는지 확인
+                if (newData.Count != previousCount)
+                {
+                    allUserData = newData;
+                    Debug.Log($"✅ 사용자 데이터 로드 완료 - {allUserData.Count}명 (이전: {previousCount}명)");
+                    
+                    // 현재 로그인된 사용자의 최신 정보 확인
+                    if (CurrentUser.Instance.IsLoggedIn())
+                    {
+                        string currentUserId = CurrentUser.Instance.GetUserId();
+                        var currentUserData = allUserData.FirstOrDefault(u => u.userId == currentUserId);
+                        if (currentUserData != null)
+                        {
+                            Debug.Log($"🔍 현재 사용자 최신 정보 - {currentUserData.nickname}: Win={currentUserData.win}, Lose={currentUserData.lose}, Rate={currentUserData.rate}");
+                        }
+                    }
+                    break;
+                }
+                previousCount = newData.Count;
             }
             
-            yield return new WaitForSeconds(0.1f);
-            elapsed += 0.1f;
+            yield return new WaitForSeconds(0.2f); // 더 긴 간격으로 체크
+            elapsed += 0.2f;
         }
         
         if (allUserData.Count == 0)
@@ -557,6 +585,74 @@ public class LeaderboardPanel : MonoBehaviour
         }
         
         return result;
+    }
+
+    /// <summary>
+    /// 구글 시트 업데이트 완료 시 자동 갱신
+    /// </summary>
+    private void OnSheetsWriteSuccess()
+    {
+        Debug.Log("📝 구글 시트 업데이트 완료 - 리더보드 강제 갱신 시작");
+        
+        if (!isUpdating)
+        {
+            // 구글 시트 반영 시간을 고려하여 지연 후 갱신
+            StartCoroutine(DelayedRefreshAfterSheetsUpdate());
+        }
+        else
+        {
+            // 이미 업데이트 중이면 완료 후 다시 갱신
+            StartCoroutine(WaitAndRefresh());
+        }
+    }
+    
+    /// <summary>
+    /// 구글 시트 업데이트 후 지연된 리더보드 갱신
+    /// </summary>
+    private IEnumerator DelayedRefreshAfterSheetsUpdate()
+    {
+        // 구글 시트 서버 반영 시간 고려하여 3초 대기
+        yield return new WaitForSeconds(3f);
+        
+        Debug.Log("🔄 구글 시트 업데이트 후 리더보드 강제 갱신 실행");
+        
+        if (!isUpdating)
+        {
+            // 캐시 무효화를 위해 allUserData 클리어
+            allUserData.Clear();
+            
+            // 강제 업데이트 실행
+            StartCoroutine(UpdateAllPanels());
+        }
+    }
+    
+    /// <summary>
+    /// 업데이트 완료 후 재갱신
+    /// </summary>
+    private IEnumerator WaitAndRefresh()
+    {
+        // 현재 업데이트가 완료될 때까지 대기
+        while (isUpdating)
+        {
+            yield return new WaitForSeconds(0.1f);
+        }
+        
+        // 완료 후 다시 갱신
+        yield return new WaitForSeconds(1f);
+        StartCoroutine(DelayedRefreshAfterSheetsUpdate());
+    }
+    
+    /// <summary>
+    /// 지연된 리더보드 갱신 (기존 메서드 호환성 유지)
+    /// </summary>
+    private IEnumerator DelayedRefresh()
+    {
+        yield return new WaitForSeconds(0.1f);
+        
+        if (!isUpdating)
+        {
+            StartCoroutine(UpdateAllPanels());
+        }
     }
 
     /// <summary>

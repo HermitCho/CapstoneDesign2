@@ -51,8 +51,6 @@ public class ShopStand : MonoBehaviour
         {
             descriptionPanel.SetActive(false);
         }
-        
-        Debug.Log($"ShopStand: {gameObject.name} 초기화 완료");
     }
 
     /// <summary>
@@ -160,7 +158,7 @@ public class ShopStand : MonoBehaviour
         // 가격 텍스트 업데이트
         if (itemPriceText != null)
         {
-            itemPriceText.text = $"{currentItemSkill.Price}";
+            itemPriceText.text = $"x {currentItemSkill.Price}";
         }
 
         // 설명 텍스트 업데이트

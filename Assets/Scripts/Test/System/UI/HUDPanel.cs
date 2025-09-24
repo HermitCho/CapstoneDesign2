@@ -13,7 +13,7 @@ using DG.Tweening;
 /// 로컬 플레이어의 기본 정보만을 표시하는 간단한 HUD
 /// 다른 플레이어와 완전히 독립적으로 동작
 /// </summary>
-public class HUDPanel : MonoBehaviourPunCallbacks, IPunObservable
+public class HUDPanel : MonoBehaviourPunCallbacks
 {
     [Header("체력 UI")]
     [SerializeField] private ProgressBar healthProgressBar;
@@ -732,7 +732,6 @@ public class HUDPanel : MonoBehaviourPunCallbacks, IPunObservable
                 scoreBoard.SetActive(false);
         }
         
-        Debug.Log($"✅ HUD: 점수판 초기화 완료 - {scoreBoardObjects.Count}개의 점수판 등록");
     }
     
     /// <summary>
@@ -833,7 +832,6 @@ public class HUDPanel : MonoBehaviourPunCallbacks, IPunObservable
             GameObject playerObject = FindPlayerObjectByPhotonPlayer(player);
             if (playerObject == null) 
             {
-                Debug.LogWarning($"⚠️ 플레이어 오브젝트를 찾을 수 없음 - ActorNumber: {player.ActorNumber}");
                 continue;
             }
             
@@ -1109,8 +1107,6 @@ public class HUDPanel : MonoBehaviourPunCallbacks, IPunObservable
         LayoutRebuilder.ForceRebuildLayoutImmediate(scoreBoardParent.GetComponent<RectTransform>());
         
         isAnimating = false;
-        
-        Debug.Log("✅ HUD: 점수판 순서 변경 애니메이션 완료");
     }
     
     /// <summary>
@@ -1134,7 +1130,6 @@ public class HUDPanel : MonoBehaviourPunCallbacks, IPunObservable
         
         // 점수가 변경되면 즉시 점수판 업데이트
         ForceUpdateScoreBoard();
-        Debug.Log($"🎯 점수 변경 감지 - 점수판 즉시 업데이트 요청: {newScore}");
     }
     
     /// <summary>
@@ -1147,50 +1142,36 @@ public class HUDPanel : MonoBehaviourPunCallbacks, IPunObservable
         props[$"score_{playerId}"] = score;
         PhotonNetwork.LocalPlayer.SetCustomProperties(props);
         
-        // PhotonView가 있는 경우에만 RPC 전송
-        if (photonView != null)
-        {
-            // 모든 클라이언트에게 점수 변경 RPC 전송
-            photonView.RPC("RPC_UpdatePlayerScore", RpcTarget.Others, playerId, score);
-        }
-
+        Debug.Log($"HUDPanel: 점수 네트워크 동기화 - Player {playerId}: {score}점");
+        
+        // RPC 제거 - Custom Properties로만 동기화
     }
     
-    /// <summary>
-    /// 다른 클라이언트로부터 점수 업데이트 RPC 수신
-    /// </summary>
-    [PunRPC]
-    private void RPC_UpdatePlayerScore(int playerId, float score)
-    {
-        
-        // 점수판 즉시 업데이트
-        ForceUpdateScoreBoard();
-    }
+    // RPC 메서드 제거됨 - Custom Properties만 사용
     
     /// <summary>
     /// Photon Custom Properties에서 플레이어 점수 가져오기
     /// </summary>
     private float GetPlayerScoreFromNetwork(Photon.Realtime.Player player)
     {
+        if (player == null) return 0f;
+        
         // Custom Properties에서 점수 확인
-        if (player.CustomProperties.TryGetValue($"score_{player.ActorNumber}", out object scoreObj))
+        string scoreKey = $"score_{player.ActorNumber}";
+        if (player.CustomProperties.TryGetValue(scoreKey, out object scoreObj))
         {
-            if (float.TryParse(scoreObj.ToString(), out float networkScore))
+            if (scoreObj != null && float.TryParse(scoreObj.ToString(), out float networkScore))
             {
+                Debug.Log($"HUDPanel: 네트워크에서 점수 가져오기 - Player {player.ActorNumber}: {networkScore}점");
                 return networkScore;
             }
         }
         
+        Debug.LogWarning($"HUDPanel: Player {player.ActorNumber}의 점수를 네트워크에서 찾을 수 없음");
         return 0f;
     }
     
-    /// <summary>
-    /// IPunObservable 구현 - 실시간 데이터 동기화
-    /// </summary>
-    public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
-    {
-        // 현재는 사용하지 않음 (Custom Properties와 RPC 사용)
-    }
+    // IPunObservable 인터페이스 제거됨 - Custom Properties만 사용
     
     #endregion
 

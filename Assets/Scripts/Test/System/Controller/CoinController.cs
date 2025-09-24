@@ -111,6 +111,9 @@ public class CoinController : MonoBehaviourPun
         if (!photonView.IsMine) return;
         
         currentScore += scoreToAdd;
+        
+        // 네트워크로 점수 동기화
+        SyncScoreToNetwork();
     }
     
     /// <summary>
@@ -132,6 +135,9 @@ public class CoinController : MonoBehaviourPun
         {
             currentScore -= amount;
         }
+        
+        // 네트워크로 점수 동기화
+        SyncScoreToNetwork();
     }
     
     /// <summary>
@@ -142,6 +148,9 @@ public class CoinController : MonoBehaviourPun
         if (!photonView.IsMine) return;
         
         currentScore = 0f;
+        
+        // 네트워크로 점수 동기화
+        SyncScoreToNetwork();
     }
     
     /// <summary>
@@ -247,6 +256,79 @@ public class CoinController : MonoBehaviourPun
     public bool GetIsTeddyBearAttached()
     {
         return isTeddyBearAttached;
+    }
+    
+    /// <summary>
+    /// 점수를 네트워크로 동기화
+    /// </summary>
+    private void SyncScoreToNetwork()
+    {
+        if (!photonView.IsMine || !PhotonNetwork.IsConnected) return;
+        
+        try
+        {
+            // Photon Custom Properties에 점수 저장
+            var props = new ExitGames.Client.Photon.Hashtable();
+            string scoreKey = $"score_{PhotonNetwork.LocalPlayer.ActorNumber}";
+            props[scoreKey] = currentScore;
+            
+            // 닉네임도 함께 동기화 (처음 한 번만)
+            if (!PhotonNetwork.LocalPlayer.CustomProperties.ContainsKey("nickname"))
+            {
+                string nickname = PlayerPrefs.GetString("NickName", $"Player{PhotonNetwork.LocalPlayer.ActorNumber}");
+                props["nickname"] = nickname;
+            }
+            
+            PhotonNetwork.LocalPlayer.SetCustomProperties(props);
+            
+            Debug.Log($"CoinController: 점수 네트워크 동기화 완료 - Player {PhotonNetwork.LocalPlayer.ActorNumber}: {currentScore}점");
+            
+            // 추가 검증: 설정된 값 확인
+            StartCoroutine(VerifyNetworkSync(scoreKey, currentScore));
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"CoinController: 점수 네트워크 동기화 실패 - {e.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// 네트워크 동기화 검증
+    /// </summary>
+    private System.Collections.IEnumerator VerifyNetworkSync(string scoreKey, float expectedScore)
+    {
+        yield return new WaitForSeconds(0.2f); // 동기화 대기 시간 증가
+        
+        if (PhotonNetwork.LocalPlayer.CustomProperties.TryGetValue(scoreKey, out object syncedScore))
+        {
+            float syncedScoreFloat = float.Parse(syncedScore.ToString());
+            if (Mathf.Abs(syncedScoreFloat - expectedScore) > 0.01f)
+            {
+                Debug.LogWarning($"CoinController: 점수 동기화 불일치 - 예상: {expectedScore}, 실제: {syncedScoreFloat}");
+                
+                // 강제로 다시 설정
+                var props = new ExitGames.Client.Photon.Hashtable();
+                props[scoreKey] = expectedScore;
+                PhotonNetwork.LocalPlayer.SetCustomProperties(props);
+                
+                Debug.Log($"CoinController: 점수 강제 재동기화 시도 - {expectedScore}");
+            }
+            else
+            {
+                Debug.Log($"CoinController: 점수 동기화 확인 완료 - {expectedScore}");
+            }
+        }
+        else
+        {
+            Debug.LogWarning($"CoinController: 점수 동기화 실패 - {scoreKey} 키를 찾을 수 없음");
+            
+            // 강제로 설정
+            var props = new ExitGames.Client.Photon.Hashtable();
+            props[scoreKey] = expectedScore;
+            PhotonNetwork.LocalPlayer.SetCustomProperties(props);
+            
+            Debug.Log($"CoinController: 점수 강제 설정 - {expectedScore}");
+        }
     }
 
     #endregion
