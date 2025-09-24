@@ -18,7 +18,6 @@ public class TestMoveAnimationController : MonoBehaviourPun
     private CameraController cameraController;
     private ItemController itemController;
     private FootstepSoundPlayer footstepSoundPlayer;
-    private GunIK gunIK;
     private AimIK aimIK;
     private LivingEntity livingEntity;
     private Skill skill;
@@ -56,7 +55,6 @@ public class TestMoveAnimationController : MonoBehaviourPun
         cameraController = GetComponent<CameraController>();
         itemController = GetComponent<ItemController>();
         footstepSoundPlayer = GetComponent<FootstepSoundPlayer>();
-        gunIK = GetComponent<GunIK>();
         aimIK = GetComponent<AimIK>();
         livingEntity = GetComponent<LivingEntity>();
         skill = GetComponent<Skill>();
@@ -76,8 +74,6 @@ public class TestMoveAnimationController : MonoBehaviourPun
 
         InputManager.OnMoveInput += OnMoveInput;
         InputManager.OnXMouseInput += OnMouseInput;
-        InputManager.OnZoomPressed += OnZoomInput;
-        InputManager.OnZoomCanceledPressed += OnZoomCanceledInput;
         InputManager.OnReloadPressed += OnReloadInput;
         InputManager.OnSkillPressed += OnSkillInput;
         InputManager.OnItemPressed += OnItemInput;
@@ -97,8 +93,6 @@ public class TestMoveAnimationController : MonoBehaviourPun
 
         InputManager.OnMoveInput -= OnMoveInput;
         InputManager.OnXMouseInput -= OnMouseInput;
-        InputManager.OnZoomPressed -= OnZoomInput;
-        InputManager.OnZoomCanceledPressed -= OnZoomCanceledInput;
         InputManager.OnReloadPressed -= OnReloadInput;
         InputManager.OnSkillPressed -= OnSkillInput;
         InputManager.OnItemPressed -= OnItemInput;
@@ -272,27 +266,6 @@ public class TestMoveAnimationController : MonoBehaviourPun
         isReloading = false;
         animator.SetBool("Reload", false);
     }
-        
-
-    private void OnZoomInput()
-    {
-        if (GameManager.Instance.IsGameOver()) return;
-
-        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.Body, gunIK.bodyTarget, 0.04f);
-        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.RightFoot, gunIK.rightLegTarget, 0.3f);
-        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftFoot, gunIK.leftLegTarget, 0.3f);
-
-        animator.SetFloat("SpeedMultiplier", 0.6f);
-    }
-
-    private void OnZoomCanceledInput()
-    {
-        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.Body, gunIK.bodyTarget, 0.01f);
-        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.RightFoot, gunIK.rightLegTarget, 0.2f);
-        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftFoot, gunIK.leftLegTarget, 0.2f);
-
-        animator.SetFloat("SpeedMultiplier", 1.2f);
-    }
 
     private void OnSkillInput()
     {
@@ -322,7 +295,6 @@ public class TestMoveAnimationController : MonoBehaviourPun
     {
         animator.SetTrigger(triggerName);
         animator.SetLayerWeight(upperBodyLayerIndex, 0f);
-        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 0f, 0f);
     }
 
     private IEnumerator SpeedSkillRoutine()
@@ -334,7 +306,7 @@ public class TestMoveAnimationController : MonoBehaviourPun
 
     public void OnSkillEnd()
     {
-        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 1f, 1f);
+
     }
 
     public void PlayVictoryPose()
@@ -350,6 +322,5 @@ public class TestMoveAnimationController : MonoBehaviourPun
         yield return new WaitForSeconds(3f);
         animator.SetTrigger("Victory");
         animator.SetLayerWeight(upperBodyLayerIndex, 0f);
-        gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 0f, 0f);
     }
 }
