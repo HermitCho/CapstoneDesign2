@@ -1695,6 +1695,7 @@ RectTransform:
   m_Children:
   - {fileID: 489708593}
   - {fileID: 959958983}
+  - {fileID: 1725374739}
   m_Father: {fileID: 648360203}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
@@ -1977,6 +1978,7 @@ RectTransform:
   m_Children:
   - {fileID: 1592622000}
   - {fileID: 1752988086}
+  - {fileID: 321458408}
   m_Father: {fileID: 648360203}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0}
@@ -2010,6 +2012,98 @@ MonoBehaviour:
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
+--- !u!1 &163453481
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 163453482}
+  - component: {fileID: 163453483}
+  m_Layer: 5
+  m_Name: Login
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &163453482
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 163453481}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: -15, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 321458408}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &163453483
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 163453481}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c9972513674083a4e8366856a6a50999, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hotkeyType: 1
+  controllerPreset: {fileID: 11400000, guid: 3df304f524da414409c38b8b47ff5249, type: 2}
+  hotkey:
+    m_Name: Hotkey
+    m_Type: 0
+    m_ExpectedControlType: 
+    m_Id: 40fd65ee-3003-4941-9105-89ad46d077fd
+    m_Processors: 
+    m_Interactions: 
+    m_SingletonActionBindings:
+    - m_Name: 
+      m_Id: c4ed79be-ced5-4b20-b2e8-0996b5d07cb5
+      m_Path: <Keyboard>/enter
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: Hotkey
+      m_Flags: 0
+    m_Flags: 0
+  keyID: Exit
+  hotkeyLabel: Back
+  iconParent: {fileID: 0}
+  textParent: {fileID: 0}
+  iconObj: {fileID: 0}
+  labelObj: {fileID: 0}
+  textObj: {fileID: 0}
+  normalCG: {fileID: 0}
+  highlightCG: {fileID: 0}
+  useSounds: 1
+  useLocalization: 1
+  fadingMultiplier: 8
+  onHotkeyPress:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 1752988087}
+        m_TargetAssemblyTypeName: Michsky.UI.Heat.ButtonManager, Assembly-CSharp
+        m_MethodName: InvokeOnClick
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+  useCooldown: 0
+  showOutputOnEditor: 1
 --- !u!1 &164920867
 GameObject:
   m_ObjectHideFlags: 0
@@ -2811,7 +2905,7 @@ MonoBehaviour:
   m_FillClockwise: 1
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 10
+  m_PixelsPerUnitMultiplier: 1
 --- !u!222 &219182186
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -4208,6 +4302,38 @@ MonoBehaviour:
   buttonManager: {fileID: 1592622001}
   panelButton: {fileID: 0}
   buttonType: 0
+--- !u!1 &321458407
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 321458408}
+  m_Layer: 5
+  m_Name: Hotkeys
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &321458408
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 321458407}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 250, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 163453482}
+  m_Father: {fileID: 156690370}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &327817803
 GameObject:
   m_ObjectHideFlags: 0
@@ -4632,13 +4758,37 @@ MonoBehaviour:
   fadingMultiplier: 8
   onClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 0}
+        m_TargetAssemblyTypeName: 
+        m_MethodName: 
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: 
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
   onDoubleClick:
     m_PersistentCalls:
       m_Calls: []
   onHover:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 364410217}
+        m_TargetAssemblyTypeName: SoundController, Assembly-CSharp
+        m_MethodName: OnHover
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
   onLeave:
     m_PersistentCalls:
       m_Calls: []
@@ -5334,6 +5484,50 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 363605752}
   m_CullTransparentMesh: 1
+--- !u!1 &364410215
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 364410216}
+  - component: {fileID: 364410217}
+  m_Layer: 0
+  m_Name: SoundController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &364410216
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 364410215}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1743145554}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &364410217
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 364410215}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 59e098a6f85505d42b4bf6d523d0e6e4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &371790334
 GameObject:
   m_ObjectHideFlags: 0
@@ -5815,6 +6009,98 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 393132565}
   m_CullTransparentMesh: 1
+--- !u!1 &394168259
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 394168260}
+  - component: {fileID: 394168261}
+  m_Layer: 5
+  m_Name: SignUp
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &394168260
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 394168259}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: -15, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1921725668}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &394168261
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 394168259}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c9972513674083a4e8366856a6a50999, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hotkeyType: 1
+  controllerPreset: {fileID: 11400000, guid: 3df304f524da414409c38b8b47ff5249, type: 2}
+  hotkey:
+    m_Name: Hotkey
+    m_Type: 0
+    m_ExpectedControlType: 
+    m_Id: 40fd65ee-3003-4941-9105-89ad46d077fd
+    m_Processors: 
+    m_Interactions: 
+    m_SingletonActionBindings:
+    - m_Name: 
+      m_Id: 3edcfa1b-1a68-4b51-9a01-027643d6b77a
+      m_Path: <Keyboard>/enter
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: Hotkey
+      m_Flags: 0
+    m_Flags: 0
+  keyID: Exit
+  hotkeyLabel: Back
+  iconParent: {fileID: 0}
+  textParent: {fileID: 0}
+  iconObj: {fileID: 0}
+  labelObj: {fileID: 0}
+  textObj: {fileID: 0}
+  normalCG: {fileID: 0}
+  highlightCG: {fileID: 0}
+  useSounds: 1
+  useLocalization: 1
+  fadingMultiplier: 8
+  onHotkeyPress:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 342510923}
+        m_TargetAssemblyTypeName: Michsky.UI.Heat.ButtonManager, Assembly-CSharp
+        m_MethodName: InvokeOnClick
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+  useCooldown: 0
+  showOutputOnEditor: 1
 --- !u!1 &400107126
 GameObject:
   m_ObjectHideFlags: 0
@@ -6575,10 +6861,34 @@ MonoBehaviour:
       m_Calls: []
   onOpen:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 364410217}
+        m_TargetAssemblyTypeName: SoundController, Assembly-CSharp
+        m_MethodName: OnClickError
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
   onClose:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 364410217}
+        m_TargetAssemblyTypeName: SoundController, Assembly-CSharp
+        m_MethodName: OnClickCancel
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!95 &461543057
 Animator:
   serializedVersion: 5
@@ -9413,6 +9723,7 @@ RectTransform:
   m_Children:
   - {fileID: 1638402958}
   - {fileID: 342510922}
+  - {fileID: 1921725668}
   m_Father: {fileID: 1508762553}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0}
@@ -10135,6 +10446,14 @@ MonoBehaviour:
       m_Groups: 
       m_Action: Hotkey
       m_Flags: 0
+    - m_Name: 
+      m_Id: 49325c1f-ed5e-46d8-b02f-10512ecacead
+      m_Path: <Keyboard>/enter
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: Hotkey
+      m_Flags: 0
     m_Flags: 0
   keyID: Exit
   hotkeyLabel: Back
@@ -10528,6 +10847,98 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 648360202}
   m_CullTransparentMesh: 1
+--- !u!1 &651614832
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 651614833}
+  - component: {fileID: 651614834}
+  m_Layer: 5
+  m_Name: Back
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &651614833
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 651614832}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: -15, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1921725668}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &651614834
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 651614832}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c9972513674083a4e8366856a6a50999, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hotkeyType: 1
+  controllerPreset: {fileID: 11400000, guid: 3df304f524da414409c38b8b47ff5249, type: 2}
+  hotkey:
+    m_Name: Hotkey
+    m_Type: 0
+    m_ExpectedControlType: 
+    m_Id: 40fd65ee-3003-4941-9105-89ad46d077fd
+    m_Processors: 
+    m_Interactions: 
+    m_SingletonActionBindings:
+    - m_Name: 
+      m_Id: 3edcfa1b-1a68-4b51-9a01-027643d6b77a
+      m_Path: <Keyboard>/escape
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: Hotkey
+      m_Flags: 0
+    m_Flags: 0
+  keyID: Exit
+  hotkeyLabel: Back
+  iconParent: {fileID: 0}
+  textParent: {fileID: 0}
+  iconObj: {fileID: 0}
+  labelObj: {fileID: 0}
+  textObj: {fileID: 0}
+  normalCG: {fileID: 0}
+  highlightCG: {fileID: 0}
+  useSounds: 1
+  useLocalization: 1
+  fadingMultiplier: 8
+  onHotkeyPress:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 1638402959}
+        m_TargetAssemblyTypeName: Michsky.UI.Heat.ButtonManager, Assembly-CSharp
+        m_MethodName: InvokeOnClick
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+  useCooldown: 0
+  showOutputOnEditor: 1
 --- !u!1 &661998323
 GameObject:
   m_ObjectHideFlags: 0
@@ -11045,7 +11456,7 @@ MonoBehaviour:
   UIManagerAsset: {fileID: 11400000, guid: 98972d851a944df4a9402eac62a896e7, type: 2}
   colorType: 0
   useCustomColor: 1
-  useCustomAlpha: 0
+  useCustomAlpha: 1
 --- !u!114 &707616885
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -11059,7 +11470,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 0.40000004, g: 0.75294125, b: 1, a: 1}
+  m_Color: {r: 1, g: 0.45882353, b: 0.62352943, a: 1}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -14266,7 +14677,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -90}
+  m_AnchoredPosition: {x: 0, y: -130}
   m_SizeDelta: {x: 300, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &959958982
@@ -15244,9 +15655,9 @@ MonoBehaviour:
   UIManagerAsset: {fileID: 11400000, guid: 98972d851a944df4a9402eac62a896e7, type: 2}
   fontType: 1
   colorType: 1
-  useCustomColor: 0
+  useCustomColor: 1
   useCustomAlpha: 1
-  useCustomFont: 0
+  useCustomFont: 1
 --- !u!222 &1038815073
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -15285,8 +15696,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4281148185
-  m_fontColor: {r: 0.09803922, g: 0.13725491, b: 0.1764706, a: 1}
+    rgba: 4294967295
+  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 2
   m_fontColorGradient:
@@ -15774,6 +16185,98 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 250, y: 50}
   m_Pivot: {x: 0, y: 0.5}
+--- !u!1 &1071966034
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1071966035}
+  - component: {fileID: 1071966036}
+  m_Layer: 5
+  m_Name: Tab
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1071966035
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1071966034}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: -15, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1725374739}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1071966036
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1071966034}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c9972513674083a4e8366856a6a50999, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hotkeyType: 1
+  controllerPreset: {fileID: 11400000, guid: 3df304f524da414409c38b8b47ff5249, type: 2}
+  hotkey:
+    m_Name: Hotkey
+    m_Type: 0
+    m_ExpectedControlType: 
+    m_Id: 40fd65ee-3003-4941-9105-89ad46d077fd
+    m_Processors: 
+    m_Interactions: 
+    m_SingletonActionBindings:
+    - m_Name: 
+      m_Id: c4ed79be-ced5-4b20-b2e8-0996b5d07cb5
+      m_Path: <Keyboard>/tab
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: Hotkey
+      m_Flags: 0
+    m_Flags: 0
+  keyID: Exit
+  hotkeyLabel: Back
+  iconParent: {fileID: 0}
+  textParent: {fileID: 0}
+  iconObj: {fileID: 0}
+  labelObj: {fileID: 0}
+  textObj: {fileID: 0}
+  normalCG: {fileID: 0}
+  highlightCG: {fileID: 0}
+  useSounds: 1
+  useLocalization: 1
+  fadingMultiplier: 8
+  onHotkeyPress:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 1725374740}
+        m_TargetAssemblyTypeName: InputFieldHotkeySetting, Assembly-CSharp
+        m_MethodName: NextSelectInputField
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+  useCooldown: 0
+  showOutputOnEditor: 1
 --- !u!1 &1078865928
 GameObject:
   m_ObjectHideFlags: 0
@@ -15955,6 +16458,14 @@ MonoBehaviour:
     - m_Name: 
       m_Id: e0e320ea-8475-45c7-95ab-cc5524dfd379
       m_Path: <Gamepad>/buttonEast
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: Hotkey
+      m_Flags: 0
+    - m_Name: 
+      m_Id: 3172f9f8-32a7-4dd8-9a30-23fd16b5e999
+      m_Path: <Keyboard>/enter
       m_Interactions: 
       m_Processors: 
       m_Groups: 
@@ -16872,9 +17383,9 @@ MonoBehaviour:
   UIManagerAsset: {fileID: 11400000, guid: 98972d851a944df4a9402eac62a896e7, type: 2}
   fontType: 1
   colorType: 1
-  useCustomColor: 0
+  useCustomColor: 1
   useCustomAlpha: 1
-  useCustomFont: 0
+  useCustomFont: 1
 --- !u!222 &1144975078
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -16913,8 +17424,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4281148185
-  m_fontColor: {r: 0.09803922, g: 0.13725491, b: 0.1764706, a: 1}
+    rgba: 4294967295
+  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 2
   m_fontColorGradient:
@@ -18265,10 +18776,34 @@ MonoBehaviour:
       m_Calls: []
   onOpen:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 364410217}
+        m_TargetAssemblyTypeName: SoundController, Assembly-CSharp
+        m_MethodName: OnClickError
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
   onClose:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 364410217}
+        m_TargetAssemblyTypeName: SoundController, Assembly-CSharp
+        m_MethodName: OnClickCancel
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!95 &1244681035
 Animator:
   serializedVersion: 5
@@ -19390,10 +19925,34 @@ MonoBehaviour:
       m_Calls: []
   onOpen:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 364410217}
+        m_TargetAssemblyTypeName: SoundController, Assembly-CSharp
+        m_MethodName: OnSignUp
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
   onClose:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 364410217}
+        m_TargetAssemblyTypeName: SoundController, Assembly-CSharp
+        m_MethodName: OnClickCancel
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!95 &1320701137
 Animator:
   serializedVersion: 5
@@ -19525,6 +20084,14 @@ MonoBehaviour:
       m_Groups: 
       m_Action: Hotkey
       m_Flags: 0
+    - m_Name: 
+      m_Id: d954b5d0-6d51-4f4a-ad88-86962c3a42fe
+      m_Path: <Keyboard>/enter
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: Hotkey
+      m_Flags: 0
     m_Flags: 0
   keyID: Exit
   hotkeyLabel: Back
@@ -19542,8 +20109,20 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 1244681034}
-        m_TargetAssemblyTypeName: Michsky.UI.Reach.ModalWindowManager, Assembly-CSharp
+        m_TargetAssemblyTypeName: Michsky.UI.Heat.ModalWindowManager, Assembly-CSharp
         m_MethodName: CloseWindow
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+      - m_Target: {fileID: 163453483}
+        m_TargetAssemblyTypeName: UnityEngine.MonoBehaviour, UnityEngine
+        m_MethodName: CancelInvoke
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -20252,6 +20831,7 @@ RectTransform:
   - {fileID: 797783665}
   - {fileID: 1602574611}
   - {fileID: 1460877045}
+  - {fileID: 1810159135}
   m_Father: {fileID: 1508762553}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
@@ -21165,7 +21745,7 @@ MonoBehaviour:
   m_FillClockwise: 1
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 10
+  m_PixelsPerUnitMultiplier: 1
 --- !u!222 &1452666068
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -22366,13 +22946,37 @@ MonoBehaviour:
   fadingMultiplier: 8
   onClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 364410217}
+        m_TargetAssemblyTypeName: SoundController, Assembly-CSharp
+        m_MethodName: OnClick
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
   onDoubleClick:
     m_PersistentCalls:
       m_Calls: []
   onHover:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 364410217}
+        m_TargetAssemblyTypeName: SoundController, Assembly-CSharp
+        m_MethodName: OnHover
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
   onLeave:
     m_PersistentCalls:
       m_Calls: []
@@ -23362,13 +23966,37 @@ MonoBehaviour:
   fadingMultiplier: 8
   onClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 364410217}
+        m_TargetAssemblyTypeName: SoundController, Assembly-CSharp
+        m_MethodName: OnClick
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
   onDoubleClick:
     m_PersistentCalls:
       m_Calls: []
   onHover:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 364410217}
+        m_TargetAssemblyTypeName: SoundController, Assembly-CSharp
+        m_MethodName: OnHover
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
   onLeave:
     m_PersistentCalls:
       m_Calls: []
@@ -24609,6 +25237,54 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 20, y: 20}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!1 &1725374738
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1725374739}
+  - component: {fileID: 1725374740}
+  m_Layer: 5
+  m_Name: Hotkeys
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1725374739
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1725374738}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: -90, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1071966035}
+  m_Father: {fileID: 140419386}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1725374740
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1725374738}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 60e704c667353f344aad62c28dfb37fa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  inputFields:
+  - {fileID: 801986829}
+  - {fileID: 1927314581}
 --- !u!1 &1740877612
 GameObject:
   m_ObjectHideFlags: 0
@@ -24793,6 +25469,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 379130403}
+  - {fileID: 364410216}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1749894441
@@ -24978,7 +25655,19 @@ MonoBehaviour:
       m_Calls: []
   onHover:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 364410217}
+        m_TargetAssemblyTypeName: SoundController, Assembly-CSharp
+        m_MethodName: OnHover
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
   onLeave:
     m_PersistentCalls:
       m_Calls: []
@@ -25624,6 +26313,56 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1797013171}
   m_CullTransparentMesh: 1
+--- !u!1 &1810159134
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1810159135}
+  - component: {fileID: 1810159136}
+  m_Layer: 5
+  m_Name: Hotkeys
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1810159135
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1810159134}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: -250, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 2079430219}
+  m_Father: {fileID: 1392726001}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1810159136
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1810159134}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 60e704c667353f344aad62c28dfb37fa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  inputFields:
+  - {fileID: 2067213487}
+  - {fileID: 943645373}
+  - {fileID: 969893686}
+  - {fileID: 707481722}
 --- !u!1 &1836575456
 GameObject:
   m_ObjectHideFlags: 0
@@ -25968,9 +26707,9 @@ MonoBehaviour:
   UIManagerAsset: {fileID: 11400000, guid: 98972d851a944df4a9402eac62a896e7, type: 2}
   fontType: 1
   colorType: 1
-  useCustomColor: 0
+  useCustomColor: 1
   useCustomAlpha: 1
-  useCustomFont: 0
+  useCustomFont: 1
 --- !u!114 &1845245314
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -26001,8 +26740,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4281148185
-  m_fontColor: {r: 0.09803922, g: 0.13725491, b: 0.1764706, a: 1}
+    rgba: 4294967295
+  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 2
   m_fontColorGradient:
@@ -26765,6 +27504,39 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1914724256}
   m_CullTransparentMesh: 1
+--- !u!1 &1921725667
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1921725668}
+  m_Layer: 5
+  m_Name: Hotkeys
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1921725668
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1921725667}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 350, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 394168260}
+  - {fileID: 651614833}
+  m_Father: {fileID: 577930745}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1922388504
 GameObject:
   m_ObjectHideFlags: 0
@@ -28157,7 +28929,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -90}
+  m_AnchoredPosition: {x: 0, y: -130}
   m_SizeDelta: {x: 300, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &2044791354
@@ -28472,6 +29244,98 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2067213484}
   m_CullTransparentMesh: 1
+--- !u!1 &2079430218
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2079430219}
+  - component: {fileID: 2079430220}
+  m_Layer: 5
+  m_Name: Tab
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2079430219
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2079430218}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: -15, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1810159135}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2079430220
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2079430218}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c9972513674083a4e8366856a6a50999, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hotkeyType: 1
+  controllerPreset: {fileID: 11400000, guid: 3df304f524da414409c38b8b47ff5249, type: 2}
+  hotkey:
+    m_Name: Hotkey
+    m_Type: 0
+    m_ExpectedControlType: 
+    m_Id: 40fd65ee-3003-4941-9105-89ad46d077fd
+    m_Processors: 
+    m_Interactions: 
+    m_SingletonActionBindings:
+    - m_Name: 
+      m_Id: c4ed79be-ced5-4b20-b2e8-0996b5d07cb5
+      m_Path: <Keyboard>/tab
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: Hotkey
+      m_Flags: 0
+    m_Flags: 0
+  keyID: Exit
+  hotkeyLabel: Back
+  iconParent: {fileID: 0}
+  textParent: {fileID: 0}
+  iconObj: {fileID: 0}
+  labelObj: {fileID: 0}
+  textObj: {fileID: 0}
+  normalCG: {fileID: 0}
+  highlightCG: {fileID: 0}
+  useSounds: 1
+  useLocalization: 1
+  fadingMultiplier: 8
+  onHotkeyPress:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 1810159136}
+        m_TargetAssemblyTypeName: InputFieldHotkeySetting, Assembly-CSharp
+        m_MethodName: NextSelectInputField
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+  useCooldown: 0
+  showOutputOnEditor: 1
 --- !u!1 &2084128317
 GameObject:
   m_ObjectHideFlags: 0
@@ -29216,7 +30080,7 @@ MonoBehaviour:
   m_FillClockwise: 1
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 10
+  m_PixelsPerUnitMultiplier: 1
 --- !u!222 &2102352074
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -29412,7 +30276,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -90}
+  m_AnchoredPosition: {x: 0, y: -130}
   m_SizeDelta: {x: 300, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &2119313975

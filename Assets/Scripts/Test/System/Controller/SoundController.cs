@@ -65,4 +65,14 @@ public class SoundController : MonoBehaviour
     {
         AudioManager.Inst.PlayOneShot("SFX_UI_OpenGameOverModal");
     }
+
+    public void OnLogin()
+    {
+        
+    }
+
+    public void OnSignUp()
+    {
+       
+    }
 }

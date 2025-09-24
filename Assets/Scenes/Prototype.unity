@@ -1336,7 +1336,7 @@ MonoBehaviour:
   onClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1833508773}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: Shop, Assembly-CSharp
         m_MethodName: PurchaseItem
         m_Mode: 3
@@ -4371,7 +4371,7 @@ MonoBehaviour:
   onClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1833508773}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: Shop, Assembly-CSharp
         m_MethodName: PurchaseItem
         m_Mode: 3
@@ -6463,7 +6463,7 @@ MonoBehaviour:
   onClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1833508773}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: Shop, Assembly-CSharp
         m_MethodName: PurchaseItem
         m_Mode: 3
@@ -11103,7 +11103,7 @@ MonoBehaviour:
   onClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1833508773}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: Shop, Assembly-CSharp
         m_MethodName: PurchaseItem
         m_Mode: 3
@@ -13174,7 +13174,7 @@ MonoBehaviour:
   onClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1833508773}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: Shop, Assembly-CSharp
         m_MethodName: PurchaseItem
         m_Mode: 3
@@ -19843,6 +19843,7 @@ PrefabInstance:
     m_RemovedGameObjects:
     - {fileID: 6675027049573534010, guid: 31e5cdb17c8661e4caf1244bdf76e437, type: 3}
     - {fileID: 5233133389966834332, guid: 31e5cdb17c8661e4caf1244bdf76e437, type: 3}
+    - {fileID: 1741342055085035423, guid: 31e5cdb17c8661e4caf1244bdf76e437, type: 3}
     m_AddedGameObjects:
     - targetCorrespondingSourceObject: {fileID: 5743204413282233152, guid: 31e5cdb17c8661e4caf1244bdf76e437,
         type: 3}
@@ -19852,11 +19853,7 @@ PrefabInstance:
         type: 3}
       insertIndex: -1
       addedObject: {fileID: 268336993}
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 1741342055085035423, guid: 31e5cdb17c8661e4caf1244bdf76e437,
-        type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1833508773}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 31e5cdb17c8661e4caf1244bdf76e437, type: 3}
 --- !u!1 &1833508768 stripped
 GameObject:
@@ -19882,26 +19879,6 @@ GameObject:
     type: 3}
   m_PrefabInstance: {fileID: 1833508767}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &1833508772 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 1741342055085035423, guid: 31e5cdb17c8661e4caf1244bdf76e437,
-    type: 3}
-  m_PrefabInstance: {fileID: 1833508767}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &1833508773
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1833508772}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a555f1baf3b8b1340b746f1fff739af7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  shopStands: []
-  itemPrefabs: []
 --- !u!1 &1840391928
 GameObject:
   m_ObjectHideFlags: 0
@@ -25084,7 +25061,7 @@ PrefabInstance:
     - target: {fileID: 328345153091362164, guid: 9bdb7e8a388ef8549be446f077cabb1f,
         type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0
+      value: 5.42
       objectReference: {fileID: 0}
     - target: {fileID: 328345153091362164, guid: 9bdb7e8a388ef8549be446f077cabb1f,
         type: 3}
@@ -25094,7 +25071,7 @@ PrefabInstance:
     - target: {fileID: 328345153091362164, guid: 9bdb7e8a388ef8549be446f077cabb1f,
         type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0
+      value: 38.62
       objectReference: {fileID: 0}
     - target: {fileID: 328345153091362164, guid: 9bdb7e8a388ef8549be446f077cabb1f,
         type: 3}
@@ -33365,7 +33342,7 @@ PrefabInstance:
         type: 3}
       propertyPath: onPurchaseClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
       value: 
-      objectReference: {fileID: 1833508773}
+      objectReference: {fileID: 0}
     - target: {fileID: 7527723069164881532, guid: 30377263374db4d4e8fd30eaa976e116,
         type: 3}
       propertyPath: onPurchaseClick.m_PersistentCalls.m_Calls.Array.data[1].m_Target

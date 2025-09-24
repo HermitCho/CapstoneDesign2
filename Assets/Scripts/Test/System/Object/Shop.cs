@@ -18,6 +18,10 @@ public class Shop : MonoBehaviourPun
     private GameObject[] currentItems;
     private Coroutine[] renewCoroutines;
     
+    // 아이템 갱신 시간 관리
+    private float[] itemRenewTimes; // 각 슬롯의 남은 갱신 시간
+    private bool[] isRenewTimerActive; // 각 슬롯의 타이머 활성 상태
+    
     // 현재 상점을 이용중인 플레이어들
     private HashSet<ShopController> connectedPlayers = new HashSet<ShopController>();
     
@@ -45,6 +49,15 @@ public class Shop : MonoBehaviourPun
 
         currentItems = new GameObject[shopStands.Length];
         renewCoroutines = new Coroutine[shopStands.Length];
+        itemRenewTimes = new float[shopStands.Length];
+        isRenewTimerActive = new bool[shopStands.Length];
+        
+        // 타이머 초기화
+        for (int i = 0; i < itemRenewTimes.Length; i++)
+        {
+            itemRenewTimes[i] = 0f;
+            isRenewTimerActive[i] = false;
+        }
         
         // 마스터 클라이언트만 아이템 생성
         if (PhotonNetwork.IsMasterClient)
@@ -170,15 +183,27 @@ public class Shop : MonoBehaviourPun
             GameObject spawnedItem = PhotonNetwork.Instantiate(selectedPrefab.name, spawnPos, spawnRot);
             currentItems[positionIndex] = spawnedItem;
             
+            // 아이템에 회전 애니메이션 컴포넌트 추가
+            ItemRotator rotator = spawnedItem.GetComponent<ItemRotator>();
+            if (rotator == null)
+            {
+                rotator = spawnedItem.AddComponent<ItemRotator>();
+            }
+            
             // ShopStand에 아이템 배치 (모든 클라이언트에서 동기화)
             photonView.RPC("SyncItemToShopStand", RpcTarget.All, positionIndex, spawnedItem.GetComponent<PhotonView>().ViewID);
             
-            // 아이템의 renewTime 후에 새로운 아이템으로 교체
+            // 아이템의 renewTime 설정 및 타이머 시작
             Item itemComponent = spawnedItem.GetComponent<Item>();
             if (itemComponent != null)
             {
                 float renewTime = itemComponent.RenewTime;
-                renewCoroutines[positionIndex] = StartCoroutine(RenewItemAfterTime(positionIndex, renewTime));
+                itemRenewTimes[positionIndex] = renewTime;
+                isRenewTimerActive[positionIndex] = true;
+                // renewCoroutines[positionIndex] = StartCoroutine(RenewItemAfterTime(positionIndex, renewTime)); // 더 이상 사용하지 않음
+                
+                // 모든 클라이언트에 타이머 정보 동기화
+                photonView.RPC("SyncRenewTimer", RpcTarget.All, positionIndex, renewTime, true);
             }
             
             Debug.Log($"Shop: 위치 {positionIndex}에 아이템 {selectedPrefab.name} 생성됨");
@@ -220,14 +245,14 @@ public class Shop : MonoBehaviourPun
     }
     
     /// <summary>
-    /// 지정된 시간 후 아이템 갱신
+    /// 지정된 시간 후 아이템 갱신 (더 이상 사용하지 않음 - UpdateRenewTimers로 대체)
     /// </summary>
     /// <param name="positionIndex">갱신할 위치 인덱스</param>
     /// <param name="renewTime">갱신 시간</param>
     IEnumerator RenewItemAfterTime(int positionIndex, float renewTime)
     {
         yield return new WaitForSeconds(renewTime);
-        GenerateItemAtPosition(positionIndex);
+        // 이 메서드는 더 이상 사용되지 않음 - UpdateRenewTimers에서 처리
     }
     
     /// <summary>
@@ -355,11 +380,80 @@ public class Shop : MonoBehaviourPun
             renewCoroutines[positionIndex] = null;
         }
         
-        // 새 아이템 생성 예약
-        float renewTime = 10f; // 기본값 10초
-        renewCoroutines[positionIndex] = StartCoroutine(RenewItemAfterTime(positionIndex, renewTime));
+        // 기존 타이머 시간 유지 (아이템이 구매되어도 타이머는 계속 진행)
+        if (isRenewTimerActive[positionIndex] && itemRenewTimes[positionIndex] > 0f)
+        {
+            Debug.Log($"Shop: 기존 타이머 시간 유지 - {itemRenewTimes[positionIndex]}초");
+            // 타이머는 UpdateRenewTimers()에서 계속 업데이트됨
+        }
+        else
+        {
+            // 타이머가 비활성화되어 있으면 기본값 사용
+            float defaultRenewTime = 10f;
+            itemRenewTimes[positionIndex] = defaultRenewTime;
+            isRenewTimerActive[positionIndex] = true;
+            
+            // 모든 클라이언트에 타이머 정보 동기화
+            photonView.RPC("SyncRenewTimer", RpcTarget.All, positionIndex, defaultRenewTime, true);
+            Debug.Log($"Shop: 기본 타이머 시간 사용 - {defaultRenewTime}초");
+        }
         
         Debug.Log($"Shop: 위치 {positionIndex} 아이템 구매 처리 완료");
+    }
+    
+    /// <summary>
+    /// 갱신 타이머 동기화 (모든 클라이언트에서 호출)
+    /// </summary>
+    /// <param name="positionIndex">위치 인덱스</param>
+    /// <param name="remainingTime">남은 시간</param>
+    /// <param name="isActive">타이머 활성 상태</param>
+    [PunRPC]
+    void SyncRenewTimer(int positionIndex, float remainingTime, bool isActive)
+    {
+        if (positionIndex < 0 || positionIndex >= itemRenewTimes.Length) return;
+        
+        itemRenewTimes[positionIndex] = remainingTime;
+        isRenewTimerActive[positionIndex] = isActive;
+        
+        // ShopStand에 타이머 정보 전달
+        if (positionIndex < shopStands.Length && shopStands[positionIndex] != null)
+        {
+            shopStands[positionIndex].SetRenewTimer(remainingTime, isActive);
+        }
+        
+        Debug.Log($"Shop: 타이머 동기화 - Position: {positionIndex}, Time: {remainingTime}, Active: {isActive}");
+    }
+    
+    /// <summary>
+    /// 타이머 업데이트 (마스터 클라이언트에서 호출)
+    /// </summary>
+    void UpdateRenewTimers()
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+        
+        for (int i = 0; i < itemRenewTimes.Length; i++)
+        {
+            if (isRenewTimerActive[i] && itemRenewTimes[i] > 0f)
+            {
+                itemRenewTimes[i] -= Time.deltaTime;
+                
+                // 타이머가 0 이하가 되면 갱신
+                if (itemRenewTimes[i] <= 0f)
+                {
+                    itemRenewTimes[i] = 0f;
+                    isRenewTimerActive[i] = false;
+                    GenerateItemAtPosition(i);
+                }
+                
+                // 모든 클라이언트에 타이머 업데이트 전송
+                photonView.RPC("SyncRenewTimer", RpcTarget.All, i, itemRenewTimes[i], isRenewTimerActive[i]);
+            }
+        }
+    }
+    
+    void Update()
+    {
+        UpdateRenewTimers();
     }
     
     #endregion
