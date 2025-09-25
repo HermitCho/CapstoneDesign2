@@ -19,23 +19,34 @@ public class SightTrap : MonoBehaviourPun
 
     private void OnTriggerEnter(Collider other)
     {
+        Debug.Log($"[SightTrap] OnTriggerEnter 호출됨 - other={other.name}");
         if (isActivated) return; // 중복 발동 방지
-        if (!PhotonNetwork.IsMasterClient) return; // 마스터만 판정
+                                 //if (!PhotonNetwork.IsMasterClient) return; // 마스터만 판정
 
-        MoveController enemy = other.GetComponent<MoveController>();
-        if (enemy == null) return;
+        if (other.CompareTag("Player"))
+        {
+            MoveController enemy = other.GetComponent<MoveController>();
+            if (enemy == null)
+                enemy = other.GetComponentInParent<MoveController>();
 
-        // 설치자 본인은 무시
-        if (enemy.photonView.OwnerActorNr == ownerActorNumber) return;
+            if (enemy == null)
+            {
+                Debug.Log("[SightTrap] MoveController를 찾을 수 없음");
+                return;
+            }
 
-        isActivated = true;
-        Debug.Log($"[SightTrap] 함정 발동! 피해자: {enemy.name}");
+            // 설치자 본인은 무시
+            //if (enemy.photonView.OwnerActorNr == ownerActorNumber) return;
 
-        // 발동 효과 실행 (설치자에게만 보여주기)
-        photonView.RPC(nameof(ProvidesVisibility), RpcTarget.All, enemy.photonView.ViewID);
+            isActivated = true;
+            Debug.Log($"[SightTrap] 함정 발동! 피해자: {enemy.name}");
 
-        // 발동 후 제거
-        PhotonNetwork.Destroy(gameObject);
+            // 발동 효과 실행 (설치자에게만 보여주기)
+            photonView.RPC(nameof(ProvidesVisibility), RpcTarget.All, enemy.photonView.ViewID);
+
+            // 발동 후 제거
+            PhotonNetwork.Destroy(gameObject);
+        }
     }
 
     [PunRPC]
