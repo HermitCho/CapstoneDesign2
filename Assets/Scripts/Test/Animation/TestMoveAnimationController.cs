@@ -1,88 +1,79 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.Animations.Rigging;
 using RootMotion.FinalIK;
 using Photon.Pun;
 
 /// <summary>
-/// 캐릭터의 이동/점프/조준/재장전 애니메이션을 제어하는 컨트롤러
+/// 캐릭터의 이동/점프/조준/재장전/스킬/아이템 애니메이션을 제어하는 컨트롤러
 /// </summary>
 public class TestMoveAnimationController : MonoBehaviourPun
-{   
-    // 애니메이터 컴포넌트
+{
+    // --- 컴포넌트 ---
     private Animator animator;
     private Rigidbody rb;
-    private int upperBodyLayerIndex;
     private PhotonView photonView;
 
-    // 입력값(WASD, 마우스 X)
-    private Vector2 moveInput; 
-    private Vector2 mouseInput;
-    
-    // 재장전 관련
-    private bool isReloading = false;
-    
-    // 점프 상태 추적
-    private bool isJumping = false;
-    
-    // 총을 쏘는 상태 추적
-    private bool isShooting = false;
-
-    // 캐릭터 이동 정보를 가져오는 컴포넌트
     private MoveController moveController;
     private CameraController cameraController;
     private ItemController itemController;
-
-    // 테디베어 총기 부착 관련
-    [SerializeField] private Crown teddyBear;
-    [SerializeField] private GameObject gunObject;
-    private bool previousAttachState = false;
-
-    // 발소리 관련
     private FootstepSoundPlayer footstepSoundPlayer;
-
-    // 체력 관련
-    private GunIK gunIK;
     private AimIK aimIK;
     private LivingEntity livingEntity;
-
-    // 대쉬 스킬
     private Skill skill;
-    // 아이템 스킬
     private Skill itemSkill;
+    private TestGun gun;
+
+    // --- 애니메이션/상태 ---
+    private int upperBodyLayerIndex;
+    private Vector2 moveInput;
+    private Vector2 mouseInput;
+
+    private bool isReloading = false;
+    private bool isJumping = false;
+    private bool isShooting = false;
+    private float upperBodyWeightVelocity;
+    private float reloadCooldown = 0f;
+    private bool firstReload = true;
+
+    // --- 스킬 관련 ---
     private Coroutine speedSkillCoroutine;
     private string skillAnimationTriggerName = "None";
     private string itemSkillAnimationTriggerName = "None";
 
-    
+    // --- 무기/테디베어 ---
+    [SerializeField] private Crown teddyBear;
+    [SerializeField] private GameObject gunObject;
+    private bool previousAttachState = false;
 
     private void Awake()
     {
         animator = GetComponent<Animator>();
+        rb = GetComponent<Rigidbody>();
+        photonView = GetComponent<PhotonView>();
         moveController = GetComponent<MoveController>();
         cameraController = GetComponent<CameraController>();
         itemController = GetComponent<ItemController>();
-        rb = GetComponent<Rigidbody>();
-        upperBodyLayerIndex = animator.GetLayerIndex("UpperBody");
-        gunIK = GetComponent<GunIK>();
-        livingEntity = GetComponent<LivingEntity>();
         footstepSoundPlayer = GetComponent<FootstepSoundPlayer>();
-        skill = GetComponent<Skill>();
         aimIK = GetComponent<AimIK>();
-        photonView = GetComponent<PhotonView>();
+        livingEntity = GetComponent<LivingEntity>();
+        skill = GetComponent<Skill>();
+        gun = gunObject?.GetComponent<TestGun>();
+
+        upperBodyLayerIndex = animator.GetLayerIndex("UpperBody");
+        animator.SetLayerWeight(upperBodyLayerIndex, 1f);
         animator.SetFloat("SpeedMultiplier", 1.2f);
-        skillAnimationTriggerName = skill.SkillAnimationTriggerName;
+
+        if (skill != null)
+            skillAnimationTriggerName = skill.SkillAnimationTriggerName;
     }
 
     private void OnEnable()
     {
         if (!photonView.IsMine) return;
+
         InputManager.OnMoveInput += OnMoveInput;
         InputManager.OnXMouseInput += OnMouseInput;
-        //InputManager.OnZoomPressed += OnZoomInput;
-        //InputManager.OnZoomCanceledPressed += OnZoomCanceledInput;
         InputManager.OnReloadPressed += OnReloadInput;
         InputManager.OnSkillPressed += OnSkillInput;
         InputManager.OnItemPressed += OnItemInput;
@@ -99,10 +90,9 @@ public class TestMoveAnimationController : MonoBehaviourPun
     private void OnDisable()
     {
         if (!photonView.IsMine) return;
+
         InputManager.OnMoveInput -= OnMoveInput;
         InputManager.OnXMouseInput -= OnMouseInput;
-        //InputManager.OnZoomPressed -= OnZoomInput;
-        //InputManager.OnZoomCanceledPressed -= OnZoomCanceledInput;
         InputManager.OnReloadPressed -= OnReloadInput;
         InputManager.OnSkillPressed -= OnSkillInput;
         InputManager.OnItemPressed -= OnItemInput;
@@ -115,121 +105,68 @@ public class TestMoveAnimationController : MonoBehaviourPun
             livingEntity.OnRevive -= OnRevive;
         }
     }
-    
+
     private void Update()
     {
         if (!photonView.IsMine) return;
-        if(GameManager.Instance.IsGameOver()) return;
+        if (GameManager.Instance.IsGameOver()) return;
+
         HandleMovementAnimation();
         HandleJumpAnimation();
         HandleTeddyBearWeaponState();
         HandleHealthBasedAnimation();
         HandleUpperBodyLayer();
+
+        if (reloadCooldown > 0f)
+            reloadCooldown -= Time.deltaTime;
+
     }
 
+    // --- 애니메이션 처리 ---
     private void HandleUpperBodyLayer()
     {
+        float targetWeight = 0f;
+
         bool isInMovement = animator.GetCurrentAnimatorStateInfo(0).IsName("Movement");
-        float weight = 0f;
-        
-        // 장전 중이거나 (점프 중이면서 총을 쏘는 중)이거나 Movement 상태일 때 상체 레이어 활성화
+        bool isInJumpDown = animator.GetCurrentAnimatorStateInfo(0).IsName("JumpDown");
+
         if (isReloading || (isJumping && isShooting) || isInMovement)
-        {
-            weight = 1f;
-        }
-        
-        animator.SetLayerWeight(upperBodyLayerIndex, weight);
+            targetWeight = 1f;
+
+        if (isInJumpDown && isShooting)
+            targetWeight = 1f;
+
+        // 부드럽게 보간
+        float smoothedWeight = Mathf.SmoothDamp(
+            animator.GetLayerWeight(upperBodyLayerIndex), // 현재값
+            targetWeight,                                 // 목표값
+            ref upperBodyWeightVelocity,                  // 속도 참조
+            0.15f                                         // 스무딩 시간
+        );
+
+        animator.SetLayerWeight(upperBodyLayerIndex, smoothedWeight);
     }
 
-    // 체력 기반 애니메이션 처리
     private void HandleHealthBasedAnimation()
     {
-        if (livingEntity == null) return;
-
-        // MoveController의 스턴 상태 확인하여 stun 애니메이션 제어
-        if (moveController != null)
-        {
-            bool isStunned = moveController.IsStunned();
-        }
+        if (livingEntity == null || moveController == null) return;
+        bool isStunned = moveController.IsStunned();
+        // 필요 시 애니메이션 파라미터 추가 가능
     }
 
-    // 이동 입력 처리
-    void OnMoveInput(Vector2 input)
-    {
-        moveInput = input;
-    }
-
-    // 마우스 X 이동 입력 처리
-    void OnMouseInput(Vector2 input)
-    {
-        mouseInput = input;
-    }
-
-    // 이동 애니메이션 처리
-    void HandleMovementAnimation()
+    private void HandleMovementAnimation()
     {
         bool isMoving = moveInput.magnitude > 0.1f;
-
         animator.SetFloat("MoveX", moveInput.x, 0.1f, Time.deltaTime);
         animator.SetFloat("MoveY", moveInput.y, 0.1f, Time.deltaTime);
-
         footstepSoundPlayer.SetIsMoving(isMoving);
     }
 
-    private void OnStunned()
+    private void HandleJumpAnimation()
     {
-        if(GameManager.Instance.IsGameOver()) return;
-        animator.SetTrigger("Death");
-    }
-
-    private void OnRevive()
-    {
-        if(GameManager.Instance.IsGameOver()) return;
-        animator.SetTrigger("Revive");
-        // 부활 시 스턴 상태 해제
-        if (moveController != null)
-        {
-            moveController.SetStunned(false);
-        }
-    }
-
-    // 재장전시 트리거 실행
-    void OnReloadInput()
-    {
-        if (GameManager.Instance != null && GameManager.Instance.IsGameOver()) return;
-        if (isReloading) return;
-
-        // 점프 중에 재장전을 하면 즉시 재장전 상태로 설정
-        if (isJumping)
-        {
-            isReloading = true;
-            animator.SetLayerWeight(upperBodyLayerIndex, 1f);
-        }
-
-        animator.SetTrigger("Reload");
-    }
-
-    // 재장전 시작
-    void OnReloadStart()
-    {
-        Debug.Log("OnReloadStart 호출됨");
-        isReloading = true;
-    }
-
-    // 재장전 종료
-    void OnReloadEnd()
-    {
-        Debug.Log("OnReloadEnd 호출됨");
-        isReloading = false;
-    }
-
-    void HandleJumpAnimation()
-    {
-        bool grounded = moveController.IsGrounded();
-
         if (!moveController.IsGrounded())
         {
-            isJumping = true; // 점프 중 상태로 설정
+            isJumping = true;
             if (rb.velocity.y > 0.05f)
             {
                 animator.SetBool("JumpUp", true);
@@ -243,52 +180,99 @@ public class TestMoveAnimationController : MonoBehaviourPun
         }
         else
         {
-            isJumping = false; // 착지 시 점프 상태 해제
+            isJumping = false;
             animator.SetBool("JumpUp", false);
             animator.SetBool("JumpDown", false);
         }
     }
 
-    private void OnShootInput()
+    private void HandleTeddyBearWeaponState()
     {
-        isShooting = true;
+        if (teddyBear == null || gunObject == null) return;
+
+        bool isAttached = teddyBear.IsAttached();
+        if (previousAttachState != isAttached)
+        {
+            gunObject.SetActive(!isAttached);
+            previousAttachState = isAttached;
+            Debug.Log($"총기 {(isAttached ? "숨김" : "표시")} 상태로 변경됨");
+        }
     }
 
-    private void OnShootCanceledInput()
+    // --- 상태 이벤트 ---
+    private void OnStunned()
     {
-        isShooting = false;
+        if (GameManager.Instance.IsGameOver()) return;
+        animator.SetTrigger("Death");
+        moveController?.SetStunned(true);
     }
-    
-    // // 조준 시작 시 호출
-    // void OnZoomInput()
-    // {
-    //     if(GameManager.Instance.IsGameOver()) return;
-    //     gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.Body, gunIK.bodyTarget, 0.04f);
-    //     gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.RightFoot, gunIK.rightLegTarget, 0.3f);
-    //     gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftFoot, gunIK.leftLegTarget, 0.3f);
 
-    //     animator.SetFloat("SpeedMultiplier", 0.6f); // 조준 시 이동 느리게
-    // }
-
-    // // 조준 해제 시 호출
-    // void OnZoomCanceledInput()
-    // {
-    //     gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.Body, gunIK.bodyTarget, 0.01f);
-    //     gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.RightFoot, gunIK.rightLegTarget, 0.2f);
-    //     gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftFoot, gunIK.leftLegTarget, 0.2f);
-
-    //     animator.SetFloat("SpeedMultiplier", 1.2f); // 조준 해제 시 원래 속도
-    // }
-
-    // 스피드 스킬
-    void OnSkillInput()
+    private void OnRevive()
     {
-        if(GameManager.Instance.IsGameOver()) return;
+        if (GameManager.Instance.IsGameOver()) return;
+        animator.SetTrigger("Revive");
+        moveController?.SetStunned(false);
+    }
+
+    // --- 입력 처리 ---
+    private void OnMoveInput(Vector2 input) => moveInput = input;
+    private void OnMouseInput(Vector2 input) => mouseInput = input;
+
+    private void OnShootInput() => isShooting = true;
+    private void OnShootCanceledInput() => isShooting = false;
+
+    private void OnReloadInput()
+    {
+        if (GameManager.Instance != null && GameManager.Instance.IsGameOver()) return;
+
+        if (isReloading || gun == null) return; // 이미 재장전 중이면 무시
+
+        // 총알이 꽉 찼으면 재장전 불가
+        if (gun.CurrentMagAmmo >= gun.GetGunData().maxAmmo)
+        {
+            Debug.Log("총알이 꽉 차서 재장전 불가");
+            return;
+        }
+        if (reloadCooldown > 0f) return; // 쿨타임 중이면 무시
+
+        // 재장전 시작
+        isReloading = true;
+        animator.SetLayerWeight(upperBodyLayerIndex, 1f);
+        animator.SetBool("Reload", true);
+
+        // TestGun 재장전 호출
+        gun.Reload();
+
+        // 첫 장전이면 쿨타임 0, 이후부터는 3.3초
+        if (firstReload)
+        {
+            reloadCooldown = 0f;
+            firstReload = false;
+        }
+        else
+        {
+            reloadCooldown = 3.3f; // 애니메이션 길이와 동일하게
+        }
+        
+    }
+
+    // 애니메이션 이벤트에서 호출
+    private void OnReloadStart() => isReloading = true;
+    private void OnReloadEnd()
+    {
+        if (!isReloading) return;
+
+        // Reload 끝났으니 상태 초기화
+        isReloading = false;
+        animator.SetBool("Reload", false);
+    }
+
+    private void OnSkillInput()
+    {
+        if (GameManager.Instance.IsGameOver()) return;
         if (skill != null && skill.CanUse)
-        {   
-            animator.SetTrigger(skillAnimationTriggerName);
-            animator.SetLayerWeight(upperBodyLayerIndex, 0f);
-            //gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 0f, 0f);
+        {
+            PlaySkillAnimation(skill.SkillAnimationTriggerName);
 
             if (speedSkillCoroutine != null)
                 StopCoroutine(speedSkillCoroutine);
@@ -296,54 +280,38 @@ public class TestMoveAnimationController : MonoBehaviourPun
         }
     }
 
-    private IEnumerator SpeedSkillRoutine()
+    private void OnItemInput()
     {
-        animator.SetFloat("SpeedMultiplier", 1.5f); // 이동만 1.5배
-        yield return new WaitForSeconds(3f);
-        animator.SetFloat("SpeedMultiplier", 1.2f); // 원래대로
-    }
-
-    // 아이템 스킬
-    void OnItemInput()
-    {
-        if(GameManager.Instance.IsGameOver()) return;
+        if (GameManager.Instance.IsGameOver()) return;
         itemSkill = itemController.GetFirstActiveItem();
-        itemSkillAnimationTriggerName = itemSkill.SkillAnimationTriggerName;
-
-
-
         if (itemSkill != null && itemSkill.CanUse)
         {
-            animator.SetTrigger(itemSkill.SkillAnimationTriggerName);
-            animator.SetLayerWeight(upperBodyLayerIndex, 0f);
-            //gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 0f, 0f);
+            PlaySkillAnimation(itemSkill.SkillAnimationTriggerName);
         }
     }
 
-    // 테디베어 총기 부착
-    private void HandleTeddyBearWeaponState()
+    // --- 공통 처리 ---
+    private void PlaySkillAnimation(string triggerName)
     {
-        if (teddyBear == null || gunObject == null) return;
+        animator.SetTrigger(triggerName);
+        animator.SetLayerWeight(upperBodyLayerIndex, 0f);
+    }
 
-        bool isAttached = teddyBear.IsAttached();
-
-        if (previousAttachState != isAttached)
-        {
-            gunObject.SetActive(!isAttached); // 곰인형 들고 있으면 false
-            previousAttachState = isAttached;
-
-            Debug.Log($"총기 {(isAttached ? "숨김" : "표시")} 상태로 변경됨");
-        }
+    private IEnumerator SpeedSkillRoutine()
+    {
+        animator.SetFloat("SpeedMultiplier", 1.5f);
+        yield return new WaitForSeconds(3f);
+        animator.SetFloat("SpeedMultiplier", 1.2f);
     }
 
     public void OnSkillEnd()
     {
-        //gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 1f, 1f);
+
     }
 
     public void PlayVictoryPose()
     {
-        if(GameManager.Instance.IsGameOver())
+        if (GameManager.Instance.IsGameOver())
         {
             StartCoroutine(PlayVictoryPoseAfterDelay());
         }
@@ -351,9 +319,8 @@ public class TestMoveAnimationController : MonoBehaviourPun
 
     private IEnumerator PlayVictoryPoseAfterDelay()
     {
-        yield return new WaitForSeconds(5f);
+        yield return new WaitForSeconds(3f);
         animator.SetTrigger("Victory");
         animator.SetLayerWeight(upperBodyLayerIndex, 0f);
-        //gunIK.SetEffectorPositionWeight(FullBodyBipedEffector.LeftHand, gunIK.leftHandTarget, 0f, 0f);
     }
 }
