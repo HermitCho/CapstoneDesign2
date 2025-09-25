@@ -36,7 +36,7 @@ public class SightTrap : MonoBehaviourPun
             }
 
             // 설치자 본인은 무시
-            //if (enemy.photonView.OwnerActorNr == ownerActorNumber) return;
+            if (enemy.photonView.OwnerActorNr == ownerActorNumber) return;
 
             isActivated = true;
             Debug.Log($"[SightTrap] 함정 발동! 피해자: {enemy.name}");
@@ -63,7 +63,14 @@ public class SightTrap : MonoBehaviourPun
 
         // Outline 효과 붙이기
         var outline = enemy.GetComponent<Outline>();
-        if (outline == null) outline = enemy.gameObject.AddComponent<Outline>();
+        if (outline == null)
+        {
+            // Renderer 단위로 Outline 붙이지 말고,
+            // "MainBody" 같은 특정 오브젝트만 찾아서 Outline 붙이는 것도 가능
+            var body = enemy.transform.Find("Bodies");
+            if (body != null)
+                outline = body.gameObject.AddComponent<Outline>();
+        }
 
         outline.OutlineMode = Outline.Mode.SilhouetteOnly;
         outline.OutlineColor = Color.red;

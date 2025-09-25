@@ -12,13 +12,14 @@ public class SlowballItem : Skill
     [SerializeField] private GameObject slowballPrefab;
     [SerializeField] private Transform launchPoint;
     private float slowballSpeed = 20f;
+    Vector3 spawnPosition;
     protected override void Awake()
     {
         base.Awake();
 
         if (usableCountComponent == null)
             usableCountComponent = gameObject.AddComponent<UsableCountComponent>();
-            _usableCount = usableCountComponent; // 반드시 인터페이스 캐싱
+        _usableCount = usableCountComponent; // 반드시 인터페이스 캐싱
 
         (usableCountComponent as UsableCountComponent).SetMaxUses(1); // 1회용
     }
@@ -28,12 +29,13 @@ public class SlowballItem : Skill
     /// <param name="player">아이템을 사용하는 플레이어의 SkillController.</param>
     public override void CastExecute(SkillController executor, Vector3 pos, Vector3 dir)
     {
-        // 발사 위치가 지정되지 않았으면 플레이어의 위치를 사용
-        Vector3 spawnPosition = launchPoint != null ? launchPoint.position : executor.transform.position + executor.transform.forward * 1.5f + executor.transform.up * 1.5f;
+        spawnPosition = launchPoint != null
+           ? launchPoint.position
+           : executor.transform.position + executor.transform.forward * 1.5f + executor.transform.up * 1.5f;
 
         // 네트워크 상에 파이어볼 프리팹을 생성
         GameObject slowballInstance = PhotonNetwork.Instantiate(
-            "Prefabs/Skill/" + slowballPrefab.name,
+            "Prefabs/ItemObject/" + slowballPrefab.name,
             spawnPosition,
             Quaternion.identity
         );

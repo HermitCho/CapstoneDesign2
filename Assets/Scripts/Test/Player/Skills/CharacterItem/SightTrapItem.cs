@@ -21,11 +21,12 @@ public class SightTrapItem : Skill
 
     public override void CastExecute(SkillController executor, Vector3 pos, Vector3 dir)
     {
+        Debug.Log("[Sight Trap Item] CastExecute 입력됨");
         Vector3 spawnPos = placementPreviewComponent.GetPlacementPosition();
         Quaternion spawnRot = placementPreviewComponent.GetPlacementRotation();
 
         GameObject trapObj = PhotonNetwork.Instantiate(
-            "Prefabs/Skill/" + trapPrefab.name,
+            "Prefabs/ItemObject/" + trapPrefab.name,
             spawnPos,
             spawnRot
         );

@@ -290,6 +290,7 @@ public class SkillController : MonoBehaviourPun
     #region 아이템 사용
     public void UseItem(ItemController itemController)
     {
+        Debug.Log("SkillController - UseItem 실행");
         if (activeItem == null || !photonView.IsMine) return;
 
         if (activeItem.HasPreview)
@@ -366,6 +367,7 @@ public class SkillController : MonoBehaviourPun
     {
         if (photonView.IsMine && activeItem != null && activeItem.Index == itemIndex)
         {
+            Debug.Log("SkillController - CastExecuteItem 실행");
             activeItem.CastExecute(this, pos, dir);
         }
 

@@ -26,7 +26,7 @@ public class TrapItem : Skill
 
         // 네트워크 상에 설치
         GameObject trapObj = PhotonNetwork.Instantiate(
-            "Prefabs/Skill/" + trapPrefab.name, // 반드시 Resources/Prefabs/Skill 경로에 있어야 함
+            "Prefabs/ItemObject/" + trapPrefab.name, // 반드시 Resources/Prefabs/Skill 경로에 있어야 함
             spawnPos,
             spawnRot  
         );

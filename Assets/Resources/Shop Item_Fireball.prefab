@@ -15,8 +15,9 @@ GameObject:
   - component: {fileID: 8712676363590355750}
   - component: {fileID: 5028637767412622912}
   - component: {fileID: -397966119260603548}
+  - component: {fileID: 4560470728079277997}
   m_Layer: 0
-  m_Name: Test Item3
+  m_Name: Shop Item_Fireball
   m_TagString: Item
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -65,7 +66,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: e2575714295c25942809564a33373aeb, type: 2}
+  - {fileID: 2100000, guid: dd8475678afe478489244a248dbf5d44, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -120,9 +121,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 730ec570e5c5d2545a9b4aa0dbd3ec08, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  renewTime: 30
+  renewTime: 20
   probability: 0.3
-  itemObject: {fileID: 3231566993332599146, guid: fc41521962cc3ed44a42c1e59a26d440,
+  itemObject: {fileID: 5829680253115518611, guid: e0f80079d9ceb78478d278d8bc7b7d97,
     type: 3}
 --- !u!114 &5028637767412622912
 MonoBehaviour:
@@ -163,3 +164,20 @@ MonoBehaviour:
   m_SynchronizeRotation: 1
   m_SynchronizeScale: 1
   m_UseLocal: 1
+--- !u!114 &4560470728079277997
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1765150647018871578}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 245524fa5bcf6bd4480ee0c8e62e17f7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  rotationSpeed: 20
+  rotationAxis: {x: 1, y: 0, z: 0}
+  useSineWave: 0
+  amplitude: 5
+  frequency: 1

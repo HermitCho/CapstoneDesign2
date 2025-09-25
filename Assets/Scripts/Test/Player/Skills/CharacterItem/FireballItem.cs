@@ -31,7 +31,7 @@ public class FireballItem : Skill
            : executor.transform.position + executor.transform.forward * 1.5f + executor.transform.up * 1.5f;
 
         GameObject fireballInstance = PhotonNetwork.Instantiate(
-            "Prefabs/Skill/" + fireballPrefab.name,
+            "Prefabs/ItemObject/" + fireballPrefab.name,
             spawnPosition,
             Quaternion.identity
         );
