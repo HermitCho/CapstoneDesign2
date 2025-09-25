@@ -6,7 +6,7 @@ public class TrapItem : Skill
     [Header("Trap Settings")]
     [SerializeField] private GameObject trapPrefab;   // 설치할 함정 프리팹
     [SerializeField] private float trapLifetime = 15f; // 설치 후 지속 시간
-    private int useItemCount = 3;
+    private int useItemCount = 1;
 
     protected override void Awake()
     {
