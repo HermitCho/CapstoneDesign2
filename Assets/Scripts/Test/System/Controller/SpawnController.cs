@@ -262,18 +262,8 @@ public class SpawnController : MonoBehaviourPunCallbacks
 
         try
         {
-            string prefabPath = GetPrefabResourcePath(prefab);
-            Debug.Log($"📂 SpawnController: 프리팹 경로 - {prefabPath}");
-
-            if (string.IsNullOrEmpty(prefabPath))
-            {
-                Debug.LogError($"❌ SpawnController: 프리팹 {prefab.name}의 Resources 경로를 찾을 수 없습니다.");
-                isSpawning = false;
-                yield break;
-            }
-
             Debug.Log($"🌐 SpawnController: PhotonNetwork.Instantiate 호출 중...");
-            currentSpawnedCharacter = PhotonNetwork.Instantiate(prefabPath, spawnPosition, spawnRotation);
+            currentSpawnedCharacter = PhotonNetwork.Instantiate($"Prefabs/InGameCharacter/{prefab.name}", spawnPosition, spawnRotation);
             Debug.Log($"✅ SpawnController: PhotonNetwork.Instantiate 성공 - {currentSpawnedCharacter.name}");
 
             PhotonView pv = currentSpawnedCharacter.GetComponent<PhotonView>();
@@ -307,28 +297,6 @@ public class SpawnController : MonoBehaviourPunCallbacks
         isSpawning = false;
         
         Debug.Log($"🎉 SpawnController: 캐릭터 스폰 완료! - {currentSpawnedCharacter.name}");
-    }
-
-    private string GetPrefabResourcePath(GameObject prefab)
-    {
-        if (prefab == null) return null;
-
-        string prefabName = prefab.name;
-        
-        if (prefabName.Contains("Player"))
-        {
-            return $"Prefabs/{prefabName}";
-        }
-        else if (prefabName.Contains("Character"))
-        {
-            return $"Prefabs/Character/{prefabName}";
-        }
-        else if (prefabName.Contains("Test"))
-        {
-            return $"Prefabs/{prefabName}";
-        }
-        
-        return $"Prefabs/{prefabName}";
     }
 
     public void DestroyCurrentCharacter()

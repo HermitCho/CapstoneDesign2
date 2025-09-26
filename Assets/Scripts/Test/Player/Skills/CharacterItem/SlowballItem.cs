@@ -33,7 +33,7 @@ public class SlowballItem : Skill
 
         // 네트워크 상에 파이어볼 프리팹을 생성
         GameObject slowballInstance = PhotonNetwork.Instantiate(
-            "Prefabs/Skill/" + slowballPrefab.name,
+            "Prefabs/ItemObject/" + slowballPrefab.name,
             spawnPosition,
             Quaternion.identity
         );

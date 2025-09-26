@@ -316,7 +316,7 @@ public class Shop : MonoBehaviourPun
             
             try
             {
-                spawnedItem = PhotonNetwork.Instantiate(selectedPrefab.name, spawnPos, spawnRot);
+                spawnedItem = PhotonNetwork.Instantiate($"Prefabs/ShopItems/{selectedPrefab.name}", spawnPos, spawnRot);
                 if (spawnedItem != null)
                 {
                     currentItems[positionIndex] = spawnedItem;

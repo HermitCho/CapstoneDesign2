@@ -25,7 +25,7 @@ public class SightTrapItem : Skill
         Quaternion spawnRot = placementPreviewComponent.GetPlacementRotation();
 
         GameObject trapObj = PhotonNetwork.Instantiate(
-            "Prefabs/Skill/" + trapPrefab.name,
+            "Prefabs/ItemObject/" + trapPrefab.name,
             spawnPos,
             spawnRot
         );
