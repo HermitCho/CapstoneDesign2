@@ -6,6 +6,7 @@ using Photon.Pun;
 using Photon.Realtime; // Player 클래스를 위해 추가
 using Febucci.UI;
 using Michsky.UI.Heat;
+using System.Threading;
 
 /// <summary>
 /// 생명체의 기본 기능을 담당하는 클래스 (포톤 멀티플레이 고려)
@@ -30,6 +31,8 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
     public float CurrentHealth { get; private set; }
     public float CurrentShield { get; private set; }
     public bool IsDead { get; private set; }
+    private bool IsInvincivilityActive;
+    private int IsInvincivilityCount;
 
     // ✅ LivingEntity의 체력 변화를 알리는 static 이벤트. GameManager가 구독합니다.
     public static event Action<float, float, LivingEntity> OnAnyLivingEntityHealthChanged;
@@ -81,6 +84,10 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
         CurrentShield = StartingShield;
         CharacterData = characterData;
         moveController = GetComponent<MoveController>();
+        IsInvincivilityActive = false;
+        IsInvincivilityCount = 0;
+
+        OnAnyLivingEntityHealthChanged?.Invoke(CurrentHealth, StartingHealth, this);
     }
 
     #endregion
@@ -93,48 +100,58 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
     /// </summary>
     /// 
     [PunRPC]
-    public void UpdateHealth(float newHealth, bool newDead)
+    public void RPC_UpdateHealth(float newHealth, bool newDead, int newInvincibilityCount)
     {
         CurrentHealth = newHealth;
         IsDead = newDead;
-        OnAnyLivingEntityHealthChanged?.Invoke(CurrentHealth, StartingShield, this);
-    }
 
-    [PunRPC]
-    public void RPC_UpdateHealth(float newHealth)
-    {
-        Debug.Log($"[LivingEntity] {gameObject.name} 체력 동기화 - 이전: {CurrentHealth} -> 새로운: {newHealth}");
-        CurrentHealth = newHealth;
+        // 🌟 무적 카운트 동기화 (RPC로 즉시 반영)
+        IsInvincivilityCount = newInvincibilityCount;
+
         OnAnyLivingEntityHealthChanged?.Invoke(CurrentHealth, StartingHealth, this);
+        // Debug.Log($"[LivingEntity] {gameObject.name} 체력/상태 동기화 - H:{CurrentHealth}, D:{IsDead}, IC:{IsInvincivilityCount}");
     }
 
     [PunRPC]
-    public virtual void OnDamage(float damage, Vector3 hitPoint, Vector3 hitNormal, int attackerViewId)
+    public void OnDamage(float damage, Vector3 hitPoint, Vector3 hitNormal, int attackerViewId)
     {
+        // 🚨 데미지 계산 및 상태 변경은 마스터 클라이언트에서만 수행합니다.
         if (!PhotonNetwork.IsMasterClient) return;
         if (IsDead) return;
         if (CurrentHealth <= 0f) return;
 
+        // 무적 검사 (무제한 무적)
+        if (IsInvincivilityActive) return;
+
+        // 무적 검사 (횟수 무적)
+        if (IsInvincivilityCount > 0)
+        {
+            IsInvincivilityCount -= 1;
+            // 🌟 무적 카운트 감소 상태를 모든 클라이언트에 즉시 동기화합니다.
+            photonView.RPC("RPC_UpdateHealth", RpcTarget.All, CurrentHealth, IsDead, IsInvincivilityCount);
+            return;
+        }
+
         PhotonView attackerPV = PhotonView.Find(attackerViewId);
         LivingEntity attacker = attackerPV?.GetComponent<LivingEntity>();
 
-        float previousHealth = CurrentHealth;
+        // 데미지 적용
         CurrentHealth = Mathf.Max(0f, CurrentHealth - damage);
 
-        photonView.RPC("RPC_UpdateHealth", RpcTarget.All, CurrentHealth);
+        // 🌟 변경된 체력과 상태(Dead, InvincibilityCount)를 모든 클라이언트에 동기화합니다.
+        // 마스터 클라이언트가 계산했기 때문에 RpcTarget.All로 보내면 됩니다.
+        bool died = CurrentHealth <= 0f;
+        photonView.RPC("RPC_UpdateHealth", RpcTarget.All, CurrentHealth, died, IsInvincivilityCount);
 
-        // 피격 방향 계산
-        Vector3 damageDir = attacker != null ?
-            (transform.position - attacker.transform.position).normalized :
-            -hitNormal.normalized;
+        // 피격 효과 RPC는 로컬에서만 실행되도록 Owner에게 전송
+        photonView.RPC("RPC_OnHitEffect", photonView.Owner, -(hitNormal.normalized));
 
-        // 피격당한 플레이어에게만 UI 이벤트 RPC 전송
-        photonView.RPC("RPC_OnHitEffect", photonView.Owner, -damageDir);
-
-        if (CurrentHealth <= 0f && !IsDead)
+        if (died && !IsDead)
         {
             currentAttacker = attacker;
             int attackerId = attacker != null ? attacker.photonView.ViewID : -1;
+            // RPC_Die는 이미 RPC_UpdateHealth에서 IsDead 상태를 설정했으므로,
+            // 추가적인 처리를 위해 RPC를 호출합니다.
             photonView.RPC("RPC_Die", RpcTarget.All, attackerId);
         }
     }
@@ -145,7 +162,7 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
     /// <param name="healAmount">회복량</param>
 
     [PunRPC]
-    public virtual void RestoreHealth(float healAmount)
+    public void RestoreHealth(float healAmount)
     {
         if (IsDead || healAmount <= 0f) return; // ✅ IsDead 변수 사용
 
@@ -160,7 +177,7 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
     }
 
     [PunRPC]
-    public virtual void RestoreShield(float shieldAmount)
+    public void RestoreShield(float shieldAmount)
     {
         if (IsDead || shieldAmount <= 0f) return; // ✅ IsDead 변수 사용
         CurrentShield = Mathf.Min(StartingShield, CurrentShield + shieldAmount);
@@ -176,7 +193,7 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
     /// </summary>
     /// <returns>사망 처리 성공 여부</returns>
     [PunRPC]
-    public virtual bool RPC_Die(int attackerViewId)
+    public bool RPC_Die(int attackerViewId)
     {
         // 이미 사망한 상태라면 처리하지 않음
         if (IsDead)
@@ -280,6 +297,24 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
         }
     }
 
+    //무제한 무적
+    [PunRPC]
+    public void Set_Count_invincibility(int count)
+    {
+        // 🚨 이 함수는 OneTimeDefense.InitializeShield에서 RPC로 호출되어야 합니다.
+        // 모든 클라이언트에서 동일하게 카운트를 설정합니다.
+        if (IsInvincivilityCount <= 0)
+        {
+            IsInvincivilityCount = count;
+        }
+        // Debug.Log($"[LivingEntity] Set_Count_invincibility called. Count: {IsInvincivilityCount}");
+    }
+
+
+    public bool HasInvincibilityCount()
+    {
+        return IsInvincivilityCount > 0;
+    }
 
     public LivingEntity GetAttacker()
     {

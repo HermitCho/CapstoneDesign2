@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &3231566993332599146
+--- !u!1 &5300828926313202782
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8,88 +8,72 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 6633809363998572306}
-  - component: {fileID: -7470115484436065041}
-  - component: {fileID: -7897679263370860801}
-  - component: {fileID: 7945647120290168097}
+  - component: {fileID: 5880375114137490369}
+  - component: {fileID: 861180210779705986}
+  - component: {fileID: 5502936096113467688}
   m_Layer: 0
-  m_Name: SightTrap_Item
+  m_Name: OneTimeDefenseItem
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &6633809363998572306
+--- !u!4 &5880375114137490369
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3231566993332599146}
+  m_GameObject: {fileID: 5300828926313202782}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -5.6795473, y: -0.0000019073486, z: 88.34682}
+  m_LocalPosition: {x: 12.625926, y: 0, z: 50.788563}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &-7470115484436065041
+--- !u!114 &861180210779705986
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3231566993332599146}
+  m_GameObject: {fileID: 5300828926313202782}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7b173d745cce2c64fa7021c77716cb48, type: 3}
+  m_Script: {fileID: 11500000, guid: f6d306642454c3b499a46097643a07c1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  skillName: "\uC704\uCE58 \uD2B8\uB7A9"
-  skillDescription: "\uBC1F\uC744 \uC2DC 3\uCD08\uAC04 \uD2B8\uB7A9 \uC0AC\uC6A9\uC790\uC5D0\uAC8C
-    \uC704\uCE58\uAC00 \uBC1C\uAC01\uB418\uB294 \uC9C0\uB8B0\uB97C \uC124\uCE58\uD569\uB2C8\uB2E4.
-    3\uAC1C \uC18C\uC9C0"
+  skillName: "\uAD6C\uC2AC \uBCF4\uD638\uB9C9"
+  skillDescription: "\uC0AC\uC6A9 \uC2DC \uC5B4\uB5A0\uD55C \uACF5\uACA9\uC774\uB4E0
+    \uD55C\uBC88 \uB9C9\uC544\uC90D\uB2C8\uB2E4. "
   cooldown: 0
   duration: 0
   effectDuration: 0
   effectCastingDuration: 0
-  castTime: 1
+  castTime: 0
   destroyTime: 20
-  isFollowing: 0
+  isFollowing: 1
   isCastingFollowing: 0
-  index: 6
-  skillIcon: {fileID: 21300000, guid: f1320f1f1f7244c43933e26f891b9c8f, type: 3}
+  index: 0
+  skillIcon: {fileID: 21300000, guid: 8ac0fcb35b50d46ae94264a47d84f4c5, type: 3}
   skillColor: {r: 1, g: 1, b: 1, a: 1}
   skillEffect: {fileID: 0}
   castTimeSkillEffect: {fileID: 0}
-  skillSound: {fileID: 0}
+  skillSound: {fileID: 8300000, guid: 3aed00a31da51184d97f412d970f30a9, type: 3}
   castTimeSkillSound: {fileID: 0}
   price: 1
   skillAnimationTriggerName: None
-  trapPrefab: {fileID: 1576379389378143963, guid: f3eaffa5652df184389317da47feea84,
+  shieldPrefab: {fileID: 2761849811304081350, guid: a33f9bdf8cd752444afbee1bd7104065,
     type: 3}
-  trapLifetime: 60
---- !u!114 &-7897679263370860801
+--- !u!114 &5502936096113467688
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3231566993332599146}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a0b9bc7031ee9aa448fa7e3114963291, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  setTransform: {fileID: 0}
---- !u!114 &7945647120290168097
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3231566993332599146}
+  m_GameObject: {fileID: 5300828926313202782}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 326a1037688daca45b4ef81a6147712a, type: 3}

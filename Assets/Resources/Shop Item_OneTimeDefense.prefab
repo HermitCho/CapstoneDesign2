@@ -12,12 +12,11 @@ GameObject:
   - component: {fileID: 6051880003284520226}
   - component: {fileID: 5965752747965598135}
   - component: {fileID: 522713922382407965}
-  - component: {fileID: 8712676363590355750}
+  - component: {fileID: 1816497415034268860}
   - component: {fileID: 5028637767412622912}
   - component: {fileID: -397966119260603548}
-  - component: {fileID: 4560470728079277997}
   m_Layer: 0
-  m_Name: Shop Item_Fireball
+  m_Name: Shop Item_OneTimeDefense
   m_TagString: Item
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -66,7 +65,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: dd8475678afe478489244a248dbf5d44, type: 2}
+  - {fileID: 2100000, guid: 3ee93fbce81d15141b20b88056727820, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -109,7 +108,7 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &8712676363590355750
+--- !u!114 &1816497415034268860
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -122,8 +121,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   renewTime: 30
-  probability: 0.3
-  itemObject: {fileID: 5829680253115518611, guid: e0f80079d9ceb78478d278d8bc7b7d97,
+  probability: 0.5
+  itemObject: {fileID: 5300828926313202782, guid: 5cfe92e499da7934398ac68c32e96c1f,
     type: 3}
 --- !u!114 &5028637767412622912
 MonoBehaviour:
@@ -164,20 +163,3 @@ MonoBehaviour:
   m_SynchronizeRotation: 1
   m_SynchronizeScale: 1
   m_UseLocal: 1
---- !u!114 &4560470728079277997
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1765150647018871578}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 245524fa5bcf6bd4480ee0c8e62e17f7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  rotationSpeed: 20
-  rotationAxis: {x: 1, y: 0, z: 0}
-  useSineWave: 0
-  amplitude: 5
-  frequency: 1

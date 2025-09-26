@@ -255,60 +255,37 @@ public abstract class Skill : MonoBehaviour
     }
 
 
-    // 원격 클라이언트에서도 실행되는 이펙트/사운드
-    public void PlayEffectAtRemote(SkillController executor, Vector3 pos, Vector3 dir)
+public void PlayEffectAtRemote(SkillController executor, Vector3 pos, Vector3 dir)
+{
+    if (skillEffect != null)
     {
-        if (skillEffect != null)
-        {
-            if (isFollowing)
-            {
-                SpawnEffectFollow(skillEffect, executor.transform, effectDuration);
-                if (skillSound != null && AudioManager.Inst != null)
-                {
-                    Debug.Log($"✅ PlayEffectAtRemote - isFollowing 사운드 재생");
-                    foreach (var a in FindObjectsOfType<AudioSource>())
-                        Debug.Log($"AudioSource: {a.gameObject.name}, clip={(a.clip ? a.clip.name : "null")}, isPlaying={a.isPlaying}");
-
-                    AudioManager.Inst.PlayClipAtPoint(skillSound, executor.transform.position, 1f, 1f, null, executor.transform);
-                }
-
-            }
-            else
-            {
-                SpawnEffectAtPosition(skillEffect, pos, Quaternion.identity, effectDuration);
-                if (skillSound != null && AudioManager.Inst != null)
-                {
-                    Debug.Log($"✅ PlayEffectAtRemote - 사운드 재생");
-                    AudioManager.Inst.PlayClipAtPoint(skillSound, pos, 1f, 1f, null, executor.transform);
-                }
-            }
-        }
+        if (isFollowing)
+            SpawnEffectFollow(skillEffect, executor.transform, effectDuration);
+        else
+            SpawnEffectAtPosition(skillEffect, pos, Quaternion.identity, effectDuration);
     }
 
-    public void PlayCastEffectAtRemote(SkillController executor, Vector3 pos, Vector3 dir)
+    if (skillSound != null && AudioManager.Inst != null)
     {
-        if (castTimeSkillEffect != null)
-        {
-            if (isCastingFollowing)
-            {
-                SpawnEffectFollow(castTimeSkillEffect, executor.transform, effectCastingDuration);
-                if (castTimeSkillSound != null && AudioManager.Inst != null)
-                {
-                    Debug.Log($"✅ PlayEffectAtRemote - isFollowing 사운드 재생");
-                    AudioManager.Inst.PlayClipAtPoint(castTimeSkillSound, executor.transform.position, 1f, 1f, null, executor.transform);
-                }
-            }
-            else
-            {
-                SpawnEffectAtPosition(castTimeSkillEffect, pos, Quaternion.identity, effectCastingDuration);
-                if (castTimeSkillSound != null && AudioManager.Inst != null)
-                {
-                    Debug.Log($"✅ PlayEffectAtRemote - 사운드 재생");
-                    AudioManager.Inst.PlayClipAtPoint(castTimeSkillSound, pos, 1f, 1f, null, executor.transform);
-                }
-            }
-        }
+        AudioManager.Inst.PlayClipAtPoint(skillSound, executor.transform.position, 1f, 1f, null, executor.transform);
     }
+}
+
+public void PlayCastEffectAtRemote(SkillController executor, Vector3 pos, Vector3 dir)
+{
+    if (castTimeSkillEffect != null)
+    {
+        if (isCastingFollowing)
+            SpawnEffectFollow(castTimeSkillEffect, executor.transform, effectCastingDuration);
+        else
+            SpawnEffectAtPosition(castTimeSkillEffect, pos, Quaternion.identity, effectCastingDuration);
+    }
+
+    if (castTimeSkillSound != null && AudioManager.Inst != null)
+    {
+        AudioManager.Inst.PlayClipAtPoint(castTimeSkillSound, executor.transform.position, 1f, 1f, null, executor.transform);
+    }
+}
 
     public virtual float GetProjectileSpeed() { return 10f; } //기본 값
     public virtual GameObject GetPlacementPrefab() { return null; }
