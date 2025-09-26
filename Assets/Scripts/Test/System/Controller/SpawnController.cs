@@ -17,12 +17,7 @@ public class SpawnController : MonoBehaviourPunCallbacks
     [SerializeField] private float spawnDelay = 0.1f;
     [SerializeField] private GameObject crownPrefab;
 
-    [Header("UI 프리팹")]
-    [SerializeField] private GameObject hudPanelPrefab;
-    [SerializeField] private GameObject shopPanelPrefab;
-    [SerializeField] private GameObject itemModalPrefab;
-    [SerializeField] private GameObject pausePanelPrefab;
-    [SerializeField] private GameObject gameOverPanelPrefab;
+    // UI 프리팹 제거 - HeatUI PanelManager 사용
 
     private DataBase.PlayerData playerData;
     private GameObject[] cachedPlayerPrefabData;
@@ -45,8 +40,6 @@ public class SpawnController : MonoBehaviourPunCallbacks
 
     void Start()
     {
-        Debug.Log($"🔄 SpawnController: Start 호출 - 네트워크 상태: {PhotonNetwork.NetworkClientState}");
-        
         // 네트워크 연결 상태 확인 후 크라운 스폰
         if(PhotonNetwork.IsMasterClient && PhotonNetwork.IsConnectedAndReady)
         {
@@ -56,24 +49,31 @@ public class SpawnController : MonoBehaviourPunCallbacks
         // OnJoinedRoom 콜백이 호출되지 않는 경우를 대비한 백업 로직
         if (PhotonNetwork.InRoom && !hasSpawnedPlayer)
         {
-            Debug.Log("🔧 SpawnController: 백업 스폰 로직 실행 (OnJoinedRoom 미호출 대비)");
             StartCoroutine(BackupSpawnLogic());
         }
     }
+    
+    void Update()
+    {
+        // Room Properties 기반으로 게임 시작 감지
+        if (!hasSpawnedPlayer && !isSpawning && PhotonNetwork.InRoom)
+        {
+            CheckGamePhaseAndSpawn();
+        }
+    }
+    
+    // OnDestroy 제거 - 이벤트 구독 없음
     
     /// <summary>
     /// OnJoinedRoom 콜백이 호출되지 않는 경우를 대비한 백업 스폰 로직
     /// </summary>
     private IEnumerator BackupSpawnLogic()
     {
-        // 약간 더 긴 대기 시간
         yield return new WaitForSeconds(2f);
         
-        // 아직 스폰되지 않았고 방에 있다면 스폰 시도
         if (!hasSpawnedPlayer && !isSpawning && PhotonNetwork.InRoom)
         {
-            Debug.Log("🚨 SpawnController: 백업 로직으로 캐릭터 스폰 시도");
-            SpawnSelectedCharacterOnAwake();
+            CheckGamePhaseAndSpawn();
         }
     }
 
@@ -105,49 +105,48 @@ public class SpawnController : MonoBehaviourPunCallbacks
 
     public override void OnJoinedRoom()
     {
-        Debug.Log($"🏠 SpawnController: 방 입장 완료!");
-        Debug.Log($"   - 방 이름: {PhotonNetwork.CurrentRoom.Name}");
-        Debug.Log($"   - 플레이어 수: {PhotonNetwork.CurrentRoom.PlayerCount}");
-        Debug.Log($"   - 마스터 클라이언트: {PhotonNetwork.IsMasterClient}");
-        Debug.Log($"   - 네트워크 연결 상태: {PhotonNetwork.IsConnectedAndReady}");
-        Debug.Log($"   - 현재 스폰 상태: hasSpawnedPlayer={hasSpawnedPlayer}, isSpawning={isSpawning}");
-        
-        // 네트워크 상태 확인
         if (!PhotonNetwork.IsConnectedAndReady)
         {
-            Debug.LogError("❌ SpawnController: 네트워크가 준비되지 않음!");
             return;
         }
         
-        // 방 입장 후 잠시 대기 후 캐릭터 스폰
-        StartCoroutine(WaitAndSpawnCharacter());
+        CheckGamePhaseAndSpawn();
     }
+    
+    /// <summary>
+    /// 게임 단계를 확인하고 적절한 시점에 스폰
+    /// </summary>
+    private void CheckGamePhaseAndSpawn()
+    {
+        if (PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("gamePhase", out object phase))
+        {
+            string gamePhase = phase.ToString();
+            
+            if (gamePhase == "PLAYING")
+            {
+                StartCoroutine(WaitAndSpawnCharacter());
+            }
+            // READY 상태에서는 대기 (Room Properties 변경으로 PLAYING 감지)
+        }
+        else
+        {
+            // 게임 단계가 설정되지 않은 경우 기본 동작
+            StartCoroutine(WaitAndSpawnCharacter());
+        }
+    }
+    
+    // OnGameActuallyStarted 메서드 제거 - Room Properties 기반으로 변경
     
     /// <summary>
     /// 방 입장 후 안정화를 위해 대기 후 캐릭터 스폰
     /// </summary>
     private IEnumerator WaitAndSpawnCharacter()
     {
-        Debug.Log("⏳ SpawnController: 네트워크 안정화 대기 중...");
+        yield return new WaitForSeconds(1f);
         
-        // 네트워크 안정화 대기
-        yield return new WaitForSeconds(1f); // 대기 시간을 1초로 증가
-        
-        Debug.Log($"🎯 SpawnController: 스폰 시도 - hasSpawnedPlayer={hasSpawnedPlayer}, isSpawning={isSpawning}");
-        
-        // 아직 스폰하지 않았다면 스폰
         if (!hasSpawnedPlayer && !isSpawning)
         {
-            Debug.Log("🚀 SpawnController: 캐릭터 스폰 시작!");
             SpawnSelectedCharacterOnAwake();
-        }
-        else if (hasSpawnedPlayer)
-        {
-            Debug.Log("⚠️ SpawnController: 이미 스폰 완료됨");
-        }
-        else if (isSpawning)
-        {
-            Debug.Log("⚠️ SpawnController: 이미 스폰 진행 중");
         }
     }
 
@@ -254,7 +253,7 @@ public class SpawnController : MonoBehaviourPunCallbacks
             currentSpawnedCharacter = null;
         }
 
-        int spawnIndex = GetRandomSpawnIndex();
+        int spawnIndex = GetPlayerSpawnIndex(); // 고유 스폰 위치 사용
         Vector3 spawnPosition = GetSpawnPosition(spawnIndex);
         Quaternion spawnRotation = GetSpawnRotation(spawnIndex);
         
@@ -270,8 +269,7 @@ public class SpawnController : MonoBehaviourPunCallbacks
             if(pv != null && pv.IsMine)
             {
                 Debug.Log($"👤 SpawnController: 로컬 플레이어 캐릭터 생성됨 - ViewID: {pv.ViewID}");
-                // HUD 패널은 약간의 지연을 두고 생성 (네트워크 안정화 대기)
-                StartCoroutine(SpawnHUDWithDelay());
+                // HUD 패널 생성 제거 - HeatUI PanelManager에서 자동 관리
             }
             else if (pv != null)
             {
@@ -308,6 +306,26 @@ public class SpawnController : MonoBehaviourPunCallbacks
         }
     }
 
+    /// <summary>
+    /// 플레이어별 고유 스폰 위치 인덱스 할당
+    /// </summary>
+    int GetPlayerSpawnIndex()
+    {
+        if (spawnPositions.Length == 1)
+            return 0;
+            
+        // 플레이어 ActorNumber를 기반으로 고유 스폰 위치 할당
+        int playerActorNumber = PhotonNetwork.LocalPlayer.ActorNumber;
+        int spawnIndex = (playerActorNumber - 1) % spawnPositions.Length;
+        
+        Debug.Log($"🎯 SpawnController: 플레이어 {playerActorNumber} → 스폰 위치 {spawnIndex}");
+        
+        return spawnIndex;
+    }
+    
+    /// <summary>
+    /// 기존 랜덤 스폰 인덱스 (백업용)
+    /// </summary>
     int GetRandomSpawnIndex()
     {
         if (spawnPositions.Length == 1)
@@ -487,17 +505,5 @@ public class SpawnController : MonoBehaviourPunCallbacks
         return null;
     }
     
-    /// <summary>
-    /// HUD 패널 지연 생성 (네트워크 안정화 대기)
-    /// </summary>
-    private IEnumerator SpawnHUDWithDelay()
-    {
-        yield return new WaitForSeconds(1f); // 1초 대기
-        
-        if (hudPanelPrefab != null)
-        {
-            GameObject hud = Instantiate(hudPanelPrefab);
-            Debug.Log("SpawnController: HUD 패널 생성 완료");
-        }
-    }
+    // SpawnHUDWithDelay 메서드 제거 - HeatUI PanelManager 사용
 }

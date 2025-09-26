@@ -461,7 +461,7 @@ public class ShopController : MonoBehaviourPun
         
         if (purchaseSuccess)
         {
-            // 구매 성공 시 Shop에게 아이템 제거 요청
+            // 구매 성공 시 Shop에게 아이템 제거 요청 (현재 남은 시간과 함께)
             Shop shop = FindObjectOfType<Shop>();
             if (shop != null)
             {

@@ -173,13 +173,13 @@ public class GameResultManager : MonoBehaviourPunCallbacks
 
         if (updateSuccess)
         {
-            Debug.Log($"GameResultManager: 게임 결과 업데이트 성공 - {userId}: {playerRank}등 (시도: {currentRetry})");
+            // Debug.Log($"GameResultManager: 게임 결과 업데이트 성공 - {userId}: {playerRank}등 (시도: {currentRetry})");
             
-            // 현재 로그인된 사용자인 경우 로컬 데이터도 업데이트
-            if (CurrentUser.Instance != null && CurrentUser.Instance.IsLoggedIn() && CurrentUser.Instance.GetUserId() == userId)
-            {
-                UpdateCurrentUserLocalData(playerRank);
-            }
+            // // 현재 로그인된 사용자인 경우 로컬 데이터도 업데이트
+            // if (CurrentUser.Instance != null && CurrentUser.Instance.IsLoggedIn() && CurrentUser.Instance.GetUserId() == userId)
+            // {
+            //    // UpdateCurrentUserLocalData(playerRank);
+            // }
         }
         else
         {
