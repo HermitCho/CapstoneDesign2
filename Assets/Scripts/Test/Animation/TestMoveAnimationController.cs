@@ -13,7 +13,6 @@ public class TestMoveAnimationController : MonoBehaviourPun
     private Animator animator;
     private Rigidbody rb;
     private PhotonView photonView;
-
     private MoveController moveController;
     private CameraController cameraController;
     private ItemController itemController;
@@ -28,7 +27,6 @@ public class TestMoveAnimationController : MonoBehaviourPun
     private int upperBodyLayerIndex;
     private Vector2 moveInput;
     private Vector2 mouseInput;
-
     private bool isReloading = false;
     private bool isJumping = false;
     private bool isShooting = false;
@@ -64,8 +62,7 @@ public class TestMoveAnimationController : MonoBehaviourPun
         animator.SetLayerWeight(upperBodyLayerIndex, 1f);
         animator.SetFloat("SpeedMultiplier", 1.2f);
 
-        if (skill != null)
-            skillAnimationTriggerName = skill.SkillAnimationTriggerName;
+        if (skill != null) skillAnimationTriggerName = skill.SkillAnimationTriggerName;
     }
 
     private void OnEnable()
@@ -117,31 +114,27 @@ public class TestMoveAnimationController : MonoBehaviourPun
         HandleHealthBasedAnimation();
         HandleUpperBodyLayer();
 
-        if (reloadCooldown > 0f)
-            reloadCooldown -= Time.deltaTime;
-
+        if (reloadCooldown > 0f) reloadCooldown -= Time.deltaTime;
     }
 
     // --- 애니메이션 처리 ---
     private void HandleUpperBodyLayer()
     {
         float targetWeight = 0f;
-
         bool isInMovement = animator.GetCurrentAnimatorStateInfo(0).IsName("Movement");
         bool isInJumpDown = animator.GetCurrentAnimatorStateInfo(0).IsName("JumpDown");
 
         if (isReloading || (isJumping && isShooting) || isInMovement)
             targetWeight = 1f;
-
         if (isInJumpDown && isShooting)
             targetWeight = 1f;
 
         // 부드럽게 보간
         float smoothedWeight = Mathf.SmoothDamp(
             animator.GetLayerWeight(upperBodyLayerIndex), // 현재값
-            targetWeight,                                 // 목표값
-            ref upperBodyWeightVelocity,                  // 속도 참조
-            0.15f                                         // 스무딩 시간
+            targetWeight,                                // 목표값
+            ref upperBodyWeightVelocity,                 // 속도 참조
+            0.15f                                        // 스무딩 시간
         );
 
         animator.SetLayerWeight(upperBodyLayerIndex, smoothedWeight);
@@ -203,6 +196,7 @@ public class TestMoveAnimationController : MonoBehaviourPun
     private void OnStunned()
     {
         if (GameManager.Instance.IsGameOver()) return;
+
         animator.SetTrigger("Death");
         moveController?.SetStunned(true);
     }
@@ -210,6 +204,7 @@ public class TestMoveAnimationController : MonoBehaviourPun
     private void OnRevive()
     {
         if (GameManager.Instance.IsGameOver()) return;
+
         animator.SetTrigger("Revive");
         moveController?.SetStunned(false);
     }
@@ -217,15 +212,13 @@ public class TestMoveAnimationController : MonoBehaviourPun
     // --- 입력 처리 ---
     private void OnMoveInput(Vector2 input) => moveInput = input;
     private void OnMouseInput(Vector2 input) => mouseInput = input;
-
     private void OnShootInput() => isShooting = true;
     private void OnShootCanceledInput() => isShooting = false;
 
     private void OnReloadInput()
     {
         if (GameManager.Instance != null && GameManager.Instance.IsGameOver()) return;
-
-        if (isReloading || gun == null) return; // 이미 재장전 중이면 무시
+        if (isReloading || gun == null) return;
 
         // 총알이 꽉 찼으면 재장전 불가
         if (gun.CurrentMagAmmo >= gun.GetGunData().maxAmmo)
@@ -233,6 +226,7 @@ public class TestMoveAnimationController : MonoBehaviourPun
             Debug.Log("총알이 꽉 차서 재장전 불가");
             return;
         }
+
         if (reloadCooldown > 0f) return; // 쿨타임 중이면 무시
 
         // 재장전 시작
@@ -253,7 +247,6 @@ public class TestMoveAnimationController : MonoBehaviourPun
         {
             reloadCooldown = 3.3f; // 애니메이션 길이와 동일하게
         }
-        
     }
 
     // 애니메이션 이벤트에서 호출
@@ -270,12 +263,11 @@ public class TestMoveAnimationController : MonoBehaviourPun
     private void OnSkillInput()
     {
         if (GameManager.Instance.IsGameOver()) return;
+
         if (skill != null && skill.CanUse)
         {
             PlaySkillAnimation(skill.SkillAnimationTriggerName);
-
-            if (speedSkillCoroutine != null)
-                StopCoroutine(speedSkillCoroutine);
+            if (speedSkillCoroutine != null) StopCoroutine(speedSkillCoroutine);
             speedSkillCoroutine = StartCoroutine(SpeedSkillRoutine());
         }
     }
@@ -283,6 +275,7 @@ public class TestMoveAnimationController : MonoBehaviourPun
     private void OnItemInput()
     {
         if (GameManager.Instance.IsGameOver()) return;
+
         itemSkill = itemController.GetFirstActiveItem();
         if (itemSkill != null && itemSkill.CanUse)
         {
@@ -304,10 +297,7 @@ public class TestMoveAnimationController : MonoBehaviourPun
         animator.SetFloat("SpeedMultiplier", 1.2f);
     }
 
-    public void OnSkillEnd()
-    {
-
-    }
+    public void OnSkillEnd() { }
 
     public void PlayVictoryPose()
     {
