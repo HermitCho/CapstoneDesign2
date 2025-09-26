@@ -22,6 +22,7 @@ public class GameManager : Singleton<GameManager>
     
     // 게임 시간 관리
     private float gameStartTime = 0f;
+    private bool isGameActuallyStarted = false;
 
     // 상점 관리 (제거됨 - Shop.cs에서 직접 관리)
 
@@ -113,6 +114,8 @@ public class GameManager : Singleton<GameManager>
         // 씬 로드 이벤트 구독 (싱글톤이므로 한번만 구독됨)
         SceneManager.sceneLoaded += OnSceneLoaded;
         
+        // 이벤트 구독 제거 - Room Properties 기반으로 변경
+        
         // 현재 씬이 게임 씬이라면 즉시 초기화
         string currentSceneName = SceneManager.GetActiveScene().name;
         if (IsGameScene(currentSceneName))
@@ -130,8 +133,11 @@ public class GameManager : Singleton<GameManager>
     
     void Update()
     {
-        // 게임 오버 상태가 아닐 때만 시간 체크
-        if (!isGameOver)
+        // Room Properties 기반으로 게임 시작 상태 체크
+        CheckGameStartFromRoomProperties();
+        
+        // 게임이 실제로 시작되고 게임 오버 상태가 아닐 때만 시간 체크
+        if (isGameActuallyStarted && !isGameOver)
         {
             // 마스터 클라이언트는 권위적 시간 관리
             if (PhotonNetwork.IsMasterClient)
@@ -149,6 +155,48 @@ public class GameManager : Singleton<GameManager>
             
             CheckGameTimeForGameOver();
         }
+        else
+        {
+            // 게임이 시작되지 않았을 때는 컴포넌트 체크만
+            CheckAndFindMissingComponents();
+        }
+    }
+    
+    /// <summary>
+    /// Room Properties를 통해 게임 시작 상태 체크 (실무 스타일)
+    /// </summary>
+    private void CheckGameStartFromRoomProperties()
+    {
+        if (!isGameActuallyStarted && PhotonNetwork.InRoom)
+        {
+            var props = PhotonNetwork.CurrentRoom.CustomProperties;
+            if (props.TryGetValue("gamePhase", out object gamePhaseObj) && 
+                gamePhaseObj.ToString() == "PLAYING")
+            {
+                // 게임이 시작되었음을 감지
+                StartGame();
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 게임 시작 (Room Properties 기반)
+    /// </summary>
+    private void StartGame()
+    {
+        if (isGameActuallyStarted) return;
+        
+        isGameActuallyStarted = true;
+        gameStartTime = Time.time;
+        
+        // 마스터 클라이언트가 권위적 시간을 방 속성에 설정
+        if (PhotonNetwork.IsMasterClient)
+        {
+            SetMasterGameTime();
+        }
+        
+        // UI 활성화 및 게임 시작 알림
+        EnableGameUI();
     }
     
     /// <summary>
@@ -176,6 +224,8 @@ public class GameManager : Singleton<GameManager>
     {
         // 씬 로드 이벤트 구독 해제
         SceneManager.sceneLoaded -= OnSceneLoaded;
+        
+        // 이벤트 구독 해제 제거 - Room Properties 기반으로 변경
         
         LivingEntity.OnAnyLivingEntityHealthChanged -= HandleAnyLivingEntityHealthChanged;
     }
@@ -324,7 +374,21 @@ public class GameManager : Singleton<GameManager>
         localPlayerLivingEntity = null;
         currentPlayerCoinController = null;
         currentTeddyBear = null;
-        inGameUIManager = null;
+        
+        // InGameUIManager 상태 리셋 (새 게임 시작 시)
+        if (inGameUIManager != null)
+        {
+            inGameUIManager.ResetGameState();
+        }
+        else
+        {
+            // 찾아서 리셋
+            FindInGameUIManager();
+            if (inGameUIManager != null)
+            {
+                inGameUIManager.ResetGameState();
+            }
+        }
         // 상점 상태 초기화 제거 (Shop.cs에서 직접 관리)
         
         // 8. UI 이벤트 발생 (초기값으로) - 약간의 지연을 두어 확실히 적용
@@ -704,6 +768,15 @@ public class GameManager : Singleton<GameManager>
         
         isGameOver = true;
         
+        // 게임 단계를 GAMEOVER로 설정 (마스터 클라이언트)
+        if (PhotonNetwork.IsMasterClient && PhotonNetwork.InRoom)
+        {
+            var props = new PhotonHashtable();
+            props["gamePhase"] = "GAMEOVER";
+            PhotonNetwork.CurrentRoom.SetCustomProperties(props);
+            Debug.Log("GameManager: gamePhase를 GAMEOVER로 설정");
+        }
+        
         // 최종 점수 가져오기
         float finalScore = GetTeddyBearScore();
         
@@ -778,7 +851,7 @@ public class GameManager : Singleton<GameManager>
     }
     
     /// <summary>
-    /// 게임 오버 UI 표시
+    /// 게임 오버 UI 표시 (HeatUI 호환)
     /// </summary>
     /// <param name="finalScore">최종 점수</param>
     void ShowGameOverUI(float finalScore)
@@ -791,19 +864,15 @@ public class GameManager : Singleton<GameManager>
         
         if (inGameUIManager != null)
         {
+            // HeatUI를 통해 GameOverPanel 활성화 (SetWinnerPlayer는 InGameUIManager에서 처리)
             inGameUIManager.ShowGameOverPanel(finalScore);
         }
         else
         {
-            // 마지막 시도: 강제로 모든 InGameUIManager 찾기
-            InGameUIManager[] allManagers = FindObjectsOfType<InGameUIManager>();
-            if (allManagers.Length > 0)
-            {
-                inGameUIManager = allManagers[0];
-                inGameUIManager.ShowGameOverPanel(finalScore);
-            }
+            Debug.LogError("GameManager: InGameUIManager를 찾을 수 없어 GameOverPanel을 표시할 수 없습니다.");
         }
     }
+    
     
     /// <summary>
     /// 게임 오버 상태 확인
@@ -1114,6 +1183,16 @@ public class GameManager : Singleton<GameManager>
     }
 
     #endregion
+    
+    
+    /// <summary>
+    /// 게임 UI 활성화
+    /// </summary>
+    private void EnableGameUI()
+    {
+        // 게임 시작 이벤트들 발생
+        OnCharacterSpawned?.Invoke();
+    }
 
 
 

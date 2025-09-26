@@ -144,8 +144,24 @@ public class ShopStand : MonoBehaviour
     /// </summary>
     void UpdateRenewTimer()
     {
-        // 타이머 업데이트는 Shop.cs에서 관리하므로 여기서는 UI만 업데이트
-        // 실제 타이머 로직은 Shop.cs의 UpdateRenewTimers()에서 처리
+        // Shop.cs에서 전달받은 타이머 정보를 기반으로 실시간 UI 업데이트
+        // 마스터 클라이언트가 아닌 경우에도 UI 표시를 위해 로컬에서 시간 감소
+        if (isRenewTimerActive && remainingRenewTime > 0f)
+        {
+            remainingRenewTime -= Time.deltaTime;
+            
+            // 0 이하로 내려가지 않도록 제한
+            if (remainingRenewTime < 0f)
+            {
+                remainingRenewTime = 0f;
+            }
+        }
+        
+        // 디버깅용: 5초마다 현재 타이머 상태 로그
+        if (Time.time % 5f < 0.1f && isRenewTimerActive)
+        {
+            Debug.Log($"ShopStand: 갱신 타이머 상태 - 남은시간: {remainingRenewTime:F1}초, 활성: {isRenewTimerActive}");
+        }
     }
 
     /// <summary>

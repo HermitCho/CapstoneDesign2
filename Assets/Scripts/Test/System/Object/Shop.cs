@@ -316,7 +316,7 @@ public class Shop : MonoBehaviourPun
             
             try
             {
-                spawnedItem = PhotonNetwork.Instantiate(selectedPrefab.name, spawnPos, spawnRot);
+                spawnedItem = PhotonNetwork.Instantiate($"Prefabs/ShopItems/{selectedPrefab.name}", spawnPos, spawnRot);
                 if (spawnedItem != null)
                 {
                     currentItems[positionIndex] = spawnedItem;
@@ -412,16 +412,7 @@ public class Shop : MonoBehaviourPun
         return availableItems[Random.Range(0, availableItems.Count)];
     }
     
-    /// <summary>
-    /// 지정된 시간 후 아이템 갱신 (더 이상 사용하지 않음 - UpdateRenewTimers로 대체)
-    /// </summary>
-    /// <param name="positionIndex">갱신할 위치 인덱스</param>
-    /// <param name="renewTime">갱신 시간</param>
-    IEnumerator RenewItemAfterTime(int positionIndex, float renewTime)
-    {
-        yield return new WaitForSeconds(renewTime);
-        // 이 메서드는 더 이상 사용되지 않음 - UpdateRenewTimers에서 처리
-    }
+    // RenewItemAfterTime 메서드 제거 - UpdateRenewTimers에서 직접 처리
     
     /// <summary>
     /// ShopStand에 아이템 동기화 (모든 클라이언트에서 호출)
@@ -577,6 +568,9 @@ public class Shop : MonoBehaviourPun
         
         if (itemComponent == null || skillComponent == null) return;
         
+        // 현재 남은 갱신 시간 가져오기 (구매 시점 기준)
+        float currentRemainingTime = itemRenewTimes[positionIndex];
+        
         // 구매자에게 구매 처리 RPC 전송 (구매자의 ShopController에서 직접 처리)
         buyerPV.RPC("ProcessPurchase", buyerPV.Owner, 
             skillComponent.Price, 
@@ -599,13 +593,17 @@ public class Shop : MonoBehaviourPun
         
         Debug.Log($"Shop: 마스터 클라이언트에서 아이템 제거 처리 - PositionIndex: {positionIndex}");
         
+        // 구매 시점의 남은 갱신 시간 저장 (아이템 제거 전에)
+        float remainingRenewTime = itemRenewTimes[positionIndex];
+        Debug.Log($"Shop: 구매 시점 남은 갱신 시간 - {remainingRenewTime:F1}초");
+        
         // ShopStand 정리
         shopStand.ClearCurrentItem();
         
         // 구매된 아이템 제거 (안전한 파괴 처리)
         if (currentItems[positionIndex] != null)
         {
-            StartCoroutine(SafeDestroyPurchasedItem(positionIndex));
+            StartCoroutine(SafeDestroyPurchasedItem(positionIndex, remainingRenewTime));
         }
         
         Debug.Log($"Shop: 위치 {positionIndex} 아이템 구매 처리 완료 - SafeDestroyPurchasedItem에서 갱신 처리");
@@ -644,7 +642,15 @@ public class Shop : MonoBehaviourPun
         {
             if (isRenewTimerActive[i] && itemRenewTimes[i] > 0f)
             {
+                float previousTime = itemRenewTimes[i];
                 itemRenewTimes[i] -= Time.deltaTime;
+                
+                // 10초마다 한 번씩 디버그 로그 (너무 많은 로그 방지)
+                if (Mathf.FloorToInt(previousTime) != Mathf.FloorToInt(itemRenewTimes[i]) && 
+                    Mathf.FloorToInt(itemRenewTimes[i]) % 10 == 0)
+                {
+                    Debug.Log($"Shop: 위치 {i} 갱신까지 {Mathf.CeilToInt(itemRenewTimes[i])}초 남음");
+                }
                 
                 // 타이머가 0 이하가 되면 갱신
                 if (itemRenewTimes[i] <= 0f)
@@ -663,7 +669,7 @@ public class Shop : MonoBehaviourPun
     }
     
     private float lastTimerSyncTime = 0f;
-    private const float TIMER_SYNC_INTERVAL = 1f; // 1초마다 타이머 동기화
+    private const float TIMER_SYNC_INTERVAL = 2f; // 2초마다 타이머 동기화 (UI 업데이트용)
     
     void Update()
     {
@@ -721,7 +727,9 @@ public class Shop : MonoBehaviourPun
     /// <summary>
     /// 구매된 아이템을 안전하게 파괴
     /// </summary>
-    private System.Collections.IEnumerator SafeDestroyPurchasedItem(int positionIndex)
+    /// <param name="positionIndex">위치 인덱스</param>
+    /// <param name="remainingRenewTime">구매 시점의 남은 갱신 시간</param>
+    private System.Collections.IEnumerator SafeDestroyPurchasedItem(int positionIndex, float remainingRenewTime)
     {
         if (positionIndex < 0 || positionIndex >= currentItems.Length) yield break;
         
@@ -792,14 +800,18 @@ public class Shop : MonoBehaviourPun
         isRenewTimerActive[positionIndex] = false;
         itemRenewTimes[positionIndex] = 0f;
         
-        // 새 아이템 생성 (지연 후)
-        float renewDelay = GetDefaultRenewTime();
-        renewCoroutines[positionIndex] = StartCoroutine(RenewItemAfterTime(positionIndex, renewDelay));
+        // 구매 시점의 남은 갱신 시간 사용 (매개변수로 전달받은 값)
+        float renewDelay = remainingRenewTime > 0f ? remainingRenewTime : GetDefaultRenewTime();
+        
+        itemRenewTimes[positionIndex] = renewDelay;
+        isRenewTimerActive[positionIndex] = true;
+        
+        Debug.Log($"Shop: 위치 {positionIndex} 갱신 타이머 시작 - 구매 시점 남은시간 {renewDelay:F1}초 사용");
         
         // 타이머 동기화 RPC 전송
         if (photonView != null)
         {
-            photonView.RPC("SyncRenewTimer", RpcTarget.Others, positionIndex, renewDelay, true);
+            photonView.RPC("SyncRenewTimer", RpcTarget.All, positionIndex, renewDelay, true);
         }
         
         // 연결된 모든 ShopController에게 갱신 알림

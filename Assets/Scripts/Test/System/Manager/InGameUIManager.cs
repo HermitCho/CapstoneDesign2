@@ -1,6 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using Michsky.UI.Heat;
+using Photon.Pun;
 
 /// <summary>
 /// 🎮 패널 매니저 기반 UI 시스템
@@ -15,6 +16,7 @@ public class InGameUIManager : MonoBehaviour
     [SerializeField] private ModalWindowManager gameOverModalWindowManager;
     
     [Header("패널 이름 설정")]
+    [SerializeField] private string readyPanelName = "Ready";
     [SerializeField] private string hudPanelName = "HUD";
     [SerializeField] private string shopPanelName = "Shop";
     [SerializeField] private string pausePanelName = "Pause";
@@ -24,18 +26,90 @@ public class InGameUIManager : MonoBehaviour
     
     [Header(" 현재 상태")]
     private string currentPanel = "";
+    private bool isGameOverPanelActive = false; // GameOverPanel 활성화 상태 추적
     
     #region Unity 생명주기
     
     void Start()
     {
-        ShowHUDPanel();
+        // 게임 단계에 따라 적절한 패널 표시
+        CheckGamePhaseAndShowPanel();
     }
+    
+    void Update()
+    {
+        // Room Properties 변경 감지하여 UI 전환
+        CheckGamePhaseAndShowPanel();
+    }
+    
+    /// <summary>
+    /// 게임 단계 확인 후 적절한 패널 표시 (최적화된 실무 스타일)
+    /// </summary>
+    private void CheckGamePhaseAndShowPanel()
+    {
+        // GameOverPanel이 활성화된 경우 더 이상 자동 전환하지 않음
+        if (isGameOverPanelActive)
+        {
+            return;
+        }
+        
+        string targetPanel = "Ready"; // 기본값
+        
+        if (PhotonNetwork.InRoom && PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("gamePhase", out object phase))
+        {
+            string gamePhase = phase.ToString();
+            
+            if (gamePhase == "GAMEOVER")
+            {
+                // GAMEOVER 상태에서는 자동 전환 중지 (ShowGameOverPanel에서 수동 처리)
+                return;
+            }
+            else if (gamePhase == "PLAYING")
+            {
+                targetPanel = "HUD";
+            }
+            else
+            {
+                targetPanel = "Ready";
+            }
+        }
+        
+        // 중복 호출 방지
+        if (currentPanel != targetPanel)
+        {
+            currentPanel = targetPanel;
+            
+            if (targetPanel == "HUD")
+            {
+                ShowHUDPanel();
+            }
+            else
+            {
+                ShowReadyPanel();
+            }
+        }
+    }
+    
+    // OnGameActuallyStarted 메서드 제거 - Room Properties 기반으로 변경
     
     #endregion
 
     
     #region 패널 전환
+    
+    /// <summary>
+    /// Ready 패널 표시
+    /// </summary>
+    public void ShowReadyPanel()
+    {
+        if (panelManager != null)
+        {
+            panelManager.OpenPanel(readyPanelName);
+            currentPanel = readyPanelName;
+        }
+        
+        SetMenuMouseCursor();
+    }
     
     /// <summary>
     /// HUD 패널 표시
@@ -85,6 +159,9 @@ public class InGameUIManager : MonoBehaviour
     {
         if (panelManager != null && gameOverModalWindowManager != null)
         {
+            // GameOverPanel 활성화 상태 설정 (자동 전환 방지)
+            isGameOverPanelActive = true;
+            
             SetMenuMouseCursor();
             gameOverModalWindowManager.OpenWindow();
 
@@ -99,6 +176,21 @@ public class InGameUIManager : MonoBehaviour
         panelManager.OpenPanel(gameOverPanelName);
         currentPanel = gameOverPanelName;
         
+        Debug.Log("InGameUIManager: GameOverPanel 활성화 완료 - 자동 전환 차단됨");
+        
+        // GameOverPanel 활성화 후 SetWinnerPlayer 호출
+        yield return new WaitForSeconds(0.1f); // 패널 완전 활성화 대기
+        
+        GameOverController gameOverController = FindObjectOfType<GameOverController>();
+        if (gameOverController != null)
+        {
+            gameOverController.SetWinnerPlayer();
+            Debug.Log("InGameUIManager: GameOverController.SetWinnerPlayer() 호출 완료");
+        }
+        else
+        {
+            Debug.LogError("InGameUIManager: GameOverController를 찾을 수 없습니다!");
+        }
     }
     
     #endregion
@@ -125,6 +217,16 @@ public class InGameUIManager : MonoBehaviour
     public PanelManager GetPanelManager()
     {
         return panelManager;
+    }
+    
+    /// <summary>
+    /// 게임 상태 리셋 (새 게임 시작 시 호출)
+    /// </summary>
+    public void ResetGameState()
+    {
+        isGameOverPanelActive = false;
+        currentPanel = "";
+        Debug.Log("InGameUIManager: 게임 상태 리셋 - 자동 전환 재활성화");
     }
 
     

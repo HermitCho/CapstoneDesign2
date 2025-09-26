@@ -76,7 +76,6 @@ public class FindMatching : MonoBehaviourPunCallbacks
         // 1단계: 마스터 서버 연결
         if (!PhotonNetwork.IsConnected)
         {
-            UpdateUI("서버 연결 중...");
             PhotonNetwork.ConnectUsingSettings();
             
             // 연결 완료 대기 (최대 10초)
@@ -100,7 +99,6 @@ public class FindMatching : MonoBehaviourPunCallbacks
         // 2단계: 로비 진입
         if (PhotonNetwork.IsConnectedAndReady && !PhotonNetwork.InLobby)
         {
-            UpdateUI("로비 진입 중...");
             
             // 클라이언트 상태가 ConnectedToMasterServer인지 확인
             if (PhotonNetwork.NetworkClientState == Photon.Realtime.ClientState.ConnectedToMasterServer)
@@ -140,8 +138,23 @@ public class FindMatching : MonoBehaviourPunCallbacks
         if (PhotonNetwork.InLobby && isMatching)
         {
             UpdateUI("방 찾는 중...");
-            yield return new WaitForSeconds(0.2f); // 로비 안정화 대기
-            TryJoinOrCreateRoom();
+            yield return new WaitForSeconds(0.5f); // 로비 안정화 대기 증가
+            
+            // 연결 상태 재확인
+            if (PhotonNetwork.IsConnectedAndReady && PhotonNetwork.InLobby)
+            {
+                TryJoinOrCreateRoom();
+            }
+            else
+            {
+                Debug.LogWarning("FindMatching: 방 찾기 시도 시 연결 상태가 불안정함");
+                UpdateUI("연결 재시도 중...");
+                yield return new WaitForSeconds(1f);
+                if (isMatching)
+                {
+                    StartCoroutine(HandleConnectionSequence());
+                }
+            }
         }
     }
 
@@ -248,10 +261,11 @@ public class FindMatching : MonoBehaviourPunCallbacks
         if (PhotonNetwork.IsMasterClient)
         {
             int playerCount = PhotonNetwork.InRoom ? PhotonNetwork.CurrentRoom.PlayerCount : 1;
-            UpdateUI($"게임 시작! ({playerCount}명)");
+            UpdateUI($"플레이어 준비 중... ({playerCount}명)");
 
             ExitGames.Client.Photon.Hashtable roomProperties = new ExitGames.Client.Photon.Hashtable();
             roomProperties[ROOM_STATE_KEY] = ROOM_STATE_STARTING;
+            roomProperties["gamePhase"] = "READY"; // Ready 단계로 설정
             PhotonNetwork.CurrentRoom.SetCustomProperties(roomProperties);
 
             photonView.RPC("OnGameStarting", RpcTarget.All, playerCount);
@@ -270,26 +284,41 @@ public class FindMatching : MonoBehaviourPunCallbacks
             matchingCoroutine = null;
         }
 
-        UpdateUI($"게임 시작! ({playerCount}명)");
-
         if (modalWindow != null)
             modalWindow.CloseWindow();
 
-        StartCoroutine(LoadGameScene());
+        // 바로 씬을 로드하지 않고 Ready 상태로 게임 씬 진입
+        StartCoroutine(LoadGameSceneForReady());
     }
 
-    private IEnumerator LoadGameScene()
+    /// <summary>
+    /// Ready 상태로 게임 씬 로드
+    /// </summary>
+    private IEnumerator LoadGameSceneForReady()
     {
         yield return new WaitForSeconds(0.1f);
 
         if (PhotonNetwork.IsMasterClient && PhotonNetwork.InRoom)
         {
+            // 방을 닫아서 새로운 플레이어 입장 차단
+            PhotonNetwork.CurrentRoom.IsOpen = false;
+            PhotonNetwork.CurrentRoom.IsVisible = false;
+            
             ExitGames.Client.Photon.Hashtable roomProperties = new ExitGames.Client.Photon.Hashtable();
             roomProperties[ROOM_STATE_KEY] = ROOM_STATE_IN_GAME;
+            roomProperties["gamePhase"] = "READY"; // Ready 단계 유지
             PhotonNetwork.CurrentRoom.SetCustomProperties(roomProperties);
         }
 
         LoadingController.LoadWithLoadingScene(gameSceneName, true);
+    }
+    
+    /// <summary>
+    /// 기존 LoadGameScene 메서드 (호환성 유지)
+    /// </summary>
+    private IEnumerator LoadGameScene()
+    {
+        yield return LoadGameSceneForReady();
     }
 
     private void ResetUI()
@@ -349,18 +378,31 @@ public class FindMatching : MonoBehaviourPunCallbacks
     public override void OnJoinedLobby()
     {
         Debug.Log("FindMatching: 로비 진입 완료");
-        // HandleConnectionSequence에서 이미 방 찾기를 시작하므로 중복 호출 방지
-        // if (isMatching)
-        // {
-        //     StartCoroutine(DelayedJoinRoom());
-        // }
+        
+        // HandleConnectionSequence가 실행 중이 아닌 경우에만 방 찾기 시도
+        if (isMatching && PhotonNetwork.IsConnectedAndReady)
+        {
+            // HandleConnectionSequence에서 처리되지 않은 경우를 대비한 백업 로직
+            StartCoroutine(BackupRoomJoinLogic());
+        }
+    }
+    
+    /// <summary>
+    /// HandleConnectionSequence가 실패한 경우를 대비한 백업 방 찾기 로직
+    /// </summary>
+    private IEnumerator BackupRoomJoinLogic()
+    {
+        yield return new WaitForSeconds(1f); // HandleConnectionSequence 완료 대기
+        
+        // 아직 방에 들어가지 않았고 매칭 중이라면 시도
+        if (!PhotonNetwork.InRoom && isMatching && PhotonNetwork.InLobby)
+        {
+            Debug.Log("FindMatching: 백업 로직으로 방 찾기 시도");
+            TryJoinOrCreateRoom();
+        }
     }
 
-    private IEnumerator DelayedJoinRoom()
-    {
-        yield return new WaitForSeconds(0.1f);
-        TryJoinOrCreateRoom();
-    }
+    // DelayedJoinRoom 메서드 제거됨 - BackupRoomJoinLogic으로 대체
 
     public override void OnJoinRandomFailed(short returnCode, string message)
     {

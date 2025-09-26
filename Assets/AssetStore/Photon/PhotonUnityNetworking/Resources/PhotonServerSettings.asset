@@ -28,7 +28,7 @@ MonoBehaviour:
     AuthMode: 0
     EnableLobbyStatistics: 0
     NetworkLogging: 1
-  DevRegion: jp
+  DevRegion: kr
   PunLogging: 0
   EnableSupportLogger: 0
   RunInBackground: 1
@@ -83,11 +83,8 @@ MonoBehaviour:
   - SyncItemToShopStand
   - SyncRenewTimer
   - UpdateHealth
-  - InitializeSheild
-  - InitializeShield
-  - RPC_SetParent
-  - DestroyShieldIfExpired
-  - Set_Count_invincibility
+  - CancelCountdownRPC
+  - StartCountdownRPC
   DisableAutoOpenWizard: 1
   ShowSettings: 0
   DevRegionSetOnce: 1

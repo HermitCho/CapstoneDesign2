@@ -288,10 +288,16 @@ public class GameOverController : MonoBehaviourPunCallbacks
 
     private void UpdateGameOverPanel()
     {
-        GameOverPanel gameOverPanel = FindObjectOfType<GameOverPanel>();
+        // 비활성화된 오브젝트까지 포함해서 찾기
+        GameOverPanel gameOverPanel = FindObjectOfType<GameOverPanel>(true);
         if(gameOverPanel != null)
         {
+            Debug.Log($"GameOverController: GameOverPanel 찾음 - 순위 데이터 {playerRankings.Count}개 전달");
             gameOverPanel.SetPlayerRankings(playerRankings);
+        }
+        else
+        {
+            Debug.LogError("GameOverController: GameOverPanel을 찾을 수 없습니다!");
         }
     }
 
@@ -321,10 +327,24 @@ public class GameOverController : MonoBehaviourPunCallbacks
 
     public void SetCameraPosition()
     {
+        // Ready 단계에서는 카메라 위치 변경을 방지
+        if (PhotonNetwork.CurrentRoom != null && 
+            PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("gamePhase", out object phase) &&
+            phase.ToString() == "READY")
+        {
+            Debug.Log("GameOverController: Ready 단계에서 카메라 위치 변경 차단");
+            return;
+        }
+        
         if(cameraPosition != null)
         {
-            Camera.main.transform.position = cameraPosition.position;
-            Camera.main.transform.rotation = cameraPosition.rotation;
+            Camera mainCamera = Camera.main;
+            if (mainCamera != null)
+            {
+                mainCamera.transform.position = cameraPosition.position;
+                mainCamera.transform.rotation = cameraPosition.rotation;
+                Debug.Log($"GameOverController: 카메라 위치 설정 - Position: {cameraPosition.position}");
+            }
         }
     }
 

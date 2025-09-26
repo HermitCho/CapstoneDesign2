@@ -8,6 +8,17 @@ public class FootstepSoundPlayer : MonoBehaviour
 {
 
     private bool isMoving = false;
+    
+    // 너무 짧은 간격으로 중복 재생되는 것을 방지하기 위한 쿨다운
+    [SerializeField] private float footstepMinInterval = 0.15f;
+    private float lastFootstepTime = -999f;
+    
+    // 같은 발 구간(반 주기)에서 2번 재생되는 것을 방지하기 위한 위상 체크
+    private Animator cachedAnimator;
+    private int lastStepPhase = int.MinValue;
+    
+    // 이벤트 타이밍 보정용 지연(발 접지 프레임과 정확히 맞추기 위함)
+    [SerializeField] private float footstepDelay = 0f;
 
     /// <summary>
     /// 외부에서 이동 여부 설정 (TestMoveAnimationController에서 호출)
@@ -34,6 +45,46 @@ public class FootstepSoundPlayer : MonoBehaviour
         {
             return;
         }
+        // Animator 캐시
+        if (cachedAnimator == null)
+        {
+            cachedAnimator = GetComponent<Animator>();
+        }
+        
+        // 같은 반 주기(왼발/오른발 구간) 내 중복 이벤트 차단 (경계값 보정 포함)
+        if (cachedAnimator != null)
+        {
+            var state = cachedAnimator.GetCurrentAnimatorStateInfo(0);
+            float norm = state.normalizedTime % 1f; // 0~1 구간으로 고정
+            int currentPhase = Mathf.FloorToInt(norm * 2f + 0.01f); // 경계에서 같은 구간으로 인식되도록 epsilon 추가
+            if (currentPhase == lastStepPhase)
+            {
+                // 같은 구간에서 또 왔다면 무시
+                return;
+            }
+            lastStepPhase = currentPhase;
+        }
+        
+        // 최소 간격 보호 (프레임/네트워크 요인으로 빠르게 두 번 올 때)
+        if (Time.time - lastFootstepTime < footstepMinInterval)
+        {
+            return;
+        }
+        lastFootstepTime = Time.time;
+        
+        if (footstepDelay > 0f)
+        {
+            StartCoroutine(DelayedFootstep(footstepDelay));
+        }
+        else
+        {
+            PhotonView.Get(this).RPC("RPC_PlayFootStepSound", RpcTarget.All);
+        }
+    }
+
+    private IEnumerator DelayedFootstep(float delay)
+    {
+        yield return new WaitForSeconds(delay);
         PhotonView.Get(this).RPC("RPC_PlayFootStepSound", RpcTarget.All);
     }
 
