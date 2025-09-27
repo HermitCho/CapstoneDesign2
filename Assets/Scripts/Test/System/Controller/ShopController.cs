@@ -173,6 +173,12 @@ public class ShopController : MonoBehaviourPun
             // 현재 보고 있던 상점 스탠드 정리
             if (currentLookingShopStand != null)
             {
+                // 진행 중인 구매가 있다면 취소
+                if (isPurchaseHolding)
+                {
+                    currentLookingShopStand.CancelPurchaseProgress();
+                }
+                
                 currentLookingShopStand.OnPlayerStopLooking(this);
                 currentLookingShopStand = null;
             }
@@ -219,6 +225,13 @@ public class ShopController : MonoBehaviourPun
             // 이전 상점 스탠드 정리
             if (currentLookingShopStand != null)
             {
+                // 진행 중인 구매가 있다면 취소
+                if (isPurchaseHolding)
+                {
+                    currentLookingShopStand.CancelPurchaseProgress();
+                    //EnableGameInput(); // 게임 입력 다시 활성화
+                }
+                
                 currentLookingShopStand.OnPlayerStopLooking(this);
             }
 
@@ -326,43 +339,25 @@ public class ShopController : MonoBehaviourPun
         if (isPurchaseHolding)
         {
             purchaseHoldTimer += Time.deltaTime;
-            Debug.Log($"ShopController: 구매 진행 중 - {purchaseHoldTimer:F2}초 / {purchaseHoldTime}초");
+            float progress = purchaseHoldTimer / purchaseHoldTime;
             
-            // 구매 시간이 충족되면 구매 시도
-            if (purchaseHoldTimer >= purchaseHoldTime)
-            {
-                Debug.Log("ShopController: 구매 시간 충족 - 구매 시도");
-                TryPurchaseCurrentItem();
-                isPurchaseHolding = false;
-                purchaseHoldTimer = 0f;
-            }
+            // ShopStand에 프로그레스 업데이트
+            currentLookingShopStand.UpdatePurchaseProgress(progress);
+            
+            Debug.Log($"ShopController: 구매 진행 중 - {purchaseHoldTimer:F2}초 / {purchaseHoldTime}초 ({progress * 100:F1}%)");
+            
+            // 프로그레스가 1.0에 도달하면 ShopStand에서 자동으로 구매 완료 처리됨
         }
     }
 
     /// <summary>
-    /// 현재 보고 있는 아이템 구매 시도
+    /// 현재 보고 있는 아이템 구매 시도 (레거시 메서드 - 프로그레스 시스템으로 대체됨)
     /// </summary>
     void TryPurchaseCurrentItem()
     {
-        if (currentLookingShopStand == null) 
-        {
-            Debug.Log("ShopController: TryPurchaseCurrentItem 실패 - currentLookingShopStand가 null");
-            return;
-        }
-
-        Debug.Log($"ShopController: {currentLookingShopStand.name}에서 아이템 구매 시도");
-        bool purchaseSuccess = currentLookingShopStand.TryPurchaseItem(this);
-        
-        if (purchaseSuccess)
-        {
-            Debug.Log("ShopController: 구매 요청 성공");
-            // 구매 성공 시 현재 상점 스탠드 참조 해제 (아이템이 파괴될 예정)
-            currentLookingShopStand = null;
-        }
-        else
-        {
-            Debug.Log("ShopController: 구매 요청 실패");
-        }
+        // 이 메서드는 더 이상 직접 호출되지 않음
+        // ShopStand.CompletePurchase()에서 TryPurchaseItem()을 직접 호출함
+        Debug.LogWarning("ShopController: TryPurchaseCurrentItem은 레거시 메서드입니다. 프로그레스 시스템을 사용하세요.");
     }
 
     /// <summary>
@@ -370,8 +365,6 @@ public class ShopController : MonoBehaviourPun
     /// </summary>
     void OnShootPressed()
     {
-    
-        
         if (!isShopOpen)
         {
             Debug.Log("ShopController: 상점이 열려있지 않음");
@@ -383,10 +376,25 @@ public class ShopController : MonoBehaviourPun
             Debug.Log("ShopController: 보고 있는 상점 스탠드가 없음");
             return;
         }
+        
+        // 이미 구매 진행 중이거나 애니메이션 재생 중이면 무시
+        if (currentLookingShopStand.IsPurchaseInProgress() || 
+            currentLookingShopStand.IsPlayingPurchaseAnimation())
+        {
+            Debug.Log("ShopController: 이미 구매 진행 중이므로 무시");
+            return;
+        }
 
         Debug.Log("ShopController: 구매 홀드 시작");
+        
+        // ShopStand에 구매 프로그레스 시작 알림
+        currentLookingShopStand.StartPurchaseProgress(this, purchaseHoldTime);
+        
         isPurchaseHolding = true;
         purchaseHoldTimer = 0f;
+        
+        // 게임 입력 비활성화 (구매 중에는 다른 조작 차단)
+        
     }
 
     /// <summary>
@@ -396,8 +404,17 @@ public class ShopController : MonoBehaviourPun
     {
         if (!isShopOpen) return;
 
+        Debug.Log("ShopController: 구매 홀드 취소");
+        
+        // ShopStand에 구매 프로그레스 취소 알림
+        if (currentLookingShopStand != null && isPurchaseHolding)
+        {
+            currentLookingShopStand.CancelPurchaseProgress();
+        }
+        
         isPurchaseHolding = false;
         purchaseHoldTimer = 0f;
+
     }
 
     #endregion

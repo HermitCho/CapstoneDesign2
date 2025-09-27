@@ -2,6 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
+using UnityEngine.UI;
+using DG.Tweening;
 
 public class ShopStand : MonoBehaviour
 {
@@ -10,6 +12,10 @@ public class ShopStand : MonoBehaviour
     [SerializeField] private TextMeshProUGUI itemDescriptionText;
     [SerializeField] private TextMeshPro itemRenewTimeText;
     [SerializeField] private GameObject descriptionPanel;
+    
+    [Header("구매 프로그레스 UI")]
+    [SerializeField] private GameObject purchaseProgressPanel;
+    [SerializeField] private Image purchaseProgressFill;
 
     [Header("상점 관련")]
     [SerializeField] private Transform itemSpawnPoint;
@@ -26,6 +32,11 @@ public class ShopStand : MonoBehaviour
     private float remainingRenewTime = 0f;
     private float purchaseHoldTime = 0f;
     private bool isRenewTimerActive = false;
+    
+    // 구매 진행 상태
+    private bool isPurchaseInProgress = false;
+    private bool isPlayingPurchaseAnimation = false;
+    private ShopController currentPurchaser = null;
 
     void Start()
     {
@@ -51,6 +62,9 @@ public class ShopStand : MonoBehaviour
         {
             descriptionPanel.SetActive(false);
         }
+        
+        // 프로그레스 초기화
+        ResetPurchaseProgress();
     }
 
     /// <summary>
@@ -113,6 +127,22 @@ public class ShopStand : MonoBehaviour
     {
         if (currentItem != null)
         {
+            // 구매 애니메이션 중이면 StopPurchaseAnimation에서 정리하도록 위임
+            if (isPlayingPurchaseAnimation)
+            {
+                Debug.Log("ShopStand: 구매 애니메이션 중이므로 ClearCurrentItem 지연 처리");
+                currentItem = null;
+                currentItemComponent = null;
+                currentItemSkill = null;
+                return;
+            }
+            
+            // 진행 중인 구매가 있다면 취소
+            if (isPurchaseInProgress)
+            {
+                CancelPurchaseProgress();
+            }
+            
             // 모든 플레이어의 시선 추적 해제
             foreach (ShopController player in lookingPlayers)
             {
@@ -309,5 +339,196 @@ public class ShopStand : MonoBehaviour
         remainingRenewTime = remainingTime;
         isRenewTimerActive = isActive;
     }
+    
+    #region 구매 프로그레스 관리
+    
+    /// <summary>
+    /// 구매 프로그레스 시작
+    /// </summary>
+    /// <param name="purchaser">구매자</param>
+    /// <param name="holdTime">구매 완료까지 필요한 시간</param>
+    public void StartPurchaseProgress(ShopController purchaser, float holdTime)
+    {
+        if (isPurchaseInProgress || isPlayingPurchaseAnimation) return;
+        if (currentItem == null) return;
+        
+        isPurchaseInProgress = true;
+        currentPurchaser = purchaser;
+        purchaseHoldTime = holdTime;
+        
+        
+        // 프로그레스 초기화
+        ResetPurchaseProgress();
+        
+        Debug.Log($"ShopStand: 구매 프로그레스 시작 - {purchaser.name}, 시간: {holdTime}초");
+    }
+    
+    /// <summary>
+    /// 구매 프로그레스 업데이트
+    /// </summary>
+    /// <param name="progress">진행률 (0~1)</param>
+    public void UpdatePurchaseProgress(float progress)
+    {
+        if (!isPurchaseInProgress) return;
+        
+        progress = Mathf.Clamp01(progress);
+        
+        if (purchaseProgressFill != null)
+        {
+            purchaseProgressFill.fillAmount = progress;
+        }
+        
+        // 프로그레스가 완료되면 구매 완료 처리
+        if (progress >= 1f)
+        {
+            CompletePurchase();
+        }
+    }
+    
+    /// <summary>
+    /// 구매 프로그레스 취소
+    /// </summary>
+    public void CancelPurchaseProgress()
+    {
+        if (!isPurchaseInProgress) return;
+        
+        Debug.Log("ShopStand: 구매 프로그레스 취소");
+        
+        isPurchaseInProgress = false;
+        currentPurchaser = null;
+        
+        ResetPurchaseProgress();
+    }
+    
+    /// <summary>
+    /// 구매 완료 처리
+    /// </summary>
+    private void CompletePurchase()
+    {
+        if (!isPurchaseInProgress || currentPurchaser == null) return;
+        
+        Debug.Log("ShopStand: 구매 완료!");
+        
+        isPurchaseInProgress = false;
+        isPlayingPurchaseAnimation = true;
+        
+        // 구매 애니메이션 시작
+        StartCoroutine(PlayPurchaseAnimation());
+        
+        // 실제 구매 처리
+        bool purchaseSuccess = TryPurchaseItem(currentPurchaser);
+        if (!purchaseSuccess)
+        {
+            // 구매 실패 시 애니메이션 중단
+            StopPurchaseAnimation();
+        }
+    }
+    
+    /// <summary>
+    /// 구매 애니메이션 재생
+    /// </summary>
+    private IEnumerator PlayPurchaseAnimation()
+    {
+        Debug.Log("ShopStand: 구매 애니메이션 시작");
+        
+        // 프로그레스 완료 표시 
+        if (purchaseProgressFill != null)
+        {
+            Color originalColor = purchaseProgressFill.color;
+            if (TryPurchaseItem(currentPurchaser))
+            {
+                purchaseProgressFill.color = Color.red;
+            }
+
+            
+            // 흔들림 효과 (DOTween 사용)
+            if (purchaseProgressPanel != null)
+            {
+                Vector3 originalPos = purchaseProgressPanel.transform.localPosition;
+                
+                // 간단한 흔들림 효과
+                for (int i = 0; i < 8; i++)
+                {
+                    float offsetX = UnityEngine.Random.Range(-0.1f, 0.1f);
+                    float offsetY = UnityEngine.Random.Range(-0.01f, 0.01f);
+                    purchaseProgressPanel.transform.localPosition = originalPos + new Vector3(offsetX, offsetY, 0);
+                    yield return new WaitForSeconds(0.05f);
+                }
+                
+                // 원래 위치로 복원
+                purchaseProgressPanel.transform.localPosition = originalPos;
+            }
+            
+            // 색상 복원
+            purchaseProgressFill.color = originalColor;
+        }
+        
+        // 애니메이션 완료 후 정리
+        yield return new WaitForSeconds(0.5f);
+        StopPurchaseAnimation();
+    }
+    
+    /// <summary>
+    /// 구매 애니메이션 중단
+    /// </summary>
+    private void StopPurchaseAnimation()
+    {
+        Debug.Log("ShopStand: 구매 애니메이션 종료");
+        
+        isPlayingPurchaseAnimation = false;
+        currentPurchaser = null;
+
+        
+        ResetPurchaseProgress();
+        
+        // 아이템이 제거된 후 설명 패널도 비활성화
+        if (currentItem == null)
+        {
+            if (descriptionPanel != null)
+            {
+                descriptionPanel.SetActive(false);
+            }
+            
+            // 모든 플레이어의 시선 추적 해제
+            foreach (ShopController player in lookingPlayers)
+            {
+                if (player != null)
+                {
+                    player.OnShopStandStopLooking(this);
+                }
+            }
+            lookingPlayers.Clear();
+        }
+    }
+    
+    /// <summary>
+    /// 프로그레스 초기화
+    /// </summary>
+    private void ResetPurchaseProgress()
+    {
+        if (purchaseProgressFill != null)
+        {
+            purchaseProgressFill.fillAmount = 0f;
+            purchaseProgressFill.color = Color.white; // 기본 색상으로 초기화
+        }
+    }
+    
+    /// <summary>
+    /// 구매 진행 중인지 확인
+    /// </summary>
+    public bool IsPurchaseInProgress()
+    {
+        return isPurchaseInProgress;
+    }
+    
+    /// <summary>
+    /// 구매 애니메이션 재생 중인지 확인
+    /// </summary>
+    public bool IsPlayingPurchaseAnimation()
+    {
+        return isPlayingPurchaseAnimation;
+    }
+    
+    #endregion
 }
 

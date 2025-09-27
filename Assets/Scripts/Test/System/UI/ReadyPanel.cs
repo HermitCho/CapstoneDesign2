@@ -130,65 +130,7 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
             waitingTextAnimationCoroutine = null;
         }
     }
-    
-    /// <summary>
-    /// Cinemachine Virtual Camera들을 비활성화
-    /// </summary>
-    private void DisableCinemachineVirtualCameras()
-    {
-        try
-        {
-            // Cinemachine Virtual Camera 컴포넌트들을 모두 찾아서 비활성화
-            var virtualCameras = FindObjectsOfType<Cinemachine.CinemachineVirtualCamera>();
-            foreach (var vcam in virtualCameras)
-            {
-                vcam.enabled = false;
-                Debug.Log($"ReadyPanel: Cinemachine Virtual Camera 비활성화 - {vcam.name}");
-            }
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogWarning($"ReadyPanel: Cinemachine이 설치되지 않았거나 Virtual Camera를 찾을 수 없음 - {e.Message}");
-        }
-        
-        // 혹시 GameObject 자체를 비활성화해야 하는 경우
-        GameObject[] virtualCameraObjects = GameObject.FindGameObjectsWithTag("VirtualCamera");
-        foreach (var vcamObj in virtualCameraObjects)
-        {
-            vcamObj.SetActive(false);
-            Debug.Log($"ReadyPanel: Virtual Camera GameObject 비활성화 - {vcamObj.name}");
-        }
-    }
-    
-    /// <summary>
-    /// Cinemachine Virtual Camera들을 다시 활성화
-    /// </summary>
-    private void EnableCinemachineVirtualCameras()
-    {
-        try
-        {
-            // Cinemachine Virtual Camera 컴포넌트들을 모두 찾아서 활성화
-            var virtualCameras = FindObjectsOfType<Cinemachine.CinemachineVirtualCamera>(true); // 비활성화된 것도 찾기
-            foreach (var vcam in virtualCameras)
-            {
-                vcam.enabled = true;
-                Debug.Log($"ReadyPanel: Cinemachine Virtual Camera 활성화 - {vcam.name}");
-            }
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogWarning($"ReadyPanel: Cinemachine이 설치되지 않았거나 Virtual Camera를 찾을 수 없음 - {e.Message}");
-        }
-        
-        // GameObject 자체가 비활성화된 경우 다시 활성화
-        GameObject[] virtualCameraObjects = GameObject.FindGameObjectsWithTag("VirtualCamera");
-        foreach (var vcamObj in virtualCameraObjects)
-        {
-            vcamObj.SetActive(true);
-            Debug.Log($"ReadyPanel: Virtual Camera GameObject 활성화 - {vcamObj.name}");
-        }
-    }
-    
+
     /// <summary>
     /// 카메라를 Ready 위치로 설정
     /// </summary>
@@ -242,8 +184,7 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
                     Debug.Log("ReadyPanel: GameOverPanel 비활성화");
                 }
                 
-                // Cinemachine Virtual Camera들을 비활성화 (사용하지 않으므로 주석 처리)
-                // DisableCinemachineVirtualCameras();
+
                 
                 Debug.Log($"ReadyPanel: 카메라 위치 설정 완료 - Position: {readyCamera.transform.position}");
             }
@@ -500,8 +441,7 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
             Debug.Log("ReadyPanel: GameOverPanel 컴포넌트 활성화");
         }
         
-        // Cinemachine Virtual Camera들을 다시 활성화 (사용하지 않으므로 주석 처리)
-        // EnableCinemachineVirtualCameras();
+
         
         // 마스터 클라이언트가 게임 단계를 PLAYING으로 변경
         if (PhotonNetwork.IsMasterClient)
