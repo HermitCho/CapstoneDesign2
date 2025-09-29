@@ -131,8 +131,20 @@ public abstract class Skill : MonoBehaviour
     {
         get
         {
-            if (Time.time - lastUseTime < cooldown) return false;
-            if (usableCountComponent != null && usableCountComponent.Remaining <= 0) return false;
+            if (Time.time - lastUseTime < cooldown)
+            {
+                Debug.Log($"[Skill] {skillName} CanUse 쿨타임 {Time.time - lastUseTime}");
+                return false;
+            }
+            if (usableCountComponent != null)
+            {
+                Debug.Log(usableCountComponent.gameObject.name);
+                if (usableCountComponent.Remaining <= 0)
+                {
+                    Debug.Log($"[Skill] {skillName} CanUse 호출됨, 횟수 {usableCountComponent.Remaining}");
+                    return false;
+                }
+            }
             return true;
         }
     }
@@ -146,6 +158,7 @@ public abstract class Skill : MonoBehaviour
         // 횟수 제한이 있는 경우 -> Use() 실행
         if (_usableCount != null && !_usableCount.Use()) return;
 
+        Debug.Log($"[Skill] {skillName} ActivateSkill 호출됨, 쿨다운 갱신");
         lastUseTime = Time.time;
 
         if (castTime > 0f)
@@ -157,7 +170,6 @@ public abstract class Skill : MonoBehaviour
                 executor.transform.position,
                 executor.transform.forward
             );
-            //StartCoroutine(DelaySkillExecute(executor, castTime));
         }
         else
         {
@@ -167,7 +179,7 @@ public abstract class Skill : MonoBehaviour
                 this.index,
                 executor.transform.position,
                 executor.transform.forward
-        );
+            );
         }
     }
 
@@ -191,7 +203,6 @@ public abstract class Skill : MonoBehaviour
                 executor.transform.position,
                 executor.transform.forward
             );
-            //StartCoroutine(DelayItemExecute(executor, castTime));
         }
         else
         {
@@ -202,39 +213,15 @@ public abstract class Skill : MonoBehaviour
                 this.index,
                 executor.transform.position,
                 executor.transform.forward
-        );
+            );
         }
     }
 
-    // private IEnumerator DelaySkillExecute(SkillController executor, float delay)
-    // {
-    //     yield return new WaitForSeconds(delay);
-    //     executor.photonView.RPC(
-    //         "ExecuteSkill",
-    //         RpcTarget.All,
-    //         this.index,
-    //         executor.transform.position,
-    //         executor.transform.forward
-    //     );
-    // }
-
-    // private IEnumerator DelayItemExecute(SkillController executor, float delay)
-    // {
-    //     yield return new WaitForSeconds(delay);
-    //     executor.photonView.RPC(
-    //         "ExecuteItem",
-    //         RpcTarget.All,
-    //         this.index,
-    //         executor.transform.position,
-    //         executor.transform.forward
-    //     );
-    // }
-
     // 실제 동작: 자기 자신만 실행
-    public virtual void Execute(SkillController executor, Vector3 pos, Vector3 dir) { }
-    public virtual void Execute(SkillController executorSkill, MoveController executorSkillMove, Vector3 pos, Vector3 dir) { }
-    public virtual void CastExecute(SkillController executor, Vector3 pos, Vector3 dir) { }
-    public virtual void CastExecute(SkillController executorSkill, MoveController executorSkillMove, Vector3 pos, Vector3 dir) { }
+    public virtual void Execute(SkillController executor, Vector3 pos, Vector3 dir) { lastUseTime = Time.time; }
+    public virtual void Execute(SkillController executorSkill, MoveController executorSkillMove, Vector3 pos, Vector3 dir) { lastUseTime = Time.time; }
+    public virtual void CastExecute(SkillController executor, Vector3 pos, Vector3 dir) { lastUseTime = Time.time; }
+    public virtual void CastExecute(SkillController executorSkill, MoveController executorSkillMove, Vector3 pos, Vector3 dir) { lastUseTime = Time.time; }
 
     protected void SpawnEffectFollow(ParticleSystem effectPrefab, Transform followTarget, float destroyDelay)
     {
@@ -254,38 +241,37 @@ public abstract class Skill : MonoBehaviour
         Destroy(fx.gameObject, destroyDelay > 0f ? destroyDelay : 0f);
     }
 
-
-public void PlayEffectAtRemote(SkillController executor, Vector3 pos, Vector3 dir)
-{
-    if (skillEffect != null)
+    public void PlayEffectAtRemote(SkillController executor, Vector3 pos, Vector3 dir)
     {
-        if (isFollowing)
-            SpawnEffectFollow(skillEffect, executor.transform, effectDuration);
-        else
-            SpawnEffectAtPosition(skillEffect, pos, Quaternion.identity, effectDuration);
+        if (skillEffect != null)
+        {
+            if (isFollowing)
+                SpawnEffectFollow(skillEffect, executor.transform, effectDuration);
+            else
+                SpawnEffectAtPosition(skillEffect, pos, Quaternion.identity, effectDuration);
+        }
+
+        if (skillSound != null && AudioManager.Inst != null)
+        {
+            AudioManager.Inst.PlayClipAtPoint(skillSound, executor.transform.position, 1f, 1f, null, executor.transform);
+        }
     }
 
-    if (skillSound != null && AudioManager.Inst != null)
+    public void PlayCastEffectAtRemote(SkillController executor, Vector3 pos, Vector3 dir)
     {
-        AudioManager.Inst.PlayClipAtPoint(skillSound, executor.transform.position, 1f, 1f, null, executor.transform);
-    }
-}
+        if (castTimeSkillEffect != null)
+        {
+            if (isCastingFollowing)
+                SpawnEffectFollow(castTimeSkillEffect, executor.transform, effectCastingDuration);
+            else
+                SpawnEffectAtPosition(castTimeSkillEffect, pos, Quaternion.identity, effectCastingDuration);
+        }
 
-public void PlayCastEffectAtRemote(SkillController executor, Vector3 pos, Vector3 dir)
-{
-    if (castTimeSkillEffect != null)
-    {
-        if (isCastingFollowing)
-            SpawnEffectFollow(castTimeSkillEffect, executor.transform, effectCastingDuration);
-        else
-            SpawnEffectAtPosition(castTimeSkillEffect, pos, Quaternion.identity, effectCastingDuration);
+        if (castTimeSkillSound != null && AudioManager.Inst != null)
+        {
+            AudioManager.Inst.PlayClipAtPoint(castTimeSkillSound, executor.transform.position, 1f, 1f, null, executor.transform);
+        }
     }
-
-    if (castTimeSkillSound != null && AudioManager.Inst != null)
-    {
-        AudioManager.Inst.PlayClipAtPoint(castTimeSkillSound, executor.transform.position, 1f, 1f, null, executor.transform);
-    }
-}
 
     public virtual float GetProjectileSpeed() { return 10f; } //기본 값
     public virtual GameObject GetPlacementPrefab() { return null; }

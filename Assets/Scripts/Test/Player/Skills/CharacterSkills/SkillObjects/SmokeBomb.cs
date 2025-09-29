@@ -1,0 +1,66 @@
+using Photon.Pun;
+using UnityEngine;
+using System.Collections;
+
+public class SmokeBomb : MonoBehaviourPun
+{
+    [SerializeField] GameObject SmokeEffect;
+    [SerializeField] AudioClip SmokeSound;
+    [SerializeField] private float smokeDuration = 10f;  // 연막 지속 시간
+    [SerializeField] private float speed = 30f;
+    Rigidbody rb;
+    AudioSource aS;
+
+    private void Awake()
+    {
+        rb = GetComponent<Rigidbody>();
+        aS = GetComponent<AudioSource>();
+    }
+
+    [PunRPC]
+    public void InitializeAndLaunch(int ownerId, Vector3 direction, float launchSpeed) // launchSpeed 파라미터 추가
+    {
+        rb.velocity = direction.normalized * launchSpeed;
+    }
+
+    void OnCollisionEnter(Collision collision)
+    {
+        if (PhotonNetwork.IsMasterClient)
+            photonView.RPC("RPC_PlaySmoke", RpcTarget.All);
+    }
+
+    [PunRPC]
+    void RPC_PlaySmoke()
+    {
+        StartCoroutine(WaitSmokeEffect());
+    }
+
+    IEnumerator WaitSmokeEffect()
+    {
+        Debug.Log("[SmokeBomb] 기다리는 중...");
+        yield return new WaitForSeconds(1f);
+        StartCoroutine(StartSmokeEffect());
+    }
+
+    IEnumerator StartSmokeEffect()
+    {
+        Debug.Log("[SmokeBomb] 연막 효과 시작!");
+        SmokeEffect.SetActive(true);
+        SmokeEffect.GetComponent<ParticleSystem>().Play();
+
+        if (aS != null && SmokeSound != null)
+            aS.PlayOneShot(SmokeSound);
+
+        yield return new WaitForSeconds(smokeDuration);
+
+        SmokeEffect.SetActive(false);
+
+        if (photonView.IsMine)
+            PhotonNetwork.Destroy(gameObject); // 오브젝트 전체 제거
+    }
+
+    public float GetBombSpeed()
+    {
+        return speed;
+    }
+}

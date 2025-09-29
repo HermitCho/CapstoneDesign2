@@ -1,12 +1,13 @@
-using Photon.Pun;
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
+using Photon.Pun;
 
-public class FireballItem : Skill
+public class SmokeBombSkill : Skill
 {
-    [Header("발사 설정")]
-    [SerializeField] private GameObject fireballPrefab;
-    [SerializeField] private Transform launchPoint;
-    [SerializeField] private float fireballSpeed;
+    [Header("연막탄 설정")]
+    [SerializeField] private GameObject smokePrefab;   // 연막탄 오브젝트
+    [SerializeField] private float throwForce;     // 던지는 힘
     Vector3 spawnPosition;
 
     [Header("프리뷰 설정")]
@@ -14,38 +15,30 @@ public class FireballItem : Skill
     protected override void Awake()
     {
         base.Awake();
-
-        if (usableCountComponent == null)
-        {
-            usableCountComponent = gameObject.AddComponent<UsableCountComponent>();
-            _usableCount = usableCountComponent;
-        }
-
-        (usableCountComponent as UsableCountComponent).SetMaxUses(1); // 1회용
+        // 무한 사용 → UsableCountComponent 제거
+        if (usableCountComponent != null)
+            Destroy(usableCountComponent as Component);
     }
-
     public override void CastExecute(SkillController executor, Vector3 pos, Vector3 dir)
     {
-        spawnPosition = launchPoint != null
-           ? launchPoint.position
-           : executor.transform.position + executor.transform.forward * 1.5f + executor.transform.up * 1.5f;
+        spawnPosition = executor.transform.position + executor.transform.forward * 1.5f + executor.transform.up * 1.5f;
 
-        GameObject fireballInstance = PhotonNetwork.Instantiate(
-            "Prefabs/ItemObject/" + fireballPrefab.name,
+        // 수류탄 생성
+        GameObject smokeBombInstance = PhotonNetwork.Instantiate(
+            "Prefabs/SkillObject/" + smokePrefab.name,
             spawnPosition,
-            Quaternion.identity
-        );
+            Quaternion.identity);
 
-        if (fireballInstance.TryGetComponent<Fireball>(out Fireball fireballScript))
+        if (smokeBombInstance.TryGetComponent<SmokeBomb>(out SmokeBomb smokeBombScript))
         {
-            fireballScript.photonView.RPC(
+            smokeBombScript.photonView.RPC(
                 "InitializeAndLaunch",
                 RpcTarget.All,
                 executor.photonView.OwnerActorNr,
                 executor.GetComponent<TestShoot>().CalculateShotDirection(),
-                fireballScript.GetFireballSpeed()
+                smokeBombScript.GetBombSpeed()
             );
-             SetSpeed(fireballScript.GetFireballSpeed());
+            SetSpeed(smokeBombScript.GetBombSpeed());
         }
     }
 
@@ -54,14 +47,14 @@ public class FireballItem : Skill
         // 부모 클래스의 기본 프리뷰 로직을 실행
         base.StartPreview(owner);
         // 필요하다면 여기에 FireballItem에 특화된 추가 로직을 넣을 수 있습니다.
-        Debug.Log("FireballItem 전용 StartPreview 로직 실행");
+        //Debug.Log("SmokeBombSkill 전용 StartPreview 로직 실행");
     }
 
     public override void UpdatePreview(SkillController owner, Vector3 origin, Vector3 direction, float initialSpeed = 10f)
     {
         // 부모 클래스의 UpdatePreview 메서드를 호출하며 Fireball의 고유 속도 전달
         base.UpdatePreview(owner, origin, direction, GetProjectileSpeed());
-        Debug.Log("[FireballItem] 방향 " + direction);
+        //Debug.Log("[SmokeBombSkill] 방향 " + direction);
     }
 
     public override void EndPreview(SkillController owner)
@@ -69,16 +62,16 @@ public class FireballItem : Skill
         // 부모 클래스의 기본 프리뷰 종료 로직을 실행
         base.EndPreview(owner);
         // 필요하다면 여기에 FireballItem에 특화된 추가 로직을 넣을 수 있습니다.
-        Debug.Log("FireballItem 전용 EndPreview 로직 실행");
+        //Debug.Log("SmokeBombSkill 전용 EndPreview 로직 실행");
     }
 
     private void SetSpeed(float newSpeed)
     {
-        fireballSpeed= newSpeed;
+        throwForce = newSpeed;
     }
 
     public override float GetProjectileSpeed()
     {
-        return fireballSpeed;
+        return throwForce;
     }
 }

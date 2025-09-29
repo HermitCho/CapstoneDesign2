@@ -31,9 +31,10 @@ public class ProjectilePreviewComponent : MonoBehaviour, IProjectilePreview
             targetMarkerInstance.SetActive(false);
         }
     }
-
+    
     public void StartPreview(SkillController owner)
     {
+        Debug.Log("[ProjectilePreviewComponent] StartPreview 시작");
         hitDetected = false;
 
         if (owner != null && owner.photonView != null && owner.photonView.IsMine)
@@ -66,7 +67,6 @@ public class ProjectilePreviewComponent : MonoBehaviour, IProjectilePreview
         Vector3 previousPosition = origin;
         lastValidPosition = origin;
         hitDetected = false;
-        Debug.Log("dfdffdf"+ initialSpeed);
 
         for (int i = 0; i < segments; i++)
         {
@@ -104,17 +104,6 @@ public class ProjectilePreviewComponent : MonoBehaviour, IProjectilePreview
         }
         targetMarkerInstance.transform.position = lastValidPosition;
         targetMarkerInstance.SetActive(true);
-
-        if (hitDetected)
-        {
-            Debug.Log("targetMarker.transform.root.gameObject.name + " + targetMarkerInstance.transform.root.gameObject.name);
-            Debug.Log($"마커 상태: activeSelf={targetMarkerInstance.activeSelf}, activeInHierarchy={targetMarkerInstance.activeInHierarchy}");
-            Debug.Log($"충돌 감지 완료 - 마커 위치: {lastValidPosition}, 마커 활성화: {targetMarkerInstance.activeInHierarchy}, 마커 Scale: {targetMarkerInstance.transform.localScale}");
-        }
-        else
-        {
-            Debug.Log($"마커 위치 업데이트 (충돌 없음): {lastValidPosition}, 마커 활성화: {targetMarkerInstance.activeInHierarchy}, 마커 Scale: {targetMarkerInstance.transform.localScale}");
-        }
     }
 
     public void EndPreview()

@@ -1,3 +1,5 @@
+// SkillController.cs (리팩토링된 버전)
+// 기존 코드 기반으로 최소한의 변경으로 "프리뷰 -> 좌클릭 확정" 흐름을 구현했습니다.
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -11,8 +13,8 @@ public class SkillController : MonoBehaviourPun
     private DataBase.ItemData itemData;
     private DataBase.PlayerMoveData playerMoveData;
     private DataBase.PlayerData playerData;
-    private Skill skill;
-    private Skill activeItem;
+    private Skill skill;                // 플레이어 고유 스킬 (기존 방식 유지)
+    private Skill activeItem;           // 현재 선택된 아이템(스킬 형태)
     private Skill[] Skills;
     private Skill[] Items;
     private Dictionary<int, Skill> skillDictionary = new Dictionary<int, Skill>();
@@ -20,7 +22,8 @@ public class SkillController : MonoBehaviourPun
     private PhotonView photonView;
     private bool dataBaseCached = false;
 
-    // ✅ 기절/조작 제어 관련 변수들
+    // 기절/조작 제어 관련 변수들
+    TestShoot testShoot;
     private bool canUseSkill = true;
     private bool canUseItem = true;
 
@@ -33,10 +36,6 @@ public class SkillController : MonoBehaviourPun
     private Skill currentPreviewSkill = null;
 
     #endregion
-
-
-
-
 
     #region 생명 주기
     void Awake()
@@ -60,35 +59,35 @@ public class SkillController : MonoBehaviourPun
 
     void Start()
     {
+        testShoot = GetComponent<TestShoot>();
         skill = GetComponent<Skill>();
         CacheDataBaseInfo();
-        CacheDictionary();
     }
 
     void Update()
     {
         if (!photonView.IsMine) return;
-        // 프리뷰 업데이트
+
+        // 프리뷰 업데이트 (위치/궤적)
         UpdatePreview();
+
+        // 프리뷰가 활성화되어 있으면 좌클릭으로 확정
+        if (isPreviewActive)
+        {
+            if (Input.GetMouseButtonDown(0))
+            {
+                Debug.Log("[SkillController - Update] 마우스 좌클릭 입력");
+                ConfirmPreview();
+            }
+        }
     }
     #endregion
 
-
-
-
-
-
-
-
     #region 캐싱
-    // ========================================
-    // === DataBase 캐싱 유틸리티 메서드들 ===
-    // ========================================
     void CacheDataBaseInfo()
     {
         try
         {
-            // DataBase 인스턴스가 없으면 잠시 대기 후 재시도
             if (DataBase.Instance == null)
             {
                 Debug.LogWarning("⚠️ SkillController - DataBase 인스턴스가 아직 초기화되지 않음, 재시도 예정");
@@ -101,8 +100,8 @@ public class SkillController : MonoBehaviourPun
                 playerMoveData = DataBase.Instance.playerMoveData;
                 playerData = DataBase.Instance.playerData;
                 itemData = DataBase.Instance.itemData;
-                Skills = playerData.PlayerPrefabData.Select(prefab => prefab.transform.GetComponent<Skill>()).Where(skill => skill != null).ToArray();
-                Items = itemData.ItemPrefabData.Select(prefab => prefab.transform.GetComponent<Skill>()).Where(item => item != null).ToArray();
+                Skills = playerData.PlayerPrefabData.Select(prefab => prefab.transform.GetComponent<Skill>()).Where(s => s != null).ToArray();
+                Items = itemData.ItemPrefabData.Select(prefab => prefab.transform.GetComponent<Skill>()).Where(i => i != null).ToArray();
                 dataBaseCached = true;
                 Debug.Log("✅ SkillController - DataBase 정보 캐싱 완료");
             }
@@ -126,11 +125,11 @@ public class SkillController : MonoBehaviourPun
 
         while (currentRetry < maxRetries)
         {
-            yield return new WaitForSeconds(0.1f); // 0.1초 대기
+            yield return new WaitForSeconds(0.1f);
 
             if (DataBase.Instance != null)
             {
-                CacheDataBaseInfo(); // 재귀 호출로 다시 시도
+                CacheDataBaseInfo();
                 yield break;
             }
 
@@ -147,27 +146,14 @@ public class SkillController : MonoBehaviourPun
         itemDictionary.Clear();
 
         if (Skills == null || Skills.Count() == 0) return;
-        foreach (var skill in Skills)
+        foreach (var s in Skills)
         {
-            if (!skillDictionary.ContainsKey(skill.Index))
-                skillDictionary.Add(skill.Index, skill);
-            else
-                Debug.LogWarning($"중복된 Skill Index 발견: {skill.Index} ({skill.SkillName})");
-            Debug.Log("[CacheDictionary] 캐시 스킬 " + skillDictionary.Count);
-            foreach (var skill2 in skillDictionary)
-            {
-                Debug.Log($"[SkillDictionary] Key: {skill2.Key}, Value: {skill2.Value}");
-            }
+            skillDictionary[s.Index] = s;
         }
         if (Items == null || Items.Count() == 0) return;
-        foreach (var item in Items)
+        foreach (var it in Items)
         {
-            itemDictionary.Add(item.Index, item);
-            Debug.Log("[CacheDictionary] 캐시 스킬 " + itemDictionary.Count);
-            foreach (var item2 in skillDictionary)
-            {
-                Debug.Log($"[SkillDictionary] Key: {item2.Key}, Value: {item2.Value}");
-            }
+            itemDictionary[it.Index] = it;
         }
     }
 
@@ -182,148 +168,140 @@ public class SkillController : MonoBehaviourPun
     }
     #endregion
 
-
-
-
-
-
-    #region 고유 스킬 관련
+    #region 고유 스킬 관련 (입력 흐름 변경)
     // InputManager에서 스킬 입력 받기
     void OnSkillInput()
     {
         UseSkill();
     }
 
+    /// <summary>
+    /// 스킬 사용 흐름
+    /// - HasPreview면 프리뷰 시작/토글(같은 키) / 다른 스킬이면 이전 프리뷰 취소 후 새 프리뷰 시작
+    /// - 프리뷰가 없으면 즉시 Activate
+    /// </summary>
     public void UseSkill()
     {
-        if (skill == null || !photonView.IsMine) return;
+        if (skill == null) return;
+        if (!CanUseSkill()) return;
 
+        // 만약 다른 스킬의 프리뷰가 이미 활성 상태라면: 다른 스킬이면 이전 프리뷰 취소 후 새 프리뷰 시작
         if (skill.HasPreview)
         {
             if (isPreviewActive)
             {
-                skill.ActivateSkill(this);
-                EndPreview();
+                if (currentPreviewSkill == skill)
+                {
+                    // 같은 키를 다시 누르면 토글(취소)
+                    EndPreview();
+                }
+                else
+                {
+                    // 다른 프리뷰가 켜져있고 지금 눌린 키가 다른 스킬이면 이전 취소 후 새 프리뷰 시작
+                    EndPreview();
+                    StartPreview(skill);
+                }
             }
             else
             {
+                TestShoot.SetIsShooting(false);
+                // 프리뷰가 꺼져있으면 시작
                 StartPreview(skill);
             }
         }
         else
         {
+            TestShoot.SetIsShooting(true);
+            // 즉발 스킬이면 바로 실행
             skill.ActivateSkill(this);
         }
     }
 
+    /// <summary>
+    /// RPC로 들어오는 실제 실행(기본: 자기 자신의 로직 실행)
+    /// </summary>
     [PunRPC]
     public void ExecuteSkill(int skillIndex, Vector3 pos, Vector3 dir)
     {
-        // 실질 동작은 자기 자신만
         if (photonView.IsMine && skill != null && skill.Index == skillIndex)
         {
             skill.Execute(this, pos, dir);
         }
 
-        // 이펙트/사운드는 모든 클라이언트에서 실행
-
         PlaySkillEffectByIndex(skillIndex, pos, dir);
     }
 
-    /// <summary>
-    /// 스킬 타입 이름으로 이펙트 재생
-    /// </summary>
     private void PlaySkillEffectByIndex(int skillIndex, Vector3 pos, Vector3 dir)
     {
         if (skillDictionary == null || skillDictionary.Count() == 0) return;
-        // 현재 플레이어의 스킬 컴포넌트 찾기
-        Skill targetSkill = skillDictionary[skillIndex];
-
-        if (targetSkill != null)
-        {
-            Debug.Log($"✅ ExecuteSkill - 스킬 '{skillIndex}' 이펙트 재생");
-            targetSkill.PlayEffectAtRemote(this, pos, dir);
-        }
-        else
+        if (!skillDictionary.TryGetValue(skillIndex, out Skill targetSkill))
         {
             Debug.LogWarning($"⚠️ ExecuteSkill - 스킬 인덱스 '{skillIndex}'을 찾을 수 없습니다.");
+            return;
         }
+
+        targetSkill.PlayEffectAtRemote(this, pos, dir);
     }
 
     [PunRPC]
     public void CastExecuteSkill(int skillIndex, Vector3 pos, Vector3 dir)
     {
-        // 실질 동작은 자기 자신만
         if (photonView.IsMine && skill != null && skill.Index == skillIndex)
         {
             skill.CastExecute(this, pos, dir);
         }
 
-        // 캐스팅 이펙트/사운드는 모든 클라이언트에서 실행
         PlaySkillCastEffectByIndex(skillIndex, pos, dir);
     }
 
-    /// <summary>
-    /// 스킬 타입 이름으로 캐스팅 이펙트 재생
-    /// </summary>
     private void PlaySkillCastEffectByIndex(int skillIndex, Vector3 pos, Vector3 dir)
     {
         if (skillDictionary == null || skillDictionary.Count() == 0) return;
-        // 현재 플레이어의 스킬 컴포넌트 찾기
-        Skill targetSkill = skillDictionary[skillIndex];
-
-        if (targetSkill != null)
-        {
-            Debug.Log($"✅ CastExecuteSkill - 스킬 '{skillIndex}' 캐스팅 이펙트 재생");
-            targetSkill.PlayCastEffectAtRemote(this, pos, dir);
-        }
-        else
+        if (!skillDictionary.TryGetValue(skillIndex, out Skill targetSkill))
         {
             Debug.LogWarning($"⚠️ CastExecuteSkill - 스킬 인덱스 '{skillIndex}'을 찾을 수 없습니다.");
+            return;
         }
+
+        targetSkill.PlayCastEffectAtRemote(this, pos, dir);
     }
     #endregion
 
-
-
-
-    #region 아이템 사용
+    #region 아이템 사용 (동일한 프리뷰/확정 흐름)
     public void UseItem(ItemController itemController)
     {
-        Debug.Log("SkillController - UseItem 실행");
-        if (activeItem == null || !photonView.IsMine) return;
+        if (activeItem == null) return;
+        if (!CanUseItem()) return;
 
         if (activeItem.HasPreview)
         {
             if (isPreviewActive)
             {
-                Debug.Log("[SkillController] UI 표시 아이템 사용!");
-                activeItem.ActivateItem(this);
-
-                // ✅ 남은 횟수가 0이면 삭제
-                if (activeItem.RemainingUses <= 0)
+                if (currentPreviewSkill != activeItem)
                 {
-                    itemController.MoveUsedItemToTemp(activeItem.gameObject);
-                    Destroy(activeItem.gameObject, activeItem.DestroyTime);
+                    EndPreview();
+                    StartPreview(activeItem);
                 }
-
-                EndPreview();
             }
             else
             {
-                Debug.Log("[SkillController] UI 표시 아이템");
+                TestShoot.SetIsShooting(false);
                 StartPreview(activeItem);
             }
         }
         else
         {
-            Debug.Log("[SkillController] 즉발 아이템");
+            // 즉시 아이템
+            TestShoot.SetIsShooting(true);
             activeItem.ActivateItem(this);
 
-            // ✅ 남은 횟수가 0이면 삭제
+            // 남은 횟수 0이면 아이템 제거 처리(원래 코드 재현)
             if (activeItem.RemainingUses <= 0)
             {
-                itemController.MoveUsedItemToTemp(activeItem.gameObject);
+                if (itemController != null)
+                {
+                    itemController.MoveUsedItemToTemp(activeItem.gameObject);
+                }
                 Destroy(activeItem.gameObject, activeItem.DestroyTime);
             }
         }
@@ -334,32 +312,22 @@ public class SkillController : MonoBehaviourPun
     {
         if (photonView.IsMine && activeItem != null && activeItem.Index == itemIndex)
         {
-            Debug.Log("[SkillController] 아이템 사용!");
             activeItem.Execute(this, pos, dir);
         }
 
-        // 이펙트/사운드는 모든 클라이언트에서 실행
         PlayItemEffectByIndex(itemIndex, pos, dir);
     }
 
-    /// <summary>
-    /// 아이템 타입 이름으로 이펙트 재생
-    /// </summary>
     private void PlayItemEffectByIndex(int itemIndex, Vector3 pos, Vector3 dir)
     {
         if (itemDictionary == null || itemDictionary.Count() == 0) return;
-        // 현재 플레이어의 아이템 컴포넌트 찾기
-        Skill targetItem = itemDictionary[itemIndex];
-
-        if (targetItem != null)
-        {
-            Debug.Log($"✅ ExecuteItem - 아이템 '{itemIndex}' 이펙트 재생");
-            targetItem.PlayEffectAtRemote(this, pos, dir);
-        }
-        else
+        if (!itemDictionary.TryGetValue(itemIndex, out Skill targetItem))
         {
             Debug.LogWarning($"⚠️ ExecuteItem - 아이템 인덱스 '{itemIndex}'을 찾을 수 없습니다.");
+            return;
         }
+
+        targetItem.PlayEffectAtRemote(this, pos, dir);
     }
 
     [PunRPC]
@@ -367,45 +335,32 @@ public class SkillController : MonoBehaviourPun
     {
         if (photonView.IsMine && activeItem != null && activeItem.Index == itemIndex)
         {
-            Debug.Log("SkillController - CastExecuteItem 실행");
             activeItem.CastExecute(this, pos, dir);
         }
 
-        // 캐스팅 이펙트/사운드는 모든 클라이언트에서 실행
         PlayItemCastEffectByIndex(itemIndex, pos, dir);
     }
 
-    /// <summary>
-    /// 아이템 타입 이름으로 캐스팅 이펙트 재생
-    /// </summary>
     private void PlayItemCastEffectByIndex(int itemIndex, Vector3 pos, Vector3 dir)
     {
         if (itemDictionary == null || itemDictionary.Count() == 0) return;
-        // 현재 플레이어의 아이템 컴포넌트 찾기
-        Skill targetItem = itemDictionary[itemIndex];
-
-        if (targetItem != null)
-        {
-            Debug.Log($"✅ CastExecuteItem - 아이템 '{itemIndex}' 캐스팅 이펙트 재생");
-            targetItem.PlayCastEffectAtRemote(this, pos, dir);
-        }
-        else
+        if (!itemDictionary.TryGetValue(itemIndex, out Skill targetItem))
         {
             Debug.LogWarning($"⚠️ CastExecuteItem - 아이템 인덱스 '{itemIndex}'을 찾을 수 없습니다.");
+            return;
         }
+
+        targetItem.PlayCastEffectAtRemote(this, pos, dir);
     }
 
-    // InputManager에서 아이템 입력 받기
     void OnItemInput()
     {
-        // 상점이 열려있으면 아이템 사용 차단
         ShopController shopController = GetComponent<ShopController>();
         if (shopController != null && shopController.IsShopOpen())
         {
             return;
         }
 
-        // 현재 플레이어의 활성화된 아이템 찾기
         ItemController itemController = FindCurrentPlayerItemController();
         if (itemController == null)
         {
@@ -413,7 +368,6 @@ public class SkillController : MonoBehaviourPun
             return;
         }
 
-        // 활성화된 아이템 가져오기
         activeItem = itemController.GetFirstActiveItem();
 
         if (activeItem == null)
@@ -436,16 +390,10 @@ public class SkillController : MonoBehaviourPun
         }
 
         itemController.SwapFirstAndSecondItems();
-
     }
 
-    /// <summary>
-    /// 현재 플레이어의 ItemController 찾기
-    /// </summary>
-    /// <returns>현재 플레이어의 ItemController</returns>
     private ItemController FindCurrentPlayerItemController()
     {
-        // 자신 기준으로 ItemController 찾기 (태그 기반 탐색 대신)
         ItemController itemController = GetComponent<ItemController>();
         if (itemController == null)
         {
@@ -458,7 +406,6 @@ public class SkillController : MonoBehaviourPun
             return itemController;
         }
 
-        // Fallback: 태그 기반 탐색 (기존 방식)
         GameObject currentPlayer = GameObject.FindGameObjectWithTag("Player");
         if (currentPlayer != null)
         {
@@ -479,61 +426,96 @@ public class SkillController : MonoBehaviourPun
     }
     #endregion
 
-
-
-
-
-
-
-
-
-
-    #region 스킬 UI
-    private void StartPreview(Skill skill)
+    #region 스킬 UI / 프리뷰 관리
+    private void StartPreview(Skill s)
     {
-        if (skill == null) return;
+        if (s == null) return;
 
-        currentPreviewSkill = skill;
+        // 🔹 쿨타임 중이면 프리뷰 시작 안 함
+        if (!s.CanUse)
+        {
+            Debug.LogWarning($"⚠️ {s.SkillName} 은(는) 쿨타임 중입니다!");
+            // 여기서 UI 메시지 출력 함수 호출 가능 (예: UIManager.ShowMessage("스킬 쿨타임 중"))
+            return;
+        }
+
+        currentPreviewSkill = s;
+        Debug.Log($"[SkillController - StartPreview] currentPreviewSkill 변경{currentPreviewSkill}");
         isPreviewActive = true;
-        skill.StartPreview(this);
+        s.StartPreview(this);
 
-        Debug.Log($"✅ 프리뷰 시작: {skill.SkillName}");
+        Debug.Log($"✅ 프리뷰 시작: {s.SkillName}");
     }
 
-    /// <summary>
-    /// 프리뷰 업데이트
-    /// </summary>
     private void UpdatePreview()
     {
         if (!isPreviewActive || currentPreviewSkill == null) return;
 
-        // TestShoot 컴포넌트를 통해 정확한 조준 방향 계산
-        TestShoot testShoot = GetComponent<TestShoot>();
         Vector3 direction = testShoot != null ? testShoot.CalculateShotDirection() : transform.forward;
 
         Vector3 origin = transform.position + transform.forward * 1.5f + transform.up * 1.5f;
 
+        //Debug.Log($"[SkillController - UpdatePreview] currentPreviewSkill 변경{currentPreviewSkill}");
         currentPreviewSkill.UpdatePreview(this, origin, direction);
     }
 
-    /// <summary>
-    /// 프리뷰 종료
-    /// </summary>
     private void EndPreview()
     {
         if (currentPreviewSkill != null)
         {
+            Debug.Log($"[SkillController - EndPreview] currentPreviewSkill 변경{currentPreviewSkill}");
             currentPreviewSkill.EndPreview(this);
+
         }
 
+        TestShoot.SetIsShooting(true);
         currentPreviewSkill = null;
+        Debug.Log($"[SkillController - EndPreview] currentPreviewSkill null로 변경{currentPreviewSkill}");
         isPreviewActive = false;
 
         Debug.Log("✅ 프리뷰 종료");
     }
 
     /// <summary>
-    /// ESC 키로 프리뷰 취소 (InputManager에서 호출)
+    /// 좌클릭으로 프리뷰 확정 시 호출
+    /// - 프리뷰 중이면 해당 스킬/아이템을 실제로 Activate 시킵니다.
+    /// - 아이템의 경우 남은 횟수 0시 원래 하던 삭제 동작 재현
+    /// </summary>
+    private void ConfirmPreview()
+    {
+        if (!isPreviewActive || currentPreviewSkill == null) return;
+        if (!photonView.IsMine) return;
+
+        Debug.Log($"✅ 프리뷰 확정: {currentPreviewSkill.SkillName}");
+
+        // 아이템 프리뷰인지 (activeItem 참조와 같은 객체인지) 확인
+        if (currentPreviewSkill == activeItem)
+        {
+            // 아이템 실행
+            currentPreviewSkill.ActivateItem(this);
+
+            // 남은 횟수 0이면 아이템 제거 (ItemController가 있으면 MoveUsedItemToTemp 호출)
+            if (currentPreviewSkill.RemainingUses <= 0)
+            {
+                var itemController = FindCurrentPlayerItemController();
+                if (itemController != null)
+                {
+                    itemController.MoveUsedItemToTemp(currentPreviewSkill.gameObject);
+                }
+                Destroy(currentPreviewSkill.gameObject, currentPreviewSkill.DestroyTime);
+            }
+        }
+        else
+        {
+            // 스킬 실행
+            currentPreviewSkill.ActivateSkill(this);
+        }
+
+        EndPreview();
+    }
+
+    /// <summary>
+    /// ESC 키 또는 외부에서 호출할 수 있는 프리뷰 취소
     /// </summary>
     public void CancelPreview()
     {
@@ -543,18 +525,11 @@ public class SkillController : MonoBehaviourPun
         }
     }
 
-    /// <summary>
-    /// 프리뷰가 활성화되어 있는지 확인 (TestGun에서 사용)
-    /// </summary>
     public bool IsPreviewActive()
     {
         return isPreviewActive;
     }
     #endregion
-
-
-
-
 
     #region 스킬 관련 캐릭터 상태
     public void DisableSkill()
@@ -563,53 +538,33 @@ public class SkillController : MonoBehaviourPun
         Debug.Log("✅ 스킬 사용 차단");
     }
 
-    /// <summary>
-    /// 스킬 사용 허용
-    /// </summary>
     public void EnableSkill()
     {
         canUseSkill = true;
         Debug.Log("✅ 스킬 사용 허용");
     }
 
-    /// <summary>
-    /// 스킬 사용 가능 여부 확인
-    /// </summary>
-    /// <returns>스킬 사용 가능 여부</returns>
     public bool CanUseSkill()
     {
         return canUseSkill;
     }
 
-    // --- 아이템 제어 메서드들 ---
-
-    /// <summary>
-    /// 아이템 사용 차단
-    /// </summary>
     public void DisableItem()
     {
         canUseItem = false;
         Debug.Log("✅ 아이템 사용 차단");
     }
 
-    /// <summary>
-    /// 아이템 사용 허용
-    /// </summary>
     public void EnableItem()
     {
         canUseItem = true;
         Debug.Log("✅ 아이템 사용 허용");
     }
 
-    /// <summary>
-    /// 아이템 사용 가능 여부 확인
-    /// </summary>
-    /// <returns>아이템 사용 가능 여부</returns>
     public bool CanUseItem()
     {
         return canUseItem;
     }
-
 
     public void DisableSkillControls()
     {
@@ -618,9 +573,6 @@ public class SkillController : MonoBehaviourPun
         Debug.Log("✅ 스킬 조작 차단");
     }
 
-    /// <summary>
-    /// 모든 조작 허용
-    /// </summary>
     public void EnableSkillControls()
     {
         EnableSkill();

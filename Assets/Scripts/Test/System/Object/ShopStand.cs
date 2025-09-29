@@ -190,7 +190,7 @@ public class ShopStand : MonoBehaviour
         // 디버깅용: 5초마다 현재 타이머 상태 로그
         if (Time.time % 5f < 0.1f && isRenewTimerActive)
         {
-            Debug.Log($"ShopStand: 갱신 타이머 상태 - 남은시간: {remainingRenewTime:F1}초, 활성: {isRenewTimerActive}");
+            //Debug.Log($"ShopStand: 갱신 타이머 상태 - 남은시간: {remainingRenewTime:F1}초, 활성: {isRenewTimerActive}");
         }
     }
 
