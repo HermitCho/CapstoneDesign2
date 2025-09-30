@@ -174,6 +174,7 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
 
         // 체력 변경 이벤트를 발생시켜 GameManager가 UI를 업데이트하도록 합니다.
         OnAnyLivingEntityHealthChanged?.Invoke(CurrentHealth, StartingHealth, this);
+        photonView.RPC("RPC_OnHealEffect", photonView.Owner);
     }
 
     [PunRPC]
@@ -328,6 +329,16 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
         if (photonView.IsMine)
         {
             GameEvents.OnLocalPlayerHit?.Invoke(hitDirection);
+        }
+    }
+
+    [PunRPC]
+    public void RPC_OnHealEffect()
+    {
+        // 해당 클라이언트에서만 실행되는 UI 이벤트
+        if (photonView.IsMine)
+        {
+            GameEvents.OnLocalPlayerHeal?.Invoke();
         }
     }
 

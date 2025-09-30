@@ -21,6 +21,7 @@ public class SmokeBomb : MonoBehaviourPun
     public void InitializeAndLaunch(int ownerId, Vector3 direction, float launchSpeed) // launchSpeed 파라미터 추가
     {
         rb.velocity = direction.normalized * launchSpeed;
+        SmokeEffect.GetComponent<HealSmoke>().GetOnwerPhotonviewID(ownerId);
     }
 
     void OnCollisionEnter(Collision collision)
@@ -38,7 +39,7 @@ public class SmokeBomb : MonoBehaviourPun
     IEnumerator WaitSmokeEffect()
     {
         Debug.Log("[SmokeBomb] 기다리는 중...");
-        yield return new WaitForSeconds(1f);
+        yield return new WaitForSeconds(3f);
         StartCoroutine(StartSmokeEffect());
     }
 
