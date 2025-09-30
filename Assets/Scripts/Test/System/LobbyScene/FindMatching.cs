@@ -22,6 +22,7 @@ public class FindMatching : MonoBehaviourPunCallbacks
     private float matchingTimer = 0f;
     private Coroutine matchingCoroutine;
     private bool isGameStarting = false;
+    private bool isMasterServerConnected = false; // 마스터 서버 연결 상태 추적
 
     private const string ROOM_STATE_KEY = "GameState";
     private const string ROOM_STATE_WAITING = "Waiting";
@@ -30,6 +31,9 @@ public class FindMatching : MonoBehaviourPunCallbacks
 
     void Start()
     {
+        PhotonNetwork.SendRate = 40;
+        PhotonNetwork.SerializationRate = 30;
+
         if (findMatchButton != null)
             findMatchButton.onClick.AddListener(StartMatching);
 
@@ -53,6 +57,17 @@ public class FindMatching : MonoBehaviourPunCallbacks
         isMatching = true;
         isGameStarting = false;
         matchingTimer = 0f;
+        
+        // 이미 마스터 서버에 연결되어 있는지 체크
+        if (PhotonNetwork.IsConnectedAndReady)
+        {
+            isMasterServerConnected = true;
+            Debug.Log("StartMatching: 이미 마스터 서버에 연결된 상태");
+        }
+        else
+        {
+            isMasterServerConnected = false; // 연결 상태 초기화
+        }
 
         if (findMatchButton != null)
             findMatchButton.interactable = false;
@@ -73,26 +88,39 @@ public class FindMatching : MonoBehaviourPunCallbacks
     /// </summary>
     private IEnumerator HandleConnectionSequence()
     {
+        Debug.Log("FindMatching: 연결 시퀀스 시작");
+        
         // 1단계: 마스터 서버 연결
         if (!PhotonNetwork.IsConnected)
         {
             PhotonNetwork.ConnectUsingSettings();
             
-            // 연결 완료 대기 (최대 10초)
+            // OnConnectedToMaster 콜백 대기 (최대 10초)
             float connectionTimeout = 10f;
             float connectionTimer = 0f;
             
-            while (!PhotonNetwork.IsConnectedAndReady && connectionTimer < connectionTimeout)
+            while (!isMasterServerConnected && connectionTimer < connectionTimeout && isMatching)
             {
                 yield return new WaitForSeconds(0.1f);
                 connectionTimer += 0.1f;
             }
             
-            if (!PhotonNetwork.IsConnectedAndReady)
+            if (!isMasterServerConnected || !isMatching)
             {
-                UpdateUI("서버 연결 실패");
+                Debug.LogError("FindMatching: 마스터 서버 연결 실패 또는 매칭 취소");
                 CancelMatching();
                 yield break;
+            }
+            
+            Debug.Log("FindMatching: 마스터 서버 연결 완료 확인됨");
+        }
+        else
+        {
+            // 이미 연결된 상태라면 연결 플래그를 true로 설정
+            if (PhotonNetwork.IsConnectedAndReady)
+            {
+                isMasterServerConnected = true;
+                Debug.Log("FindMatching: 이미 마스터 서버에 연결됨");
             }
         }
         
@@ -117,7 +145,6 @@ public class FindMatching : MonoBehaviourPunCallbacks
                 
                 if (!PhotonNetwork.InLobby && isMatching)
                 {
-                    UpdateUI("로비 진입 실패");
                     CancelMatching();
                     yield break;
                 }
@@ -135,20 +162,19 @@ public class FindMatching : MonoBehaviourPunCallbacks
         }
         
         // 3단계: 방 찾기/생성
-        if (PhotonNetwork.InLobby && isMatching)
+        if (PhotonNetwork.InLobby && isMatching && isMasterServerConnected)
         {
-            UpdateUI("방 찾는 중...");
-            yield return new WaitForSeconds(0.5f); // 로비 안정화 대기 증가
+            yield return new WaitForSeconds(0.5f); // 로비 안정화 대기
             
-            // 연결 상태 재확인
-            if (PhotonNetwork.IsConnectedAndReady && PhotonNetwork.InLobby)
+            // 연결 상태 재확인 (마스터 서버 연결 상태도 포함)
+            if (PhotonNetwork.IsConnectedAndReady && PhotonNetwork.InLobby && isMasterServerConnected)
             {
+                Debug.Log("FindMatching: 방 찾기/생성 시도 - 모든 연결 상태 확인됨");
                 TryJoinOrCreateRoom();
             }
             else
             {
                 Debug.LogWarning("FindMatching: 방 찾기 시도 시 연결 상태가 불안정함");
-                UpdateUI("연결 재시도 중...");
                 yield return new WaitForSeconds(1f);
                 if (isMatching)
                 {
@@ -164,6 +190,7 @@ public class FindMatching : MonoBehaviourPunCallbacks
 
         isMatching = false;
         isGameStarting = false;
+        isMasterServerConnected = false; // 연결 상태 초기화
 
         if (matchingCoroutine != null)
         {
@@ -171,6 +198,9 @@ public class FindMatching : MonoBehaviourPunCallbacks
             matchingCoroutine = null;
         }
 
+        // 모든 코루틴을 강제로 중단 (참조가 없어도)
+        StopAllCoroutines();
+        
         if (PhotonNetwork.InRoom)
         {
             PhotonNetwork.LeaveRoom();
@@ -261,7 +291,6 @@ public class FindMatching : MonoBehaviourPunCallbacks
         if (PhotonNetwork.IsMasterClient)
         {
             int playerCount = PhotonNetwork.InRoom ? PhotonNetwork.CurrentRoom.PlayerCount : 1;
-            UpdateUI($"플레이어 준비 중... ({playerCount}명)");
 
             ExitGames.Client.Photon.Hashtable roomProperties = new ExitGames.Client.Photon.Hashtable();
             roomProperties[ROOM_STATE_KEY] = ROOM_STATE_STARTING;
@@ -371,19 +400,27 @@ public class FindMatching : MonoBehaviourPunCallbacks
 
     public override void OnConnectedToMaster()
     {
-        Debug.Log("FindMatching: 마스터 서버 연결 완료");
-        // HandleConnectionSequence에서 처리하므로 여기서는 로그만 출력
+        Debug.Log("FindMatching: 마스터 서버 연결 완료 (콜백)");
+        isMasterServerConnected = true; // 연결 상태 플래그 설정
+        
+        // 연결 상태 확인 로그
+        Debug.Log($"FindMatching: 연결 상태 - IsConnected: {PhotonNetwork.IsConnected}, IsConnectedAndReady: {PhotonNetwork.IsConnectedAndReady}");
     }
 
     public override void OnJoinedLobby()
     {
         Debug.Log("FindMatching: 로비 진입 완료");
         
-        // HandleConnectionSequence가 실행 중이 아닌 경우에만 방 찾기 시도
-        if (isMatching && PhotonNetwork.IsConnectedAndReady)
+        // 백업 로직 시작 조건을 더 엄격하게 체크
+        if (isMatching && !isGameStarting && PhotonNetwork.IsConnectedAndReady && !PhotonNetwork.InRoom)
         {
+            Debug.Log("FindMatching: 백업 로직 시작 조건 만족");
             // HandleConnectionSequence에서 처리되지 않은 경우를 대비한 백업 로직
             StartCoroutine(BackupRoomJoinLogic());
+        }
+        else
+        {
+            Debug.Log($"FindMatching: 백업 로직 시작 조건 불만족 - 매칭:{isMatching}, 게임시작:{isGameStarting}, 연결:{PhotonNetwork.IsConnectedAndReady}, 방참가:{PhotonNetwork.InRoom}");
         }
     }
     
@@ -392,10 +429,48 @@ public class FindMatching : MonoBehaviourPunCallbacks
     /// </summary>
     private IEnumerator BackupRoomJoinLogic()
     {
-        yield return new WaitForSeconds(1f); // HandleConnectionSequence 완료 대기
+        yield return new WaitForSeconds(2f); // HandleConnectionSequence 완료 대기
         
-        // 아직 방에 들어가지 않았고 매칭 중이라면 시도
-        if (!PhotonNetwork.InRoom && isMatching && PhotonNetwork.InLobby)
+        // 매칭이 취소되었거나 게임이 시작되었으면 백업 로직 중단
+        if (!isMatching || isGameStarting)
+        {
+            Debug.Log($"FindMatching: 백업 로직 중단 - 매칭상태: {isMatching}, 게임시작: {isGameStarting}");
+            yield break;
+        }
+        
+        // 이미 방에 참가했으면 백업 로직 불필요
+        if (PhotonNetwork.InRoom)
+        {
+            Debug.Log("FindMatching: 백업 로직 - 이미 방에 참가됨");
+            yield break;
+        }
+        
+        // 연결 상태 체크
+        if (!PhotonNetwork.IsConnectedAndReady || !PhotonNetwork.InLobby)
+        {
+            Debug.LogWarning("FindMatching: 백업 로직 - 네트워크 연결 상태 불안정");
+            yield break;
+        }
+        
+        // 마스터 서버 연결 체크
+        if (!isMasterServerConnected)
+        {
+            Debug.LogWarning($"FindMatching: 백업 로직 - 마스터 서버 연결 플래그 false (PhotonNetwork.IsConnected: {PhotonNetwork.IsConnected}, IsConnectedAndReady: {PhotonNetwork.IsConnectedAndReady})");
+            
+            // 실제로는 연결되어 있는데 플래그만 false인 경우 수정
+            if (PhotonNetwork.IsConnectedAndReady)
+            {
+                Debug.Log("FindMatching: 백업 로직 - 실제로는 연결됨, 플래그 수정");
+                isMasterServerConnected = true;
+            }
+            else
+            {
+                yield break;
+            }
+        }
+        
+        // 모든 조건이 만족되면 방 찾기 시도
+        if (isMatching && !PhotonNetwork.InRoom)
         {
             Debug.Log("FindMatching: 백업 로직으로 방 찾기 시도");
             TryJoinOrCreateRoom();
@@ -524,11 +599,16 @@ public class FindMatching : MonoBehaviourPunCallbacks
     {
         isMatching = false;
         isGameStarting = false;
+        isMasterServerConnected = false; // 연결 상태 초기화
+        
         if (matchingCoroutine != null)
         {
             StopCoroutine(matchingCoroutine);
             matchingCoroutine = null;
         }
+        
+        // 모든 코루틴을 강제로 중단
+        StopAllCoroutines();
         
         ResetUI();
         UpdateUI("네트워크 연결이 끊어졌습니다.");
