@@ -7,7 +7,7 @@ public class HiddenSmoke : MonoBehaviourPun
 {
     [SerializeField] GameObject SmokeEffect;
     [SerializeField] AudioClip SmokeSound;
-    [SerializeField] private float smokeDuration = 10f;  // 연막 지속 시간
+    [SerializeField] private float smokeDuration = 5f;  // 연막 지속 시간
     AudioSource aS;
 
     private void Awake()
@@ -18,12 +18,12 @@ public class HiddenSmoke : MonoBehaviourPun
     [PunRPC]
     public void InitializeHiddenSmoke()
     {
-        
+        StartCoroutine("StartSmokeEffect");
     }
 
     IEnumerator StartSmokeEffect()
     {
-        Debug.Log("[SmokeBomb] 연막 효과 시작!");
+        Debug.Log("[HiddenSmoke] 연막 효과 시작!");
         SmokeEffect.SetActive(true);
         SmokeEffect.GetComponent<ParticleSystem>().Play();
 
@@ -31,7 +31,7 @@ public class HiddenSmoke : MonoBehaviourPun
             aS.PlayOneShot(SmokeSound);
 
         yield return new WaitForSeconds(smokeDuration);
-
+        Debug.Log("[HiddenSmoke] - StartSmokeEffect 끝");
         SmokeEffect.SetActive(false);
 
         if (photonView.IsMine)

@@ -47,7 +47,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0c46317cd04c12e47b40c0cee1834116, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  SmokeEffect: {fileID: 0}
+  SmokeEffect: {fileID: 6346401143670860222}
   SmokeSound: {fileID: 0}
   smokeDuration: 10
 --- !u!114 &7813102056841454812
@@ -68,7 +68,8 @@ MonoBehaviour:
   Synchronization: 3
   OwnershipTransfer: 0
   observableSearch: 2
-  ObservedComponents: []
+  ObservedComponents:
+  - {fileID: 5791031824759852684}
   sceneViewId: 0
   InstantiationId: 0
   isRuntimeInstantiated: 0
@@ -164,7 +165,12 @@ PrefabInstance:
     - target: {fileID: 985483039366664255, guid: f91edac4d13fc4343ba96bb6a843ad05,
         type: 3}
       propertyPath: m_Name
-      value: msVFX_Stylized Smoke 2
+      value: HiddenSmokeEffect
+      objectReference: {fileID: 0}
+    - target: {fileID: 985483039366664255, guid: f91edac4d13fc4343ba96bb6a843ad05,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1110556030845387871, guid: f91edac4d13fc4343ba96bb6a843ad05,
         type: 3}
@@ -186,6 +192,12 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: f91edac4d13fc4343ba96bb6a843ad05, type: 3}
+--- !u!1 &6346401143670860222 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 985483039366664255, guid: f91edac4d13fc4343ba96bb6a843ad05,
+    type: 3}
+  m_PrefabInstance: {fileID: 6178887756735658369}
+  m_PrefabAsset: {fileID: 0}
 --- !u!4 &6347986188894776812 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 983828037429990509, guid: f91edac4d13fc4343ba96bb6a843ad05,

@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7231525115441320199}
   - component: {fileID: 943479559174608306}
+  - component: {fileID: 3480495371943028707}
   m_Layer: 0
   m_Name: HiddenSmoke_Item
   m_TagString: Untagged
@@ -46,3 +47,37 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   maxUses: -1
   startUses: -1
+--- !u!114 &3480495371943028707
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7598938221809047882}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e40fa003b4d978244b1abce25eb1b879, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  skillName: "\uC740\uC2E0 \uC5F0\uB9C9"
+  skillDescription: "\uC0AC\uC6A9 \uC2DC \uC790\uC2E0\uC758 \uC8FC\uBCC0\uC744 \uAC00\uB824\uC8FC\uB294
+    \uC5F0\uB9C9\uC744 \uBFCC\uB9BD\uB2C8\uB2E4."
+  cooldown: 0
+  duration: 3
+  effectDuration: 0
+  effectCastingDuration: 0
+  castTime: 0
+  destroyTime: 20
+  isFollowing: 1
+  isCastingFollowing: 0
+  index: 0
+  skillIcon: {fileID: 21300000, guid: 5368592eacfda44c191265e7475562df, type: 3}
+  skillColor: {r: 1, g: 1, b: 1, a: 1}
+  skillEffect: {fileID: 0}
+  castTimeSkillEffect: {fileID: 0}
+  skillSound: {fileID: 0}
+  castTimeSkillSound: {fileID: 0}
+  price: 1
+  skillAnimationTriggerName: None
+  hiddenSmokePrefab: {fileID: 5497300086302150917, guid: d8ab44e7004698d40b584b9365a7c2f3,
+    type: 3}

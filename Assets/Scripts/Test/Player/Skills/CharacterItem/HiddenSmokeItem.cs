@@ -24,7 +24,6 @@ public class HiddenSmokeItem : Skill
 
     public override void Execute(SkillController executor, Vector3 pos, Vector3 dir)
     {
-
         Debug.Log("[OneTimeDefenseItem] 캐릭터 현재 위치 " + executor.transform.position);
         Debug.Log("[OneTimeDefenseItem] spawnPosition " + spawnPosition);
 
@@ -32,18 +31,26 @@ public class HiddenSmokeItem : Skill
         {
             GameObject smokePrefab = PhotonNetwork.Instantiate(
                 "Prefabs/ItemObject/" + hiddenSmokePrefab.name,
-                spawnPosition,
+                executor.transform.position + spawnPosition, // 캐릭터 위치 기준으로 생성
                 Quaternion.identity
             );
 
-            Debug.Log("[OneTimeDefenseItem] 캐릭터 현재 위치 " + executor.transform.position);
-            Debug.Log("[OneTimeDefenseItem] spawnPosition " + spawnPosition);
+            // GetComponent로 PhotonView 가져오기
+            PhotonView pv = smokePrefab.GetComponent<PhotonView>();
 
-            // smokePrefab.photonView.RPC(
-            //     "InitializeHiddenSmoke",
-            //     RpcTarget.All,
-            //     smokePrefab.photonView.ViewID
-            // );
+            if (pv != null)
+            {
+                Debug.Log("[OneTimeDefenseItem] PhotonView ViewID: " + pv.ViewID);
+
+                pv.RPC(
+                    "InitializeHiddenSmoke",
+                    RpcTarget.All
+                );
+            }
+            else
+            {
+                Debug.LogError("[OneTimeDefenseItem] PhotonView를 찾을 수 없습니다!");
+            }
         }
 
         // 효과음 / 추가 이펙트 재생
