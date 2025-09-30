@@ -21,6 +21,7 @@ public class SmokeBomb : MonoBehaviourPun
     public void InitializeAndLaunch(int ownerId, Vector3 direction, float launchSpeed) // launchSpeed 파라미터 추가
     {
         rb.velocity = direction.normalized * launchSpeed;
+        Debug.Log("[SmokeBomb] + InitializeAndLaunch 오너 아이디" + ownerId);
         SmokeEffect.GetComponent<HealSmoke>().GetOnwerPhotonviewID(ownerId);
     }
 

@@ -4,7 +4,7 @@ using UnityEngine;
 using Photon.Pun;
 using System.Linq;
 
-public abstract class Skill : MonoBehaviour
+public abstract class Skill : MonoBehaviourPun
 {
     #region Serialized Fields
 

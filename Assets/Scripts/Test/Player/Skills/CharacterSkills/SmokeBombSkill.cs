@@ -34,7 +34,7 @@ public class SmokeBombSkill : Skill
             smokeBombScript.photonView.RPC(
                 "InitializeAndLaunch",
                 RpcTarget.All,
-                executor.photonView.OwnerActorNr,
+                executor.photonView.ViewID,
                 executor.GetComponent<TestShoot>().CalculateShotDirection(),
                 smokeBombScript.GetBombSpeed()
             );

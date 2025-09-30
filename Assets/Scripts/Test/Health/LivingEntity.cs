@@ -164,6 +164,7 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
     [PunRPC]
     public void RestoreHealth(float healAmount)
     {
+        if (!PhotonNetwork.IsMasterClient) return;
         if (IsDead || healAmount <= 0f) return; // ✅ IsDead 변수 사용
 
         float prevHealth = CurrentHealth;
@@ -173,7 +174,9 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
         Debug.Log($"[LivingEntity:Master] {gameObject.name} 체력 회복: {healAmount}, 현재 체력: {CurrentHealth}");
 
         // 체력 변경 이벤트를 발생시켜 GameManager가 UI를 업데이트하도록 합니다.
-        OnAnyLivingEntityHealthChanged?.Invoke(CurrentHealth, StartingHealth, this);
+        bool died = CurrentHealth <= 0f;
+        photonView.RPC("RPC_UpdateHealth", RpcTarget.All, CurrentHealth, died, IsInvincivilityCount);
+        
         photonView.RPC("RPC_OnHealEffect", photonView.Owner);
     }
 
