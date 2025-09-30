@@ -45,14 +45,16 @@ public class SmokeBombSkill : Skill
     public override void StartPreview(SkillController owner)
     {
         // 부모 클래스의 기본 프리뷰 로직을 실행
+        if (throwForce <= 0f && smokePrefab.TryGetComponent<SmokeBomb>(out var bomb))
+        {
+            throwForce = bomb.GetBombSpeed();
+        }
         base.StartPreview(owner);
-        // 필요하다면 여기에 FireballItem에 특화된 추가 로직을 넣을 수 있습니다.
-        //Debug.Log("SmokeBombSkill 전용 StartPreview 로직 실행");
     }
 
     public override void UpdatePreview(SkillController owner, Vector3 origin, Vector3 direction, float initialSpeed = 10f)
     {
-        // 부모 클래스의 UpdatePreview 메서드를 호출하며 Fireball의 고유 속도 전달
+        Debug.Log($"[SmokeBombSkill] UpdatePreview - Speed: {initialSpeed}, ThrowForce: {throwForce}, Dir: {direction}");
         base.UpdatePreview(owner, origin, direction, GetProjectileSpeed());
         //Debug.Log("[SmokeBombSkill] 방향 " + direction);
     }

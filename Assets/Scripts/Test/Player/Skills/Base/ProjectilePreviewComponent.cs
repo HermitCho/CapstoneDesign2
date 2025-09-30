@@ -31,7 +31,7 @@ public class ProjectilePreviewComponent : MonoBehaviour, IProjectilePreview
             targetMarkerInstance.SetActive(false);
         }
     }
-    
+
     public void StartPreview(SkillController owner)
     {
         Debug.Log("[ProjectilePreviewComponent] StartPreview 시작");
@@ -60,6 +60,11 @@ public class ProjectilePreviewComponent : MonoBehaviour, IProjectilePreview
         if (lr == null)
         {
             return;
+        }
+        if (initialSpeed <= 0.01f)
+        {
+            Debug.LogWarning("[ProjectilePreview] initialSpeed이 0이므로 기본값 사용");
+            initialSpeed = 10f; // fallback
         }
 
         Vector3 v = direction.normalized * initialSpeed;
