@@ -6,6 +6,7 @@ using System;
 using System.Linq;
 using Photon.Pun;
 
+
 /// <summary>
 /// 플레이어 이동 컨트롤러
 /// DataBase.cs 파일에서 플레이어 이동 데이터 설정 가능
@@ -18,13 +19,19 @@ using Photon.Pun;
 /// </summary>
 
 
-public class MoveController : MonoBehaviourPun
+public class MoveController : MonoBehaviourPun, IPunObservable
 {
     private DataBase.PlayerMoveData playerMoveData;
     private DataBase.PlayerData playerData;
     private Rigidbody playerRigidbody;
     private Vector2 rawMoveInput; // 원본 입력값 저장
     private PhotonView photonView;
+    private Transform tr;
+
+    private double lastReceiveTime;
+    //private double currentReceiveTime;
+    Vector3 targetPos;
+    Quaternion targetRot;
 
     // 벽 통과 방지를 위한 변수 추가
     private LayerMask wallLayerMask = -1; // 벽으로 인식할 레이어
@@ -78,6 +85,7 @@ public class MoveController : MonoBehaviourPun
     void Awake()
     {
         photonView = GetComponent<PhotonView>();
+        tr = GetComponent<Transform>();
     }
     // InputManager 이벤트 구독
     void OnEnable()
@@ -114,7 +122,7 @@ public class MoveController : MonoBehaviourPun
             playerRigidbody = GetComponent<Rigidbody>();
 
             // 마지막 유효한 위치 초기화
-            lastValidPosition = transform.position;
+            lastValidPosition = tr.position;
         }
         // DataBase 정보 안전하게 캐싱 (Start에서 지연 실행)
         CacheDataBaseInfo();
@@ -193,7 +201,8 @@ public class MoveController : MonoBehaviourPun
 
     void Update()
     {
-        if (!photonView.IsMine) return;
+        //currentReceiveTime = Mathf.Clamp01((float)((PhotonNetwork.Time - lastReceiveTime) * PhotonNetwork.SerializationRate));
+        //if (!photonView.IsMine) return;
         UpdateGroundedState();
         HandleMovement();
         HandleRotation();
@@ -254,21 +263,31 @@ public class MoveController : MonoBehaviourPun
     //움직임 처리
     void HandleMovement()
     {
-        if (!photonView.IsMine) return;
-        if (rawMoveInput.magnitude < 0.1f) return;
+        //if (!photonView.IsMine) return;
+        //if (rawMoveInput.magnitude < 0.1f) return;
 
-        Vector3 playerRelativeMovement = GetPlayerRelativeMovement(rawMoveInput);
-
-        if (isGrounded)
+        if (photonView.IsMine)
         {
-            // 지상 이동 (즉시 반응) (캐싱된 값 사용)
-            Vector3 movement = playerRelativeMovement * cachedSpeed * Time.deltaTime;
-            transform.Translate(movement, Space.World);
+            if (rawMoveInput.magnitude < 0.1f) return;
+            Vector3 playerRelativeMovement = GetPlayerRelativeMovement(rawMoveInput);
+
+            if (isGrounded)
+            {
+                // 지상 이동 (즉시 반응) (캐싱된 값 사용)
+                Vector3 movement = playerRelativeMovement * cachedSpeed * Time.deltaTime;
+                tr.Translate(movement, Space.World);
+            }
+            else
+            {              
+                // 공중 이동- 에어 스트레이핑 적용
+                HandleAirMovement(playerRelativeMovement);
+            }
+            
         }
         else
         {
-            // 공중 이동- 에어 스트레이핑 적용
-            HandleAirMovement(playerRelativeMovement);
+            tr.position = Vector3.Lerp(tr.position, targetPos, Time.deltaTime * 10f);
+
         }
     }
 
@@ -396,19 +415,39 @@ public class MoveController : MonoBehaviourPun
     // 회전 처리
     void HandleRotation()
     {
-        if (!photonView.IsMine) return;
-        // ✅ 회전 제어 확인
-        if (!canRotate || isStunned)
+        if (photonView.IsMine)
         {
-            rotationAmount = 0;
-            return;
+            if (!canRotate || isStunned)
+            {
+                rotationAmount = 0;
+                return;
+            }
+
+            if (Time.time - lastMouseInputTime > cachedMouseInputTimeout) // 캐싱된 값 사용
+            {
+                rotationAmount = 0;
+            }
+            tr.Rotate(Vector3.up, rotationAmount);
+        }
+        else
+        {
+            tr.rotation = Quaternion.Slerp(tr.rotation, targetRot, Time.deltaTime * 10f);
         }
 
-        if (Time.time - lastMouseInputTime > cachedMouseInputTimeout) // 캐싱된 값 사용
-        {
-            rotationAmount = 0;
-        }
-        transform.Rotate(Vector3.up, rotationAmount);
+
+        // if (!photonView.IsMine) return;
+        // // ✅ 회전 제어 확인
+        // if (!canRotate || isStunned)
+        // {
+        //     rotationAmount = 0;
+        //     return;
+        // }
+
+        // if (Time.time - lastMouseInputTime > cachedMouseInputTimeout) // 캐싱된 값 사용
+        // {
+        //     rotationAmount = 0;
+        // }
+        // transform.Rotate(Vector3.up, rotationAmount);
     }
 
     // InputManager에서 점프 입력 받기
@@ -460,7 +499,7 @@ public class MoveController : MonoBehaviourPun
     {
         RaycastHit hit;
 
-        return Physics.Raycast(transform.position, Vector3.down, out hit, cachedGroundCheckDistance);
+        return Physics.Raycast(tr.position, Vector3.down, out hit, cachedGroundCheckDistance);
     }
 
     /// <summary>
@@ -470,7 +509,7 @@ public class MoveController : MonoBehaviourPun
     {
         if (!photonView.IsMine) return;
         if (GameManager.Instance.IsGameOver()) return;
-        Vector3 currentPosition = transform.position;
+        Vector3 currentPosition = tr.position;
         Vector3 moveVector = currentPosition - lastValidPosition;
         float moveDistance = moveVector.magnitude;
 
@@ -528,7 +567,7 @@ public class MoveController : MonoBehaviourPun
                 Vector3 safePosition = closestHit.point - horizontalDirection * (capsuleRadius + 0.1f);
                 safePosition.y = currentPosition.y; // Y 좌표는 현재 위치 유지
 
-                transform.position = safePosition;
+                tr.position = safePosition;
 
                 // Rigidbody 속도 조정 (수평 방향만)
                 if (playerRigidbody != null)
@@ -669,8 +708,8 @@ public class MoveController : MonoBehaviourPun
     Vector3 GetPlayerRelativeMovement(Vector2 input)
     {
         // 플레이어 기준 방향 벡터 계산
-        Vector3 playerForward = transform.forward;
-        Vector3 playerRight = transform.right;
+        Vector3 playerForward = tr.forward;
+        Vector3 playerRight = tr.right;
 
         // Y축 제거 (수평 이동만)
         playerForward.y = 0;
@@ -888,4 +927,21 @@ public class MoveController : MonoBehaviourPun
         Debug.Log($"마우스 조작: {canRotate && !isStunned}");
         Debug.Log($"점프: {canJump && !isStunned}");
     }
+
+    public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
+    {
+        if (stream.IsWriting)
+        {
+            stream.SendNext(tr.position);
+            stream.SendNext(tr.rotation);
+        }
+        else
+        {
+            targetPos = (Vector3)stream.ReceiveNext();
+            targetRot = (Quaternion)stream.ReceiveNext();
+            lastReceiveTime = info.SentServerTime;
+        }
+    }
+
+
 }
