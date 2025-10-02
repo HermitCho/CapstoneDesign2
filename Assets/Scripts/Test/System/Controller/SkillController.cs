@@ -45,6 +45,7 @@ public class SkillController : MonoBehaviourPun
 
     void OnEnable()
     {
+        if (!photonView.IsMine) return;
         InputManager.OnSkillPressed += OnSkillInput;
         InputManager.OnItemPressed += OnItemInput; // 아이템 사용 중앙 관리
         InputManager.OnChangeItemPressed += OnChangeItemInput;
@@ -52,6 +53,7 @@ public class SkillController : MonoBehaviourPun
 
     void OnDisable()
     {
+        if (!photonView.IsMine) return;
         InputManager.OnSkillPressed -= OnSkillInput;
         InputManager.OnItemPressed -= OnItemInput; // 아이템 사용 중앙 관리
         InputManager.OnChangeItemPressed -= OnChangeItemInput;

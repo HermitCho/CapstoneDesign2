@@ -7,7 +7,7 @@ using Photon.Pun;
 /// <summary>
 /// 캐릭터의 이동/점프/조준/재장전/스킬/아이템 애니메이션을 제어하는 컨트롤러
 /// </summary>
-public class TestMoveAnimationController : MonoBehaviourPun
+public class TestMoveAnimationController : MonoBehaviourPun, IPunObservable
 {
     // --- 컴포넌트 ---
     private Animator animator;
@@ -43,6 +43,11 @@ public class TestMoveAnimationController : MonoBehaviourPun
     [SerializeField] private Crown teddyBear;
     [SerializeField] private GameObject gunObject;
     private bool previousAttachState = false;
+
+    // --- 포톤 동기화용 변수 ---
+    private Vector2 remoteMove;
+    private bool remoteIsJumpingUp;
+    private bool remoteIsJumpingDown;
 
     private void Awake()
     {
@@ -105,16 +110,33 @@ public class TestMoveAnimationController : MonoBehaviourPun
 
     private void Update()
     {
-        if (!photonView.IsMine) return;
         if (GameManager.Instance.IsGameOver()) return;
 
-        HandleMovementAnimation();
-        HandleJumpAnimation();
-        HandleTeddyBearWeaponState();
-        HandleHealthBasedAnimation();
-        HandleUpperBodyLayer();
+        if (photonView.IsMine)
+        {
+            HandleMovementAnimation();
+            HandleJumpAnimation();
+            HandleTeddyBearWeaponState();
+            HandleHealthBasedAnimation();
+            HandleUpperBodyLayer();
 
-        if (reloadCooldown > 0f) reloadCooldown -= Time.deltaTime;
+            if (reloadCooldown > 0f) reloadCooldown -= Time.deltaTime;
+        }
+        else
+        {
+            HandleRemoteAnimation();
+        }
+    }
+
+    private void HandleRemoteAnimation()
+    {
+        // 부드럽게 이동 애니메이션 보간
+        animator.SetFloat("MoveX", Mathf.Lerp(animator.GetFloat("MoveX"), remoteMove.x, Time.deltaTime * 10f));
+        animator.SetFloat("MoveY", Mathf.Lerp(animator.GetFloat("MoveY"), remoteMove.y, Time.deltaTime * 10f));
+
+        // 점프 상태 동기화
+        animator.SetBool("JumpUp", remoteIsJumpingUp);
+        animator.SetBool("JumpDown", remoteIsJumpingDown);
     }
 
     // --- 애니메이션 처리 ---
@@ -188,7 +210,6 @@ public class TestMoveAnimationController : MonoBehaviourPun
         {
             gunObject.SetActive(!isAttached);
             previousAttachState = isAttached;
-            Debug.Log($"총기 {(isAttached ? "숨김" : "표시")} 상태로 변경됨");
         }
     }
 
@@ -197,7 +218,8 @@ public class TestMoveAnimationController : MonoBehaviourPun
     {
         if (GameManager.Instance.IsGameOver()) return;
 
-        animator.SetTrigger("Death");
+
+        photonView.RPC("RpcPlayDeathAnimation", RpcTarget.All);
         moveController?.SetStunned(true);
     }
 
@@ -205,7 +227,7 @@ public class TestMoveAnimationController : MonoBehaviourPun
     {
         if (GameManager.Instance.IsGameOver()) return;
 
-        animator.SetTrigger("Revive");
+        photonView.RPC("RpcPlayReviveAnimation", RpcTarget.All);
         moveController?.SetStunned(false);
     }
 
@@ -219,23 +241,15 @@ public class TestMoveAnimationController : MonoBehaviourPun
     {
         if (GameManager.Instance != null && GameManager.Instance.IsGameOver()) return;
         if (isReloading || gun == null) return;
-
         // 총알이 꽉 찼으면 재장전 불가
-        if (gun.CurrentMagAmmo >= gun.GetGunData().maxAmmo)
-        {
-            Debug.Log("총알이 꽉 차서 재장전 불가");
-            return;
-        }
-
+        if (gun.CurrentMagAmmo >= gun.GetGunData().maxAmmo) return;
         if (reloadCooldown > 0f) return; // 쿨타임 중이면 무시
 
-        // 재장전 시작
-        isReloading = true;
-        animator.SetLayerWeight(upperBodyLayerIndex, 1f);
-        animator.SetBool("Reload", true);
+        photonView.RPC("RpcPlayReloadAnimation", RpcTarget.All);
 
-        // TestGun 재장전 호출
-        gun.Reload();
+
+        // // TestGun 재장전 호출
+        // gun.Reload();
 
         // 첫 장전이면 쿨타임 0, 이후부터는 3.3초
         if (firstReload)
@@ -266,7 +280,8 @@ public class TestMoveAnimationController : MonoBehaviourPun
 
         if (skill != null && skill.CanUse)
         {
-            PlaySkillAnimation(skill.SkillAnimationTriggerName);
+            photonView.RPC("RpcPlaySkillAnimation", RpcTarget.All, skill.SkillAnimationTriggerName);
+
             if (speedSkillCoroutine != null) StopCoroutine(speedSkillCoroutine);
             speedSkillCoroutine = StartCoroutine(SpeedSkillRoutine());
         }
@@ -277,9 +292,10 @@ public class TestMoveAnimationController : MonoBehaviourPun
         if (GameManager.Instance.IsGameOver()) return;
 
         itemSkill = itemController.GetFirstActiveItem();
+        string triggerName = itemSkill.SkillAnimationTriggerName;
         if (itemSkill != null && itemSkill.CanUse)
         {
-            PlaySkillAnimation(itemSkill.SkillAnimationTriggerName);
+            photonView.RPC("RpcPlaySkillAnimation", RpcTarget.All, triggerName);
         }
     }
 
@@ -312,5 +328,65 @@ public class TestMoveAnimationController : MonoBehaviourPun
         yield return new WaitForSeconds(3f);
         animator.SetTrigger("Victory");
         animator.SetLayerWeight(upperBodyLayerIndex, 0f);
+    }
+
+
+    // --- RPC 처리 ---
+
+    [PunRPC]
+    private void RpcPlayReloadAnimation()
+    {
+        isReloading = true;
+        animator.SetLayerWeight(upperBodyLayerIndex, 1f);
+        animator.SetBool("Reload", true);
+    }
+
+    [PunRPC]
+    private void RpcPlaySkillAnimation(string triggerName)
+    {
+        if(string.IsNullOrEmpty(triggerName) || triggerName == "None") return;
+
+        animator.SetTrigger(triggerName);
+        animator.SetLayerWeight(upperBodyLayerIndex, 0f);
+    }
+
+    [PunRPC]
+    private void RpcPlayDeathAnimation()
+    {
+        animator.SetTrigger("Death");
+    }
+
+    [PunRPC]
+    private void RpcPlayReviveAnimation()
+    {
+        animator.SetTrigger("Revive");
+    }
+
+    [PunRPC]
+    private void RpcPlayVictoryPose()
+    {
+        if(GameManager.Instance.IsGameOver())
+        {
+            StartCoroutine(PlayVictoryPoseAfterDelay());
+        }
+    }
+
+    // --- 포톤 동기화 ---
+
+
+    public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
+    {
+        if(stream.IsWriting)
+        {
+            stream.SendNext(moveInput);
+            stream.SendNext(animator.GetBool("JumpUp"));
+            stream.SendNext(animator.GetBool("JumpDown"));
+        }
+        else
+        {
+            remoteMove = (Vector2)stream.ReceiveNext();
+            remoteIsJumpingUp = (bool)stream.ReceiveNext();
+            remoteIsJumpingDown = (bool)stream.ReceiveNext();
+        }
     }
 }

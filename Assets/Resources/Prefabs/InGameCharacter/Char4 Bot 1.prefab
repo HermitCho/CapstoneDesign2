@@ -3422,6 +3422,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 31e796572399e5447b1ab09b751c7e4a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  footstepMinInterval: 0.15
+  footstepDelay: 0
 --- !u!114 &-8765755041813001727
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3536,6 +3538,8 @@ MonoBehaviour:
   observableSearch: 2
   ObservedComponents:
   - {fileID: 2367740082871605751}
+  - {fileID: -8740273222780695762}
+  - {fileID: 1943507291064452406}
   - {fileID: -8626081206384097313}
   - {fileID: 1898291559522917724}
   sceneViewId: 0
@@ -3548,7 +3552,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2419043527781987115}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 627855c7f81362d41938ffe0b1475957, type: 3}
   m_Name: 
@@ -3564,7 +3568,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2419043527781987115}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9b8c4a61274f60b4ea5fb4299cfdbf14, type: 3}
   m_Name: 
@@ -3607,12 +3611,6 @@ MonoBehaviour:
     Name: Speed
   - Type: 9
     SynchronizeType: 0
-    Name: Item01
-  - Type: 9
-    SynchronizeType: 0
-    Name: item02
-  - Type: 9
-    SynchronizeType: 0
     Name: fire
   - Type: 9
     SynchronizeType: 0
@@ -3623,6 +3621,36 @@ MonoBehaviour:
   - Type: 9
     SynchronizeType: 0
     Name: Victory
+  - Type: 4
+    SynchronizeType: 0
+    Name: isReloading
+  - Type: 9
+    SynchronizeType: 0
+    Name: Satellite Strike
+  - Type: 9
+    SynchronizeType: 0
+    Name: Flashbang
+  - Type: 9
+    SynchronizeType: 0
+    Name: Heal
+  - Type: 9
+    SynchronizeType: 0
+    Name: Trap
+  - Type: 9
+    SynchronizeType: 0
+    Name: Barrier Creation
+  - Type: 9
+    SynchronizeType: 0
+    Name: Orb Shield
+  - Type: 9
+    SynchronizeType: 0
+    Name: PowerUp
+  - Type: 9
+    SynchronizeType: 0
+    Name: Smoke Grenade
+  - Type: 9
+    SynchronizeType: 0
+    Name: X-Ray Vision
   m_SynchronizeLayers:
   - SynchronizeType: 0
     LayerIndex: 0
