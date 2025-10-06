@@ -6,6 +6,8 @@ public class SightTrap : MonoBehaviourPun
     private int ownerActorNumber;
     private float lifetime;
     private bool isActivated = false;
+    private AudioSource aS;
+    [SerializeField] AudioClip TrapActivateSound;
 
     [PunRPC]
     public void InitializeTrap(int ownerId, float life)
@@ -15,6 +17,7 @@ public class SightTrap : MonoBehaviourPun
 
         // 일정 시간 후 자동 제거
         Destroy(gameObject, lifetime);
+        aS = GetComponent<AudioSource>();
     }
 
     private void OnTriggerEnter(Collider other)
@@ -43,6 +46,9 @@ public class SightTrap : MonoBehaviourPun
 
             // 발동 효과 실행 (설치자에게만 보여주기)
             photonView.RPC(nameof(ProvidesVisibility), RpcTarget.All, enemy.photonView.ViewID);
+
+            if (aS != null && TrapActivateSound != null)
+                aS.PlayOneShot(TrapActivateSound);
 
             // 발동 후 제거
             PhotonNetwork.Destroy(gameObject);
