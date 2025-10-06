@@ -250,7 +250,6 @@ public class TestGun : MonoBehaviourPun
 
             if (target != null && targetView != null)
             {
-                // LivingEntity 객체 대신 PhotonView.ViewID를 전달
                 int attackerViewId = livingEntity.photonView.ViewID;
 
                 // 마스터 클라이언트로 데미지 RPC 전송

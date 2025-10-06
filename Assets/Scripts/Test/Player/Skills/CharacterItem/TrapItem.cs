@@ -28,7 +28,7 @@ public class TrapItem : Skill
         GameObject trapObj = PhotonNetwork.Instantiate(
             "Prefabs/ItemObject/" + trapPrefab.name, // 반드시 Resources/Prefabs/Skill 경로에 있어야 함
             spawnPos,
-            spawnRot  
+            spawnRot
         );
 
         if (trapObj.TryGetComponent<Trap>(out Trap trap))
