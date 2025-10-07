@@ -8,6 +8,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using DG.Tweening;
+using System.Xml.Schema;
 
 /// <summary>
 /// 로컬 플레이어의 기본 정보만을 표시하는 간단한 HUD
@@ -54,12 +55,17 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     [SerializeField] private GameObject player4ScoreBoard;
     [SerializeField] private TextMeshProUGUI player4ScoreText;
 
+    [Header("조준점 UI")]
+    [SerializeField] private Animator zoomAnimator;
+
+
     // 로컬 플레이어 참조
     private GameObject localPlayer;
     private LivingEntity localLivingEntity;
     private CoinController localCoinController;
     private Skill localCharacterSkill;
     private ItemController localItemController;
+    private CameraController localCameraController;
     
     // UI 상태
     private float currentHealth = 100f;
@@ -84,6 +90,9 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     private float lastScoreBoardUpdate = 0f;
     private float scoreBoardUpdateInterval = 1f; // 1초마다 업데이트
     private bool isAnimating = false;
+
+    //조준점 관련
+    private bool isZoomed = false;
     
     // 성능 최적화 관련
     private List<PlayerScoreData> previousPlayerDataList = new List<PlayerScoreData>();
@@ -107,6 +116,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         
         // 점수판 초기화
         InitializeScoreBoard();
+
     }
     
     void OnDestroy()
@@ -179,6 +189,8 @@ public class HUDPanel : MonoBehaviourPunCallbacks
             UpdateScoreBoard();
             lastScoreBoardUpdate = currentTime;
         }
+
+        ZoomAnimationControl();
         
         
     }
@@ -230,6 +242,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks
                 localCoinController = player.GetComponent<CoinController>();
                 localCharacterSkill = player.GetComponent<Skill>();
                 localItemController = player.GetComponent<ItemController>();
+                localCameraController = player.GetComponent<CameraController>();
                 break;
             }
         }
@@ -263,6 +276,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks
 
         // 초기 아이템 UI 표시
         UpdateItemUI();
+       
     }
     
     /// <summary>
@@ -291,15 +305,29 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     {
         if (healthProgressBar != null)
         {
-            healthProgressBar.currentValue = currentHealth;
+            float delayValue = currentHealth;
+            /*healthProgressBar.currentValue = currentHealth;
             healthProgressBar.maxValue = maxHealth;
-            healthProgressBar.UpdateUI();
+            healthProgressBar.UpdateUI();*/
+
+            HealthDelay(delayValue);
         }
         
         if (healthText != null)
         {
             healthText.text = $"{currentHealth:F0}";
         }
+    }
+
+    private IEnumerator HealthDelay(float delayValue)
+    {
+        DOTween.To(() => currentHealth, x => currentHealth = x, delayValue, 0.3f);
+        healthProgressBar.currentValue = currentHealth;
+        healthProgressBar.maxValue = maxHealth;
+        healthProgressBar.UpdateUI();
+        yield return new WaitForEndOfFrame();
+
+
     }
     
     /// <summary>
@@ -370,6 +398,10 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         if (scoreText != null)
         {
             scoreText.text = $"{currentScore:F0}";
+        }
+        else
+        {
+            scoreText.text = "0";
         }
     }
 
@@ -1170,12 +1202,28 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         Debug.LogWarning($"HUDPanel: Player {player.ActorNumber}의 점수를 네트워크에서 찾을 수 없음");
         return 0f;
     }
-    
+
     // IPunObservable 인터페이스 제거됨 - Custom Properties만 사용
-    
+
     #endregion
 
-} 
+
+    #region
+    
+    private void ZoomAnimationControl()
+    {
+        if(localCameraController.IsZoom())
+        {
+            zoomAnimator.SetBool("Zoom",true);
+        }
+        else
+        {
+            zoomAnimator.SetBool("Zoom",false);
+        }
+    }
+
+    #endregion
+}
 
 
 

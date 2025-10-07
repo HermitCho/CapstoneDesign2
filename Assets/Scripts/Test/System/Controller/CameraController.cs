@@ -44,6 +44,7 @@ public class CameraController : MonoBehaviourPun
     private Camera mainCamera;
     private PhotonView photonView;
 
+
     // 카메라 조작 제어
     private bool cameraControlEnabled = true;
 
@@ -511,6 +512,11 @@ public class CameraController : MonoBehaviourPun
         adjustedSensitivity = Mathf.Clamp(adjustedSensitivity, baseSensitivity * 0.1f, baseSensitivity * 3f);
 
         return adjustedSensitivity;
+    }
+
+    public bool IsZoom()
+    {
+        return isZoomed;
     }
 
     // ========================================
