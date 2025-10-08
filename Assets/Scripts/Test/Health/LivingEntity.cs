@@ -141,11 +141,6 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
         // 🌟 변경된 체력과 상태(Dead, InvincibilityCount)를 모든 클라이언트에 동기화합니다.
         // 마스터 클라이언트가 계산했기 때문에 RpcTarget.All로 보내면 됩니다.
         bool died = CurrentHealth <= 0f;
-        photonView.RPC("RPC_UpdateHealth", RpcTarget.All, CurrentHealth, died, IsInvincivilityCount);
-
-        // 피격 효과 RPC는 로컬에서만 실행되도록 Owner에게 전송
-        photonView.RPC("RPC_OnHitEffect", photonView.Owner, -(hitNormal.normalized));
-
         if (died && !IsDead)
         {
             currentAttacker = attacker;
@@ -154,6 +149,11 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
             // 추가적인 처리를 위해 RPC를 호출합니다.
             photonView.RPC("RPC_Die", RpcTarget.All, attackerId);
         }
+
+        photonView.RPC("RPC_UpdateHealth", RpcTarget.All, CurrentHealth, died, IsInvincivilityCount);
+
+        // 피격 효과 RPC는 로컬에서만 실행되도록 Owner에게 전송
+        photonView.RPC("RPC_OnHitEffect", photonView.Owner, -(hitNormal.normalized));
     }
 
     /// <summary>
@@ -171,9 +171,6 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
         CurrentHealth = Mathf.Min(StartingHealth, CurrentHealth + healAmount);
         // float actualHealed = CurrentHealth - prevHealth; // 실제 회복량은 필요시 사용
 
-        Debug.Log($"[LivingEntity:Master] {gameObject.name} 체력 회복: {healAmount}, 현재 체력: {CurrentHealth}");
-
-        // 체력 변경 이벤트를 발생시켜 GameManager가 UI를 업데이트하도록 합니다.
         bool died = CurrentHealth <= 0f;
         photonView.RPC("RPC_UpdateHealth", RpcTarget.All, CurrentHealth, died, IsInvincivilityCount);
         
@@ -199,6 +196,7 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
     [PunRPC]
     public bool RPC_Die(int attackerViewId)
     {
+        Debug.Log("[LivingEntity] - RPC_Die 실행");
         // 이미 사망한 상태라면 처리하지 않음
         if (IsDead)
         {
