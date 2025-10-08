@@ -43,4 +43,22 @@ public class SightTrapItem : Skill
     }
 
     public override GameObject GetPlacementPrefab() { return trapPrefab; }
+
+    // 프리뷰 지원 (설치 전 위치 표시)
+    public override void StartPreview(SkillController owner)
+    {
+        base.StartPreview(owner);
+
+        PlayFollowEffectAtRemote(owner);
+    }
+
+    public override void UpdatePreview(SkillController owner, Vector3 origin, Vector3 direction, float initialSpeed = 10f)
+    {
+        base.UpdatePreview(owner, origin, direction, initialSpeed);
+    }
+
+    public override void EndPreview(SkillController owner)
+    {
+        base.EndPreview(owner);
+    }
 }

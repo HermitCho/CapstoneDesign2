@@ -7,7 +7,7 @@ public class SmokeBombSkill : Skill
 {
     [Header("연막탄 설정")]
     [SerializeField] private GameObject smokePrefab;   // 연막탄 오브젝트
-    [SerializeField] private float throwForce;     // 던지는 힘
+    [SerializeField] private float throwForce = 30f;     // 던지는 힘
     Vector3 spawnPosition;
 
     [Header("프리뷰 설정")]
@@ -36,20 +36,28 @@ public class SmokeBombSkill : Skill
                 RpcTarget.All,
                 executor.photonView.ViewID,
                 executor.GetComponent<TestShoot>().CalculateShotDirection(),
-                smokeBombScript.GetBombSpeed()
+                throwForce
             );
-            SetSpeed(smokeBombScript.GetBombSpeed());
         }
     }
 
+    // public override void StartPreview(SkillController owner)
+    // {
+    //     // 부모 클래스의 기본 프리뷰 로직을 실행
+    //     if (throwForce <= 0f && smokePrefab.TryGetComponent<SmokeBomb>(out var bomb))
+    //     {
+    //         throwForce = bomb.GetBombSpeed();
+    //     }
+    //     base.StartPreview(owner);
+    // }
+
     public override void StartPreview(SkillController owner)
     {
-        // 부모 클래스의 기본 프리뷰 로직을 실행
-        if (throwForce <= 0f && smokePrefab.TryGetComponent<SmokeBomb>(out var bomb))
-        {
-            throwForce = bomb.GetBombSpeed();
-        }
+        //부모 클래스의 기본 프리뷰 로직을 실행
         base.StartPreview(owner);
+        // 필요하다면 여기에 FireballItem에 특화된 추가 로직을 넣을 수 있습니다.
+        Debug.Log("FireballItem 전용 StartPreview 로직 실행");
+        PlayFollowCastEffectAtRemote(owner);
     }
 
     public override void UpdatePreview(SkillController owner, Vector3 origin, Vector3 direction, float initialSpeed = 10f)
@@ -66,12 +74,6 @@ public class SmokeBombSkill : Skill
         // 필요하다면 여기에 FireballItem에 특화된 추가 로직을 넣을 수 있습니다.
         //Debug.Log("SmokeBombSkill 전용 EndPreview 로직 실행");
     }
-
-    private void SetSpeed(float newSpeed)
-    {
-        throwForce = newSpeed;
-    }
-
     public override float GetProjectileSpeed()
     {
         return throwForce;

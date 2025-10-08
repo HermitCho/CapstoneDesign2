@@ -7,7 +7,6 @@ public class SmokeBomb : MonoBehaviourPun
     [SerializeField] GameObject SmokeEffect;
     [SerializeField] AudioClip SmokeSound;
     [SerializeField] private float smokeDuration = 7f;  // 연막 지속 시간
-    [SerializeField] private float speed = 30f;
     Rigidbody rb;
     AudioSource aS;
 
@@ -59,10 +58,5 @@ public class SmokeBomb : MonoBehaviourPun
 
         if (photonView.IsMine)
             PhotonNetwork.Destroy(gameObject); // 오브젝트 전체 제거
-    }
-
-    public float GetBombSpeed()
-    {
-        return speed;
     }
 }

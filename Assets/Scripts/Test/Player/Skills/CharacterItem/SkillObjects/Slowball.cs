@@ -13,8 +13,7 @@ public class Slowball : MonoBehaviourPun
 
     private Rigidbody rb;
     private AudioSource aS;
-    [SerializeField] private AudioClip burningSound; // 투사체 비행 소리
-    [SerializeField] private AudioClip impactSound; // 충돌 소리
+    [SerializeField] private AudioClip throwingSound; // 투사체 비행 소리
 
     private int ownerActorNumber;
     private bool hasExploded = false; // 장판 생성 여부 확인
@@ -23,7 +22,7 @@ public class Slowball : MonoBehaviourPun
     {
         rb = GetComponent<Rigidbody>();
         aS = GetComponent<AudioSource>();
-        PlaySound();
+        photonView.RPC("PlayThrowingSound", RpcTarget.All);
     }
 
     [PunRPC]
@@ -43,7 +42,7 @@ public class Slowball : MonoBehaviourPun
         if (PhotonNetwork.IsMasterClient)
         {
             Vector3 impactPosition = transform.position;
-            
+
             // 충돌 지점에서 아래로 레이캐스트를 쏴서 바닥을 찾음
             RaycastHit hit;
             if (Physics.Raycast(impactPosition, Vector3.down, out hit, 100f))
@@ -56,6 +55,7 @@ public class Slowball : MonoBehaviourPun
                 // 바닥을 찾지 못했을 경우 (예: 허공에서 수명이 다했을 때)
                 // 그냥 투사체 위치에서 생성
                 photonView.RPC("SpawnSlowFieldRPC", RpcTarget.All, impactPosition);
+
             }
         }
     }
@@ -63,28 +63,22 @@ public class Slowball : MonoBehaviourPun
     [PunRPC]
     private void SpawnSlowFieldRPC(Vector3 position)
     {
-        // 충돌 지점에 슬로우 필드 프리팹 생성
         if (slowFieldPrefab != null)
         {
-            // Y축을 바닥에 맞추기 위해 약간 올려서 생성
-            Instantiate(slowFieldPrefab, position + new Vector3(0, 0.1f, 0), Quaternion.identity);
-        }
+            string prefabPath = "Prefabs/ItemObject/" + slowFieldPrefab.name;
 
-        if (impactSound != null && aS != null)
-        {
-            aS.PlayOneShot(impactSound);
+            PhotonNetwork.Instantiate(prefabPath, position + new Vector3(0, 0.1f, 0), Quaternion.identity);
         }
-
         // 투사체 오브젝트 파괴
         PhotonNetwork.Destroy(gameObject);
     }
 
     [PunRPC]
-    private void PlaySound()
+    private void PlayThrowingSound()
     {
-        if (aS != null && burningSound != null)
+        if (aS != null && throwingSound != null)
         {
-            aS.PlayOneShot(burningSound);
+            aS.PlayOneShot(throwingSound);
         }
     }
 

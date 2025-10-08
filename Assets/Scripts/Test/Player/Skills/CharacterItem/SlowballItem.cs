@@ -55,10 +55,10 @@ public class SlowballItem : Skill
 
     public override void StartPreview(SkillController owner)
     {
-        // 부모 클래스의 기본 프리뷰 로직을 실행
         base.StartPreview(owner);
-        // 필요하다면 여기에 FireballItem에 특화된 추가 로직을 넣을 수 있습니다.
+
         Debug.Log("FireballItem 전용 StartPreview 로직 실행");
+        PlayFollowCastEffectAtRemote(owner);
     }
 
     public override void UpdatePreview(SkillController owner, Vector3 origin, Vector3 direction, float initialSpeed = 10f)

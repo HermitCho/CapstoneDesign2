@@ -47,8 +47,9 @@ public class TrapItem : Skill
     // 프리뷰 지원 (설치 전 위치 표시)
     public override void StartPreview(SkillController owner)
     {
-
         base.StartPreview(owner);
+        
+        PlayFollowEffectAtRemote(owner);
     }
 
     public override void UpdatePreview(SkillController owner, Vector3 origin, Vector3 direction, float initialSpeed = 10f)

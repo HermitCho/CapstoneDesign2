@@ -71,7 +71,7 @@ public class SkillController : MonoBehaviourPun
         if (!photonView.IsMine) return;
 
         // 프리뷰 업데이트 (위치/궤적)
-        UpdatePreview();
+        DeliverUpdatePreview();
 
         // 프리뷰가 활성화되어 있으면 좌클릭으로 확정
         if (isPreviewActive)
@@ -195,20 +195,20 @@ public class SkillController : MonoBehaviourPun
                 if (currentPreviewSkill == skill)
                 {
                     // 같은 키를 다시 누르면 토글(취소)
-                    EndPreview();
+                    DeliverEndPreview();
                 }
                 else
                 {
                     // 다른 프리뷰가 켜져있고 지금 눌린 키가 다른 스킬이면 이전 취소 후 새 프리뷰 시작
-                    EndPreview();
-                    StartPreview(skill);
+                    DeliverEndPreview();
+                    DeliverStartPreview(skill);
                 }
             }
             else
             {
                 TestShoot.SetIsShooting(false);
                 // 프리뷰가 꺼져있으면 시작
-                StartPreview(skill);
+                DeliverStartPreview(skill);
             }
         }
         else
@@ -281,14 +281,14 @@ public class SkillController : MonoBehaviourPun
             {
                 if (currentPreviewSkill != activeItem)
                 {
-                    EndPreview();
-                    StartPreview(activeItem);
+                    DeliverEndPreview();
+                    DeliverStartPreview(activeItem);
                 }
             }
             else
             {
                 TestShoot.SetIsShooting(false);
-                StartPreview(activeItem);
+                DeliverStartPreview(activeItem);
             }
         }
         else
@@ -428,8 +428,10 @@ public class SkillController : MonoBehaviourPun
     }
     #endregion
 
+
+
     #region 스킬 UI / 프리뷰 관리
-    private void StartPreview(Skill s)
+    private void DeliverStartPreview(Skill s)
     {
         if (s == null) return;
 
@@ -449,7 +451,7 @@ public class SkillController : MonoBehaviourPun
         Debug.Log($"✅ 프리뷰 시작: {s.SkillName}");
     }
 
-    private void UpdatePreview()
+    private void DeliverUpdatePreview()
     {
         if (!isPreviewActive || currentPreviewSkill == null) return;
 
@@ -461,7 +463,7 @@ public class SkillController : MonoBehaviourPun
         currentPreviewSkill.UpdatePreview(this, origin, direction);
     }
 
-    private void EndPreview()
+    private void DeliverEndPreview()
     {
         if (currentPreviewSkill != null)
         {
@@ -513,7 +515,7 @@ public class SkillController : MonoBehaviourPun
             currentPreviewSkill.ActivateSkill(this);
         }
 
-        EndPreview();
+        DeliverEndPreview();
     }
 
     /// <summary>
@@ -523,7 +525,7 @@ public class SkillController : MonoBehaviourPun
     {
         if (isPreviewActive)
         {
-            EndPreview();
+            DeliverEndPreview();
         }
     }
 

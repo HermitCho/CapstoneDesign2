@@ -243,12 +243,22 @@ public abstract class Skill : MonoBehaviourPun
 
     public void PlayEffectAtRemote(SkillController executor, Vector3 pos, Vector3 dir)
     {
-        if (skillEffect != null)
+        if (skillEffect != null && !isFollowing)
         {
-            if (isFollowing)
-                SpawnEffectFollow(skillEffect, executor.transform, effectDuration);
-            else
-                SpawnEffectAtPosition(skillEffect, pos, Quaternion.identity, effectDuration);
+            SpawnEffectAtPosition(skillEffect, pos, Quaternion.identity, effectDuration);
+        }
+
+        if (skillSound != null && AudioManager.Inst != null)
+        {
+            AudioManager.Inst.PlayClipAtPoint(skillSound, executor.transform.position, 1f, 1f, null, executor.transform);
+        }
+    }
+
+    public void PlayFollowEffectAtRemote(SkillController executor)
+    {
+        if (skillEffect != null && isFollowing)
+        {
+            SpawnEffectFollow(skillEffect, executor.transform, effectDuration);
         }
 
         if (skillSound != null && AudioManager.Inst != null)
@@ -259,12 +269,22 @@ public abstract class Skill : MonoBehaviourPun
 
     public void PlayCastEffectAtRemote(SkillController executor, Vector3 pos, Vector3 dir)
     {
-        if (castTimeSkillEffect != null)
+        if (castTimeSkillEffect != null && !isCastingFollowing)
         {
-            if (isCastingFollowing)
-                SpawnEffectFollow(castTimeSkillEffect, executor.transform, effectCastingDuration);
-            else
-                SpawnEffectAtPosition(castTimeSkillEffect, pos, Quaternion.identity, effectCastingDuration);
+            SpawnEffectAtPosition(castTimeSkillEffect, pos, Quaternion.identity, effectCastingDuration);
+        }
+
+        if (castTimeSkillSound != null && AudioManager.Inst != null)
+        {
+            AudioManager.Inst.PlayClipAtPoint(castTimeSkillSound, executor.transform.position, 1f, 1f, null, executor.transform);
+        }
+    }
+
+    public void PlayFollowCastEffectAtRemote(SkillController executor)
+    {
+        if (castTimeSkillEffect != null && isCastingFollowing)
+        {
+            SpawnEffectFollow(castTimeSkillEffect, executor.transform, effectCastingDuration);
         }
 
         if (castTimeSkillSound != null && AudioManager.Inst != null)
