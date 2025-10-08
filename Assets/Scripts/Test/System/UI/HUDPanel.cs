@@ -19,6 +19,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     [Header("체력 UI")]
     [SerializeField] private ProgressBar healthProgressBar;
     [SerializeField] private TextMeshProUGUI healthText;
+    [SerializeField] private ProgressBar healthProgressBGBar;
     
     [Header("점수 UI")]
     [SerializeField] private TextMeshProUGUI scoreText;
@@ -73,6 +74,28 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     private int currentCoin = 0;
     private float currentScore = 0f;
     
+    // 체력 UI 애니메이션 관련
+    private float previousHealth = 100f;
+    private float targetHealth = 100f;
+    private float displayedHealth = 100f;
+    private bool isHealthAnimating = false;
+    private bool isDamageAnimation = false;
+    private bool isHealAnimation = false;
+    private Tween healthBarTween;
+    private Tween healthBGBarTween;
+    private Tween healthBlinkTween;
+    private Color originalBGColor = Color.white;
+    private Color damageColor = Color.red;
+    private Color healColor = new Color(0.5f, 0.8f, 1f, 1f); // 연한 파란색
+    
+    // 체력 바 페이드 관련
+    private float lastHealthChangeTime = 0f;
+    private bool isHealthBarFaded = false;
+    private Tween healthBarFadeTween;
+    private Tween healthBGBarFadeTween;
+    private float healthFadeDelay = 3f; // 3초
+    private Color originalHealthBarColor = Color.white;
+    
     // 시간 관련 (GameManager에서 받아옴)
     private float gameTime = 0f;
     private float lastTimeUpdate = 0f;
@@ -98,8 +121,28 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     private List<PlayerScoreData> previousPlayerDataList = new List<PlayerScoreData>();
     private bool hasScoreChanged = false;
     
+    /// <summary>
+    /// 플레이어 점수 Properties 초기화 (두 번째 게임 문제 해결)
+    /// </summary>
+    private void ClearPlayerScoreProperties()
+    {
+        if (!PhotonNetwork.IsConnected || PhotonNetwork.LocalPlayer == null) return;
+        
+        // 로컬 플레이어의 점수 관련 Properties 초기화
+        var props = new ExitGames.Client.Photon.Hashtable();
+        props[$"score_{PhotonNetwork.LocalPlayer.ActorNumber}"] = null;
+        props["nickname"] = null; // 닉네임도 초기화하여 재설정되도록
+        
+        PhotonNetwork.LocalPlayer.SetCustomProperties(props);
+        
+        Debug.Log($"HUDPanel: 플레이어 {PhotonNetwork.LocalPlayer.ActorNumber} 점수 Properties 초기화");
+    }
+    
     void Start()
     {
+        // 게임 재시작 시 점수 Properties 초기화 (핵심 수정)
+        ClearPlayerScoreProperties();
+        
         // 로컬 플레이어 찾기 시작
         StartCoroutine(FindLocalPlayerRoutine());
         
@@ -131,6 +174,10 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         // LivingEntity 사망 이벤트 구독 해제
         LivingEntity.OnPlayerDied -= HandlePlayerDeath;
         Debug.Log("HUD: LivingEntity.OnPlayerDied 이벤트 구독 해제 완료");
+        
+        // 체력 애니메이션 정리
+        CleanupHealthAnimations();
+        CleanupFadeAnimations();
     }
     
     /// <summary>
@@ -191,6 +238,9 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         }
 
         ZoomAnimationControl();
+        
+        // 체력 바 페이드 체크
+        CheckHealthBarFade();
         
         
     }
@@ -257,6 +307,25 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         {
             currentHealth = localLivingEntity.CurrentHealth;
             maxHealth = localLivingEntity.StartingHealth;
+            previousHealth = currentHealth;
+            targetHealth = currentHealth;
+            displayedHealth = currentHealth;
+            
+            // 배경 바의 원래 색상 저장
+            if (healthProgressBGBar != null && healthProgressBGBar.barImage != null)
+            {
+                originalBGColor = healthProgressBGBar.barImage.color;
+            }
+            
+            // 체력 바의 원래 색상 저장
+            if (healthProgressBar != null && healthProgressBar.barImage != null)
+            {
+                originalHealthBarColor = healthProgressBar.barImage.color;
+            }
+            
+            // 체력 변화 시간 초기화
+            lastHealthChangeTime = Time.time;
+            
             UpdateHealthDisplay();
         }
         
@@ -289,28 +358,49 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         float newHealth = localLivingEntity.CurrentHealth;
         float newMaxHealth = localLivingEntity.StartingHealth;
         
-        if (Mathf.Abs(newHealth - currentHealth) > 0.1f || 
-            Mathf.Abs(newMaxHealth - maxHealth) > 0.1f)
+        // 최대 체력 변경 처리
+        if (Mathf.Abs(newMaxHealth - maxHealth) > 0.1f)
         {
-            currentHealth = newHealth;
             maxHealth = newMaxHealth;
-            UpdateHealthDisplay();
+        }
+        
+        // 체력 변경 감지 및 애니메이션 처리
+        if (Mathf.Abs(newHealth - currentHealth) > 0.1f)
+        {
+            previousHealth = currentHealth;
+            currentHealth = newHealth;
+            targetHealth = newHealth;
+            
+            // 체력 변화 시간 기록
+            lastHealthChangeTime = Time.time;
+            
+            // 페이드된 상태라면 원래 투명도로 복원
+            if (isHealthBarFaded)
+            {
+                RestoreHealthBarVisibility();
+            }
+            
+            // 체력 변화에 따른 애니메이션 시작
+            StartHealthAnimation();
         }
     }
     
     /// <summary>
-    /// 체력 UI 업데이트
+    /// 체력 UI 업데이트 (즉시 업데이트용)
     /// </summary>
     void UpdateHealthDisplay()
     {
         if (healthProgressBar != null)
         {
-            float delayValue = currentHealth;
-            /*healthProgressBar.currentValue = currentHealth;
+            healthProgressBar.currentValue = displayedHealth;
             healthProgressBar.maxValue = maxHealth;
-            healthProgressBar.UpdateUI();*/
-
-            HealthDelay(delayValue);
+            healthProgressBar.UpdateUI();
+        }
+        
+        if (healthProgressBGBar != null)
+        {
+            healthProgressBGBar.maxValue = maxHealth;
+            healthProgressBGBar.UpdateUI();
         }
         
         if (healthText != null)
@@ -318,17 +408,353 @@ public class HUDPanel : MonoBehaviourPunCallbacks
             healthText.text = $"{currentHealth:F0}";
         }
     }
-
-    private IEnumerator HealthDelay(float delayValue)
+    
+    /// <summary>
+    /// 체력 애니메이션 시작
+    /// </summary>
+    void StartHealthAnimation()
     {
-        DOTween.To(() => currentHealth, x => currentHealth = x, delayValue, 0.3f);
-        healthProgressBar.currentValue = currentHealth;
-        healthProgressBar.maxValue = maxHealth;
-        healthProgressBar.UpdateUI();
-        yield return new WaitForEndOfFrame();
-
-
+        // 기존 애니메이션 정리
+        CleanupHealthAnimations();
+        
+        float healthDifference = targetHealth - previousHealth;
+        
+        if (healthDifference < 0) // 데미지
+        {
+            StartDamageAnimation(Mathf.Abs(healthDifference));
+        }
+        else if (healthDifference > 0) // 회복
+        {
+            StartHealAnimation(healthDifference);
+        }
     }
+    
+    /// <summary>
+    /// 데미지 애니메이션 시작
+    /// </summary>
+    void StartDamageAnimation(float damageAmount)
+    {
+        if (isHealAnimation)
+        {
+            // 회복 중 데미지 처리
+            HandleDamageInterruptHeal(damageAmount);
+            return;
+        }
+        
+        isDamageAnimation = true;
+        isHealthAnimating = true;
+        
+        // 배경 바 색상을 빨간색으로 변경
+        if (healthProgressBGBar != null && healthProgressBGBar.barImage != null)
+        {
+            healthProgressBGBar.barImage.color = damageColor;
+            healthProgressBGBar.currentValue = previousHealth;
+            healthProgressBGBar.UpdateUI();
+        }
+        
+        // 빨간색 깜박임 시작 (강한 깜박임)
+        StartHealthBlink(damageColor, 0.3f);
+        
+        // 체력 바 부드럽게 감소
+        healthBarTween = DOTween.To(() => displayedHealth, x => {
+            displayedHealth = x;
+            if (healthProgressBar != null)
+            {
+                healthProgressBar.currentValue = displayedHealth;
+                healthProgressBar.UpdateUI();
+            }
+        }, targetHealth, 0.8f)
+        .SetEase(Ease.OutCubic)
+        .OnComplete(() => {
+            // 체력 바 감소 완료 후 배경 바도 감소
+            StartBackgroundBarDecrease();
+        });
+    }
+    
+    /// <summary>
+    /// 회복 애니메이션 시작
+    /// </summary>
+    void StartHealAnimation(float healAmount)
+    {
+        if (isDamageAnimation)
+        {
+            // 데미지 중 회복 처리
+            HandleHealInterruptDamage(healAmount);
+            return;
+        }
+        
+        isHealAnimation = true;
+        isHealthAnimating = true;
+        
+        // 배경 바 색상을 연한 파란색으로 변경하고 회복 지점까지 증가
+        if (healthProgressBGBar != null && healthProgressBGBar.barImage != null)
+        {
+            healthProgressBGBar.barImage.color = healColor;
+            
+            // 배경 바를 회복 지점까지 즉시 증가
+            healthProgressBGBar.currentValue = targetHealth;
+            healthProgressBGBar.UpdateUI();
+        }
+        
+        // 파란색 부드러운 깜박임 시작
+        StartHealthBlink(healColor, 0.5f);
+        
+        // 0.3초 후 체력 바 증가 시작
+        DOVirtual.DelayedCall(0.3f, () => {
+            healthBarTween = DOTween.To(() => displayedHealth, x => {
+                displayedHealth = x;
+                if (healthProgressBar != null)
+                {
+                    healthProgressBar.currentValue = displayedHealth;
+                    healthProgressBar.UpdateUI();
+                }
+            }, targetHealth, 0.6f)
+            .SetEase(Ease.OutCubic)
+            .OnComplete(() => {
+                // 회복 완료
+                CompleteHealAnimation();
+            });
+        });
+    }
+    
+    /// <summary>
+    /// 배경 바 감소 애니메이션
+    /// </summary>
+    void StartBackgroundBarDecrease()
+    {
+        if (healthProgressBGBar != null)
+        {
+            healthBGBarTween = DOTween.To(() => healthProgressBGBar.currentValue, x => {
+                healthProgressBGBar.currentValue = x;
+                healthProgressBGBar.UpdateUI();
+            }, targetHealth, 0.6f)
+            .SetEase(Ease.OutCubic)
+            .OnComplete(() => {
+                // 데미지 애니메이션 완료
+                CompleteDamageAnimation();
+            });
+        }
+        else
+        {
+            CompleteDamageAnimation();
+        }
+    }
+    
+    /// <summary>
+    /// 체력 깜박임 효과
+    /// </summary>
+    void StartHealthBlink(Color blinkColor, float blinkSpeed)
+    {
+        if (healthProgressBGBar != null && healthProgressBGBar.barImage != null)
+        {
+            var image = healthProgressBGBar.barImage;
+            
+            healthBlinkTween = DOTween.Sequence()
+                .Append(image.DOFade(0f, blinkSpeed))
+                .Append(image.DOFade(150f / 255f, blinkSpeed))
+                .SetLoops(-1, LoopType.Yoyo);
+        }
+    }
+    
+    /// <summary>
+    /// 회복 중 데미지 인터럽트 처리
+    /// </summary>
+    void HandleDamageInterruptHeal(float damageAmount)
+    {
+        float currentBGValue = healthProgressBGBar != null ? healthProgressBGBar.currentValue : displayedHealth;
+        float healAmount = currentBGValue - displayedHealth;
+        
+        if (damageAmount < healAmount)
+        {
+            // 데미지가 회복량보다 작음 - 배경 바만 줄이기
+            float newBGValue = currentBGValue - damageAmount;
+            targetHealth = currentHealth; // 실제 체력으로 업데이트
+            
+            if (healthProgressBGBar != null)
+            {
+                healthBGBarTween?.Kill();
+                healthBGBarTween = DOTween.To(() => healthProgressBGBar.currentValue, x => {
+                    healthProgressBGBar.currentValue = x;
+                    healthProgressBGBar.UpdateUI();
+                }, newBGValue, 0.4f)
+                .SetEase(Ease.OutCubic);
+            }
+        }
+        else
+        {
+            // 데미지가 회복량보다 큼 - 데미지 애니메이션으로 전환
+            CleanupHealthAnimations();
+            isHealAnimation = false;
+            StartDamageAnimation(damageAmount - healAmount);
+        }
+    }
+    
+    /// <summary>
+    /// 데미지 중 회복 인터럽트 처리
+    /// </summary>
+    void HandleHealInterruptDamage(float healAmount)
+    {
+        float currentBGValue = healthProgressBGBar != null ? healthProgressBGBar.currentValue : displayedHealth;
+        float damageAmount = displayedHealth - currentBGValue;
+        
+        if (healAmount < damageAmount)
+        {
+            // 회복량이 데미지보다 작음 - 배경 바만 증가
+            float newBGValue = currentBGValue + healAmount;
+            targetHealth = currentHealth; // 실제 체력으로 업데이트
+            
+            if (healthProgressBGBar != null)
+            {
+                healthBGBarTween?.Kill();
+                healthBGBarTween = DOTween.To(() => healthProgressBGBar.currentValue, x => {
+                    healthProgressBGBar.currentValue = x;
+                    healthProgressBGBar.UpdateUI();
+                }, newBGValue, 0.4f)
+                .SetEase(Ease.OutCubic);
+            }
+        }
+        else
+        {
+            // 회복량이 데미지보다 큼 - 회복 애니메이션으로 전환
+            CleanupHealthAnimations();
+            isDamageAnimation = false;
+            StartHealAnimation(healAmount - damageAmount);
+        }
+    }
+    
+    /// <summary>
+    /// 데미지 애니메이션 완료
+    /// </summary>
+    void CompleteDamageAnimation()
+    {
+        isDamageAnimation = false;
+        isHealthAnimating = false;
+        
+        // 깜박임 정지 및 원래 색상으로 복원
+        healthBlinkTween?.Kill();
+        if (healthProgressBGBar != null && healthProgressBGBar.barImage != null)
+        {
+            healthProgressBGBar.barImage.color = originalBGColor;
+            healthProgressBGBar.barImage.DOFade(originalBGColor.a, 0.3f);
+        }
+        
+        // 체력 변화 시간 업데이트 (페이드 타이머 리셋)
+        lastHealthChangeTime = Time.time;
+    }
+    
+    /// <summary>
+    /// 회복 애니메이션 완료
+    /// </summary>
+    void CompleteHealAnimation()
+    {
+        isHealAnimation = false;
+        isHealthAnimating = false;
+        
+        // 깜박임 정지 및 원래 색상으로 복원
+        healthBlinkTween?.Kill();
+        if (healthProgressBGBar != null && healthProgressBGBar.barImage != null)
+        {
+            healthProgressBGBar.barImage.color = originalBGColor;
+            healthProgressBGBar.barImage.DOFade(originalBGColor.a, 0.3f);
+        }
+        
+        // 체력 변화 시간 업데이트 (페이드 타이머 리셋)
+        lastHealthChangeTime = Time.time;
+    }
+    
+    /// <summary>
+    /// 체력 애니메이션 정리
+    /// </summary>
+    void CleanupHealthAnimations()
+    {
+        healthBarTween?.Kill();
+        healthBGBarTween?.Kill();
+        healthBlinkTween?.Kill();
+        
+        healthBarTween = null;
+        healthBGBarTween = null;
+        healthBlinkTween = null;
+    }
+    
+    /// <summary>
+    /// 체력 바 페이드 체크
+    /// </summary>
+    void CheckHealthBarFade()
+    {
+        // 애니메이션 중이거나 이미 페이드된 상태면 체크하지 않음
+        if (isHealthAnimating || isHealthBarFaded) return;
+        
+        // 3초간 체력 변화가 없었는지 확인
+        if (Time.time - lastHealthChangeTime >= healthFadeDelay)
+        {
+            FadeHealthBars();
+        }
+    }
+    
+    /// <summary>
+    /// 체력 바들을 페이드 아웃
+    /// </summary>
+    void FadeHealthBars()
+    {
+        if (isHealthBarFaded) return;
+        
+        isHealthBarFaded = true;
+        
+        // 체력 바를 투명도 100 (약 39%)으로 페이드
+        if (healthProgressBar != null && healthProgressBar.barImage != null)
+        {
+            healthBarFadeTween = healthProgressBar.barImage.DOFade(100f / 255f, 0.5f)
+                .SetEase(Ease.OutCubic);
+        }
+        
+        // 배경 바를 투명도 0으로 페이드
+        if (healthProgressBGBar != null && healthProgressBGBar.barImage != null)
+        {
+            healthBGBarFadeTween = healthProgressBGBar.barImage.DOFade(0f, 0.5f)
+                .SetEase(Ease.OutCubic);
+        }
+    }
+    
+    /// <summary>
+    /// 체력 바 투명도를 원래대로 복원
+    /// </summary>
+    void RestoreHealthBarVisibility()
+    {
+        if (!isHealthBarFaded) return;
+        
+        isHealthBarFaded = false;
+        
+        // 페이드 애니메이션 정리
+        healthBarFadeTween?.Kill();
+        healthBGBarFadeTween?.Kill();
+        
+        // 체력 바를 원래 투명도로 복원
+        if (healthProgressBar != null && healthProgressBar.barImage != null)
+        {
+            healthBarFadeTween = healthProgressBar.barImage.DOFade(originalHealthBarColor.a, 0.3f)
+                .SetEase(Ease.OutCubic);
+        }
+        
+        // 배경 바를 원래 투명도로 복원
+        if (healthProgressBGBar != null && healthProgressBGBar.barImage != null)
+        {
+            healthBGBarFadeTween = healthProgressBGBar.barImage.DOFade(originalBGColor.a, 0.3f)
+                .SetEase(Ease.OutCubic);
+        }
+    }
+    
+    /// <summary>
+    /// 페이드 애니메이션 정리
+    /// </summary>
+    void CleanupFadeAnimations()
+    {
+        healthBarFadeTween?.Kill();
+        healthBGBarFadeTween?.Kill();
+        
+        healthBarFadeTween = null;
+        healthBGBarFadeTween = null;
+    }
+
     
     /// <summary>
     /// 코인 자동 업데이트 (로컬 플레이어에서 직접 가져옴)

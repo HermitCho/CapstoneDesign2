@@ -35,8 +35,26 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
     
     // 이벤트 제거 - Room Properties 기반으로 변경
     
+    /// <summary>
+    /// 플레이어 Ready 상태 초기화 (두 번째 게임 문제 해결)
+    /// </summary>
+    private void ClearPlayerReadyState()
+    {
+        if (!PhotonNetwork.IsConnected || PhotonNetwork.LocalPlayer == null) return;
+        
+        // 로컬 플레이어의 Ready 상태만 초기화
+        var props = new ExitGames.Client.Photon.Hashtable();
+        props[$"playerReady_{PhotonNetwork.LocalPlayer.ActorNumber}"] = null;
+        PhotonNetwork.LocalPlayer.SetCustomProperties(props);
+        
+        Debug.Log($"ReadyPanel: 플레이어 {PhotonNetwork.LocalPlayer.ActorNumber} Ready 상태 초기화");
+    }
+    
     void Start()
     {
+        // 게임 재시작 시 플레이어 Ready 상태 초기화 (핵심 수정)
+        ClearPlayerReadyState();
+        
         InitializeReadyState();
         SetupCamera();
         UpdatePlayerCountDisplay();
@@ -47,7 +65,7 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
             CheckGamePhase();
         }
         
-        // 플레이어 로딩 상태 추적 시작
+        // 플레이어 로딩 상태 추적 시작 (모든 클라이언트)
         if (PhotonNetwork.IsMasterClient)
         {
             Debug.Log("ReadyPanel: 마스터 클라이언트 - 플레이어 로딩 추적 시작");
@@ -55,7 +73,8 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
         }
         else
         {
-            Debug.Log("ReadyPanel: 비마스터 클라이언트 - 로딩 추적 대기");
+            Debug.Log("ReadyPanel: 비마스터 클라이언트 - UI 업데이트 추적 시작");
+            StartNonMasterUITracker();
         }
         
         // 현재 방의 플레이어 수 설정
@@ -220,6 +239,51 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
     }
     
     /// <summary>
+    /// 비마스터 클라이언트용 UI 업데이트 추적기
+    /// </summary>
+    private void StartNonMasterUITracker()
+    {
+        if (waitingCoroutine != null)
+        {
+            StopCoroutine(waitingCoroutine);
+        }
+        waitingCoroutine = StartCoroutine(NonMasterUIUpdateCoroutine());
+    }
+    
+    /// <summary>
+    /// 비마스터 클라이언트용 UI 업데이트 코루틴
+    /// </summary>
+    private IEnumerator NonMasterUIUpdateCoroutine()
+    {
+        Debug.Log("ReadyPanel: 비마스터 UI 추적 시작");
+        
+        while (!isCountdownStarted && !isGameStarted)
+        {
+            var allPlayers = PhotonNetwork.PlayerList;
+            currentPlayerCount = allPlayers.Length;
+            int readyPlayerCount = 0;
+            
+            foreach (var player in allPlayers)
+            {
+                if (player.CustomProperties.TryGetValue($"playerReady_{player.ActorNumber}", out object readyValue))
+                {
+                    if (readyValue != null && readyValue is bool boolValue && boolValue)
+                    {
+                        readyPlayerCount++;
+                    }
+                }
+            }
+            
+            Debug.Log($"ReadyPanel: 비마스터 UI - {readyPlayerCount}/{currentPlayerCount}");
+            UpdatePlayerReadyStatus(readyPlayerCount, currentPlayerCount);
+            
+            yield return new WaitForSeconds(0.5f);
+        }
+        
+        Debug.Log("ReadyPanel: 비마스터 UI 추적 종료");
+    }
+    
+    /// <summary>
     /// 모든 플레이어 로딩 완료 대기 또는 타임아웃
     /// </summary>
     private IEnumerator WaitForPlayersOrTimeout()
@@ -236,10 +300,14 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
             
             foreach (var player in allPlayers)
             {
-                if (player.CustomProperties.ContainsKey($"playerReady_{player.ActorNumber}"))
+                // null-safe 체크
+                if (player.CustomProperties.TryGetValue($"playerReady_{player.ActorNumber}", out object readyValue))
                 {
-                    readyPlayerCount++;
-                    Debug.Log($"ReadyPanel: 플레이어 {player.ActorNumber} 준비 완료");
+                    if (readyValue != null && readyValue is bool boolValue && boolValue)
+                    {
+                        readyPlayerCount++;
+                        Debug.Log($"ReadyPanel: 플레이어 {player.ActorNumber} 준비 완료");
+                    }
                 }
             }
             
@@ -314,9 +382,13 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
         // 준비된 플레이어 수 계산
         foreach (var player in allPlayers)
         {
-            if (player.CustomProperties.ContainsKey($"playerReady_{player.ActorNumber}"))
+            // null-safe 체크
+            if (player.CustomProperties.TryGetValue($"playerReady_{player.ActorNumber}", out object readyValue))
             {
-                readyCount++;
+                if (readyValue != null && readyValue is bool boolValue && boolValue)
+                {
+                    readyCount++;
+                }
             }
         }
         
@@ -559,10 +631,17 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
         // 모든 클라이언트에서 UI 업데이트
         UpdatePlayerCountUI();
         
-        // 새 플레이어가 들어왔을 때 로딩 추적 재시작 (마스터만)
-        if (PhotonNetwork.IsMasterClient && !isCountdownStarted)
+        // 새 플레이어가 들어왔을 때 UI 추적 재시작 (모든 클라이언트)
+        if (!isCountdownStarted)
         {
-            StartPlayerLoadingTracker();
+            if (PhotonNetwork.IsMasterClient)
+            {
+                StartPlayerLoadingTracker();
+            }
+            else
+            {
+                StartNonMasterUITracker();
+            }
         }
     }
     
@@ -575,10 +654,17 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
         // 모든 클라이언트에서 UI 업데이트
         UpdatePlayerCountUI();
         
-        // 플레이어가 나갔을 때 로딩 추적 재시작 (마스터만)
-        if (PhotonNetwork.IsMasterClient && !isCountdownStarted)
+        // 플레이어가 나갔을 때 UI 추적 재시작 (모든 클라이언트)
+        if (!isCountdownStarted)
         {
-            StartPlayerLoadingTracker();
+            if (PhotonNetwork.IsMasterClient)
+            {
+                StartPlayerLoadingTracker();
+            }
+            else
+            {
+                StartNonMasterUITracker();
+            }
         }
         
         // 카운트다운 중이었다면 중단
@@ -627,9 +713,13 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
         
         foreach (var player in allPlayers)
         {
-            if (player.CustomProperties.ContainsKey($"playerReady_{player.ActorNumber}"))
+            // null-safe 체크
+            if (player.CustomProperties.TryGetValue($"playerReady_{player.ActorNumber}", out object readyValue))
             {
-                readyPlayerCount++;
+                if (readyValue != null && readyValue is bool boolValue && boolValue)
+                {
+                    readyPlayerCount++;
+                }
             }
         }
         
