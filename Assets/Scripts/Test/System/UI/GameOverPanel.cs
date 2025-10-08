@@ -201,9 +201,77 @@ public class GameOverPanel : MonoBehaviour
 #region 버튼 클릭 이벤트
 
     public void OnMainMenuButtonClicked()
-    {  
-        PhotonNetwork.LeaveRoom();
-        PhotonNetwork.Disconnect();
+    {
+        Debug.Log("GameOverPanel: 메인 메뉴로 이동 - Player Properties 완전 초기화");
+        
+        // Player Properties 완전 초기화 (핵심!)
+        ClearAllPlayerProperties();
+        
+        StartCoroutine(LeaveRoomAndLoadLobby());
+    }
+    
+    /// <summary>
+    /// 모든 Player Properties 완전 초기화
+    /// </summary>
+    private void ClearAllPlayerProperties()
+    {
+        if (!PhotonNetwork.IsConnected || PhotonNetwork.LocalPlayer == null) return;
+        
+        Debug.Log($"GameOverPanel: 플레이어 {PhotonNetwork.LocalPlayer.ActorNumber} Properties 완전 초기화");
+        
+        var props = new ExitGames.Client.Photon.Hashtable();
+        props[$"score_{PhotonNetwork.LocalPlayer.ActorNumber}"] = null;
+        props[$"playerReady_{PhotonNetwork.LocalPlayer.ActorNumber}"] = null;
+        props["nickname"] = null;
+        
+        PhotonNetwork.LocalPlayer.SetCustomProperties(props);
+        
+        Debug.Log("GameOverPanel: Player Properties 초기화 완료");
+    }
+    
+    /// <summary>
+    /// 방 나가기 후 Lobby 씬 로드
+    /// </summary>
+    private System.Collections.IEnumerator LeaveRoomAndLoadLobby()
+    {
+        // Properties 초기화 완료 대기
+        yield return new WaitForSeconds(0.5f);
+        
+        // 방 나가기
+        if (PhotonNetwork.InRoom)
+        {
+            PhotonNetwork.LeaveRoom();
+            
+            // 방 나가기 완료 대기 (최대 5초)
+            float timeout = 5f;
+            float timer = 0f;
+            while (PhotonNetwork.InRoom && timer < timeout)
+            {
+                yield return new WaitForSeconds(0.1f);
+                timer += 0.1f;
+            }
+            
+            Debug.Log($"GameOverPanel: 방 나가기 완료 (대기: {timer}초)");
+        }
+        
+        // 연결 해제
+        if (PhotonNetwork.IsConnected)
+        {
+            PhotonNetwork.Disconnect();
+            
+            // 연결 해제 완료 대기 (최대 5초)
+            float timeout = 5f;
+            float timer = 0f;
+            while (PhotonNetwork.IsConnected && timer < timeout)
+            {
+                yield return new WaitForSeconds(0.1f);
+                timer += 0.1f;
+            }
+            
+            Debug.Log($"GameOverPanel: 연결 해제 완료 (대기: {timer}초)");
+        }
+        
+        // Lobby 씬 로드
         UnityEngine.SceneManagement.SceneManager.LoadScene("Lobby");
     }
 

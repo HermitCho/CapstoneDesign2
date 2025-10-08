@@ -242,8 +242,11 @@ public class FindMatching : MonoBehaviourPunCallbacks
         ExitGames.Client.Photon.Hashtable roomProperties = new ExitGames.Client.Photon.Hashtable();
         roomProperties[ROOM_STATE_KEY] = ROOM_STATE_WAITING;
         roomProperties["masterReady"] = false; // 마스터 준비 상태
+        roomProperties["gamePhase"] = "MATCHING"; // 매칭 중 상태 (Ready 아님)
+        roomProperties["countdownStarted"] = false; // 카운트다운 초기화
+        roomProperties["countdownStartTime"] = null;
         roomOptions.CustomRoomProperties = roomProperties;
-        roomOptions.CustomRoomPropertiesForLobby = new string[] { ROOM_STATE_KEY, "masterReady" };
+        roomOptions.CustomRoomPropertiesForLobby = new string[] { ROOM_STATE_KEY, "masterReady", "gamePhase" };
 
         PhotonNetwork.CreateRoom(roomName, roomOptions);
     }
@@ -333,10 +336,18 @@ public class FindMatching : MonoBehaviourPunCallbacks
             PhotonNetwork.CurrentRoom.IsOpen = false;
             PhotonNetwork.CurrentRoom.IsVisible = false;
             
+            // 게임 재시작 시 모든 Ready 관련 Properties 완전 초기화
             ExitGames.Client.Photon.Hashtable roomProperties = new ExitGames.Client.Photon.Hashtable();
             roomProperties[ROOM_STATE_KEY] = ROOM_STATE_IN_GAME;
             roomProperties["gamePhase"] = "READY"; // Ready 단계 유지
+            
+            // Ready 관련 상태 초기화 (두 번째 게임 문제 해결)
+            roomProperties["countdownStarted"] = false;
+            roomProperties["countdownStartTime"] = null;
+            
             PhotonNetwork.CurrentRoom.SetCustomProperties(roomProperties);
+            
+            Debug.Log("FindMatching: Room Properties 초기화 완료 - gamePhase: READY");
         }
 
         LoadingController.LoadWithLoadingScene(gameSceneName, true);
