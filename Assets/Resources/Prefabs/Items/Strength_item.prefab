@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 4079882864339883573}
   - component: {fileID: -7476530899283538790}
   - component: {fileID: -7098142505543219372}
+  - component: {fileID: -7696756501717906971}
   m_Layer: 0
   m_Name: Strength_item
   m_TagString: Untagged
@@ -67,7 +68,7 @@ MonoBehaviour:
   castTimeSkillSound: {fileID: 0}
   price: 1
   skillAnimationTriggerName: None
-  buffMultiplier: 0.1
+  buffMultiplier: 1
 --- !u!114 &-7098142505543219372
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -82,3 +83,25 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   maxUses: -1
   startUses: -1
+--- !u!114 &-7696756501717906971
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8069708913763064758}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aa584fbee541324448dd18d8409c7a41, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ObservedComponentsFoldoutOpen: 1
+  Group: 0
+  prefixField: -1
+  Synchronization: 3
+  OwnershipTransfer: 0
+  observableSearch: 2
+  ObservedComponents: []
+  sceneViewId: 0
+  InstantiationId: 0
+  isRuntimeInstantiated: 0

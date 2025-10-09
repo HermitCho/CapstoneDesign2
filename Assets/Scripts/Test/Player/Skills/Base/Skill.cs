@@ -225,20 +225,103 @@ public abstract class Skill : MonoBehaviourPun
 
     protected void SpawnEffectFollow(ParticleSystem effectPrefab, Transform followTarget, float destroyDelay)
     {
-        if (effectPrefab == null) return;
-        Debug.Log("이펙트 따라감");
-        var fx = GameObject.Instantiate(effectPrefab, followTarget.position, followTarget.rotation, followTarget);
-        fx.Play();
-        Destroy(fx.gameObject, destroyDelay > 0f ? destroyDelay : 0f);
+        if (effectPrefab == null || followTarget == null) return;
+
+        // ⭐ 1. 루트 오브젝트 인스턴스화 및 따라가도록 부모 설정
+        Debug.Log("이펙트 따라감 - 복합 파티클 처리");
+        var fxRoot = GameObject.Instantiate(effectPrefab.gameObject, followTarget.position, followTarget.rotation, followTarget);
+
+        // 2. 모든 파티클 시스템 찾기 (루트와 자식 모두)
+        ParticleSystem[] particleSystems = fxRoot.GetComponentsInChildren<ParticleSystem>(true);
+
+        // 3. 모든 파티클 시스템 재생
+        float maxDuration = 0f;
+        foreach (var ps in particleSystems)
+        {
+            // 파티클 시스템이 이미 Play On Awake 상태일 수 있으나, 명시적으로 Play 호출
+            ps.Play();
+
+            // ⭐ 가장 긴 파티클 지속 시간을 파괴 딜레이 계산에 활용
+            maxDuration = Mathf.Max(maxDuration, ps.main.duration);
+        }
+
+        // 4. 이펙트 파괴 타이머 설정
+        if (destroyDelay > 0f)
+        {
+            // Skill의 effectDuration 또는 파티클의 최대 지속시간 중 큰 값 사용
+            float actualDestroyDelay = Mathf.Max(destroyDelay, maxDuration);
+
+            // ⭐ 지연 파괴 코루틴 시작
+            StartCoroutine(DestroyGameObjectDelayed(fxRoot, actualDestroyDelay));
+        }
+        else // destroyDelay가 0인 경우, 파티클이 재생만 되고 Destroy 되지 않을 수 있습니다.
+        {
+            // destroyDelay가 명시적으로 0이거나 -1(즉시 파괴 안 함)일 때,
+            // 파티클 시스템의 Stop Action에 의존하거나,
+            // 파티클이 루핑이 아닌 경우 가장 긴 지속시간 후 파괴합니다.
+            if (maxDuration > 0.01f)
+            {
+                StartCoroutine(DestroyGameObjectDelayed(fxRoot, maxDuration));
+            }
+            else
+            {
+                // 만약 이펙트가 루핑이 아닌 1회성이고, duration도 짧다면 0.1초 후 파괴 (안전 장치)
+                // 하지만 일반적으로 파티클의 duration을 destroyDelay로 사용하는 것이 맞습니다.
+                Destroy(fxRoot, 0.1f);
+            }
+        }
     }
 
     protected void SpawnEffectAtPosition(ParticleSystem effectPrefab, Vector3 pos, Quaternion rot, float destroyDelay)
     {
         if (effectPrefab == null) return;
-        Debug.Log("이펙트 고정");
-        var fx = GameObject.Instantiate(effectPrefab, pos, rot, null);
-        fx.Play();
-        Destroy(fx.gameObject, destroyDelay > 0f ? destroyDelay : 0f);
+        Debug.Log("이펙트 고정 - 복합 파티클 처리");
+
+        // 1. 루트 오브젝트 인스턴스화
+        var fxRoot = GameObject.Instantiate(effectPrefab.gameObject, pos, rot, null);
+
+        // 2. 모든 파티클 시스템 찾기 (루트와 자식 모두)
+        ParticleSystem[] particleSystems = fxRoot.GetComponentsInChildren<ParticleSystem>(true);
+
+        // 3. 모든 파티클 시스템을 재생 및 Stop Action 설정
+        float maxDuration = 0f;
+        foreach (var ps in particleSystems)
+        {
+            // ⭐ Looping을 해제하거나, 코드로 재생을 제어하지 않을 경우
+            //    Stop Action을 Destroy로 설정하여 파티클 종료 후 자동으로 파괴되도록 할 수 있습니다.
+            // var main = ps.main;
+            // main.stopAction = ParticleSystemStopAction.Destroy;
+
+            ps.Play();
+            // 가장 긴 지속 시간을 계산합니다. (Destroy 시간에 사용)
+            maxDuration = Mathf.Max(maxDuration, ps.main.duration);
+        }
+
+        // 4. 이펙트 파괴 타이머 설정
+        if (destroyDelay > 0f)
+        {
+            // Skill의 effectDuration 또는 파티클의 최대 지속시간 중 큰 값 사용
+            float actualDestroyDelay = Mathf.Max(destroyDelay, maxDuration);
+
+            // ⭐ 지연 파괴: Destroy(fxRoot, actualDestroyDelay); 대신 코루틴 사용
+            //    (Destroy 로직이 이미 Skill 클래스 내부에 있으므로, 그대로 사용하거나 아래와 같이 명시적으로 변경)
+            StartCoroutine(DestroyGameObjectDelayed(fxRoot, actualDestroyDelay));
+        }
+        // destroyDelay가 0인 경우, 파티클이 재생만 되고 Destroy 되지 않을 수 있습니다.
+        else if (fxRoot.GetComponent<ParticleSystem>() == null)
+        {
+            // 루트에 ParticleSystem이 없다면 수동으로 파괴합니다. (0.1초 후)
+            Destroy(fxRoot, 0.1f);
+        }
+    }
+
+    protected IEnumerator DestroyGameObjectDelayed(GameObject target, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        if (target != null)
+        {
+            Destroy(target);
+        }
     }
 
     public void PlayEffectAtRemote(SkillController executor, Vector3 pos, Vector3 dir)

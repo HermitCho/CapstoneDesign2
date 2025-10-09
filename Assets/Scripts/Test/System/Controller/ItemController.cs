@@ -33,10 +33,10 @@ public class ItemController : MonoBehaviourPun
     void Awake()
     {
         photonView = GetComponent<PhotonView>();
-    }   
+    }
 
     void Start()
-    {   
+    {
         if (!photonView.IsMine) return;
         CacheDataBaseInfo();
     }
@@ -69,6 +69,55 @@ public class ItemController : MonoBehaviourPun
         if (!photonView.IsMine) return;
         AttachItemString(itemPrefab.name);
     }
+    
+    /// <summary>
+    /// [PunRPC] 네트워크로 생성된 아이템의 부모를 설정하고 로컬 슬롯에 부착합니다.
+    /// </summary>
+    /// <param name="itemViewId">부착할 아이템의 ViewID</param>
+    /// <param name="playerViewId">아이템을 부착할 플레이어의 ViewID</param>
+    [PunRPC]
+    public void RPC_AttachNetworkItem(int itemViewId, int playerViewId)
+    {
+        // 1. PhotonView.Find를 사용하여 아이템 오브젝트 찾기
+        PhotonView itemPv = PhotonView.Find(itemViewId);
+        if (itemPv == null)
+        {
+            Debug.LogError($"ItemController: ViewID {itemViewId}를 가진 아이템을 찾을 수 없습니다.");
+            return;
+        }
+
+        GameObject itemObject = itemPv.gameObject;
+
+        // 2. 부모 설정
+        if (itemSlot1 == null)
+        {
+            Debug.LogError("ItemController: itemSlot1이 null");
+            // 네트워크 오브젝트는 파괴되어야 합니다. (마스터 클라이언트가 파괴하는 것이 안전)
+            // 여기서는 아이템을 파괴하지 않고 그냥 둡니다.
+            return;
+        }
+
+        try
+        {
+            // ⭐ 부모 Transform을 설정합니다. (모든 클라이언트에서 실행됨)
+            itemObject.transform.SetParent(itemSlot1.transform);
+            itemObject.transform.SetAsFirstSibling(); // 아이템 순서 설정
+
+            // 로컬 상태 업데이트 (모든 클라이언트에서 동일하게 계산)
+            currentItemSlotIndex++;
+
+            // 활성화 상태 업데이트 (로컬에서만 시각적 표시 제어)
+            if (photonView.IsMine)
+            {
+                UpdateItemOrderAndActivation();
+                Debug.Log($"ItemController: 네트워크 아이템 {itemObject.name} 부착 완료 (ViewID: {itemViewId})");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"ItemController: 네트워크 아이템 부착 중 오류: {e.Message}");
+        }
+    }
 
     /// <summary>
     /// itemObject를 복사해서 부착 (상점 구매용)
@@ -77,19 +126,19 @@ public class ItemController : MonoBehaviourPun
     public void AttachItemObject(GameObject itemObject)
     {
         Debug.Log($"ItemController: AttachItemObject 호출됨 - itemObject: {itemObject != null}, photonView.IsMine: {photonView.IsMine}");
-        
+
         if (!photonView.IsMine)
         {
             Debug.Log("ItemController: 로컬 플레이어가 아님 - 부착 취소");
             return;
         }
-        
+
         if (itemSlot1 == null)
         {
             Debug.LogError("ItemController: itemSlot1이 null");
             return;
         }
-        
+
         if (itemObject == null)
         {
             Debug.LogError("ItemController: itemObject가 null");
@@ -99,16 +148,16 @@ public class ItemController : MonoBehaviourPun
         try
         {
             Debug.Log($"ItemController: itemObject 복사 및 부착 시작 - {itemObject.name}");
-            
+
             // itemObject를 복사해서 새로 생성
             GameObject copiedItemObject = Instantiate(itemObject, itemSlot1.transform);
             copiedItemObject.transform.SetAsFirstSibling();
             currentItemSlotIndex++;
-            
+
             Debug.Log($"ItemController: Transform 설정 완료 - currentItemSlotIndex: {currentItemSlotIndex}");
-            
+
             UpdateItemOrderAndActivation();
-            
+
             Debug.Log($"ItemController: itemObject {copiedItemObject.name} 복사 및 부착 완료");
         }
         catch (System.Exception e)
@@ -131,7 +180,7 @@ public class ItemController : MonoBehaviourPun
                 break;
             }
         }
-        
+
         if (prefab == null) return;
 
         try
@@ -185,7 +234,7 @@ public class ItemController : MonoBehaviourPun
     public void MoveUsedItemToTemp(GameObject usedItem)
     {
         if (!photonView.IsMine) return;
-        
+
         if (itemTemp == null)
         {
             return;
@@ -207,7 +256,7 @@ public class ItemController : MonoBehaviourPun
             // 아이템을 쓰레기통으로 이동
             usedItem.transform.SetParent(itemTemp.transform);
             currentItemSlotIndex--;
-            
+
             // 아이템 순서 재정렬 및 활성화 상태 업데이트 (남은 아이템들만)
             if (itemSlot1.transform.childCount > 0)
             {
@@ -226,7 +275,7 @@ public class ItemController : MonoBehaviourPun
     public void SwapFirstAndSecondItems()
     {
         if (!photonView.IsMine) return;
-        
+
         if (itemSlot1 == null || itemSlot1.transform.childCount < 2) return;
 
         try
@@ -301,10 +350,10 @@ public class ItemController : MonoBehaviourPun
     public bool IsFirstActiveItem(Skill characterItem)
     {
         if (characterItem == null) return false;
-        
+
         // 실제 활성화된 아이템을 찾기
         if (itemSlot1 == null) return false;
-        
+
         for (int i = 0; i < itemSlot1.transform.childCount; i++)
         {
             Transform child = itemSlot1.transform.GetChild(i);

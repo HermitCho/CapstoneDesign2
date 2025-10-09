@@ -55,7 +55,7 @@ public class Shop : MonoBehaviourPun
             
             while (currentRetry < maxRetries)
             {
-                Debug.Log($"Shop: 초기 아이템 동기화 요청 - 시도 {currentRetry + 1}/{maxRetries}");
+                //Debug.Log($"Shop: 초기 아이템 동기화 요청 - 시도 {currentRetry + 1}/{maxRetries}");
                 photonView.RPC("RequestInitialItems", RpcTarget.MasterClient);
                 
                 // 2초 대기 후 아이템이 생성되었는지 확인
@@ -73,7 +73,7 @@ public class Shop : MonoBehaviourPun
                 
                 if (hasItems)
                 {
-                    Debug.Log("Shop: 초기 아이템 동기화 성공!");
+                    //Debug.Log("Shop: 초기 아이템 동기화 성공!");
                     break;
                 }
                 
@@ -86,7 +86,7 @@ public class Shop : MonoBehaviourPun
             
             if (currentRetry >= maxRetries)
             {
-                Debug.LogWarning("Shop: 초기 아이템 동기화 최대 재시도 횟수 초과");
+                //Debug.LogWarning("Shop: 초기 아이템 동기화 최대 재시도 횟수 초과");
             }
         }
     }
@@ -102,7 +102,7 @@ public class Shop : MonoBehaviourPun
     {
         if (shopStands == null || shopStands.Length == 0)
         {
-            Debug.LogError("Shop: shopStands가 설정되지 않았습니다.");
+            //Debug.LogError("Shop: shopStands가 설정되지 않았습니다.");
             return;
         }
 
@@ -164,7 +164,7 @@ public class Shop : MonoBehaviourPun
         if (shopController != null)
         {
             connectedPlayers.Remove(shopController);
-            Debug.Log($"Shop: 플레이어 {shopController.name} 연결 해제됨");
+            //Debug.Log($"Shop: 플레이어 {shopController.name} 연결 해제됨");
         }
     }
     
@@ -176,7 +176,7 @@ public class Shop : MonoBehaviourPun
     {
         if (!PhotonNetwork.IsMasterClient) return;
         
-        Debug.Log("Shop: 다른 클라이언트가 초기 아이템 요청");
+        //Debug.Log("Shop: 다른 클라이언트가 초기 아이템 요청");
         
         // 아이템이 없으면 생성
         bool hasAnyItem = false;
@@ -191,7 +191,7 @@ public class Shop : MonoBehaviourPun
         
         if (!hasAnyItem)
         {
-            Debug.Log("Shop: 마스터 클라이언트에 아이템이 없어서 생성 시작");
+            //Debug.Log("Shop: 마스터 클라이언트에 아이템이 없어서 생성 시작");
             StartItemGeneration();
             
             // 아이템 생성 완료를 기다림
@@ -238,12 +238,12 @@ public class Shop : MonoBehaviourPun
                         photonView.RPC("SyncRenewTimer", RpcTarget.Others, i, itemRenewTimes[i], isRenewTimerActive[i]);
                     }
                     
-                    Debug.Log($"Shop: 아이템 {i} 동기화 - ViewID: {itemPV.ViewID}");
+                    //Debug.Log($"Shop: 아이템 {i} 동기화 - ViewID: {itemPV.ViewID}");
                 }
             }
         }
         
-        Debug.Log($"Shop: 초기 아이템 동기화 완료 - {syncedItems}/{currentItems.Length}개 아이템 전송");
+        //Debug.Log($"Shop: 초기 아이템 동기화 완료 - {syncedItems}/{currentItems.Length}개 아이템 전송");
     }
     
     #endregion
@@ -278,11 +278,11 @@ public class Shop : MonoBehaviourPun
                 try
                 {
                     PhotonNetwork.Destroy(itemToDestroy);
-                    Debug.Log($"Shop: 아이템 파괴 성공 - ViewID: {itemPV.ViewID}");
+                    //Debug.Log($"Shop: 아이템 파괴 성공 - ViewID: {itemPV.ViewID}");
                 }
                 catch (System.Exception e)
                 {
-                    Debug.LogWarning($"Shop: 아이템 파괴 실패 - {e.Message}");
+                    //Debug.LogWarning($"Shop: 아이템 파괴 실패 - {e.Message}");
                     // 로컬에서만 제거
                     if (itemToDestroy != null)
                         Destroy(itemToDestroy);
@@ -320,24 +320,24 @@ public class Shop : MonoBehaviourPun
                 if (spawnedItem != null)
                 {
                     currentItems[positionIndex] = spawnedItem;
-                    Debug.Log($"Shop: 아이템 생성 성공 - Position: {positionIndex}, Item: {spawnedItem.name}");
+                    //Debug.Log($"Shop: 아이템 생성 성공 - Position: {positionIndex}, Item: {spawnedItem.name}");
                 }
                 else
                 {
-                    Debug.LogError($"Shop: 아이템 생성 실패 - Position: {positionIndex}, Prefab: {selectedPrefab.name}");
+                    //Debug.LogError($"Shop: 아이템 생성 실패 - Position: {positionIndex}, Prefab: {selectedPrefab.name}");
                     return;
                 }
             }
             catch (System.Exception e)
             {
-                Debug.LogError($"Shop: 아이템 생성 예외 발생 - {e.Message}");
+                //Debug.LogError($"Shop: 아이템 생성 예외 발생 - {e.Message}");
                 return;
             }
             
             // 생성된 아이템이 null이 아닌 경우에만 후처리 진행
             if (spawnedItem == null)
             {
-                Debug.LogError($"Shop: 아이템 후처리 실패 - spawnedItem이 null입니다");
+                //Debug.LogError($"Shop: 아이템 후처리 실패 - spawnedItem이 null입니다");
                 return;
             }
             
@@ -366,12 +366,12 @@ public class Shop : MonoBehaviourPun
                     // 모든 클라이언트에 타이머 정보 동기화
                     photonView.RPC("SyncRenewTimer", RpcTarget.All, positionIndex, renewTime, true);
                     
-                    Debug.Log($"Shop: 아이템 설정 완료 - Position: {positionIndex}, RenewTime: {renewTime}초");
+                    //Debug.Log($"Shop: 아이템 설정 완료 - Position: {positionIndex}, RenewTime: {renewTime}초");
                 }
             }
             else
             {
-                Debug.LogError($"Shop: 생성된 아이템에 PhotonView가 없습니다 - Position: {positionIndex}");
+                //Debug.LogError($"Shop: 생성된 아이템에 PhotonView가 없습니다 - Position: {positionIndex}");
             }
             
          
@@ -467,12 +467,12 @@ public class Shop : MonoBehaviourPun
                 {
                     currentItems[positionIndex] = item;
                 }
-                Debug.Log($"Shop: 아이템 동기화 완료 - Position: {positionIndex}, Item: {item.name}");
+                ////Debug.Log($"Shop: 아이템 동기화 완료 - Position: {positionIndex}, Item: {item.name}");
             }
         }
         else
         {
-            Debug.LogWarning($"Shop: 아이템 동기화 실패 - ViewID: {itemViewID}, Position: {positionIndex}");
+            //Debug.LogWarning($"Shop: 아이템 동기화 실패 - ViewID: {itemViewID}, Position: {positionIndex}");
             
             // 마스터 클라이언트에게 해당 위치 아이템 재생성 요청
             if (!PhotonNetwork.IsMasterClient)
@@ -490,7 +490,7 @@ public class Shop : MonoBehaviourPun
     {
         if (PhotonNetwork.IsMasterClient && positionIndex >= 0 && positionIndex < currentItems.Length)
         {
-            Debug.Log($"Shop: 아이템 재생성 요청 받음 - Position: {positionIndex}");
+            //Debug.Log($"Shop: 아이템 재생성 요청 받음 - Position: {positionIndex}");
             
             // 해당 위치에 아이템이 없으면 새로 생성
             if (currentItems[positionIndex] == null)
@@ -578,7 +578,7 @@ public class Shop : MonoBehaviourPun
             itemComponent.ItemObject.name,
             positionIndex);
         
-        Debug.Log($"Shop: 플레이어 {buyer.name}가 아이템 {item.name} 구매 완료");
+        //Debug.Log($"Shop: 플레이어 {buyer.name}가 아이템 {item.name} 구매 완료");
     }
     
     
@@ -591,11 +591,11 @@ public class Shop : MonoBehaviourPun
         ShopStand shopStand = shopStands[positionIndex];
         if (shopStand == null) return;
         
-        Debug.Log($"Shop: 마스터 클라이언트에서 아이템 제거 처리 - PositionIndex: {positionIndex}");
+        //Debug.Log($"Shop: 마스터 클라이언트에서 아이템 제거 처리 - PositionIndex: {positionIndex}");
         
         // 구매 시점의 남은 갱신 시간 저장 (아이템 제거 전에)
         float remainingRenewTime = itemRenewTimes[positionIndex];
-        Debug.Log($"Shop: 구매 시점 남은 갱신 시간 - {remainingRenewTime:F1}초");
+        //Debug.Log($"Shop: 구매 시점 남은 갱신 시간 - {remainingRenewTime:F1}초");
         
         // ShopStand 정리
         shopStand.ClearCurrentItem();
@@ -606,7 +606,7 @@ public class Shop : MonoBehaviourPun
             StartCoroutine(SafeDestroyPurchasedItem(positionIndex, remainingRenewTime));
         }
         
-        Debug.Log($"Shop: 위치 {positionIndex} 아이템 구매 처리 완료 - SafeDestroyPurchasedItem에서 갱신 처리");
+        //Debug.Log($"Shop: 위치 {positionIndex} 아이템 구매 처리 완료 - SafeDestroyPurchasedItem에서 갱신 처리");
     }
     
     /// <summary>
@@ -649,7 +649,7 @@ public class Shop : MonoBehaviourPun
                 if (Mathf.FloorToInt(previousTime) != Mathf.FloorToInt(itemRenewTimes[i]) && 
                     Mathf.FloorToInt(itemRenewTimes[i]) % 10 == 0)
                 {
-                    Debug.Log($"Shop: 위치 {i} 갱신까지 {Mathf.CeilToInt(itemRenewTimes[i])}초 남음");
+                    //Debug.Log($"Shop: 위치 {i} 갱신까지 {Mathf.CeilToInt(itemRenewTimes[i])}초 남음");
                 }
                 
                 // 타이머가 0 이하가 되면 갱신
@@ -658,7 +658,7 @@ public class Shop : MonoBehaviourPun
                     itemRenewTimes[i] = 0f;
                     isRenewTimerActive[i] = false;
                     
-                    Debug.Log($"Shop: 타이머 완료로 아이템 갱신 시작 - Position {i}");
+                    //Debug.Log($"Shop: 타이머 완료로 아이템 갱신 시작 - Position {i}");
                     GenerateItemAtPosition(i);
                     
                     // 갱신 완료 후 타이머 동기화
@@ -755,24 +755,24 @@ public class Shop : MonoBehaviourPun
                             if (PhotonNetwork.IsMasterClient)
                             {
                                 PhotonNetwork.Destroy(itemToDestroy);
-                                Debug.Log($"Shop: 네트워크 아이템 파괴 성공 - ViewID: {itemPV.ViewID}");
+                                //Debug.Log($"Shop: 네트워크 아이템 파괴 성공 - ViewID: {itemPV.ViewID}");
                             }
                         }
                         else
                         {
-                            Debug.LogWarning($"Shop: PhotonView 불일치, 로컬에서만 제거 - {itemToDestroy.name}");
+                            //Debug.LogWarning($"Shop: PhotonView 불일치, 로컬에서만 제거 - {itemToDestroy.name}");
                             Destroy(itemToDestroy);
                         }
                     }
                     else
                     {
-                        Debug.LogWarning($"Shop: 유효하지 않은 ViewID, 로컬에서만 제거 - {itemToDestroy.name}");
+                        //Debug.LogWarning($"Shop: 유효하지 않은 ViewID, 로컬에서만 제거 - {itemToDestroy.name}");
                         Destroy(itemToDestroy);
                     }
                 }
                 catch (System.Exception e)
                 {
-                    Debug.LogWarning($"Shop: 네트워크 아이템 파괴 실패 - {e.Message}, 로컬에서 제거");
+                    //Debug.LogWarning($"Shop: 네트워크 아이템 파괴 실패 - {e.Message}, 로컬에서 제거");
                     if (itemToDestroy != null && !itemToDestroy.Equals(null))
                     {
                         Destroy(itemToDestroy);
@@ -786,7 +786,7 @@ public class Shop : MonoBehaviourPun
             if (itemToDestroy != null && !itemToDestroy.Equals(null))
             {
                 Destroy(itemToDestroy);
-                Debug.Log($"Shop: 로컬 아이템 파괴 완료 - {itemToDestroy.name}");
+                //Debug.Log($"Shop: 로컬 아이템 파괴 완료 - {itemToDestroy.name}");
             }
         }
         
@@ -806,7 +806,7 @@ public class Shop : MonoBehaviourPun
         itemRenewTimes[positionIndex] = renewDelay;
         isRenewTimerActive[positionIndex] = true;
         
-        Debug.Log($"Shop: 위치 {positionIndex} 갱신 타이머 시작 - 구매 시점 남은시간 {renewDelay:F1}초 사용");
+        //Debug.Log($"Shop: 위치 {positionIndex} 갱신 타이머 시작 - 구매 시점 남은시간 {renewDelay:F1}초 사용");
         
         // 타이머 동기화 RPC 전송
         if (photonView != null)
@@ -846,7 +846,7 @@ public class Shop : MonoBehaviourPun
         }
         catch (System.Exception e)
         {
-            Debug.LogWarning($"Shop: DataBase에서 갱신 시간을 가져올 수 없음 - {e.Message}");
+            //Debug.LogWarning($"Shop: DataBase에서 갱신 시간을 가져올 수 없음 - {e.Message}");
         }
         
         // 기본값: 10초

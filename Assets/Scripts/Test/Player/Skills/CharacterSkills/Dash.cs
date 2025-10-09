@@ -23,7 +23,8 @@ public class Dash : Skill
     public override void Execute(SkillController executor, Vector3 pos, Vector3 dir)
     {
         base.Execute(executor, pos, dir);
-
+        PlayFollowEffectAtRemote(executor);
+        
         // ✅ 내 캐릭터일 때만 물리 연산 실행
         if (executor.photonView.IsMine)
         {
