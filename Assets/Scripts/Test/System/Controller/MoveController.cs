@@ -254,6 +254,18 @@ public class MoveController : MonoBehaviourPun, IPunObservable
         }
     }
 
+    [PunRPC]
+    public void ApplySpeedBuff(float multiplier)
+    {
+        cachedSpeed *= (1f + multiplier);
+    }
+
+    [PunRPC]
+    public void RemoveSpeedBuff(float multiplier)
+    {
+        cachedSpeed /= (1f + multiplier);
+    }
+
     // 실제 이동 속도를 업데이트하는 함수
     private void UpdateSpeed()
     {
@@ -278,11 +290,11 @@ public class MoveController : MonoBehaviourPun, IPunObservable
                 tr.Translate(movement, Space.World);
             }
             else
-            {              
+            {
                 // 공중 이동- 에어 스트레이핑 적용
                 HandleAirMovement(playerRelativeMovement);
             }
-            
+
         }
         else
         {

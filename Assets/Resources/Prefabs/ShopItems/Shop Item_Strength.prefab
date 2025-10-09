@@ -12,12 +12,12 @@ GameObject:
   - component: {fileID: 6051880003284520226}
   - component: {fileID: 5965752747965598135}
   - component: {fileID: 522713922382407965}
-  - component: {fileID: 1816497415034268860}
+  - component: {fileID: 8712676363590355750}
   - component: {fileID: 5028637767412622912}
   - component: {fileID: -397966119260603548}
-  - component: {fileID: 2073281272282069531}
+  - component: {fileID: -389621835137744794}
   m_Layer: 0
-  m_Name: Shop Item_OneTimeDefense
+  m_Name: Shop Item_Strength
   m_TagString: Item
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -66,7 +66,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 3ee93fbce81d15141b20b88056727820, type: 2}
+  - {fileID: 2100000, guid: 38de73c55f4636e468d931556fe31669, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -109,7 +109,7 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &1816497415034268860
+--- !u!114 &8712676363590355750
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -121,9 +121,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 730ec570e5c5d2545a9b4aa0dbd3ec08, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  renewTime: 1
-  probability: 0
-  itemObject: {fileID: 5300828926313202782, guid: 5cfe92e499da7934398ac68c32e96c1f,
+  renewTime: 20
+  probability: 0.16
+  itemObject: {fileID: 8069708913763064758, guid: 35854c3e8e4d9e34b80ed638d38fcfda,
     type: 3}
 --- !u!114 &5028637767412622912
 MonoBehaviour:
@@ -164,7 +164,7 @@ MonoBehaviour:
   m_SynchronizeRotation: 1
   m_SynchronizeScale: 1
   m_UseLocal: 1
---- !u!114 &2073281272282069531
+--- !u!114 &-389621835137744794
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

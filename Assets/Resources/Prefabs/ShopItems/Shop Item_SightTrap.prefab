@@ -15,6 +15,7 @@ GameObject:
   - component: {fileID: 8712676363590355750}
   - component: {fileID: 5028637767412622912}
   - component: {fileID: -397966119260603548}
+  - component: {fileID: -4876079359633475727}
   m_Layer: 0
   m_Name: Shop Item_SightTrap
   m_TagString: Item
@@ -120,7 +121,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 730ec570e5c5d2545a9b4aa0dbd3ec08, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  renewTime: 10
+  renewTime: 1
   probability: 0.3
   itemObject: {fileID: 3231566993332599146, guid: 11ee2877a1e8cbd4a84d68ec2cfe41d7,
     type: 3}
@@ -163,3 +164,20 @@ MonoBehaviour:
   m_SynchronizeRotation: 1
   m_SynchronizeScale: 1
   m_UseLocal: 1
+--- !u!114 &-4876079359633475727
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1765150647018871578}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 245524fa5bcf6bd4480ee0c8e62e17f7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  rotationSpeed: 20
+  rotationAxis: {x: 0, y: 1, z: 0}
+  useSineWave: 1
+  amplitude: 5
+  frequency: 1
