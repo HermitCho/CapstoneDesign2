@@ -5,7 +5,7 @@ using UnityEngine;
 [CreateAssetMenu(fileName = "ScriptableObjects", menuName = "ScriptableObjects/Test/Gun")]
 public class GunData : ScriptableObject
 {
-    [Header("총 기본 스탯탯")]
+    [Header("총 기본 스탯")]
     public string gunName;
     public float damage;
     public float range;

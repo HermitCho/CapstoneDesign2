@@ -59,7 +59,12 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     [Header("조준점 UI")]
     [SerializeField] private Animator zoomAnimator;
 
-
+    [Header("장탄수 UI")]
+    [SerializeField] private TextMeshProUGUI ammoCountText;
+    [SerializeField] private ProgressBar ammoBar;
+    [SerializeField] private Image reloadIcon;
+    [SerializeField] private Image ammoIcon;
+    
     // 로컬 플레이어 참조
     private GameObject localPlayer;
     private LivingEntity localLivingEntity;
@@ -67,6 +72,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     private Skill localCharacterSkill;
     private ItemController localItemController;
     private CameraController localCameraController;
+    private TestGun localGun;
     
     // UI 상태
     private float currentHealth = 100f;
@@ -117,9 +123,33 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     //조준점 관련
     private bool isZoomed = false;
     
+    // 장탄수 관련
+    private int currentAmmo = 0;
+    private int maxAmmo = 0;
+    private int previousAmmo = 0;
+    private float lastAmmoChangeTime = 0f;
+    private bool isAmmoUIFaded = false;
+    private bool isReloading = false;
+    private TestGun.GunState previousGunState = TestGun.GunState.Ready;
+    
+    // 장탄수 애니메이션 관련
+    private Tween ammoBarTween;
+    private Tween ammoBarBlinkTween;
+    private Tween ammoIconFadeTween;
+    private Tween ammoBarImageFadeTween;
+    private Tween ammoTextFadeTween;
+    private Tween reloadIconFadeTween;
+    private Tween reloadIconRotateTween;
+    private Tween reloadIconBlinkTween;
+    private Color originalAmmoBarColor = Color.white;
+    private Color lowAmmoColor = Color.red;
+    private float lowAmmoThreshold = 0.2f; // 20%
+    private float ammoUIFadeDelay = 3f; // 3초
+    
     // 성능 최적화 관련
     private List<PlayerScoreData> previousPlayerDataList = new List<PlayerScoreData>();
     private bool hasScoreChanged = false;
+    private float lastAmmoUpdate = 0f;
     
     /// <summary>
     /// 플레이어 점수 Properties 초기화 (두 번째 게임 문제 해결)
@@ -178,6 +208,9 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         // 체력 애니메이션 정리
         CleanupHealthAnimations();
         CleanupFadeAnimations();
+        
+        // 장탄수 애니메이션 정리
+        CleanupAmmoAnimations();
     }
     
     /// <summary>
@@ -230,6 +263,13 @@ public class HUDPanel : MonoBehaviourPunCallbacks
             lastItemUpdate = currentTime;
         }
         
+        // 장탄수 UI 업데이트
+        if (currentTime - lastAmmoUpdate > 0.1f)
+        {
+            UpdateAmmoUI();
+            lastAmmoUpdate = currentTime;
+        }
+        
         // 점수판 업데이트 (1초마다)
         if (currentTime - lastScoreBoardUpdate > scoreBoardUpdateInterval)
         {
@@ -241,6 +281,9 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         
         // 체력 바 페이드 체크
         CheckHealthBarFade();
+        
+        // 장탄수 UI 페이드 체크
+        CheckAmmoUIFade();
         
         
     }
@@ -293,6 +336,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks
                 localCharacterSkill = player.GetComponent<Skill>();
                 localItemController = player.GetComponent<ItemController>();
                 localCameraController = player.GetComponent<CameraController>();
+                localGun = player.GetComponentInChildren<TestGun>();
                 break;
             }
         }
@@ -345,6 +389,12 @@ public class HUDPanel : MonoBehaviourPunCallbacks
 
         // 초기 아이템 UI 표시
         UpdateItemUI();
+        
+        // 초기 장탄수 UI 설정
+        if (localGun != null)
+        {
+            InitializeAmmoUI();
+        }
        
     }
     
@@ -1634,7 +1684,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     #endregion
 
 
-    #region
+    #region 조준점 관련
     
     private void ZoomAnimationControl()
     {
@@ -1648,6 +1698,381 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         }
     }
 
+    #endregion
+    
+    #region 장탄수 UI 시스템
+    
+    /// <summary>
+    /// 장탄수 UI 초기화
+    /// </summary>
+    private void InitializeAmmoUI()
+    {
+        if (localGun == null) return;
+        
+        // GunData에서 최대 탄약 가져오기
+        GunData gunData = localGun.GetGunData();
+        if (gunData != null)
+        {
+            maxAmmo = gunData.maxAmmo;
+            currentAmmo = localGun.CurrentMagAmmo;
+            previousAmmo = currentAmmo;
+            
+            // ProgressBar 초기화
+            if (ammoBar != null)
+            {
+                ammoBar.maxValue = maxAmmo;
+                ammoBar.currentValue = currentAmmo;
+                
+                // 원래 색상 저장
+                if (ammoBar.barImage != null)
+                {
+                    originalAmmoBarColor = ammoBar.barImage.color;
+                }
+                
+                ammoBar.UpdateUI();
+            }
+            
+            // 텍스트 초기화
+            UpdateAmmoText();
+            
+            // 장탄수 변화 시간 초기화
+            lastAmmoChangeTime = Time.time;
+            
+            // 리로드 아이콘 초기화 (투명하게)
+            if (reloadIcon != null)
+            {
+                Color iconColor = reloadIcon.color;
+                iconColor.a = 0f;
+                reloadIcon.color = iconColor;
+            }
+            
+            Debug.Log($"HUD: 장탄수 UI 초기화 완료 - Current: {currentAmmo}, Max: {maxAmmo}");
+        }
+    }
+    
+    /// <summary>
+    /// 장탄수 UI 업데이트 (매 프레임)
+    /// </summary>
+    private void UpdateAmmoUI()
+    {
+        if (localGun == null) return;
+        
+        int newAmmo = localGun.CurrentMagAmmo;
+        TestGun.GunState currentState = TestGun.CurrentState;
+        
+        // 장탄수 변화 감지
+        if (newAmmo != currentAmmo)
+        {
+            previousAmmo = currentAmmo;
+            currentAmmo = newAmmo;
+            lastAmmoChangeTime = Time.time;
+            
+            // 페이드된 상태라면 복원
+            if (isAmmoUIFaded)
+            {
+                RestoreAmmoUIVisibility();
+            }
+            
+            // 장탄수 애니메이션 시작
+            StartAmmoChangeAnimation();
+        }
+        
+        // 재장전 상태 변화 감지
+        if (currentState != previousGunState)
+        {
+            previousGunState = currentState;
+            
+            if (currentState == TestGun.GunState.Reloading && !isReloading)
+            {
+                // 재장전 시작
+                StartReloadAnimation();
+            }
+            else if (currentState == TestGun.GunState.Ready && isReloading)
+            {
+                // 재장전 완료
+                StopReloadAnimation();
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 장탄수 텍스트 업데이트
+    /// </summary>
+    private void UpdateAmmoText()
+    {
+        if (ammoCountText != null)
+        {
+            ammoCountText.text = $"{currentAmmo} / {maxAmmo}";
+        }
+    }
+    
+    /// <summary>
+    /// 장탄수 변화 애니메이션 시작
+    /// </summary>
+    private void StartAmmoChangeAnimation()
+    {
+        // 기존 애니메이션 정리
+        ammoBarTween?.Kill();
+        
+        // ProgressBar 값 부드럽게 변경
+        if (ammoBar != null)
+        {
+            ammoBarTween = DOTween.To(() => ammoBar.currentValue, x => {
+                ammoBar.currentValue = x;
+                ammoBar.UpdateUI();
+            }, currentAmmo, 0.3f)
+            .SetEase(Ease.OutCubic)
+            .OnComplete(() => {
+                // 애니메이션 완료 후 색상 체크
+                CheckAmmoBarColor();
+            });
+        }
+        
+        // 텍스트 업데이트
+        UpdateAmmoText();
+    }
+    
+    /// <summary>
+    /// 장탄수 바 색상 체크 (20% 이하일 때 빨간색 깜박임)
+    /// </summary>
+    private void CheckAmmoBarColor()
+    {
+        if (ammoBar == null || ammoBar.barImage == null) return;
+        
+        float ammoRatio = (float)currentAmmo / maxAmmo;
+        
+        if (ammoRatio <= lowAmmoThreshold)
+        {
+            // 20% 이하 - 빨간색으로 변경하고 깜박임
+            StartLowAmmoBlinking();
+        }
+        else
+        {
+            // 20% 초과 - 원래 색상으로 복원하고 깜박임 중지
+            StopLowAmmoBlinking();
+        }
+    }
+    
+    /// <summary>
+    /// 낮은 장탄수 깜박임 시작
+    /// </summary>
+    private void StartLowAmmoBlinking()
+    {
+        if (ammoBar == null || ammoBar.barImage == null) return;
+        
+        // 기존 깜박임 중지
+        ammoBarBlinkTween?.Kill();
+        
+        // 색상을 빨간색으로 변경
+        ammoBar.barImage.color = lowAmmoColor;
+        
+        // 부드러운 깜박임 시작
+        ammoBarBlinkTween = DOTween.Sequence()
+            .Append(ammoBar.barImage.DOFade(0.3f, 0.5f))
+            .Append(ammoBar.barImage.DOFade(1f, 0.5f))
+            .SetLoops(-1, LoopType.Yoyo);
+    }
+    
+    /// <summary>
+    /// 낮은 장탄수 깜박임 중지
+    /// </summary>
+    private void StopLowAmmoBlinking()
+    {
+        if (ammoBar == null || ammoBar.barImage == null) return;
+        
+        // 깜박임 중지
+        ammoBarBlinkTween?.Kill();
+        ammoBarBlinkTween = null;
+        
+        // 원래 색상으로 복원
+        ammoBar.barImage.DOColor(originalAmmoBarColor, 0.3f).SetEase(Ease.OutCubic);
+    }
+    
+    /// <summary>
+    /// 재장전 애니메이션 시작
+    /// </summary>
+    private void StartReloadAnimation()
+    {
+        if (reloadIcon == null) return;
+        
+        isReloading = true;
+        
+        // 기존 애니메이션 정리
+        reloadIconFadeTween?.Kill();
+        reloadIconRotateTween?.Kill();
+        reloadIconBlinkTween?.Kill();
+        
+        // 투명도를 100으로 변경 (255에서 100은 약 0.39)
+        Color targetColor = reloadIcon.color;
+        targetColor.a = 100f / 255f;
+        
+        reloadIconFadeTween = reloadIcon.DOColor(targetColor, 0.2f)
+            .SetEase(Ease.OutCubic)
+            .OnComplete(() => {
+                // 회전 애니메이션 시작
+                StartReloadRotation();
+                
+                // 깜박임 애니메이션 시작
+                StartReloadBlinking();
+            });
+    }
+    
+    /// <summary>
+    /// 리로드 아이콘 회전 애니메이션
+    /// </summary>
+    private void StartReloadRotation()
+    {
+        if (reloadIcon == null) return;
+        
+        // 360도 회전 (무한 반복)
+        reloadIconRotateTween = reloadIcon.transform
+            .DORotate(new Vector3(0f, 0f, -360f), 1f, RotateMode.FastBeyond360)
+            .SetEase(Ease.Linear)
+            .SetLoops(-1, LoopType.Restart);
+    }
+    
+    /// <summary>
+    /// 리로드 아이콘 깜박임 애니메이션
+    /// </summary>
+    private void StartReloadBlinking()
+    {
+        if (reloadIcon == null) return;
+        
+        // 투명도 20~100 사이 깜박임
+        reloadIconBlinkTween = DOTween.Sequence()
+            .Append(reloadIcon.DOFade(20f / 255f, 0.5f))
+            .Append(reloadIcon.DOFade(100f / 255f, 0.5f))
+            .SetLoops(-1, LoopType.Yoyo)
+            .SetEase(Ease.InOutSine);
+    }
+    
+    /// <summary>
+    /// 재장전 애니메이션 중지
+    /// </summary>
+    private void StopReloadAnimation()
+    {
+        if (reloadIcon == null) return;
+        
+        isReloading = false;
+        
+        // 모든 애니메이션 중지
+        reloadIconFadeTween?.Kill();
+        reloadIconRotateTween?.Kill();
+        reloadIconBlinkTween?.Kill();
+        
+        // 회전 초기화
+        reloadIcon.transform.rotation = Quaternion.identity;
+        
+        // 투명도를 0으로 변경
+        reloadIcon.DOFade(0f, 0.3f).SetEase(Ease.OutCubic);
+    }
+    
+    /// <summary>
+    /// 장탄수 UI 페이드 체크 (3초 동안 변화 없으면)
+    /// </summary>
+    private void CheckAmmoUIFade()
+    {
+        // 재장전 중이거나 이미 페이드된 상태면 체크하지 않음
+        if (isReloading || isAmmoUIFaded) return;
+        
+        // 3초간 변화가 없었는지 확인
+        if (Time.time - lastAmmoChangeTime >= ammoUIFadeDelay)
+        {
+            FadeAmmoUI();
+        }
+    }
+    
+    /// <summary>
+    /// 장탄수 UI 페이드 아웃
+    /// </summary>
+    private void FadeAmmoUI()
+    {
+        if (isAmmoUIFaded) return;
+        
+        isAmmoUIFaded = true;
+        
+        // ammoIcon 페이드
+        if (ammoIcon != null)
+        {
+            ammoIconFadeTween = ammoIcon.DOFade(100f / 255f, 0.5f).SetEase(Ease.OutCubic);
+        }
+        
+        // ammoBar의 barImage 페이드
+        if (ammoBar != null && ammoBar.barImage != null)
+        {
+            ammoBarImageFadeTween = ammoBar.barImage.DOFade(100f / 255f, 0.5f).SetEase(Ease.OutCubic);
+        }
+        
+        // ammoCountText 페이드
+        if (ammoCountText != null)
+        {
+            Color textColor = ammoCountText.color;
+            textColor.a = 100f / 255f;
+            ammoTextFadeTween = ammoCountText.DOColor(textColor, 0.5f).SetEase(Ease.OutCubic);
+        }
+    }
+    
+    /// <summary>
+    /// 장탄수 UI 투명도 복원
+    /// </summary>
+    private void RestoreAmmoUIVisibility()
+    {
+        if (!isAmmoUIFaded) return;
+        
+        isAmmoUIFaded = false;
+        
+        // 페이드 애니메이션 정리
+        ammoIconFadeTween?.Kill();
+        ammoBarImageFadeTween?.Kill();
+        ammoTextFadeTween?.Kill();
+        
+        // ammoIcon 복원
+        if (ammoIcon != null)
+        {
+            ammoIconFadeTween = ammoIcon.DOFade(1f, 0.2f).SetEase(Ease.OutCubic);
+        }
+        
+        // ammoBar의 barImage 복원
+        if (ammoBar != null && ammoBar.barImage != null)
+        {
+            Color currentColor = ammoBar.barImage.color;
+            currentColor.a = 1f;
+            ammoBarImageFadeTween = ammoBar.barImage.DOColor(currentColor, 0.2f).SetEase(Ease.OutCubic);
+        }
+        
+        // ammoCountText 복원
+        if (ammoCountText != null)
+        {
+            Color textColor = ammoCountText.color;
+            textColor.a = 1f;
+            ammoTextFadeTween = ammoCountText.DOColor(textColor, 0.2f).SetEase(Ease.OutCubic);
+        }
+    }
+    
+    /// <summary>
+    /// 장탄수 애니메이션 정리
+    /// </summary>
+    private void CleanupAmmoAnimations()
+    {
+        ammoBarTween?.Kill();
+        ammoBarBlinkTween?.Kill();
+        ammoIconFadeTween?.Kill();
+        ammoBarImageFadeTween?.Kill();
+        ammoTextFadeTween?.Kill();
+        reloadIconFadeTween?.Kill();
+        reloadIconRotateTween?.Kill();
+        reloadIconBlinkTween?.Kill();
+        
+        ammoBarTween = null;
+        ammoBarBlinkTween = null;
+        ammoIconFadeTween = null;
+        ammoBarImageFadeTween = null;
+        ammoTextFadeTween = null;
+        reloadIconFadeTween = null;
+        reloadIconRotateTween = null;
+        reloadIconBlinkTween = null;
+    }
+    
     #endregion
 }
 
