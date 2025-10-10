@@ -228,7 +228,6 @@ public abstract class Skill : MonoBehaviourPun
         if (effectPrefab == null || followTarget == null) return;
 
         // ⭐ 1. 루트 오브젝트 인스턴스화 및 따라가도록 부모 설정
-        Debug.Log("이펙트 따라감 - 복합 파티클 처리");
         var fxRoot = GameObject.Instantiate(effectPrefab.gameObject, followTarget.position, followTarget.rotation, followTarget);
 
         // 2. 모든 파티클 시스템 찾기 (루트와 자식 모두)
@@ -317,9 +316,12 @@ public abstract class Skill : MonoBehaviourPun
 
     protected IEnumerator DestroyGameObjectDelayed(GameObject target, float delay)
     {
+        Debug.Log("[Skill - SpawnEffectFollow] 타겟 확인 " + target);
         yield return new WaitForSeconds(delay);
+        Debug.Log("[Skill - SpawnEffectFollow] 타겟 확인 2 및 루틴 뒤로 돌아가는거 확인 " + target);
         if (target != null)
         {
+            Debug.Log("[Skill - SpawnEffectFollow] 이펙트 파괴 시간 " + delay);
             Destroy(target);
         }
     }
