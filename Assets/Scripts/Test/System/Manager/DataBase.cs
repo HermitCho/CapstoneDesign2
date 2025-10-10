@@ -768,5 +768,33 @@ public class DataBase : Singleton<DataBase>
             DontDestroyOnLoad(transform.root.gameObject);
             Debug.Log("✅ DataBase: Root GameObject에 DontDestroyOnLoad 설정 완료");
         }
+        
+        // PlayerPrefs에서 저장된 설정값 자동 로드 (SettingPanel 열지 않아도 적용)
+        LoadSettingsFromPlayerPrefs();
+    }
+    
+    /// <summary>
+    /// PlayerPrefs에서 저장된 설정값 로드 및 적용
+    /// </summary>
+    private void LoadSettingsFromPlayerPrefs()
+    {
+        // 감도 설정 로드
+        float xSens = PlayerPrefs.GetFloat("XSensitivity", -1f);
+        float ySens = PlayerPrefs.GetFloat("YSensitivity", -1f);
+        
+        // 저장된 값이 있으면 적용 (기본값 1.0)
+        if (xSens >= 0f && playerMoveData != null)
+        {
+            playerMoveData.RotationSpeed = xSens * 10f; // 0-1 범위를 0-10으로 변환
+            Debug.Log($"DataBase: X축 감도 로드 - {xSens} (RotationSpeed: {xSens * 10f})");
+        }
+        
+        if (ySens >= 0f && cameraData != null)
+        {
+            cameraData.MouseSensitivityY = ySens * 10f; // 0-1 범위를 0-10으로 변환
+            Debug.Log($"DataBase: Y축 감도 로드 - {ySens} (MouseSensitivityY: {ySens * 10f})");
+        }
+        
+        // 볼륨 설정은 AudioManager가 자체적으로 로드하므로 여기서는 처리하지 않음
     }
 }

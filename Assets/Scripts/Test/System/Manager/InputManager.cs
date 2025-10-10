@@ -74,6 +74,9 @@ public class InputManager : MonoBehaviourPun
             Debug.Log("PlayerAction이 OnEnable에서 초기화되었습니다.");
         }
             
+        // Input System 활성화 전에 저장된 바인딩 로드
+        LoadKeyBindingOverrides();
+        
         // Input System 활성화
         playerAction.Enable();
         Debug.Log("PlayerAction이 활성화되었습니다.");
@@ -326,4 +329,84 @@ public class InputManager : MonoBehaviourPun
             OnReloadPressed?.Invoke();
         }
     }
+    
+    #region 키 바인딩 오버라이드 로드
+    
+    /// <summary>
+    /// PlayerPrefs에서 저장된 키 바인딩 오버라이드를 로드하여 적용
+    /// SettingPanel에서 저장한 바인딩을 모든 PlayerAction 인스턴스에 자동 적용
+    /// </summary>
+    private void LoadKeyBindingOverrides()
+    {
+        if (playerAction == null) return;
+        
+        // Move 액션 바인딩 (2D Vector Composite)
+        LoadMoveBinding("Up", 1);
+        LoadMoveBinding("Down", 2);
+        LoadMoveBinding("Left", 3);
+        LoadMoveBinding("Right", 4);
+        
+        // 일반 액션 바인딩
+        LoadActionBinding("Jump", playerAction.Player.Jump);
+        LoadActionBinding("Reload", playerAction.Player.Reload);
+        LoadActionBinding("Skill", playerAction.Player.Skill);
+        LoadActionBinding("Item", playerAction.Player.Item);
+        LoadActionBinding("ChangeItem", playerAction.Player.ChangeItem);
+        LoadActionBinding("Detach", playerAction.Player.Detach);
+        
+        Debug.Log("InputManager: 저장된 키 바인딩 오버라이드 로드 완료");
+    }
+    
+    /// <summary>
+    /// Move 액션의 특정 방향 바인딩 로드
+    /// </summary>
+    private void LoadMoveBinding(string direction, int bindingIndex)
+    {
+        string savedKey = PlayerPrefs.GetString($"KeyBinding_{direction}", "");
+        if (string.IsNullOrEmpty(savedKey)) return;
+        
+        string keyPath = ConvertKeyNameToPath(savedKey);
+        playerAction.Player.Move.ApplyBindingOverride(bindingIndex, keyPath);
+        
+        Debug.Log($"InputManager: Move 바인딩 로드 - {direction}: {keyPath}");
+    }
+    
+    /// <summary>
+    /// 일반 액션 바인딩 로드
+    /// </summary>
+    private void LoadActionBinding(string actionName, InputAction action)
+    {
+        string savedKey = PlayerPrefs.GetString($"KeyBinding_{actionName}", "");
+        if (string.IsNullOrEmpty(savedKey)) return;
+        
+        string keyPath = ConvertKeyNameToPath(savedKey);
+        action.ApplyBindingOverride(0, keyPath);
+        
+        Debug.Log($"InputManager: {actionName} 바인딩 로드 - {keyPath}");
+    }
+    
+    /// <summary>
+    /// 키 이름을 Input System 경로로 변환
+    /// </summary>
+    private string ConvertKeyNameToPath(string keyName)
+    {
+        switch (keyName)
+        {
+            case "Space": return "<Keyboard>/space";
+            case "LeftShift": return "<Keyboard>/leftShift";
+            case "RightShift": return "<Keyboard>/rightShift";
+            case "LeftCtrl": return "<Keyboard>/leftCtrl";
+            case "RightCtrl": return "<Keyboard>/rightCtrl";
+            case "LeftAlt": return "<Keyboard>/leftAlt";
+            case "RightAlt": return "<Keyboard>/rightAlt";
+            case "Enter": return "<Keyboard>/enter";
+            case "Escape": return "<Keyboard>/escape";
+            case "Backspace": return "<Keyboard>/backspace";
+            case "Tab": return "<Keyboard>/tab";
+            default:
+                return $"<Keyboard>/{keyName.ToLower()}";
+        }
+    }
+    
+    #endregion
 } 
