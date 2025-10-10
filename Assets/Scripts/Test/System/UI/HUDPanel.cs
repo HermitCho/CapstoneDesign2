@@ -60,7 +60,8 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     [SerializeField] private Animator zoomAnimator;
 
     [Header("장탄수 UI")]
-    [SerializeField] private TextMeshProUGUI ammoCountText;
+    [SerializeField] private TextMeshProUGUI currentAmmoCountText;
+    [SerializeField] private TextMeshProUGUI maxAmmoCountText;
     [SerializeField] private ProgressBar ammoBar;
     [SerializeField] private Image reloadIcon;
     [SerializeField] private Image ammoIcon;
@@ -137,11 +138,14 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     private Tween ammoBarBlinkTween;
     private Tween ammoIconFadeTween;
     private Tween ammoBarImageFadeTween;
-    private Tween ammoTextFadeTween;
+    private Tween currentAmmoTextFadeTween;
+    private Tween maxAmmoTextFadeTween;
+    private Tween currentAmmoTextBlinkTween;
     private Tween reloadIconFadeTween;
     private Tween reloadIconRotateTween;
     private Tween reloadIconBlinkTween;
     private Color originalAmmoBarColor = Color.white;
+    private Color originalAmmoTextColor = Color.white;
     private Color lowAmmoColor = Color.red;
     private float lowAmmoThreshold = 0.2f; // 20%
     private float ammoUIFadeDelay = 3f; // 3초
@@ -1735,6 +1739,12 @@ public class HUDPanel : MonoBehaviourPunCallbacks
             // 텍스트 초기화
             UpdateAmmoText();
             
+            // 텍스트 원래 색상 저장
+            if (currentAmmoCountText != null)
+            {
+                originalAmmoTextColor = currentAmmoCountText.color;
+            }
+            
             // 장탄수 변화 시간 초기화
             lastAmmoChangeTime = Time.time;
             
@@ -1800,9 +1810,10 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     /// </summary>
     private void UpdateAmmoText()
     {
-        if (ammoCountText != null)
+        if (currentAmmoCountText != null)
         {
-            ammoCountText.text = $"{currentAmmo} / {maxAmmo}";
+            currentAmmoCountText.text = $"{currentAmmo}";
+            maxAmmoCountText.text = $"/ {maxAmmo}";
         }
     }
     
@@ -1833,7 +1844,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     }
     
     /// <summary>
-    /// 장탄수 바 색상 체크 (20% 이하일 때 빨간색 깜박임)
+    /// 장탄수 바 및 텍스트 색상 체크 (20% 이하일 때 빨간색 깜박임)
     /// </summary>
     private void CheckAmmoBarColor()
     {
@@ -1854,7 +1865,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     }
     
     /// <summary>
-    /// 낮은 장탄수 깜박임 시작
+    /// 낮은 장탄수 깜박임 시작 (바 + 텍스트)
     /// </summary>
     private void StartLowAmmoBlinking()
     {
@@ -1862,19 +1873,32 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         
         // 기존 깜박임 중지
         ammoBarBlinkTween?.Kill();
+        currentAmmoTextBlinkTween?.Kill();
         
-        // 색상을 빨간색으로 변경
+        // 바 색상을 빨간색으로 변경
         ammoBar.barImage.color = lowAmmoColor;
         
-        // 부드러운 깜박임 시작
+        // 바 깜박임 시작
         ammoBarBlinkTween = DOTween.Sequence()
             .Append(ammoBar.barImage.DOFade(0.3f, 0.5f))
             .Append(ammoBar.barImage.DOFade(1f, 0.5f))
             .SetLoops(-1, LoopType.Yoyo);
+        
+        // 텍스트 색상을 빨간색으로 변경하고 깜박임
+        if (currentAmmoCountText != null)
+        {
+            currentAmmoCountText.color = lowAmmoColor;
+            
+            // 텍스트 깜박임 시작 (바와 동일한 패턴)
+            currentAmmoTextBlinkTween = DOTween.Sequence()
+                .Append(currentAmmoCountText.DOFade(0.3f, 0.5f))
+                .Append(currentAmmoCountText.DOFade(1f, 0.5f))
+                .SetLoops(-1, LoopType.Yoyo);
+        }
     }
     
     /// <summary>
-    /// 낮은 장탄수 깜박임 중지
+    /// 낮은 장탄수 깜박임 중지 (바 + 텍스트)
     /// </summary>
     private void StopLowAmmoBlinking()
     {
@@ -1883,9 +1907,17 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         // 깜박임 중지
         ammoBarBlinkTween?.Kill();
         ammoBarBlinkTween = null;
+        currentAmmoTextBlinkTween?.Kill();
+        currentAmmoTextBlinkTween = null;
         
-        // 원래 색상으로 복원
+        // 바 원래 색상으로 복원
         ammoBar.barImage.DOColor(originalAmmoBarColor, 0.3f).SetEase(Ease.OutCubic);
+        
+        // 텍스트 원래 색상으로 복원
+        if (currentAmmoCountText != null)
+        {
+            currentAmmoCountText.DOColor(originalAmmoTextColor, 0.3f).SetEase(Ease.OutCubic);
+        }
     }
     
     /// <summary>
@@ -2003,12 +2035,19 @@ public class HUDPanel : MonoBehaviourPunCallbacks
             ammoBarImageFadeTween = ammoBar.barImage.DOFade(100f / 255f, 0.5f).SetEase(Ease.OutCubic);
         }
         
-        // ammoCountText 페이드
-        if (ammoCountText != null)
+        // currentAmmoCountText 페이드
+        if (currentAmmoCountText != null)
         {
-            Color textColor = ammoCountText.color;
+            Color textColor = currentAmmoCountText.color;
             textColor.a = 100f / 255f;
-            ammoTextFadeTween = ammoCountText.DOColor(textColor, 0.5f).SetEase(Ease.OutCubic);
+            currentAmmoTextFadeTween = currentAmmoCountText.DOColor(textColor, 0.5f).SetEase(Ease.OutCubic);
+        }
+
+        if (maxAmmoCountText != null)
+        {
+            Color textColor = maxAmmoCountText.color;
+            textColor.a = 100f / 255f;
+            maxAmmoTextFadeTween = maxAmmoCountText.DOColor(textColor, 0.5f).SetEase(Ease.OutCubic);
         }
     }
     
@@ -2024,7 +2063,8 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         // 페이드 애니메이션 정리
         ammoIconFadeTween?.Kill();
         ammoBarImageFadeTween?.Kill();
-        ammoTextFadeTween?.Kill();
+        currentAmmoTextFadeTween?.Kill();
+        maxAmmoTextFadeTween?.Kill();
         
         // ammoIcon 복원
         if (ammoIcon != null)
@@ -2040,12 +2080,19 @@ public class HUDPanel : MonoBehaviourPunCallbacks
             ammoBarImageFadeTween = ammoBar.barImage.DOColor(currentColor, 0.2f).SetEase(Ease.OutCubic);
         }
         
-        // ammoCountText 복원
-        if (ammoCountText != null)
+        // currentAmmoCountText 복원
+        if (currentAmmoCountText != null)
         {
-            Color textColor = ammoCountText.color;
+            Color textColor = currentAmmoCountText.color;
             textColor.a = 1f;
-            ammoTextFadeTween = ammoCountText.DOColor(textColor, 0.2f).SetEase(Ease.OutCubic);
+            currentAmmoTextFadeTween = currentAmmoCountText.DOColor(textColor, 0.2f).SetEase(Ease.OutCubic);
+        }
+
+        if (maxAmmoCountText != null)
+        {
+            Color textColor = maxAmmoCountText.color;
+            textColor.a = 1f;
+            maxAmmoTextFadeTween = maxAmmoCountText.DOColor(textColor, 0.2f).SetEase(Ease.OutCubic);
         }
     }
     
@@ -2058,7 +2105,9 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         ammoBarBlinkTween?.Kill();
         ammoIconFadeTween?.Kill();
         ammoBarImageFadeTween?.Kill();
-        ammoTextFadeTween?.Kill();
+        currentAmmoTextFadeTween?.Kill();
+        maxAmmoTextFadeTween?.Kill();
+        currentAmmoTextBlinkTween?.Kill();
         reloadIconFadeTween?.Kill();
         reloadIconRotateTween?.Kill();
         reloadIconBlinkTween?.Kill();
@@ -2067,7 +2116,9 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         ammoBarBlinkTween = null;
         ammoIconFadeTween = null;
         ammoBarImageFadeTween = null;
-        ammoTextFadeTween = null;
+        currentAmmoTextFadeTween = null;
+        maxAmmoTextFadeTween = null;
+        currentAmmoTextBlinkTween = null;
         reloadIconFadeTween = null;
         reloadIconRotateTween = null;
         reloadIconBlinkTween = null;
