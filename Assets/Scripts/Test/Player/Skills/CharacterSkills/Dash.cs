@@ -16,7 +16,6 @@ public class Dash : Skill
         // 무한 사용 → UsableCountComponent 제거
         if (usableCountComponent != null)
             Destroy(usableCountComponent as Component);
-        skillSound = GetComponent<AudioSource>().clip;
     }
 
     // 실제 스킬 실행
