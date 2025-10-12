@@ -48,9 +48,9 @@ public class TestShoot : MonoBehaviourPun
     void OnShootInput()
     {
         if (!photonView.IsMine) return;
-        if (TestGun.CurrentState == TestGun.GunState.Ready) // TestGun의 정적 속성 사용
+        if (gun != null && gun.CurrentState == TestGun.GunState.Ready) // 인스턴스 속성 사용
         {
-            if (gun != null && isShooting)
+            if (isShooting)
                 gun.InputFire(true);
         }
 

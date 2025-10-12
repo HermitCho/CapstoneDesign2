@@ -39,7 +39,7 @@ public class TestGun : MonoBehaviourPun
     #endregion
 
     #region Properties
-    public static GunState CurrentState { get; private set; } // 정적 속성으로 변경
+    public GunState CurrentState { get; private set; } // 인스턴스 속성 (멀티플레이어 필수!)
     [HideInInspector] public int CurrentMagAmmo { get; private set; }
     public bool IsShouldering { get; private set; }
     #endregion
@@ -310,23 +310,35 @@ public class TestGun : MonoBehaviourPun
         if (CurrentState == GunState.Reloading || CurrentMagAmmo >= gunData.maxAmmo)
             return false;
 
-        photonViewCached.RPC("RPC_Reload", RpcTarget.All);
-        return true;
-    }
-
-    [PunRPC]
-    protected void RPC_Reload()
-    {
+        // 소유자만 재장전 시작 (상태 변경은 RPC로 동기화)
         StartCoroutine(ReloadRoutine());
+        return true;
     }
 
     protected virtual IEnumerator ReloadRoutine()
     {
-        CurrentState = GunState.Reloading;
-        PlayReloadSound();
+        // 재장전 상태를 모든 클라이언트에 동기화
+        photonViewCached.RPC("RPC_SetReloadingState", RpcTarget.All, true);
+        
+        // 소유자만 사운드 재생
+        if (photonViewCached.IsMine)
+        {
+            PlayReloadSound();
+        }
+        
         yield return new WaitForSeconds(gunData.reloadTime);
 
+        // 재장전 완료를 모든 클라이언트에 동기화
         photonViewCached.RPC("RPC_CompleteReload", RpcTarget.All);
+    }
+    
+    /// <summary>
+    /// 재장전 상태 설정 (모든 클라이언트)
+    /// </summary>
+    [PunRPC]
+    private void RPC_SetReloadingState(bool isReloading)
+    {
+        CurrentState = isReloading ? GunState.Reloading : GunState.Ready;
     }
 
     [PunRPC]

@@ -1768,7 +1768,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         if (localGun == null) return;
         
         int newAmmo = localGun.CurrentMagAmmo;
-        TestGun.GunState currentState = TestGun.CurrentState;
+        TestGun.GunState currentState = localGun.CurrentState; // 인스턴스 속성 사용
         
         // 장탄수 변화 감지
         if (newAmmo != currentAmmo)
