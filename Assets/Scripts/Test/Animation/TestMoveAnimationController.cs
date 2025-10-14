@@ -34,6 +34,8 @@ public class TestMoveAnimationController : MonoBehaviourPun
     private float reloadCooldown = 0f;
     private bool firstReload = true;
 
+    private bool movedOnce = false;
+
     // --- 스킬 관련 ---
     private Coroutine speedSkillCoroutine;
     private string skillAnimationTriggerName = "None";
@@ -115,6 +117,15 @@ public class TestMoveAnimationController : MonoBehaviourPun
         HandleUpperBodyLayer();
 
         if (reloadCooldown > 0f) reloadCooldown -= Time.deltaTime;
+
+        float moveX = Input.GetAxis("Horizontal");
+        float moveZ = Input.GetAxis("Vertical");
+
+        if ((moveX != 0 || moveZ != 0) && !movedOnce)
+        {
+            movedOnce = true;
+            TutorialMessageManager.Instance.ShowMessage(1); // 1번 메시지 출력
+        }
     }
 
     // --- 애니메이션 처리 ---
