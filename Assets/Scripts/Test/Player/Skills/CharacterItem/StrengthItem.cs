@@ -51,6 +51,7 @@ public class StrengthItem : Skill
 
         // ✅ RPC를 한 번만 호출하여, 이펙트 오브젝트를 생성하고 모든 제어권을 넘깁니다.
         photonView.RPC("EffectStart", RpcTarget.All, executor.photonView.ViewID, buffMultiplier, duration, executor.transform.position);
+        PlayFollowEffectAtRemote(executor);
 
         // PlayFollowEffectAtRemote(executor); 는 여기에 남겨둘 수 있습니다. (생략)
     }

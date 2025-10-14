@@ -35,6 +35,7 @@ public class FlashItem : Skill
 
             // 대시 후 착지 감지 코루틴 시작
             StartCoroutine(DashStopRoutine(executor));
+            PlayFollowEffectAtRemote(executor);
         }
 
         // 순간적으로 바닥에 남는 흔적 같은 이펙트도 추가 가능

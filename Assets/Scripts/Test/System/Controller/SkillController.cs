@@ -26,6 +26,7 @@ public class SkillController : MonoBehaviourPun
     TestShoot testShoot;
     private bool canUseSkill = true;
     private bool canUseItem = true;
+    private bool endSkillInProgress = false;
 
     // 아이템 사용 쿨타임 관련 변수
     private float lastItemUseTime = 0f; // 마지막 아이템 사용 시간
@@ -82,6 +83,8 @@ public class SkillController : MonoBehaviourPun
                 ConfirmPreview();
             }
         }
+
+        CheckDeleteItem();
     }
     #endregion
 
@@ -277,13 +280,10 @@ public class SkillController : MonoBehaviourPun
 
         if (activeItem.HasPreview)
         {
-            if (isPreviewActive)
+            if (isPreviewActive && currentPreviewSkill != activeItem)
             {
-                if (currentPreviewSkill != activeItem)
-                {
-                    DeliverEndPreview();
-                    DeliverStartPreview(activeItem);
-                }
+                DeliverEndPreview();
+                DeliverStartPreview(activeItem);
             }
             else
             {
@@ -296,16 +296,6 @@ public class SkillController : MonoBehaviourPun
             // 즉시 아이템
             TestShoot.SetIsShooting(true);
             activeItem.ActivateItem(this);
-
-            // 남은 횟수 0이면 아이템 제거 처리(원래 코드 재현)
-            if (activeItem.RemainingUses <= 0)
-            {
-                if (itemController != null)
-                {
-                    itemController.MoveUsedItemToTemp(activeItem.gameObject);
-                }
-                Destroy(activeItem.gameObject, activeItem.DestroyTime);
-            }
         }
     }
 
@@ -425,6 +415,20 @@ public class SkillController : MonoBehaviourPun
 
         Debug.LogWarning("⚠️ MoveController - 플레이어의 ItemController를 찾을 수 없습니다.");
         return null;
+    }
+
+    private void CheckDeleteItem()
+    {
+        ItemController itemController = FindCurrentPlayerItemController();
+        // 남은 횟수 0이면 아이템 제거 처리(원래 코드 재현)
+        if (activeItem.RemainingUses <= 0)
+        {
+            if (itemController != null && endSkillInProgress)
+            {
+                itemController.MoveUsedItemToTemp(activeItem.gameObject);
+            }
+            Destroy(activeItem.gameObject, activeItem.DestroyTime);
+        }
     }
     #endregion
 
@@ -588,6 +592,11 @@ public class SkillController : MonoBehaviourPun
     {
         Debug.Log($"스킬: {canUseSkill}");
         Debug.Log($"아이템: {canUseItem}");
+    }
+
+    public void EndSkillInProgress()
+    {
+        endSkillInProgress = true;
     }
     #endregion
 }

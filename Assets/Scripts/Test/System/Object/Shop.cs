@@ -17,20 +17,21 @@ public class Shop : MonoBehaviourPun
     // 현재 생성된 아이템들
     private GameObject[] currentItems;
     private Coroutine[] renewCoroutines;
-    
+
     // 아이템 갱신 시간 관리
     private float[] itemRenewTimes; // 각 슬롯의 남은 갱신 시간
     private bool[] isRenewTimerActive; // 각 슬롯의 타이머 활성 상태
-    
+
     // 현재 상점을 이용중인 플레이어들
     private HashSet<ShopController> connectedPlayers = new HashSet<ShopController>();
-    
+
     #region Unity 생명주기
-    
+
     void Start()
     {
         InitializeShop();
-        
+
+        Debug.Log("[Shop - Start] 상점 초기화 작업");
         // 방 속성 변경 이벤트 구독 (비마스터 클라이언트용)
         if (!PhotonNetwork.IsMasterClient)
         {
@@ -38,7 +39,7 @@ public class Shop : MonoBehaviourPun
             StartCoroutine(RequestInitialSyncWithDelay());
         }
     }
-    
+
     /// <summary>
     /// 지연된 초기 동기화 요청 (네트워크 안정화 대기)
     /// </summary>
@@ -47,54 +48,56 @@ public class Shop : MonoBehaviourPun
         // 마스터 클라이언트가 아닌 경우에만 동기화 요청
         if (!PhotonNetwork.IsMasterClient && PhotonNetwork.IsConnected)
         {
+            Debug.Log("[Shop - RequestInitialSyncWithDelay] 상점 초기화 후 동기화 작업");
             yield return new WaitForSeconds(1f); // 1초 대기 후 첫 요청
-            
+
             // 최대 5번까지 재시도
             int maxRetries = 5;
             int currentRetry = 0;
-            
+
             while (currentRetry < maxRetries)
             {
                 //Debug.Log($"Shop: 초기 아이템 동기화 요청 - 시도 {currentRetry + 1}/{maxRetries}");
                 photonView.RPC("RequestInitialItems", RpcTarget.MasterClient);
-                
+
                 // 2초 대기 후 아이템이 생성되었는지 확인
                 yield return new WaitForSeconds(2f);
-                
+
                 bool hasItems = false;
                 for (int i = 0; i < currentItems.Length; i++)
                 {
                     if (currentItems[i] != null)
                     {
+                        Debug.Log("[Shop - RequestInitialSyncWithDelay] currentItems 확인 " + currentItems[i]);
                         hasItems = true;
                         break;
                     }
                 }
-                
+
                 if (hasItems)
                 {
-                    //Debug.Log("Shop: 초기 아이템 동기화 성공!");
+                    Debug.Log("Shop: 초기 아이템 동기화 성공!");
                     break;
                 }
-                
+
                 currentRetry++;
                 if (currentRetry < maxRetries)
                 {
                     yield return new WaitForSeconds(1f); // 재시도 전 대기
                 }
             }
-            
+
             if (currentRetry >= maxRetries)
             {
-                //Debug.LogWarning("Shop: 초기 아이템 동기화 최대 재시도 횟수 초과");
+                Debug.LogWarning("Shop: 초기 아이템 동기화 최대 재시도 횟수 초과");
             }
         }
     }
-    
+
     #endregion
-    
+
     #region 초기화
-    
+
     /// <summary>
     /// 상점 초기화
     /// </summary>
@@ -110,22 +113,23 @@ public class Shop : MonoBehaviourPun
         renewCoroutines = new Coroutine[shopStands.Length];
         itemRenewTimes = new float[shopStands.Length];
         isRenewTimerActive = new bool[shopStands.Length];
-        
+
         // 타이머 초기화
         for (int i = 0; i < itemRenewTimes.Length; i++)
         {
             itemRenewTimes[i] = 0f;
             isRenewTimerActive[i] = false;
         }
-        
+
         // 마스터 클라이언트만 아이템 생성
         if (PhotonNetwork.IsMasterClient)
         {
+            Debug.Log("[Shop - InitializeShop] StartItemGeneration 아이템 생성 시작!");
             StartItemGeneration();
         }
         // 비마스터 클라이언트의 초기 동기화는 Start()에서 지연 처리
     }
-    
+
     /// <summary>
     /// 아이템 생성 시작
     /// </summary>
@@ -136,11 +140,11 @@ public class Shop : MonoBehaviourPun
             GenerateItemAtPosition(i);
         }
     }
-    
+
     #endregion
-    
+
     #region ShopController 연결 관리
-    
+
     /// <summary>
     /// 플레이어의 ShopController와 연결
     /// </summary>
@@ -148,14 +152,14 @@ public class Shop : MonoBehaviourPun
     public void ConnectShopController(ShopController shopController)
     {
         if (shopController == null) return;
-        
+
         // 로컬 플레이어인지 확인
         PhotonView pv = shopController.GetComponent<PhotonView>();
         if (pv != null && !pv.IsMine) return;
-        
+
         connectedPlayers.Add(shopController);
     }
-    
+
     /// <summary>
     /// ShopController와의 연결 해제
     /// </summary>
@@ -167,7 +171,7 @@ public class Shop : MonoBehaviourPun
             //Debug.Log($"Shop: 플레이어 {shopController.name} 연결 해제됨");
         }
     }
-    
+
     /// <summary>
     /// 다른 클라이언트가 초기 아이템을 요청할 때 호출
     /// </summary>
@@ -175,9 +179,9 @@ public class Shop : MonoBehaviourPun
     void RequestInitialItems()
     {
         if (!PhotonNetwork.IsMasterClient) return;
-        
+
         //Debug.Log("Shop: 다른 클라이언트가 초기 아이템 요청");
-        
+
         // 아이템이 없으면 생성
         bool hasAnyItem = false;
         for (int i = 0; i < currentItems.Length; i++)
@@ -188,12 +192,12 @@ public class Shop : MonoBehaviourPun
                 break;
             }
         }
-        
+
         if (!hasAnyItem)
         {
             //Debug.Log("Shop: 마스터 클라이언트에 아이템이 없어서 생성 시작");
             StartItemGeneration();
-            
+
             // 아이템 생성 완료를 기다림
             StartCoroutine(WaitAndSyncItems());
         }
@@ -203,7 +207,7 @@ public class Shop : MonoBehaviourPun
             SyncExistingItemsToClients();
         }
     }
-    
+
     /// <summary>
     /// 아이템 생성 완료 후 동기화
     /// </summary>
@@ -212,44 +216,46 @@ public class Shop : MonoBehaviourPun
         yield return new WaitForSeconds(1f); // 아이템 생성 대기
         SyncExistingItemsToClients();
     }
-    
+
     /// <summary>
     /// 기존 아이템들을 클라이언트에 동기화
     /// </summary>
     private void SyncExistingItemsToClients()
     {
         int syncedItems = 0;
-        
+
         // 현재 생성된 아이템들을 요청한 클라이언트에게 동기화
         for (int i = 0; i < currentItems.Length; i++)
         {
+            Debug.Log("[Shop - SyncExistingItemsToClients] 클라이언트 동기화 " + currentItems[i]);
             if (currentItems[i] != null)
             {
                 PhotonView itemPV = currentItems[i].GetComponent<PhotonView>();
                 if (itemPV != null && itemPV.ViewID > 0)
                 {
+                    if (itemPV.gameObject == null) continue;
                     // 요청한 클라이언트에게만 전송
                     photonView.RPC("SyncItemToShopStand", RpcTarget.Others, i, itemPV.ViewID);
                     syncedItems++;
-                    
+
                     // 타이머 정보도 함께 동기화
                     if (i < itemRenewTimes.Length)
                     {
                         photonView.RPC("SyncRenewTimer", RpcTarget.Others, i, itemRenewTimes[i], isRenewTimerActive[i]);
                     }
-                    
+
                     //Debug.Log($"Shop: 아이템 {i} 동기화 - ViewID: {itemPV.ViewID}");
                 }
             }
         }
-        
+
         //Debug.Log($"Shop: 초기 아이템 동기화 완료 - {syncedItems}/{currentItems.Length}개 아이템 전송");
     }
-    
+
     #endregion
-    
+
     #region 아이템 생성 및 관리
-    
+
     /// <summary>
     /// 특정 위치에 아이템 생성 (마스터 클라이언트만 호출)
     /// </summary>
@@ -257,21 +263,22 @@ public class Shop : MonoBehaviourPun
     void GenerateItemAtPosition(int positionIndex)
     {
         if (!PhotonNetwork.IsMasterClient) return;
-        
+
         if (positionIndex < 0 || positionIndex >= shopStands.Length) return;
-        
+
         ShopStand shopStand = shopStands[positionIndex];
         if (shopStand == null) return;
-        
+
+        Debug.Log("[Shop - GenerateItemAtPosition] 특정 위치 아이템 생성 작업 시작 ");
         // 기존 아이템이 있다면 제거
         if (currentItems[positionIndex] != null)
         {
             shopStand.ClearCurrentItem();
-            
+
             // 안전한 오브젝트 파괴 처리
             GameObject itemToDestroy = currentItems[positionIndex];
             PhotonView itemPV = itemToDestroy.GetComponent<PhotonView>();
-            
+
             // PhotonView가 있고 마스터 클라이언트이며 오브젝트가 아직 유효한 경우에만 파괴
             if (itemPV != null && PhotonNetwork.IsMasterClient && itemPV.gameObject != null && !itemPV.isRuntimeInstantiated == false)
             {
@@ -293,16 +300,16 @@ public class Shop : MonoBehaviourPun
                 // PhotonView가 없는 로컬 오브젝트는 일반 Destroy
                 Destroy(itemToDestroy);
             }
-            
+
             currentItems[positionIndex] = null;
         }
-        
+
         // 기존 코루틴 정지
         if (renewCoroutines[positionIndex] != null)
         {
             StopCoroutine(renewCoroutines[positionIndex]);
         }
-        
+
         // 확률 기반으로 아이템 선택
         GameObject selectedPrefab = SelectItemByProbability();
         if (selectedPrefab != null)
@@ -311,9 +318,9 @@ public class Shop : MonoBehaviourPun
             Vector3 spawnPos = shopStand.GetItemSpawnPoint().position;
             Quaternion spawnRot = shopStand.GetItemSpawnPoint().rotation;
             spawnRot = Quaternion.Euler(0, 0, 90);
-            
+
             GameObject spawnedItem = null;
-            
+
             try
             {
                 spawnedItem = PhotonNetwork.Instantiate($"Prefabs/ShopItems/{selectedPrefab.name}", spawnPos, spawnRot);
@@ -333,28 +340,28 @@ public class Shop : MonoBehaviourPun
                 //Debug.LogError($"Shop: 아이템 생성 예외 발생 - {e.Message}");
                 return;
             }
-            
+
             // 생성된 아이템이 null이 아닌 경우에만 후처리 진행
             if (spawnedItem == null)
             {
                 //Debug.LogError($"Shop: 아이템 후처리 실패 - spawnedItem이 null입니다");
                 return;
             }
-            
+
             // 아이템에 회전 애니메이션 컴포넌트 추가
             ItemRotator rotator = spawnedItem.GetComponent<ItemRotator>();
             if (rotator == null)
             {
                 rotator = spawnedItem.AddComponent<ItemRotator>();
             }
-            
+
             // PhotonView 확인 후 동기화
             PhotonView itemPV = spawnedItem.GetComponent<PhotonView>();
             if (itemPV != null)
             {
                 // ShopStand에 아이템 배치 (모든 클라이언트에서 동기화)
                 photonView.RPC("SyncItemToShopStand", RpcTarget.All, positionIndex, itemPV.ViewID);
-                
+
                 // 아이템의 renewTime 설정 및 타이머 시작
                 Item itemComponent = spawnedItem.GetComponent<Item>();
                 if (itemComponent != null)
@@ -362,10 +369,10 @@ public class Shop : MonoBehaviourPun
                     float renewTime = itemComponent.RenewTime;
                     itemRenewTimes[positionIndex] = renewTime;
                     isRenewTimerActive[positionIndex] = true;
-                    
+
                     // 모든 클라이언트에 타이머 정보 동기화
                     photonView.RPC("SyncRenewTimer", RpcTarget.All, positionIndex, renewTime, true);
-                    
+
                     //Debug.Log($"Shop: 아이템 설정 완료 - Position: {positionIndex}, RenewTime: {renewTime}초");
                 }
             }
@@ -373,11 +380,11 @@ public class Shop : MonoBehaviourPun
             {
                 //Debug.LogError($"Shop: 생성된 아이템에 PhotonView가 없습니다 - Position: {positionIndex}");
             }
-            
-         
+
+
         }
     }
-    
+
     /// <summary>
     /// 확률 기반으로 아이템 선택
     /// </summary>
@@ -385,9 +392,9 @@ public class Shop : MonoBehaviourPun
     GameObject SelectItemByProbability()
     {
         if (itemPrefabs == null || itemPrefabs.Length == 0) return null;
-        
+
         List<GameObject> availableItems = new List<GameObject>();
-        
+
         foreach (GameObject prefab in itemPrefabs)
         {
             Item itemComponent = prefab.GetComponent<Item>();
@@ -395,25 +402,27 @@ public class Shop : MonoBehaviourPun
             {
                 float probability = itemComponent.Probability;
                 float randomValue = Random.Range(0f, 1f);
-                
+
                 if (randomValue <= probability)
                 {
                     availableItems.Add(prefab);
                 }
             }
         }
-        
+
         // 확률에 맞는 아이템이 없으면 기본 아이템 반환
         if (availableItems.Count == 0)
         {
             return itemPrefabs[Random.Range(0, itemPrefabs.Length)];
         }
-        
+
+        Debug.Log("[Shop - SelectItemByProbability()] 최종 선택 아이템 목록: " +
+                  string.Join(", ", availableItems.Select(item => item.name)));
         return availableItems[Random.Range(0, availableItems.Count)];
     }
-    
+
     // RenewItemAfterTime 메서드 제거 - UpdateRenewTimers에서 직접 처리
-    
+
     /// <summary>
     /// ShopStand에 아이템 동기화 (모든 클라이언트에서 호출)
     /// </summary>
@@ -423,11 +432,11 @@ public class Shop : MonoBehaviourPun
     void SyncItemToShopStand(int positionIndex, int itemViewID)
     {
         if (positionIndex < 0 || positionIndex >= shopStands.Length) return;
-        
+
         // 약간의 지연을 두고 아이템 찾기 (네트워크 오브젝트 생성 완료 대기)
         StartCoroutine(FindAndSyncItemWithDelay(positionIndex, itemViewID));
     }
-    
+
     /// <summary>
     /// 지연된 아이템 동기화 (네트워크 오브젝트 생성 완료 대기)
     /// </summary>
@@ -436,7 +445,7 @@ public class Shop : MonoBehaviourPun
         PhotonView itemPV = null;
         int attempts = 0;
         int maxAttempts = 15; // 시도 횟수 증가
-        
+
         // 최대 1.5초 동안 아이템 찾기 시도
         while (itemPV == null && attempts < maxAttempts)
         {
@@ -446,25 +455,27 @@ public class Shop : MonoBehaviourPun
                 // 다른 방법으로도 시도
                 itemPV = PhotonNetwork.GetPhotonView(itemViewID);
             }
-            
+
             if (itemPV == null)
             {
                 yield return new WaitForSeconds(0.1f);
                 attempts++;
             }
         }
-        
+
         if (itemPV != null && itemPV.gameObject != null && positionIndex < shopStands.Length)
         {
             GameObject item = itemPV.gameObject;
             ShopStand shopStand = shopStands[positionIndex];
-            
+
             if (shopStand != null)
             {
                 shopStand.SetItem(item);
                 // 비마스터 클라이언트에서도 currentItems 배열 업데이트
                 if (positionIndex < currentItems.Length)
                 {
+                    Debug.Log("[Shop - FindAndSyncItemWithDelay()] 현재 아이템 리스트가 있는지 확인 + " + currentItems);
+                    //Debug.Log("[Shop - FindAndSyncItemWithDelay()] 현재 아이템 + " + currentItems[positionIndex].name);
                     currentItems[positionIndex] = item;
                 }
                 ////Debug.Log($"Shop: 아이템 동기화 완료 - Position: {positionIndex}, Item: {item.name}");
@@ -473,7 +484,7 @@ public class Shop : MonoBehaviourPun
         else
         {
             //Debug.LogWarning($"Shop: 아이템 동기화 실패 - ViewID: {itemViewID}, Position: {positionIndex}");
-            
+
             // 마스터 클라이언트에게 해당 위치 아이템 재생성 요청
             if (!PhotonNetwork.IsMasterClient)
             {
@@ -481,7 +492,7 @@ public class Shop : MonoBehaviourPun
             }
         }
     }
-    
+
     /// <summary>
     /// 아이템 재생성 요청 (마스터 클라이언트용)
     /// </summary>
@@ -491,10 +502,11 @@ public class Shop : MonoBehaviourPun
         if (PhotonNetwork.IsMasterClient && positionIndex >= 0 && positionIndex < currentItems.Length)
         {
             //Debug.Log($"Shop: 아이템 재생성 요청 받음 - Position: {positionIndex}");
-            
+
             // 해당 위치에 아이템이 없으면 새로 생성
             if (currentItems[positionIndex] == null)
             {
+                Debug.Log("[Shop - RequestItemRegeneration()] 현재 아이템 없음 + " + currentItems[positionIndex]);
                 GenerateItemAtPosition(positionIndex);
             }
             else
@@ -503,16 +515,17 @@ public class Shop : MonoBehaviourPun
                 PhotonView itemPV = currentItems[positionIndex].GetComponent<PhotonView>();
                 if (itemPV != null && itemPV.ViewID > 0)
                 {
+                    Debug.Log("[Shop - RequestItemRegeneration()] 현재 아이템 있음 SyncItemToShopStand 호출");
                     photonView.RPC("SyncItemToShopStand", RpcTarget.Others, positionIndex, itemPV.ViewID);
                 }
             }
         }
     }
-    
+
     #endregion
-    
+
     #region 아이템 구매 처리
-    
+
     /// <summary>
     /// 아이템 구매 요청 (ShopController에서 호출)
     /// </summary>
@@ -521,34 +534,34 @@ public class Shop : MonoBehaviourPun
     public void PurchaseItem(GameObject item, ShopController buyer)
     {
         if (item == null || buyer == null) return;
-        
+
         PhotonView buyerPV = buyer.GetComponent<PhotonView>();
         PhotonView itemPV = item.GetComponent<PhotonView>();
-        
+
         if (buyerPV != null && itemPV != null)
         {
             // 마스터 클라이언트에게 구매 요청 (모든 클라이언트에서 가능)
-            photonView.RPC("RequestPurchaseItem", RpcTarget.MasterClient, 
+            photonView.RPC("RequestPurchaseItem", RpcTarget.MasterClient,
                 itemPV.ViewID, buyerPV.ViewID);
         }
     }
-    
+
     [PunRPC]
     void RequestPurchaseItem(int itemViewID, int buyerViewID)
     {
         if (!PhotonNetwork.IsMasterClient) return;
-        
+
         PhotonView itemPV = PhotonView.Find(itemViewID);
         PhotonView buyerPV = PhotonView.Find(buyerViewID);
-        
-        
+
+
         if (itemPV == null || buyerPV == null) return;
-        
+
         GameObject item = itemPV.gameObject;
         ShopController buyer = buyerPV.GetComponent<ShopController>();
-        
+
         if (item == null || buyer == null) return;
-        
+
         // 아이템이 현재 상점에 있는지 확인
         int positionIndex = -1;
         for (int i = 0; i < currentItems.Length; i++)
@@ -559,56 +572,56 @@ public class Shop : MonoBehaviourPun
                 break;
             }
         }
-        
+
         if (positionIndex == -1) return;
-        
+
         // 구매 처리 - 구매자 클라이언트에서 직접 처리하도록 RPC 전송
         Item itemComponent = item.GetComponent<Item>();
         Skill skillComponent = itemComponent.ItemObject.GetComponent<Skill>();
-        
+
         if (itemComponent == null || skillComponent == null) return;
-        
+
         // 현재 남은 갱신 시간 가져오기 (구매 시점 기준)
         float currentRemainingTime = itemRenewTimes[positionIndex];
-        
+
         // 구매자에게 구매 처리 RPC 전송 (구매자의 ShopController에서 직접 처리)
-        buyerPV.RPC("ProcessPurchase", buyerPV.Owner, 
-            skillComponent.Price, 
-            skillComponent.Index, 
+        buyerPV.RPC("ProcessPurchase", buyerPV.Owner,
+            skillComponent.Price,
+            skillComponent.Index,
             itemComponent.ItemObject.name,
             positionIndex);
-        
+
         //Debug.Log($"Shop: 플레이어 {buyer.name}가 아이템 {item.name} 구매 완료");
     }
-    
-    
+
+
     [PunRPC]
     void OnItemPurchased(int positionIndex)
     {
         if (!PhotonNetwork.IsMasterClient) return;
         if (positionIndex < 0 || positionIndex >= currentItems.Length) return;
-        
+
         ShopStand shopStand = shopStands[positionIndex];
         if (shopStand == null) return;
-        
+
         //Debug.Log($"Shop: 마스터 클라이언트에서 아이템 제거 처리 - PositionIndex: {positionIndex}");
-        
+
         // 구매 시점의 남은 갱신 시간 저장 (아이템 제거 전에)
         float remainingRenewTime = itemRenewTimes[positionIndex];
         //Debug.Log($"Shop: 구매 시점 남은 갱신 시간 - {remainingRenewTime:F1}초");
-        
+
         // ShopStand 정리
         shopStand.ClearCurrentItem();
-        
+
         // 구매된 아이템 제거 (안전한 파괴 처리)
         if (currentItems[positionIndex] != null)
         {
             StartCoroutine(SafeDestroyPurchasedItem(positionIndex, remainingRenewTime));
         }
-        
+
         //Debug.Log($"Shop: 위치 {positionIndex} 아이템 구매 처리 완료 - SafeDestroyPurchasedItem에서 갱신 처리");
     }
-    
+
     /// <summary>
     /// 갱신 타이머 동기화 (모든 클라이언트에서 호출)
     /// </summary>
@@ -619,10 +632,10 @@ public class Shop : MonoBehaviourPun
     void SyncRenewTimer(int positionIndex, float remainingTime, bool isActive)
     {
         if (positionIndex < 0 || positionIndex >= itemRenewTimes.Length) return;
-        
+
         itemRenewTimes[positionIndex] = remainingTime;
         isRenewTimerActive[positionIndex] = isActive;
-        
+
         // ShopStand에 타이머 정보 전달
         if (positionIndex < shopStands.Length && shopStands[positionIndex] != null)
         {
@@ -630,53 +643,53 @@ public class Shop : MonoBehaviourPun
         }
 
     }
-    
+
     /// <summary>
     /// 타이머 업데이트 (마스터 클라이언트에서 호출)
     /// </summary>
     void UpdateRenewTimers()
     {
         if (!PhotonNetwork.IsMasterClient) return;
-        
+
         for (int i = 0; i < itemRenewTimes.Length; i++)
         {
             if (isRenewTimerActive[i] && itemRenewTimes[i] > 0f)
             {
                 float previousTime = itemRenewTimes[i];
                 itemRenewTimes[i] -= Time.deltaTime;
-                
+
                 // 10초마다 한 번씩 디버그 로그 (너무 많은 로그 방지)
-                if (Mathf.FloorToInt(previousTime) != Mathf.FloorToInt(itemRenewTimes[i]) && 
+                if (Mathf.FloorToInt(previousTime) != Mathf.FloorToInt(itemRenewTimes[i]) &&
                     Mathf.FloorToInt(itemRenewTimes[i]) % 10 == 0)
                 {
                     //Debug.Log($"Shop: 위치 {i} 갱신까지 {Mathf.CeilToInt(itemRenewTimes[i])}초 남음");
                 }
-                
+
                 // 타이머가 0 이하가 되면 갱신
                 if (itemRenewTimes[i] <= 0f)
                 {
                     itemRenewTimes[i] = 0f;
                     isRenewTimerActive[i] = false;
-                    
+
                     //Debug.Log($"Shop: 타이머 완료로 아이템 갱신 시작 - Position {i}");
                     GenerateItemAtPosition(i);
-                    
+
                     // 갱신 완료 후 타이머 동기화
                     photonView.RPC("SyncRenewTimer", RpcTarget.Others, i, 0f, false);
                 }
             }
         }
     }
-    
+
     private float lastTimerSyncTime = 0f;
     private const float TIMER_SYNC_INTERVAL = 2f; // 2초마다 타이머 동기화 (UI 업데이트용)
-    
+
     void Update()
     {
         if (PhotonNetwork.IsMasterClient)
         {
             UpdateRenewTimers();
-            
+
             // 주기적으로 타이머 동기화 (너무 자주 보내지 않도록)
             if (Time.time - lastTimerSyncTime > TIMER_SYNC_INTERVAL)
             {
@@ -685,7 +698,7 @@ public class Shop : MonoBehaviourPun
             }
         }
     }
-    
+
     /// <summary>
     /// 모든 타이머를 클라이언트에 동기화
     /// </summary>
@@ -699,11 +712,11 @@ public class Shop : MonoBehaviourPun
             }
         }
     }
-    
+
     #endregion
-    
+
     #region 상점 상태 확인
-    
+
     /// <summary>
     /// 연결된 플레이어 수 확인
     /// </summary>
@@ -712,7 +725,7 @@ public class Shop : MonoBehaviourPun
     {
         return connectedPlayers.Count;
     }
-    
+
     /// <summary>
     /// 특정 위치의 아이템 가져오기
     /// </summary>
@@ -723,7 +736,7 @@ public class Shop : MonoBehaviourPun
         if (positionIndex < 0 || positionIndex >= currentItems.Length) return null;
         return currentItems[positionIndex];
     }
-    
+
     /// <summary>
     /// 구매된 아이템을 안전하게 파괴
     /// </summary>
@@ -732,12 +745,12 @@ public class Shop : MonoBehaviourPun
     private System.Collections.IEnumerator SafeDestroyPurchasedItem(int positionIndex, float remainingRenewTime)
     {
         if (positionIndex < 0 || positionIndex >= currentItems.Length) yield break;
-        
+
         GameObject itemToDestroy = currentItems[positionIndex];
         if (itemToDestroy == null) yield break;
-        
+
         PhotonView itemPV = itemToDestroy.GetComponent<PhotonView>();
-        
+
         if (itemPV != null)
         {
             // PhotonView가 있는 네트워크 오브젝트
@@ -755,24 +768,24 @@ public class Shop : MonoBehaviourPun
                             if (PhotonNetwork.IsMasterClient)
                             {
                                 PhotonNetwork.Destroy(itemToDestroy);
-                                //Debug.Log($"Shop: 네트워크 아이템 파괴 성공 - ViewID: {itemPV.ViewID}");
+                                Debug.Log($"Shop: 네트워크 아이템 파괴 성공 - ViewID: {itemPV.ViewID}");
                             }
                         }
                         else
                         {
-                            //Debug.LogWarning($"Shop: PhotonView 불일치, 로컬에서만 제거 - {itemToDestroy.name}");
+                            Debug.LogWarning($"Shop: PhotonView 불일치, 로컬에서만 제거 - {itemToDestroy.name}");
                             Destroy(itemToDestroy);
                         }
                     }
                     else
                     {
-                        //Debug.LogWarning($"Shop: 유효하지 않은 ViewID, 로컬에서만 제거 - {itemToDestroy.name}");
+                        Debug.LogWarning($"Shop: 유효하지 않은 ViewID, 로컬에서만 제거 - {itemToDestroy.name}");
                         Destroy(itemToDestroy);
                     }
                 }
                 catch (System.Exception e)
                 {
-                    //Debug.LogWarning($"Shop: 네트워크 아이템 파괴 실패 - {e.Message}, 로컬에서 제거");
+                    Debug.LogWarning($"Shop: 네트워크 아이템 파괴 실패 - {e.Message}, 로컬에서 제거");
                     if (itemToDestroy != null && !itemToDestroy.Equals(null))
                     {
                         Destroy(itemToDestroy);
@@ -789,31 +802,31 @@ public class Shop : MonoBehaviourPun
                 //Debug.Log($"Shop: 로컬 아이템 파괴 완료 - {itemToDestroy.name}");
             }
         }
-        
+
         // 배열에서 제거
         currentItems[positionIndex] = null;
-        
+
         // 잠시 대기 후 새 아이템 생성 스케줄링
         yield return new WaitForSeconds(0.1f);
-        
+
         // 타이머 초기화 및 새 아이템 생성 스케줄링
         isRenewTimerActive[positionIndex] = false;
         itemRenewTimes[positionIndex] = 0f;
-        
+
         // 구매 시점의 남은 갱신 시간 사용 (매개변수로 전달받은 값)
         float renewDelay = remainingRenewTime > 0f ? remainingRenewTime : GetDefaultRenewTime();
-        
+
         itemRenewTimes[positionIndex] = renewDelay;
         isRenewTimerActive[positionIndex] = true;
-        
+
         //Debug.Log($"Shop: 위치 {positionIndex} 갱신 타이머 시작 - 구매 시점 남은시간 {renewDelay:F1}초 사용");
-        
+
         // 타이머 동기화 RPC 전송
         if (photonView != null)
         {
             photonView.RPC("SyncRenewTimer", RpcTarget.All, positionIndex, renewDelay, true);
         }
-        
+
         // 연결된 모든 ShopController에게 갱신 알림
         if (positionIndex < shopStands.Length && shopStands[positionIndex] != null)
         {
@@ -827,7 +840,7 @@ public class Shop : MonoBehaviourPun
             }
         }
     }
-    
+
     /// <summary>
     /// 기본 아이템 갱신 시간 반환
     /// </summary>
@@ -848,10 +861,10 @@ public class Shop : MonoBehaviourPun
         {
             //Debug.LogWarning($"Shop: DataBase에서 갱신 시간을 가져올 수 없음 - {e.Message}");
         }
-        
+
         // 기본값: 10초
         return 10f;
     }
-    
+
     #endregion
 }

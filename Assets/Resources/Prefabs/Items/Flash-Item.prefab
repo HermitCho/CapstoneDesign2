@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 6983521555461215589}
   - component: {fileID: -1506189242794600060}
   m_Layer: 0
-  m_Name: Dash-Item
+  m_Name: Flash-Item
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -55,14 +55,13 @@ MonoBehaviour:
   castTime: 0
   destroyTime: 20
   isFollowing: 1
-  isCastingFollowing: 1
+  isCastingFollowing: 0
   index: 0
   skillIcon: {fileID: 21300000, guid: a033cea4a39ce430ea12f95b9b9edb9e, type: 3}
   skillColor: {r: 1, g: 1, b: 1, a: 1}
   skillEffect: {fileID: 34545940018427765, guid: 8ff992d01a5c0c44bae6fe6d48faed12,
     type: 3}
-  castTimeSkillEffect: {fileID: 4968802224325170221, guid: b80f55dff0c3d0e419d400db91c9e7a6,
-    type: 3}
+  castTimeSkillEffect: {fileID: 0}
   skillSound: {fileID: 8300000, guid: ddaff993cd19b9045aa2d507ebd7fbe6, type: 3}
   castTimeSkillSound: {fileID: 8300000, guid: 68858e8b2de8ca9408dd5ca934425766, type: 3}
   price: 1
