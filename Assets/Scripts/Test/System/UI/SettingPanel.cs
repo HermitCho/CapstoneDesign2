@@ -5,7 +5,7 @@ using Michsky.UI.Heat;
 using UnityEngine.UI;
 using TMPro;
 using UnityEngine.InputSystem;
-
+using DG.Tweening;
 /// <summary>
 /// 환경설정 패널 - 감도, 볼륨, 키 바인딩 설정
 /// HeatUI, PlayerPrefs, Input System을 활용한 실무 수준 구현
@@ -39,6 +39,9 @@ public class SettingPanel : MonoBehaviour
     [SerializeField] private ButtonManager dropCrownButton;
     [Space(10)]
 
+    [Header("키 바인딩 텍스트")]
+    [SerializeField] private TextMeshProUGUI keyBindingText;
+
     #endregion
     
     #region 내부 변수
@@ -53,6 +56,9 @@ public class SettingPanel : MonoBehaviour
     
     // 사용 중인 키 추적 (중복 방지)
     private Dictionary<string, string> usedKeys = new Dictionary<string, string>(); // Key -> ActionName
+    
+    // UI 애니메이션 관련
+    private DG.Tweening.Tween keyBindingTextBlinkTween;
     
     // 볼륨 관련 (마스터 볼륨 비율 적용용)
     private float currentMasterVolume = 1f;
@@ -80,6 +86,12 @@ public class SettingPanel : MonoBehaviour
     {
         // 키 바인딩 버튼 매핑 초기화
         InitializeKeyBindingMap();
+        
+        // 키 바인딩 텍스트 초기화 (비활성화)
+        if (keyBindingText != null)
+        {
+            keyBindingText.gameObject.SetActive(false);
+        }
     }
     
     void OnEnable()
@@ -104,6 +116,9 @@ public class SettingPanel : MonoBehaviour
         {
             CancelKeyBinding();
         }
+        
+        // 애니메이션 정리
+        CleanupKeyBindingAnimation();
     }
     
     void Update()
@@ -670,7 +685,13 @@ public class SettingPanel : MonoBehaviour
         // 버튼 텍스트를 <None>으로 변경
         button.SetText("<None>");
         
-        Debug.Log($"SettingPanel: 키 바인딩 대기 시작 - {actionName}");
+        // 모든 게임 입력 차단
+        DisableGameInput();
+        
+        // UI 피드백 표시
+        ShowKeyBindingUI(actionName);
+        
+        Debug.Log($"SettingPanel: 키 바인딩 대기 시작 - {actionName} (게임 입력 차단됨)");
     }
     
     /// <summary>
@@ -741,6 +762,10 @@ public class SettingPanel : MonoBehaviour
         
         Debug.Log($"SettingPanel: 키 바인딩 완료 - {actionName}: {keyName}");
         
+        // UI 숨기기 및 게임 입력 복원
+        HideKeyBindingUI();
+        EnableGameInput();
+        
         // 대기 상태 해제
         isWaitingForKeyInput = false;
         currentBindingAction = "";
@@ -764,11 +789,15 @@ public class SettingPanel : MonoBehaviour
             currentBindingButton.SetText(savedKey);
         }
         
+        // UI 숨기기 및 게임 입력 복원
+        HideKeyBindingUI();
+        EnableGameInput();
+        
         isWaitingForKeyInput = false;
         currentBindingAction = "";
         currentBindingButton = null;
         
-        Debug.Log("SettingPanel: 키 바인딩 취소");
+        Debug.Log("SettingPanel: 키 바인딩 취소 (게임 입력 복원됨)");
     }
     
     /// <summary>
@@ -888,6 +917,190 @@ public class SettingPanel : MonoBehaviour
             default:
                 // 일반 키 (소문자로 변환)
                 return $"<Keyboard>/{keyName.ToLower()}";
+        }
+    }
+    
+    #endregion
+    
+    #region 게임 입력 차단/복원
+    
+    // HotkeyEvent 캐시 (비활성화/활성화 추적용)
+    private List<Michsky.UI.Heat.HotkeyEvent> cachedHotkeyEvents = new List<Michsky.UI.Heat.HotkeyEvent>();
+    
+    /// <summary>
+    /// 모든 게임 입력 차단 (키 바인딩 중)
+    /// </summary>
+    private void DisableGameInput()
+    {
+        // 1. InputManager 비활성화 (게임 조작 차단)
+        GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
+        
+        foreach (GameObject player in players)
+        {
+            Photon.Pun.PhotonView pv = player.GetComponent<Photon.Pun.PhotonView>();
+            if (pv != null && pv.IsMine)
+            {
+                InputManager inputManager = player.GetComponent<InputManager>();
+                if (inputManager != null)
+                {
+                    inputManager.DisableInput();
+                    Debug.Log("SettingPanel: 게임 입력 차단 완료");
+                }
+            }
+        }
+        
+        // 2. 모든 HotkeyEvent 비활성화 (HeatUI 단축키 차단)
+        DisableAllHotkeyEvents();
+    }
+    
+    /// <summary>
+    /// 게임 입력 복원
+    /// </summary>
+    private void EnableGameInput()
+    {
+        // 1. InputManager 활성화 (게임 조작 복원)
+        GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
+        
+        foreach (GameObject player in players)
+        {
+            Photon.Pun.PhotonView pv = player.GetComponent<Photon.Pun.PhotonView>();
+            if (pv != null && pv.IsMine)
+            {
+                InputManager inputManager = player.GetComponent<InputManager>();
+                if (inputManager != null)
+                {
+                    inputManager.EnableInput();
+                    Debug.Log("SettingPanel: 게임 입력 복원 완료");
+                }
+            }
+        }
+        
+        // 2. HotkeyEvent 복원
+        EnableAllHotkeyEvents();
+    }
+    
+    /// <summary>
+    /// 모든 HotkeyEvent 비활성화 (HeatUI 단축키 차단)
+    /// </summary>
+    private void DisableAllHotkeyEvents()
+    {
+        cachedHotkeyEvents.Clear();
+        
+        // 씬의 모든 HotkeyEvent 찾기
+        Michsky.UI.Heat.HotkeyEvent[] allHotkeys = GameObject.FindObjectsOfType<Michsky.UI.Heat.HotkeyEvent>(true);
+        
+        foreach (var hotkey in allHotkeys)
+        {
+            // 현재 활성화된 HotkeyEvent만 비활성화
+            if (hotkey.enabled)
+            {
+                cachedHotkeyEvents.Add(hotkey);
+                hotkey.enabled = false;
+            }
+        }
+        
+        Debug.Log($"SettingPanel: HeatUI 단축키 차단 완료 ({cachedHotkeyEvents.Count}개)");
+    }
+    
+    /// <summary>
+    /// 비활성화했던 HotkeyEvent 복원
+    /// </summary>
+    private void EnableAllHotkeyEvents()
+    {
+        foreach (var hotkey in cachedHotkeyEvents)
+        {
+            if (hotkey != null)
+            {
+                hotkey.enabled = true;
+            }
+        }
+        
+        Debug.Log($"SettingPanel: HeatUI 단축키 복원 완료 ({cachedHotkeyEvents.Count}개)");
+        cachedHotkeyEvents.Clear();
+    }
+    
+    #endregion
+    
+    #region UI 피드백
+    
+    /// <summary>
+    /// 키 바인딩 UI 표시 (깜박임 애니메이션)
+    /// </summary>
+    private void ShowKeyBindingUI(string actionName)
+    {
+        if (keyBindingText == null) return;
+        
+        // 텍스트 설정
+        string actionDisplayName = GetActionDisplayName(actionName);
+        keyBindingText.text = $"<b>{actionDisplayName}</b> 키를 입력하세요...\n(ESC로 취소)";
+        
+        // 활성화
+        keyBindingText.gameObject.SetActive(true);
+        
+        // 초기 투명도 설정
+        Color textColor = keyBindingText.color;
+        textColor.a = 1f;
+        keyBindingText.color = textColor;
+        
+        // 깜박임 애니메이션 시작
+        keyBindingTextBlinkTween = keyBindingText.DOFade(0.3f, 0.5f)
+            .SetEase(DG.Tweening.Ease.InOutSine)
+            .SetLoops(-1, DG.Tweening.LoopType.Yoyo);
+        
+        Debug.Log($"SettingPanel: UI 피드백 표시 - {actionDisplayName}");
+    }
+    
+    /// <summary>
+    /// 키 바인딩 UI 숨기기
+    /// </summary>
+    private void HideKeyBindingUI()
+    {
+        if (keyBindingText == null) return;
+        
+        // 애니메이션 중지
+        CleanupKeyBindingAnimation();
+        
+        // 비활성화
+        keyBindingText.gameObject.SetActive(false);
+        
+        Debug.Log("SettingPanel: UI 피드백 숨김");
+    }
+    
+    /// <summary>
+    /// 키 바인딩 애니메이션 정리
+    /// </summary>
+    private void CleanupKeyBindingAnimation()
+    {
+        keyBindingTextBlinkTween?.Kill();
+        keyBindingTextBlinkTween = null;
+        
+        // 투명도 복원
+        if (keyBindingText != null)
+        {
+            Color textColor = keyBindingText.color;
+            textColor.a = 1f;
+            keyBindingText.color = textColor;
+        }
+    }
+    
+    /// <summary>
+    /// 액션 이름을 표시용 이름으로 변환
+    /// </summary>
+    private string GetActionDisplayName(string actionName)
+    {
+        switch (actionName)
+        {
+            case "Up": return "앞으로 이동";
+            case "Down": return "뒤로 이동";
+            case "Left": return "왼쪽 이동";
+            case "Right": return "오른쪽 이동";
+            case "Jump": return "점프";
+            case "Reload": return "재장전";
+            case "Skill": return "스킬";
+            case "Item": return "아이템 사용";
+            case "ChangeItem": return "아이템 변경";
+            case "Detach": return "왕관 떨어뜨리기";
+            default: return actionName;
         }
     }
     

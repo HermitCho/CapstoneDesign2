@@ -409,4 +409,30 @@ public class InputManager : MonoBehaviourPun
     }
     
     #endregion
+    
+    #region 입력 차단/복원 (키 바인딩 중 사용)
+    
+    /// <summary>
+    /// 모든 입력 차단 (키 바인딩 중)
+    /// </summary>
+    public void DisableInput()
+    {
+        if (playerAction == null) return;
+        
+        playerAction.Disable();
+        Debug.Log("InputManager: 모든 입력 차단됨 (키 바인딩 모드)");
+    }
+    
+    /// <summary>
+    /// 입력 복원
+    /// </summary>
+    public void EnableInput()
+    {
+        if (playerAction == null) return;
+        
+        playerAction.Enable();
+        Debug.Log("InputManager: 입력 복원됨 (키 바인딩 완료)");
+    }
+    
+    #endregion
 } 
