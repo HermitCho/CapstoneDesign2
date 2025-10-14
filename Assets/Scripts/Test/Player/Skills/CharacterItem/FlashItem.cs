@@ -88,6 +88,7 @@ public class FlashItem : Skill
         Vector3 finalVelocity = rb.velocity;
         rb.velocity = new Vector3(0f, finalVelocity.y, 0f);
         Debug.Log("⚠️ Dash - 최대 시간 초과, 강제 정지");
+        executor.EndSkillInProgress();
     }
 
     public override void CastExecute(SkillController executor, Vector3 pos, Vector3 dir)

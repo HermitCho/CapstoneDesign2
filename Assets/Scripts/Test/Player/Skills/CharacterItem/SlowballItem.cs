@@ -51,6 +51,7 @@ public class SlowballItem : Skill
                 slowballScript.GetSlowballSpeed()
             );
         }
+        executor.EndSkillInProgress();
     }
 
     public override void StartPreview(SkillController owner)

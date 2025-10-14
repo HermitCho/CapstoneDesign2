@@ -19,9 +19,8 @@ public class StrengthItem : Skill
     [Header("강화 이펙트 프리팹")]
     [SerializeField] private GameObject effectPrefab;
     GameObject effectInstantiate;
-
-
     PhotonView excuterPV;
+    SkillController skillController1;
 
     // 아이템을 사용한 플레이어의 ViewID를 저장합니다.
     // 이는 RPC를 받기 전에 아이템이 이미 네트워크상에 존재하므로, 
@@ -48,7 +47,7 @@ public class StrengthItem : Skill
         var living = executor.GetComponent<LivingEntity>();
         var mover = executor.GetComponent<MoveController>();
         if (living == null || mover == null) return;
-
+        SetExcuter(executor);
         // ✅ RPC를 한 번만 호출하여, 이펙트 오브젝트를 생성하고 모든 제어권을 넘깁니다.
         photonView.RPC("EffectStart", RpcTarget.All, executor.photonView.ViewID, buffMultiplier, duration, executor.transform.position);
         PlayFollowEffectAtRemote(executor);
@@ -80,6 +79,7 @@ public class StrengthItem : Skill
         // 4. 아이템 자신을 즉시 파괴
         if (photonView.IsMine)
         {
+            skillController1.EndSkillInProgress();
             DestroySelfAfterUseAsync().Forget();
         }
     }
@@ -92,5 +92,10 @@ public class StrengthItem : Skill
         {
             PhotonNetwork.Destroy(gameObject);
         }
+    }
+
+    private void SetExcuter(SkillController skillController)
+    {
+        skillController1 = skillController;
     }
 }

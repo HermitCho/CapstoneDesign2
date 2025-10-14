@@ -104,6 +104,7 @@ public class ItemController : MonoBehaviourPun
             itemObject.transform.SetAsFirstSibling(); // 아이템 순서 설정
 
             // 로컬 상태 업데이트 (모든 클라이언트에서 동일하게 계산)
+            Debug.Log("[ItemController - RPC_AttachNetworkItem] 로컬 구매 ++");
             currentItemSlotIndex++;
 
             // 활성화 상태 업데이트 (로컬에서만 시각적 표시 제어)

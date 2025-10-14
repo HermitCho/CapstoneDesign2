@@ -40,6 +40,8 @@ public class SightTrapItem : Skill
                 trapLifetime
             );
         }
+        PlayFollowCastEffectAtRemote(executor);
+        executor.EndSkillInProgress();
     }
 
     public override GameObject GetPlacementPrefab() { return trapPrefab; }

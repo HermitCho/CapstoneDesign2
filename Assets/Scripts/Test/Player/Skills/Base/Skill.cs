@@ -96,6 +96,8 @@ public abstract class Skill : MonoBehaviourPun
 
     protected virtual void Awake()
     {
+        Debug.Log($"[FlashItem] 생성됨 - {PhotonNetwork.LocalPlayer.NickName}, ViewID: {photonView.ViewID}");
+
         // 컴포넌트 캐싱 — 성능 개선
         if (TryGetComponent(out ProjectilePreviewComponent ppc))
         {

@@ -421,6 +421,8 @@ public class SkillController : MonoBehaviourPun
     {
         ItemController itemController = FindCurrentPlayerItemController();
         // 남은 횟수 0이면 아이템 제거 처리(원래 코드 재현)
+        if(activeItem == null) return;
+        
         if (activeItem.RemainingUses <= 0)
         {
             if (itemController != null && endSkillInProgress)

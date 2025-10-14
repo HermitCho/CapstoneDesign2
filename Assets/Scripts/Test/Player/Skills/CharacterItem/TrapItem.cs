@@ -40,6 +40,7 @@ public class TrapItem : Skill
                 trapLifetime
             );
         }
+        executor.EndSkillInProgress();
     }
 
     public override GameObject GetPlacementPrefab() { return trapPrefab; }

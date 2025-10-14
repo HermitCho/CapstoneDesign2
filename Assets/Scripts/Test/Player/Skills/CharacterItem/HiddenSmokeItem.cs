@@ -55,5 +55,6 @@ public class HiddenSmokeItem : Skill
 
         // 효과음 / 추가 이펙트 재생
         PlayEffectAtRemote(executor, pos, dir);
+        executor.EndSkillInProgress();
     }
 }

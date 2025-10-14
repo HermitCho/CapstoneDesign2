@@ -46,6 +46,7 @@ public class FireballItem : Skill
                 fireballScript.GetFireballSpeed()
             );
             SetSpeed(fireballScript.GetFireballSpeed());
+            executor.EndSkillInProgress();
         }
     }
 

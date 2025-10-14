@@ -550,6 +550,7 @@ public class Shop : MonoBehaviourPun
     void RequestPurchaseItem(int itemViewID, int buyerViewID)
     {
         if (!PhotonNetwork.IsMasterClient) return;
+        Debug.Log($"[Shop - RequestPurchaseItem] 구매해줄 아이템 : {itemViewID}, 구매해줄 이용자 : {buyerViewID}");
 
         PhotonView itemPV = PhotonView.Find(itemViewID);
         PhotonView buyerPV = PhotonView.Find(buyerViewID);
