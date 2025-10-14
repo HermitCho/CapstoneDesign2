@@ -692,4 +692,15 @@ public class FindMatching : MonoBehaviourPunCallbacks
     }
 
     #endregion
+
+#region 버튼 클릭 이벤트
+
+    public void OnClickTutorialButton()
+    {
+        LoadingController.LoadWithLoadingScene("Tutorial", true);
+    }
+
+#endregion
+
+
 }
