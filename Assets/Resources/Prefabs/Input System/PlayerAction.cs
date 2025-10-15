@@ -134,6 +134,15 @@ public partial class @PlayerAction: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""HandleGun"",
+                    ""type"": ""Button"",
+                    ""id"": ""5e6a7caf-7cd2-4c14-a3b0-50b2535701e5"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -323,6 +332,17 @@ public partial class @PlayerAction: IInputActionCollection2, IDisposable
                     ""action"": ""Detach"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""b2d0d6ce-dcb5-420a-a668-16b327a2be6c"",
+                    ""path"": ""<Keyboard>/1"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""HandleGun"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         },
@@ -416,6 +436,7 @@ public partial class @PlayerAction: IInputActionCollection2, IDisposable
         m_Player_Reload = m_Player.FindAction("Reload", throwIfNotFound: true);
         m_Player_ChangeItem = m_Player.FindAction("ChangeItem", throwIfNotFound: true);
         m_Player_Detach = m_Player.FindAction("Detach", throwIfNotFound: true);
+        m_Player_HandleGun = m_Player.FindAction("HandleGun", throwIfNotFound: true);
         // UI
         m_UI = asset.FindActionMap("UI", throwIfNotFound: true);
         m_UI_ItemUI = m_UI.FindAction("ItemUI", throwIfNotFound: true);
@@ -502,6 +523,7 @@ public partial class @PlayerAction: IInputActionCollection2, IDisposable
     private readonly InputAction m_Player_Reload;
     private readonly InputAction m_Player_ChangeItem;
     private readonly InputAction m_Player_Detach;
+    private readonly InputAction m_Player_HandleGun;
     public struct PlayerActions
     {
         private @PlayerAction m_Wrapper;
@@ -518,6 +540,7 @@ public partial class @PlayerAction: IInputActionCollection2, IDisposable
         public InputAction @Reload => m_Wrapper.m_Player_Reload;
         public InputAction @ChangeItem => m_Wrapper.m_Player_ChangeItem;
         public InputAction @Detach => m_Wrapper.m_Player_Detach;
+        public InputAction @HandleGun => m_Wrapper.m_Player_HandleGun;
         public InputActionMap Get() { return m_Wrapper.m_Player; }
         public void Enable() { Get().Enable(); }
         public void Disable() { Get().Disable(); }
@@ -563,6 +586,9 @@ public partial class @PlayerAction: IInputActionCollection2, IDisposable
             @Detach.started += instance.OnDetach;
             @Detach.performed += instance.OnDetach;
             @Detach.canceled += instance.OnDetach;
+            @HandleGun.started += instance.OnHandleGun;
+            @HandleGun.performed += instance.OnHandleGun;
+            @HandleGun.canceled += instance.OnHandleGun;
         }
 
         private void UnregisterCallbacks(IPlayerActions instance)
@@ -603,6 +629,9 @@ public partial class @PlayerAction: IInputActionCollection2, IDisposable
             @Detach.started -= instance.OnDetach;
             @Detach.performed -= instance.OnDetach;
             @Detach.canceled -= instance.OnDetach;
+            @HandleGun.started -= instance.OnHandleGun;
+            @HandleGun.performed -= instance.OnHandleGun;
+            @HandleGun.canceled -= instance.OnHandleGun;
         }
 
         public void RemoveCallbacks(IPlayerActions instance)
@@ -735,6 +764,7 @@ public partial class @PlayerAction: IInputActionCollection2, IDisposable
         void OnReload(InputAction.CallbackContext context);
         void OnChangeItem(InputAction.CallbackContext context);
         void OnDetach(InputAction.CallbackContext context);
+        void OnHandleGun(InputAction.CallbackContext context);
     }
     public interface IUIActions
     {

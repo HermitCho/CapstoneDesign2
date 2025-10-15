@@ -189,7 +189,11 @@ public class SkillController : MonoBehaviourPun
     {
         if (skill == null) return;
         if (!CanUseSkill()) return;
-
+        if (!skill.CanUse)
+        {
+            Debug.LogWarning($"⚠️ {activeItem.SkillName} 은(는) 쿨타임 중이거나 사용 횟수가 부족합니다!");
+            return;
+        }
         // 만약 다른 스킬의 프리뷰가 이미 활성 상태라면: 다른 스킬이면 이전 프리뷰 취소 후 새 프리뷰 시작
         if (skill.HasPreview)
         {
@@ -277,16 +281,27 @@ public class SkillController : MonoBehaviourPun
     {
         if (activeItem == null) return;
         if (!CanUseItem()) return;
+        if (!activeItem.CanUse)
+        {
+            Debug.LogWarning($"⚠️ {activeItem.SkillName} 은(는) 쿨타임 중이거나 사용 횟수가 부족합니다!");
+            return;
+        }
 
         if (activeItem.HasPreview)
         {
-            if (isPreviewActive && currentPreviewSkill != activeItem)
+            if (isPreviewActive)
             {
+                Debug.Log($"[SkillController - UseItem] {isPreviewActive}");
+                Debug.Log($"[SkillController - UseItem] {currentPreviewSkill}");
+                Debug.Log($"[SkillController - UseItem] {activeItem}");
                 DeliverEndPreview();
                 DeliverStartPreview(activeItem);
             }
             else
             {
+                Debug.Log($"[SkillController - UseItem] {isPreviewActive}");
+                Debug.Log($"[SkillController - UseItem] {currentPreviewSkill}");
+                Debug.Log($"[SkillController - UseItem] {activeItem}");
                 TestShoot.SetIsShooting(false);
                 DeliverStartPreview(activeItem);
             }
@@ -394,7 +409,6 @@ public class SkillController : MonoBehaviourPun
 
         if (itemController != null)
         {
-            Debug.Log($"✅ MoveController - ItemController 찾음: {itemController.name}");
             return itemController;
         }
 
@@ -421,8 +435,8 @@ public class SkillController : MonoBehaviourPun
     {
         ItemController itemController = FindCurrentPlayerItemController();
         // 남은 횟수 0이면 아이템 제거 처리(원래 코드 재현)
-        if(activeItem == null) return;
-        
+        if (activeItem == null) return;
+
         if (activeItem.RemainingUses <= 0)
         {
             if (itemController != null && endSkillInProgress)

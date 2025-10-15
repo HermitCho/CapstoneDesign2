@@ -7,6 +7,8 @@ public class TestShoot : MonoBehaviourPun
 {
     [SerializeField] private TestGun gun;
     private static bool isShooting = true;
+    SkillController skillController;
+
     //수정 사항 - 제거 예정
     void Awake()
     {
@@ -18,8 +20,9 @@ public class TestShoot : MonoBehaviourPun
                 gun = GetComponentInChildren<TestGun>();
             }
         }
-
         SetIsShooting(true);
+
+        skillController = GetComponent<SkillController>();
     }
 
     void OnEnable()
@@ -28,6 +31,7 @@ public class TestShoot : MonoBehaviourPun
         InputManager.OnShootPressed += OnShootInput;
         InputManager.OnShootCanceledPressed += OnShootCanceledInput;
         InputManager.OnReloadPressed += OnReloadInput;
+        InputManager.OnHandleGunPressed += OnHandleGunInput;
     }
 
     void OnDisable()
@@ -36,6 +40,7 @@ public class TestShoot : MonoBehaviourPun
         InputManager.OnShootPressed -= OnShootInput;
         InputManager.OnShootCanceledPressed -= OnShootCanceledInput;
         InputManager.OnReloadPressed -= OnReloadInput;
+        InputManager.OnHandleGunPressed += OnHandleGunInput;
     }
 
     private void Update()
@@ -68,6 +73,17 @@ public class TestShoot : MonoBehaviourPun
         if (!photonView.IsMine) return;
         if (gun != null)
             gun.Reload();
+    }
+
+    void OnHandleGunInput()
+    {
+        if (!photonView.IsMine) return;
+        if (gun != null)
+        {
+            SetIsShooting(true);
+            skillController.CancelPreview();
+        }
+
     }
 
     // TestGun에서 접근할 수 있도록 퍼블릭 메서드 추가

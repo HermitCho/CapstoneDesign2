@@ -33,6 +33,7 @@ public class SettingPanel : MonoBehaviour
     [SerializeField] private ButtonManager rightKeyButton;
     [SerializeField] private ButtonManager jumpKeyButton;
     [SerializeField] private ButtonManager reloadKeyButton;
+    [SerializeField] private ButtonManager gunKeyButton;
     [SerializeField] private ButtonManager skillKeyButton;
     [SerializeField] private ButtonManager itemKeyButton;
     [SerializeField] private ButtonManager itemChangeKeyButton;
@@ -152,6 +153,7 @@ public class SettingPanel : MonoBehaviour
         if (rightKeyButton != null) keyBindingButtons["Right"] = rightKeyButton;
         if (jumpKeyButton != null) keyBindingButtons["Jump"] = jumpKeyButton;
         if (reloadKeyButton != null) keyBindingButtons["Reload"] = reloadKeyButton;
+        if (gunKeyButton != null) keyBindingButtons["Gun"] = gunKeyButton;
         if (skillKeyButton != null) keyBindingButtons["Skill"] = skillKeyButton;
         if (itemKeyButton != null) keyBindingButtons["Item"] = itemKeyButton;
         if (itemChangeKeyButton != null) keyBindingButtons["ChangeItem"] = itemChangeKeyButton;
@@ -863,6 +865,7 @@ public class SettingPanel : MonoBehaviour
             case "Right": return "D";
             case "Jump": return "Space";
             case "Reload": return "R";
+            case "Gun": return "ALPHA 1";
             case "Skill": return "Q";
             case "Item": return "E";
             case "ChangeItem": return "Tab";

@@ -129,7 +129,7 @@ public abstract class Skill : MonoBehaviourPun
     /// <summary>
     /// 현재 스킬 사용 가능한지 확인 (쿨타임 + 사용 횟수)
     /// </summary>
-    public virtual bool CanUse
+    public bool CanUse
     {
         get
         {
