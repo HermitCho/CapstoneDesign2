@@ -368,6 +368,7 @@ public class InputManager : MonoBehaviourPun
         LoadActionBinding("Item", playerAction.Player.Item);
         LoadActionBinding("ChangeItem", playerAction.Player.ChangeItem);
         LoadActionBinding("Detach", playerAction.Player.Detach);
+        LoadActionBinding("HandleGun", playerAction.Player.HandleGun);
 
         Debug.Log("InputManager: 저장된 키 바인딩 오버라이드 로드 완료");
     }
@@ -418,6 +419,17 @@ public class InputManager : MonoBehaviourPun
             case "Escape": return "<Keyboard>/escape";
             case "Backspace": return "<Keyboard>/backspace";
             case "Tab": return "<Keyboard>/tab";
+            // 숫자 키 (0-9)
+            case "0": return "<Keyboard>/0";
+            case "1": return "<Keyboard>/1";
+            case "2": return "<Keyboard>/2";
+            case "3": return "<Keyboard>/3";
+            case "4": return "<Keyboard>/4";
+            case "5": return "<Keyboard>/5";
+            case "6": return "<Keyboard>/6";
+            case "7": return "<Keyboard>/7";
+            case "8": return "<Keyboard>/8";
+            case "9": return "<Keyboard>/9";
             default:
                 return $"<Keyboard>/{keyName.ToLower()}";
         }
