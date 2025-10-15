@@ -1425,27 +1425,48 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     /// </summary>
     private string GetPlayerNickname(Photon.Realtime.Player player)
     {
-        // PhotonPlayer의 커스텀 프로퍼티에서 닉네임 가져오기
-        if (player.CustomProperties.TryGetValue("nickname", out object nicknameObj))
+        if (player == null) return "Unknown";
+        
+        // 1. PhotonPlayer의 커스텀 프로퍼티에서 닉네임 가져오기 (최우선)
+        if (player.CustomProperties != null && player.CustomProperties.TryGetValue("nickname", out object nicknameObj))
         {
-            return nicknameObj.ToString();
+            string nickname = nicknameObj?.ToString();
+            if (!string.IsNullOrEmpty(nickname))
+            {
+                return nickname;
+            }
         }
         
-        // 커스텀 프로퍼티가 없으면 로컬 플레이어의 경우 PlayerPrefs에서 가져오기
+        // 2. Photon NickName 속성 확인
+        if (!string.IsNullOrEmpty(player.NickName))
+        {
+            return player.NickName;
+        }
+        
+        // 3. 로컬 플레이어인 경우 PlayerPrefs/CurrentUser에서 가져오기
         if (player.IsLocal)
         {
-            string localNickname = PlayerPrefs.GetString("NickName", "Player");
+            string localNickname = "";
+            
+            // CurrentUser 확인
+            if (CurrentUser.Instance != null && CurrentUser.Instance.IsLoggedIn())
+            {
+                localNickname = CurrentUser.Instance.GetNickname();
+            }
+            
+            // PlayerPrefs 확인
+            if (string.IsNullOrEmpty(localNickname))
+            {
+                localNickname = PlayerPrefs.GetString("NickName", "");
+            }
+            
             if (!string.IsNullOrEmpty(localNickname))
             {
-                // 로컬 닉네임을 커스텀 프로퍼티에 설정
-                var props = new ExitGames.Client.Photon.Hashtable();
-                props["nickname"] = localNickname;
-                player.SetCustomProperties(props);
                 return localNickname;
             }
         }
         
-        // 기본값으로 Player + ActorNumber 사용
+        // 4. 기본값으로 Player + ActorNumber 사용
         return $"Player{player.ActorNumber}";
     }
     

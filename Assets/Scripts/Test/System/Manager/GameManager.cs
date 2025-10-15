@@ -340,11 +340,8 @@ public class GameManager : Singleton<GameManager>
     /// </summary>
     void ResetGameState()
     {
-        Debug.Log("🔄 GameManager: 게임 상태 초기화 시작");
-        
         // 1. DataBase 정보 먼저 캐싱 (PlayTime 확보)
         CacheDataBaseInfo();
-        Debug.Log($"📋 GameManager: DataBase 재캐싱 완료 - cachedPlayTime: {cachedPlayTime}");
         
         // 2. 게임 시간 완전 초기화
         gameStartTime = Time.time;
@@ -660,8 +657,6 @@ public class GameManager : Singleton<GameManager>
         props["gameStartTime"] = PhotonNetwork.Time;
         props["playTime"] = cachedPlayTime;
         PhotonNetwork.CurrentRoom.SetCustomProperties(props);
-        
-        Debug.Log($"🕐 GameManager: 마스터가 게임 시간 설정 - PlayTime: {cachedPlayTime}초");
     }
     
     /// <summary>
@@ -783,6 +778,9 @@ public class GameManager : Singleton<GameManager>
         // 플레이어 조작 비활성화
         DisablePlayerControls();
         
+        // EventSystem 중복 제거
+        EnsureSingleEventSystem();
+        
         
         // UI 표시
         ShowGameOverUI(finalScore);
@@ -800,8 +798,6 @@ public class GameManager : Singleton<GameManager>
     {
         try
         {
-            Debug.Log("🚫 GameManager: 모든 플레이어 컨트롤 비활성화 시작");
-            
             // 모든 플레이어 찾기
             GameObject[] allPlayerObjects = GameObject.FindGameObjectsWithTag("Player");
             
@@ -810,6 +806,13 @@ public class GameManager : Singleton<GameManager>
                 PhotonView pv = playerObj.GetComponent<PhotonView>();
                 if(pv != null)
                 {
+                    // 애니메이션 정지 (모든 플레이어)
+                    TestMoveAnimationController animController = playerObj.GetComponent<TestMoveAnimationController>();
+                    if (animController != null)
+                    {
+                        animController.StopAllAnimations();
+                    }
+                    
                     // MoveController 비활성화
                     MoveController moveController = playerObj.GetComponent<MoveController>();
                     SkillController skillController = playerObj.GetComponent<SkillController>();
@@ -817,7 +820,6 @@ public class GameManager : Singleton<GameManager>
                     {
                         moveController.DisableMoveControls();
                         skillController.DisableSkillControls();
-                        Debug.Log($"🚫 플레이어 {pv.Owner.ActorNumber} MoveController 비활성화");
                     }
                     
                     // CameraController 비활성화 (로컬 플레이어만)
@@ -828,7 +830,6 @@ public class GameManager : Singleton<GameManager>
                         {
                             cameraController.DisableCameraControl();
                             cameraController.enabled = false;
-                            Debug.Log($"🚫 로컬 플레이어 CameraController 비활성화");
                         }
                     }
                 }
@@ -841,12 +842,10 @@ public class GameManager : Singleton<GameManager>
             Cursor.visible = true;
             Cursor.lockState = CursorLockMode.None;
             
-            Debug.Log("✅ GameManager: 모든 플레이어 컨트롤 비활성화 완료");
-            
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"❌ GameManager: 플레이어 조작 비활성화 중 오류 - {e.Message}");
+            Debug.LogError($"GameManager: 플레이어 조작 비활성화 중 오류 - {e.Message}");
         }
     }
     
@@ -878,6 +877,26 @@ public class GameManager : Singleton<GameManager>
     /// 게임 오버 상태 확인
     /// </summary>
     public bool IsGameOver() => isGameOver;
+    
+    /// <summary>
+    /// EventSystem 중복 제거 (씬에 하나만 존재하도록)
+    /// </summary>
+    private void EnsureSingleEventSystem()
+    {
+        UnityEngine.EventSystems.EventSystem[] eventSystems = FindObjectsOfType<UnityEngine.EventSystems.EventSystem>();
+        
+        if (eventSystems.Length > 1)
+        {
+            // 첫 번째 EventSystem만 유지하고 나머지 제거
+            for (int i = 1; i < eventSystems.Length; i++)
+            {
+                if (eventSystems[i] != null)
+                {
+                    Destroy(eventSystems[i].gameObject);
+                }
+            }
+        }
+    }
 
     #endregion
 

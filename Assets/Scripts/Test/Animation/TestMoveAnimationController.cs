@@ -218,7 +218,6 @@ public class TestMoveAnimationController : MonoBehaviourPun, IPunObservable
     {
         if (GameManager.Instance.IsGameOver()) return;
 
-
         photonView.RPC("RpcPlayDeathAnimation", RpcTarget.All);
         moveController?.SetStunned(true);
     }
@@ -229,6 +228,36 @@ public class TestMoveAnimationController : MonoBehaviourPun, IPunObservable
 
         photonView.RPC("RpcPlayReviveAnimation", RpcTarget.All);
         moveController?.SetStunned(false);
+    }
+    
+    /// <summary>
+    /// 게임 종료 시 모든 애니메이션 정지
+    /// </summary>
+    public void StopAllAnimations()
+    {
+        if (animator == null) return;
+        
+        // 모든 애니메이션 파라미터 초기화
+        animator.SetFloat("MoveX", 0f);
+        animator.SetFloat("MoveY", 0f);
+        animator.SetBool("JumpUp", false);
+        animator.SetBool("JumpDown", false);
+        animator.SetBool("Reload", false);
+        
+        // Idle 상태로 전환
+        animator.Play("Idle", 0, 0f);
+        animator.Play("Idle", upperBodyLayerIndex, 0f);
+        
+        // 진행 중인 코루틴 정지
+        if (speedSkillCoroutine != null)
+        {
+            StopCoroutine(speedSkillCoroutine);
+            speedSkillCoroutine = null;
+        }
+        
+        isReloading = false;
+        isJumping = false;
+        isShooting = false;
     }
 
     // --- 입력 처리 ---
