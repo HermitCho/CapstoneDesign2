@@ -5,7 +5,6 @@ using UnityEngine;
 public class EnemyManager : MonoBehaviour
 {
     public static int killCount = 0; // 플레이어가 처치한 적의 수
-    public int killGoal = 5; // 목표 처치 수
 
     // 적이 죽을 때마다 호출되도록 이 함수를 Enemy 스크립트에서 실행
     public static void AddKill()
@@ -16,6 +15,11 @@ public class EnemyManager : MonoBehaviour
         if (killCount == 5)
         {
             TutorialMessageManager.Instance.ShowMessage(5); // 5번 메시지
+        }
+
+        if (killCount == 8)
+        {
+            TutorialMessageManager.Instance.ShowMessage(7); // 7번 메시지
         }
     }
 }
