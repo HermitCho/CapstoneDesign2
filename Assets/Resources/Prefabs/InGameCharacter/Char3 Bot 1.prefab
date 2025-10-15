@@ -7296,9 +7296,9 @@ GameObject:
   - component: {fileID: 1121742781788165745}
   - component: {fileID: 1300611077845821401}
   - component: {fileID: -930767038126667994}
-  - component: {fileID: 5071691809760099839}
   - component: {fileID: 2246843826142652448}
   - component: {fileID: 4121951267749238364}
+  - component: {fileID: 8660217551197712237}
   m_Layer: 0
   m_Name: Char3 Bot 1
   m_TagString: Player
@@ -8223,45 +8223,9 @@ MonoBehaviour:
   - {fileID: 683168479516735483}
   - {fileID: 5926342589526434390}
   - {fileID: -6172877936804130673}
-  - {fileID: 0}
   sceneViewId: 0
   InstantiationId: 0
   isRuntimeInstantiated: 0
---- !u!114 &5071691809760099839
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5025019268175795024}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 45c75c37a44ee4141a9e3388bd831c3f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  skillName: "\uB300\uC26C"
-  skillDescription: "\uC2A4\uD0AC \uC124\uBA85"
-  cooldown: 3
-  duration: 1
-  effectDuration: 1
-  effectCastingDuration: 3
-  castTime: 0
-  destroyTime: -1
-  isFollowing: 1
-  isCastingFollowing: 1
-  index: 3
-  skillIcon: {fileID: 21300000, guid: 8af8700e64b714e4da249bd0f983f178, type: 3}
-  skillColor: {r: 1, g: 1, b: 1, a: 1}
-  skillEffect: {fileID: 34545940018427765, guid: 8ff992d01a5c0c44bae6fe6d48faed12,
-    type: 3}
-  castTimeSkillEffect: {fileID: 0}
-  skillSound: {fileID: 8300000, guid: 68858e8b2de8ca9408dd5ca934425766, type: 3}
-  castTimeSkillSound: {fileID: 0}
-  price: 1
-  skillAnimationTriggerName: Speed
-  dashForce: 30
-  groundCheckDistance: 1.1
-  maxDashTime: 2
 --- !u!114 &2246843826142652448
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -8293,6 +8257,39 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cbd005cc3ac573d44907f40d79ff5182, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &8660217551197712237
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5025019268175795024}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 290ddb26d30258c49a80ffd8dca6379d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  skillName: "\uC801\uC678\uC120 \uD22C\uC2DC"
+  skillDescription: "\uC0AC\uC6A9 \uC2DC \uBAA8\uB4E0 \uC801 \uC704\uCE58 \uD30C\uC545"
+  cooldown: 30
+  duration: 7
+  effectDuration: 0
+  effectCastingDuration: 0
+  castTime: 0
+  destroyTime: -1
+  isFollowing: 1
+  isCastingFollowing: 0
+  index: 0
+  skillIcon: {fileID: 0}
+  skillColor: {r: 1, g: 1, b: 1, a: 1}
+  skillEffect: {fileID: 0}
+  castTimeSkillEffect: {fileID: 0}
+  skillSound: {fileID: 0}
+  castTimeSkillSound: {fileID: 0}
+  price: 0
+  skillAnimationTriggerName: None
+  outlineColor: {r: 1, g: 0, b: 0, a: 1}
+  outlineWidth: 6
 --- !u!1 &5040938060442839961
 GameObject:
   m_ObjectHideFlags: 0
