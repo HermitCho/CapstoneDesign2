@@ -6,6 +6,7 @@ using TMPro;
 using Febucci.UI;
 using Michsky.UI.Heat;
 using Photon.Pun;
+using DG.Tweening;
 
 public class GameOverPanel : MonoBehaviour
 {
@@ -39,21 +40,29 @@ public class GameOverPanel : MonoBehaviour
     [Tooltip("4등 이름 텍스트")]
     [SerializeField] private TextMeshProUGUI _4thNameText;
 
-
-
+    [Space(10)]
+    [Tooltip("Exit 이미지")]
+    [SerializeField] private Image _exitImage;
 
     [Header("게임 오버 컨트롤러")]
     [SerializeField] private GameOverController gameOverController;
+    
+    // EXIT 스티커 애니메이션 관련
+    private Tween exitStickerTween;
 
 
 #region Unity 생명주기
 
     void OnEnable()
     {
-        Debug.Log("GameOverPanel: 패널 활성화됨");
-        
         // 패널 활성화 후 데이터 요청
         StartCoroutine(RequestGameOverData());
+        
+        // EXIT 이미지 초기화 (비활성화)
+        if (_exitImage != null)
+        {
+            _exitImage.gameObject.SetActive(false);
+        }
     }
     
     /// <summary>
@@ -68,27 +77,16 @@ public class GameOverPanel : MonoBehaviour
         if(gameOverController == null)
         {
             gameOverController = FindObjectOfType<GameOverController>();
-            Debug.Log("GameOverPanel: GameOverController 자동 탐색");
         }
         
         if(gameOverController != null)
         {
-            Debug.Log("GameOverPanel: GameOverController에게 데이터 재요청");
             // GameOverController의 현재 랭킹 데이터 가져오기
             var rankings = gameOverController.GetPlayerRankings();
             if (rankings != null && rankings.Count > 0)
             {
-                Debug.Log($"GameOverPanel: 순위 데이터 {rankings.Count}개 수신");
                 SetPlayerRankings(rankings);
             }
-            else
-            {
-                Debug.LogWarning("GameOverPanel: 순위 데이터가 비어있습니다.");
-            }
-        }
-        else
-        {
-            Debug.LogError("GameOverPanel: GameOverController를 찾을 수 없습니다!");
         }
     }
     
@@ -98,6 +96,9 @@ public class GameOverPanel : MonoBehaviour
         {
             gameOverController.ResetWinnerPlayer();
         }
+        
+        // EXIT 스티커 애니메이션 정리
+        CleanupExitStickerAnimation();
     }
 
 #endregion
@@ -115,8 +116,6 @@ public class GameOverPanel : MonoBehaviour
     /// </summary>
     public void SetPlayerRankings(List<GameOverController.PlayerRankData> rankings)
     {
-        Debug.Log($"📋 GameOverPanel: 순위 정보 업데이트 시작 - {rankings.Count}명");
-
         // 승자 정보 설정
         if(rankings.Count > 0)
         {
@@ -124,22 +123,14 @@ public class GameOverPanel : MonoBehaviour
             if(winnerNameText != null)
             {
                 winnerNameText.text = winner.nickname;
-                Debug.Log($"🏆 승자 설정: {winner.nickname}");
-            }
-            else
-            {
-                Debug.LogError("GameOverPanel: winnerNameText가 null입니다!");
             }
         }
 
         // 순위별 정보 설정
-        Debug.Log("📊 순위별 정보 설정 시작");
         SetRankInfo(0, rankings, _1stNameText, _1stScoreText);
         SetRankInfo(1, rankings, _2ndNameText, _2ndScoreText);
         SetRankInfo(2, rankings, _3rdNameText, _3rdScoreText);
         SetRankInfo(3, rankings, _4thNameText, _4thScoreText);
-        
-        Debug.Log("✅ GameOverPanel: 모든 순위 정보 설정 완료");
     }
 
     /// <summary>
@@ -148,8 +139,6 @@ public class GameOverPanel : MonoBehaviour
     private void SetRankInfo(int rankIndex, List<GameOverController.PlayerRankData> rankings, 
                             TextMeshProUGUI nameText, TextMeshProUGUI scoreText)
     {
-        Debug.Log($"🔍 SetRankInfo 호출 - Rank {rankIndex + 1}, NameText: {(nameText != null ? "OK" : "NULL")}, ScoreText: {(scoreText != null ? "OK" : "NULL")}");
-        
         if(rankIndex < rankings.Count)
         {
             var playerData = rankings[rankIndex];
@@ -164,29 +153,16 @@ public class GameOverPanel : MonoBehaviour
             if(nameText != null)
             {
                 nameText.text = displayName;
-                Debug.Log($"✅ {rankIndex + 1}등 이름 설정: {displayName}");
-            }
-            else
-            {
-                Debug.LogError($"❌ {rankIndex + 1}등 nameText가 null입니다!");
             }
             
             if(scoreText != null)
             {
                 scoreText.text = $"{playerData.score:F0}";
-                Debug.Log($"✅ {rankIndex + 1}등 점수 설정: {playerData.score:F0}점");
             }
-            else
-            {
-                Debug.LogError($"❌ {rankIndex + 1}등 scoreText가 null입니다!");
-            }
-
-            Debug.Log($"🏅 {rankIndex + 1}등 완료: {playerData.nickname} - {playerData.score:F0}점 {(playerData.isLocalPlayer ? "[나]" : "")}");
         }
         else
         {
             // 플레이어가 없는 순위는 비워둠
-            Debug.Log($"📭 {rankIndex + 1}등: 플레이어 없음 - 텍스트 비우기");
             if(nameText != null)
                 nameText.text = "";
             if(scoreText != null)
@@ -202,9 +178,7 @@ public class GameOverPanel : MonoBehaviour
 
     public void OnMainMenuButtonClicked()
     {
-        Debug.Log("GameOverPanel: 메인 메뉴로 이동 - Player Properties 완전 초기화");
-        
-        // Player Properties 완전 초기화 (핵심!)
+        // Player Properties 완전 초기화
         ClearAllPlayerProperties();
         
         StartCoroutine(LeaveRoomAndLoadLobby());
@@ -217,16 +191,12 @@ public class GameOverPanel : MonoBehaviour
     {
         if (!PhotonNetwork.IsConnected || PhotonNetwork.LocalPlayer == null) return;
         
-        Debug.Log($"GameOverPanel: 플레이어 {PhotonNetwork.LocalPlayer.ActorNumber} Properties 완전 초기화");
-        
         var props = new ExitGames.Client.Photon.Hashtable();
         props[$"score_{PhotonNetwork.LocalPlayer.ActorNumber}"] = null;
         props[$"playerReady_{PhotonNetwork.LocalPlayer.ActorNumber}"] = null;
         props["nickname"] = null;
         
         PhotonNetwork.LocalPlayer.SetCustomProperties(props);
-        
-        Debug.Log("GameOverPanel: Player Properties 초기화 완료");
     }
     
     /// <summary>
@@ -250,8 +220,6 @@ public class GameOverPanel : MonoBehaviour
                 yield return new WaitForSeconds(0.1f);
                 timer += 0.1f;
             }
-            
-            Debug.Log($"GameOverPanel: 방 나가기 완료 (대기: {timer}초)");
         }
         
         // 연결 해제
@@ -267,12 +235,60 @@ public class GameOverPanel : MonoBehaviour
                 yield return new WaitForSeconds(0.1f);
                 timer += 0.1f;
             }
-            
-            Debug.Log($"GameOverPanel: 연결 해제 완료 (대기: {timer}초)");
         }
         
         // Lobby 씬 로드
         UnityEngine.SceneManagement.SceneManager.LoadScene("Lobby");
+    }
+
+#endregion
+
+#region EXIT 스티커 애니메이션
+
+    /// <summary>
+    /// EXIT 스티커 표시 (승리 플레이어 퇴장 시)
+    /// </summary>
+    public void ShowExitSticker()
+    {
+        if (_exitImage == null) return;
+        
+        // 기존 애니메이션 정리
+        CleanupExitStickerAnimation();
+        
+        // 초기 상태 설정
+        _exitImage.gameObject.SetActive(true);
+        _exitImage.transform.localScale = Vector3.zero;
+        _exitImage.transform.rotation = Quaternion.Euler(0f, 0f, -15f); // 약간 기울어진 상태
+        
+        Color initialColor = _exitImage.color;
+        initialColor.a = 0f;
+        _exitImage.color = initialColor;
+        
+        // 스티커 부착 애니메이션 (탄성 효과)
+        Sequence stickerSequence = DOTween.Sequence();
+        
+        // 1. 페이드 인 + 스케일 증가 (탄성 효과)
+        stickerSequence.Append(_exitImage.DOFade(1f, 0.3f).SetEase(Ease.OutQuad));
+        stickerSequence.Join(_exitImage.transform.DOScale(1.2f, 0.4f).SetEase(Ease.OutBack));
+        
+        // 2. 약간 튕기는 효과
+        stickerSequence.Append(_exitImage.transform.DOScale(0.95f, 0.1f).SetEase(Ease.InQuad));
+        stickerSequence.Append(_exitImage.transform.DOScale(1.05f, 0.1f).SetEase(Ease.OutQuad));
+        stickerSequence.Append(_exitImage.transform.DOScale(1f, 0.1f).SetEase(Ease.InOutQuad));
+        
+        // 3. 회전 보정 (0도로)
+        stickerSequence.Join(_exitImage.transform.DORotate(Vector3.zero, 0.3f).SetEase(Ease.OutQuad));
+        
+        exitStickerTween = stickerSequence;
+    }
+    
+    /// <summary>
+    /// EXIT 스티커 애니메이션 정리
+    /// </summary>
+    private void CleanupExitStickerAnimation()
+    {
+        exitStickerTween?.Kill();
+        exitStickerTween = null;
     }
 
 #endregion

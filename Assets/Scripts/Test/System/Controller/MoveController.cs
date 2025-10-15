@@ -135,7 +135,6 @@ public class MoveController : MonoBehaviourPun, IPunObservable
             // DataBase 인스턴스가 없으면 잠시 대기 후 재시도
             if (DataBase.Instance == null)
             {
-                Debug.LogWarning("⚠️ MoveController - DataBase 인스턴스가 아직 초기화되지 않음, 재시도 예정");
                 StartCoroutine(RetryCacheDataBaseInfo());
                 return;
             }
@@ -158,17 +157,15 @@ public class MoveController : MonoBehaviourPun, IPunObservable
                 cachedLandingFriction = playerMoveData.LandingFriction;
                 cachedMaxMoveDistance = playerMoveData.MaxMoveDistance;
                 dataBaseCached = true;
-                Debug.Log("✅ MoveController - DataBase 정보 캐싱 완료");
             }
             else
             {
-                Debug.LogWarning("⚠️ MoveController - DataBase 접근 실패, 기본값 사용");
                 dataBaseCached = false;
             }
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"❌ MoveController - DataBase 캐싱 중 오류: {e.Message}");
+            Debug.LogError($"MoveController - DataBase 캐싱 중 오류: {e.Message}");
             dataBaseCached = false;
         }
     }
@@ -194,7 +191,7 @@ public class MoveController : MonoBehaviourPun, IPunObservable
             currentRetry++;
         }
 
-        Debug.LogError("❌ MoveController - DataBase 캐싱 최대 재시도 횟수 초과, 기본값 사용");
+        Debug.LogError("MoveController - DataBase 캐싱 최대 재시도 횟수 초과");
         dataBaseCached = false;
     }
 
@@ -796,12 +793,6 @@ public class MoveController : MonoBehaviourPun, IPunObservable
             rawMoveInput = Vector2.zero;
             rotationAmount = 0;
             jumpBufferTimer = 0;
-
-            Debug.Log("✅ 캐릭터 기절 상태 - 모든 조작 차단");
-        }
-        else
-        {
-            Debug.Log("✅ 캐릭터 기절 해제 - 조작 가능");
         }
     }
 
@@ -823,7 +814,6 @@ public class MoveController : MonoBehaviourPun, IPunObservable
     {
         canMove = false;
         rawMoveInput = Vector2.zero;
-        Debug.Log("✅ 움직임 조작 차단");
     }
 
     /// <summary>
@@ -832,7 +822,6 @@ public class MoveController : MonoBehaviourPun, IPunObservable
     public void EnableMovement()
     {
         canMove = true;
-        Debug.Log("✅ 움직임 조작 허용");
     }
 
     /// <summary>
@@ -853,7 +842,6 @@ public class MoveController : MonoBehaviourPun, IPunObservable
     {
         canRotate = false;
         rotationAmount = 0;
-        Debug.Log("✅ 마우스 조작 차단");
     }
 
     /// <summary>
@@ -862,7 +850,6 @@ public class MoveController : MonoBehaviourPun, IPunObservable
     public void EnableMouseControl()
     {
         canRotate = true;
-        Debug.Log("✅ 마우스 조작 허용");
     }
 
     /// <summary>
@@ -883,7 +870,6 @@ public class MoveController : MonoBehaviourPun, IPunObservable
     {
         canJump = false;
         jumpBufferTimer = 0;
-        Debug.Log("✅ 점프 조작 차단");
     }
 
     /// <summary>
@@ -892,7 +878,6 @@ public class MoveController : MonoBehaviourPun, IPunObservable
     public void EnableJump()
     {
         canJump = true;
-        Debug.Log("✅ 점프 조작 허용");
     }
 
     /// <summary>
@@ -914,7 +899,6 @@ public class MoveController : MonoBehaviourPun, IPunObservable
         DisableMovement();
         DisableMouseControl();
         DisableJump();
-        Debug.Log("✅ 움직임 조작 차단");
     }
 
     /// <summary>
@@ -925,7 +909,6 @@ public class MoveController : MonoBehaviourPun, IPunObservable
         EnableMovement();
         EnableMouseControl();
         EnableJump();
-        Debug.Log("✅ 움직임 조작 허용");
     }
 
     /// <summary>

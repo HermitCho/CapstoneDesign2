@@ -12,6 +12,8 @@ public class GameOverController : MonoBehaviourPunCallbacks
     private float winnerScore;
     private GameObject winnerPlayer;
     private List<PlayerRankData> playerRankings = new List<PlayerRankData>();
+    private bool isWinnerLocal = false; // 승리 플레이어가 로컬인지 추적
+    private int winnerActorNumber = -1; // 승리 플레이어의 ActorNumber 추적
 
     // 플레이어 순위 데이터 구조체
     [System.Serializable]
@@ -38,12 +40,19 @@ public class GameOverController : MonoBehaviourPunCallbacks
         winnerScore = 0;
         winnerPlayer = null;
         playerRankings.Clear();
+        isWinnerLocal = false;
 
         // 독립적으로 모든 플레이어의 점수 데이터 수집
         CollectAllPlayerScores();
 
         // 점수 기준으로 정렬
         SortPlayersByScore();
+
+        // 로컬 플레이어가 승자인지 확인
+        if (playerRankings.Count > 0)
+        {
+            isWinnerLocal = playerRankings[0].isLocalPlayer;
+        }
 
         // 로컬 플레이어가 승자인 경우에만 이동
         CheckAndMoveWinner();
@@ -89,8 +98,6 @@ public class GameOverController : MonoBehaviourPunCallbacks
             );
             
             playerRankings.Add(playerData);
-            
-            Debug.Log($"GameOverController: 플레이어 점수 수집 - {nickname}: {playerScore}점 (로컬: {isLocal})");
         }
     }
     
@@ -164,8 +171,24 @@ public class GameOverController : MonoBehaviourPunCallbacks
             var winner = playerRankings[0];
             winnerScore = winner.score;
             winnerPlayer = winner.playerObject;
-            
-            Debug.Log($"GameOverController: 승자 결정 - {winner.nickname} ({winner.score}점)");
+            winnerActorNumber = winner.actorNumber; // ActorNumber 저장
+        }
+    }
+    
+    /// <summary>
+    /// 플레이어 퇴장 감지 (Photon Callback)
+    /// </summary>
+    public override void OnPlayerLeftRoom(Photon.Realtime.Player otherPlayer)
+    {
+        // 승리 플레이어가 퇴장했는지 확인
+        if (otherPlayer.ActorNumber == winnerActorNumber)
+        {
+            // GameOverPanel에 EXIT 스티커 표시 요청
+            GameOverPanel gameOverPanel = FindObjectOfType<GameOverPanel>(true);
+            if (gameOverPanel != null)
+            {
+                gameOverPanel.ShowExitSticker();
+            }
         }
     }
 
@@ -213,8 +236,8 @@ public class GameOverController : MonoBehaviourPunCallbacks
 
     private IEnumerator MoveWinnerToPosition()
     {
-        // 로컬 플레이어만 컨트롤 비활성화
-        DisableLocalPlayerControls();
+        // 로컬 플레이어만 컨트롤 비활성화 (점프는 제외)
+        DisableLocalPlayerControls(true); // true = 승리 플레이어 (점프 가능)
         
         yield return new WaitForSeconds(0.5f);
         
@@ -222,13 +245,39 @@ public class GameOverController : MonoBehaviourPunCallbacks
         {
             SimpleTeleport(winnerPlayer, winnerPosition.position, winnerPosition.rotation);
             SetCameraPosition();
+            
+            // 승리 플레이어의 점프 다시 활성화
+            EnableWinnerJump();
+        }
+    }
+    
+    /// <summary>
+    /// 승리 플레이어의 점프 활성화
+    /// </summary>
+    private void EnableWinnerJump()
+    {
+        GameObject[] allPlayerObjects = GameObject.FindGameObjectsWithTag("Player");
+        
+        foreach(GameObject playerObj in allPlayerObjects)
+        {
+            PhotonView pv = playerObj.GetComponent<PhotonView>();
+            if(pv != null && pv.IsMine) // 로컬 플레이어만
+            {
+                MoveController moveController = playerObj.GetComponent<MoveController>();
+                if(moveController != null)
+                {
+                    moveController.EnableJump();
+                }
+                break;
+            }
         }
     }
 
     /// <summary>
     /// 로컬 플레이어만 컨트롤 비활성화
     /// </summary>
-    private void DisableLocalPlayerControls()
+    /// <param name="isWinner">승리 플레이어인 경우 점프만 허용</param>
+    private void DisableLocalPlayerControls(bool isWinner = false)
     {
         GameObject[] allPlayerObjects = GameObject.FindGameObjectsWithTag("Player");
         
@@ -239,9 +288,21 @@ public class GameOverController : MonoBehaviourPunCallbacks
             {
                 MoveController moveController = playerObj.GetComponent<MoveController>();
                 SkillController skillController = playerObj.GetComponent<SkillController>();
+                
                 if(moveController != null && skillController != null)
                 {
-                    moveController.DisableMoveControls();
+                    if (isWinner)
+                    {
+                        // 승리 플레이어: 이동/마우스만 차단, 점프는 허용
+                        moveController.DisableMovement();
+                        moveController.DisableMouseControl();
+                    }
+                    else
+                    {
+                        // 일반 플레이어: 모든 조작 차단
+                        moveController.DisableMoveControls();
+                    }
+                    
                     skillController.DisableSkillControls();
                 }
                 
@@ -264,8 +325,8 @@ public class GameOverController : MonoBehaviourPunCallbacks
     /// </summary>
     private IEnumerator SetupNonWinnerView()
     {
-        // 로컬 플레이어 컨트롤 비활성화
-        DisableLocalPlayerControls();
+        // 로컬 플레이어 컨트롤 비활성화 (점프 포함 모두 차단)
+        DisableLocalPlayerControls(false); // false = 일반 플레이어 (모든 조작 차단)
         
         yield return new WaitForSeconds(0.5f);
         
@@ -292,12 +353,7 @@ public class GameOverController : MonoBehaviourPunCallbacks
         GameOverPanel gameOverPanel = FindObjectOfType<GameOverPanel>(true);
         if(gameOverPanel != null)
         {
-            Debug.Log($"GameOverController: GameOverPanel 찾음 - 순위 데이터 {playerRankings.Count}개 전달");
             gameOverPanel.SetPlayerRankings(playerRankings);
-        }
-        else
-        {
-            Debug.LogError("GameOverController: GameOverPanel을 찾을 수 없습니다!");
         }
     }
 
@@ -305,23 +361,46 @@ public class GameOverController : MonoBehaviourPunCallbacks
     {
         if (player == null) return "Unknown";
 
-        // PhotonPlayer의 커스텀 프로퍼티에서 닉네임 가져오기
-        if (player.CustomProperties.TryGetValue("nickname", out object nicknameObj))
+        // 1. PhotonPlayer의 커스텀 프로퍼티에서 닉네임 가져오기 (최우선)
+        if (player.CustomProperties != null && player.CustomProperties.TryGetValue("nickname", out object nicknameObj))
         {
-            return nicknameObj.ToString();
+            string nickname = nicknameObj?.ToString();
+            if (!string.IsNullOrEmpty(nickname))
+            {
+                return nickname;
+            }
         }
         
-        // 커스텀 프로퍼티가 없으면 로컬 플레이어의 경우 PlayerPrefs에서 가져오기
+        // 2. Photon NickName 속성 확인
+        if (!string.IsNullOrEmpty(player.NickName))
+        {
+            return player.NickName;
+        }
+        
+        // 3. 로컬 플레이어인 경우 PlayerPrefs/CurrentUser에서 가져오기
         if (player.IsLocal)
         {
-            string localNickname = PlayerPrefs.GetString("NickName", "Player");
+            string localNickname = "";
+            
+            // CurrentUser 확인
+            if (CurrentUser.Instance != null && CurrentUser.Instance.IsLoggedIn())
+            {
+                localNickname = CurrentUser.Instance.GetNickname();
+            }
+            
+            // PlayerPrefs 확인
+            if (string.IsNullOrEmpty(localNickname))
+            {
+                localNickname = PlayerPrefs.GetString("NickName", "");
+            }
+            
             if (!string.IsNullOrEmpty(localNickname))
             {
                 return localNickname;
             }
         }
         
-        // 기본값으로 Player + ActorNumber 사용
+        // 4. 기본값으로 Player + ActorNumber 사용
         return $"Player{player.ActorNumber}";
     }
 
@@ -388,8 +467,6 @@ public class GameOverController : MonoBehaviourPunCallbacks
             currentUserNickname = PlayerPrefs.GetString("NickName", "");
         }
         
-        Debug.Log($"GameOverController: 로컬 플레이어 닉네임 확인 - '{currentUserNickname}'");
-        
         // 순위 리스트에서 로컬 플레이어 찾기
         for (int i = 0; i < playerRankings.Count; i++)
         {
@@ -408,28 +485,10 @@ public class GameOverController : MonoBehaviourPunCallbacks
         
         if (localPlayerRank > 0)
         {
-            Debug.Log($"GameOverController: 로컬 플레이어 순위 확인 - {localPlayerRank}등 (닉네임: {localPlayerNickname}, 점수: {localPlayerScore})");
-            
             // 구글 시트에 게임 결과 업데이트
             if (GameResultManager.Instance != null)
             {
                 GameResultManager.Instance.UpdateCurrentUserGameResult(localPlayerRank);
-                Debug.Log($"GameOverController: 구글 시트 업데이트 요청 - {localPlayerRank}등");
-            }
-            else
-            {
-                Debug.LogError("GameOverController: GameResultManager 인스턴스를 찾을 수 없습니다!");
-            }
-        }
-        else
-        {
-            Debug.LogWarning($"GameOverController: 로컬 플레이어를 순위에서 찾을 수 없습니다. 현재 닉네임: '{currentUserNickname}'");
-            
-            // 디버그용: 모든 플레이어 순위 출력
-            for (int i = 0; i < playerRankings.Count; i++)
-            {
-                var playerData = playerRankings[i];
-                Debug.Log($"  {i + 1}등: {playerData.nickname} (로컬: {playerData.isLocalPlayer}, 점수: {playerData.score})");
             }
         }
     }

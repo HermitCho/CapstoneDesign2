@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System;
 using Photon.Pun;
+using DG.Tweening;
 
 public class Crown : MonoBehaviourPun
 {
@@ -39,6 +40,9 @@ public class Crown : MonoBehaviourPun
 
     //테디베어 분리 이벤트
     public static event Action OnTeddyBearDetached;
+    
+    // 왕관 회전 애니메이션 관련
+    private Tween crownRotationTween;
 
     //TeddyBear 캐시 변수
     private Vector3 cachedAttachOffset;
@@ -68,6 +72,22 @@ public class Crown : MonoBehaviourPun
         
         // Outline 컴포넌트 초기화
         InitializeOutline();
+        
+        // PhotonTransformView 회전 동기화 비활성화 (DOTween 회전과 충돌 방지)
+        DisablePhotonRotationSync();
+    }
+    
+    /// <summary>
+    /// PhotonTransformView의 회전 동기화 비활성화
+    /// DOTween 로컬 회전과 충돌 방지
+    /// </summary>
+    private void DisablePhotonRotationSync()
+    {
+        PhotonTransformView photonTransformView = GetComponent<PhotonTransformView>();
+        if (photonTransformView != null)
+        {
+            photonTransformView.m_SynchronizeRotation = false;
+        }
     }
 
     void OnEnable()
@@ -82,6 +102,9 @@ public class Crown : MonoBehaviourPun
         // ✅ 플레이어 사망 이벤트 구독 해제
         LivingEntity.OnPlayerDied -= OnPlayerDied;
         InputManager.OnDetachPressed -= DetachFromPlayer;
+        
+        // 왕관 회전 애니메이션 정리
+        StopCrownRotation();
     }
 
     // Start is called before the first frame update
@@ -203,7 +226,7 @@ public class Crown : MonoBehaviourPun
 
         playerTransform = playerPV.transform;
 
-        // 플레이어 앞에 즉시 부착
+        // 플레이어 머리 위에 부착
         Vector3 targetPosition = playerPV.transform.position + playerPV.transform.forward * cachedAttachOffset.z + playerPV.transform.up * cachedAttachOffset.y + playerPV.transform.right * cachedAttachOffset.x;
         Quaternion targetRotation = playerPV.transform.rotation * Quaternion.Euler(cachedAttachRotation);
 
@@ -221,6 +244,9 @@ public class Crown : MonoBehaviourPun
         {
             crownCollider.enabled = false;
         }
+        
+        // 왕관 회전 애니메이션 시작
+        StartCrownRotation();
 
         Debug.Log($"👑 Crown attached to {playerPV.Owner.NickName}");
     }
@@ -387,6 +413,9 @@ public class Crown : MonoBehaviourPun
     private void RpcDetachFromPlayer(Vector3 dropPosition)
     {
         playerTransform = null;
+        
+        // 회전 애니메이션 중지
+        StopCrownRotation();
 
         // 부모 복원
         transform.SetParent(originalParent);
@@ -545,6 +574,42 @@ public class Crown : MonoBehaviourPun
         return timeSinceDetach >= cachedDetachReattachTime;
     }
 
+    #endregion
+    
+    #region 왕관 회전 애니메이션
+    
+    /// <summary>
+    /// 왕관 회전 애니메이션 시작 (플레이어 머리 위에서 빙글빙글)
+    /// </summary>
+    private void StartCrownRotation()
+    {
+        // 기존 애니메이션이 있다면 중지
+        StopCrownRotation();
+        
+        // Y축 기준으로 360도 무한 회전
+        // RotateMode.FastBeyond360: 360도를 넘어서도 계속 회전
+        // SetLoops(-1, LoopType.Restart): 무한 반복, 0도로 돌아가서 다시 시작
+        crownRotationTween = transform.DOLocalRotate(
+            new Vector3(0f, 360f, 0f), // 목표 회전값 (Y축으로 360도)
+            3f, // 3초에 한 바퀴 회전
+            RotateMode.FastBeyond360
+        )
+        .SetEase(Ease.Linear) // 일정한 속도로 회전
+        .SetLoops(-1, LoopType.Restart); // 무한 반복
+    }
+    
+    /// <summary>
+    /// 왕관 회전 애니메이션 중지
+    /// </summary>
+    private void StopCrownRotation()
+    {
+        if (crownRotationTween != null)
+        {
+            crownRotationTween.Kill();
+            crownRotationTween = null;
+        }
+    }
+    
     #endregion
 
     #region 이벤트 핸들러
