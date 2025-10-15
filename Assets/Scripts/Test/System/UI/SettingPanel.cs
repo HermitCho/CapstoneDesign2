@@ -153,7 +153,7 @@ public class SettingPanel : MonoBehaviour
         if (rightKeyButton != null) keyBindingButtons["Right"] = rightKeyButton;
         if (jumpKeyButton != null) keyBindingButtons["Jump"] = jumpKeyButton;
         if (reloadKeyButton != null) keyBindingButtons["Reload"] = reloadKeyButton;
-        if (gunKeyButton != null) keyBindingButtons["Gun"] = gunKeyButton;
+        if (gunKeyButton != null) keyBindingButtons["HandleGun"] = gunKeyButton;
         if (skillKeyButton != null) keyBindingButtons["Skill"] = skillKeyButton;
         if (itemKeyButton != null) keyBindingButtons["Item"] = itemKeyButton;
         if (itemChangeKeyButton != null) keyBindingButtons["ChangeItem"] = itemChangeKeyButton;
@@ -865,7 +865,7 @@ public class SettingPanel : MonoBehaviour
             case "Right": return "D";
             case "Jump": return "Space";
             case "Reload": return "R";
-            case "Gun": return "ALPHA 1";
+            case "HandleGun": return "1";
             case "Skill": return "Q";
             case "Item": return "E";
             case "ChangeItem": return "Tab";
@@ -893,6 +893,17 @@ public class SettingPanel : MonoBehaviour
             case KeyCode.Escape: return "Escape";
             case KeyCode.Backspace: return "Backspace";
             case KeyCode.Tab: return "Tab";
+            // 숫자 키 (Alpha0-9)
+            case KeyCode.Alpha0: return "0";
+            case KeyCode.Alpha1: return "1";
+            case KeyCode.Alpha2: return "2";
+            case KeyCode.Alpha3: return "3";
+            case KeyCode.Alpha4: return "4";
+            case KeyCode.Alpha5: return "5";
+            case KeyCode.Alpha6: return "6";
+            case KeyCode.Alpha7: return "7";
+            case KeyCode.Alpha8: return "8";
+            case KeyCode.Alpha9: return "9";
             default:
                 return keyCode.ToString();
         }
@@ -917,6 +928,17 @@ public class SettingPanel : MonoBehaviour
             case "Escape": return "<Keyboard>/escape";
             case "Backspace": return "<Keyboard>/backspace";
             case "Tab": return "<Keyboard>/tab";
+            // 숫자 키 (0-9)
+            case "0": return "<Keyboard>/0";
+            case "1": return "<Keyboard>/1";
+            case "2": return "<Keyboard>/2";
+            case "3": return "<Keyboard>/3";
+            case "4": return "<Keyboard>/4";
+            case "5": return "<Keyboard>/5";
+            case "6": return "<Keyboard>/6";
+            case "7": return "<Keyboard>/7";
+            case "8": return "<Keyboard>/8";
+            case "9": return "<Keyboard>/9";
             default:
                 // 일반 키 (소문자로 변환)
                 return $"<Keyboard>/{keyName.ToLower()}";
@@ -1099,6 +1121,7 @@ public class SettingPanel : MonoBehaviour
             case "Right": return "오른쪽 이동";
             case "Jump": return "점프";
             case "Reload": return "재장전";
+            case "HandleGun": return "총 꺼내기";
             case "Skill": return "스킬";
             case "Item": return "아이템 사용";
             case "ChangeItem": return "아이템 변경";
