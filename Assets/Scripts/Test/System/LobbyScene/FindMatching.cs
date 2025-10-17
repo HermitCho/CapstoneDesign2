@@ -23,6 +23,12 @@ public class FindMatching : MonoBehaviourPunCallbacks
     private Coroutine matchingCoroutine;
     private bool isGameStarting = false;
     private bool isMasterServerConnected = false; // 마스터 서버 연결 상태 추적
+    
+    // 재시도 관련
+    private int roomJoinRetryCount = 0;
+    private int roomCreateRetryCount = 0;
+    private const int MAX_RETRY_COUNT = 10; // 최대 재시도 횟수
+    private const float RETRY_DELAY = 2f; // 재시도 대기 시간
 
     private const string ROOM_STATE_KEY = "GameState";
     private const string ROOM_STATE_WAITING = "Waiting";
@@ -33,6 +39,9 @@ public class FindMatching : MonoBehaviourPunCallbacks
     {
         PhotonNetwork.SendRate = 40;
         PhotonNetwork.SerializationRate = 30;
+        
+        // Photon 자동 씬 동기화 활성화 (명시적 설정)
+        PhotonNetwork.AutomaticallySyncScene = true;
 
         if (findMatchButton != null)
             findMatchButton.onClick.AddListener(StartMatching);
@@ -47,7 +56,6 @@ public class FindMatching : MonoBehaviourPunCallbacks
             modalWindow.closeOnCancel = false;
         }
 
-        UpdateUI("매칭 시작!");
     }
 
     public void StartMatching()
@@ -57,6 +65,10 @@ public class FindMatching : MonoBehaviourPunCallbacks
         isMatching = true;
         isGameStarting = false;
         matchingTimer = 0f;
+        
+        // 재시도 카운터 초기화
+        roomJoinRetryCount = 0;
+        roomCreateRetryCount = 0;
         
         // 이미 마스터 서버에 연결되어 있는지 체크
         if (PhotonNetwork.IsConnectedAndReady)
@@ -93,6 +105,7 @@ public class FindMatching : MonoBehaviourPunCallbacks
         // 1단계: 마스터 서버 연결
         if (!PhotonNetwork.IsConnected)
         {
+            Debug.Log("FindMatching: 마스터 서버 연결 시도");
             PhotonNetwork.ConnectUsingSettings();
             
             // OnConnectedToMaster 콜백 대기 (최대 10초)
@@ -105,10 +118,28 @@ public class FindMatching : MonoBehaviourPunCallbacks
                 connectionTimer += 0.1f;
             }
             
-            if (!isMasterServerConnected || !isMatching)
+            // 매칭이 취소되었는지 먼저 확인
+            if (!isMatching)
             {
-                Debug.LogError("FindMatching: 마스터 서버 연결 실패 또는 매칭 취소");
-                CancelMatching();
+                Debug.Log("FindMatching: 매칭이 취소됨 - 연결 시퀀스 중단");
+                yield break;
+            }
+            
+            // 연결 실패 확인
+            if (!isMasterServerConnected)
+            {
+                Debug.LogError($"FindMatching: 마스터 서버 연결 타임아웃 ({connectionTimeout}초 초과)");
+                UpdateUI("서버 연결 실패... 재시도 중");
+                
+                // 재연결 시도
+                yield return new WaitForSeconds(RETRY_DELAY);
+                
+                if (isMatching && !isGameStarting)
+                {
+                    Debug.Log("FindMatching: 마스터 서버 재연결 시도");
+                    StartCoroutine(HandleConnectionSequence());
+                }
+                
                 yield break;
             }
             
@@ -127,10 +158,10 @@ public class FindMatching : MonoBehaviourPunCallbacks
         // 2단계: 로비 진입
         if (PhotonNetwork.IsConnectedAndReady && !PhotonNetwork.InLobby)
         {
-            
             // 클라이언트 상태가 ConnectedToMasterServer인지 확인
             if (PhotonNetwork.NetworkClientState == Photon.Realtime.ClientState.ConnectedToMasterServer)
             {
+                Debug.Log("FindMatching: 로비 진입 시도");
                 PhotonNetwork.JoinLobby();
                 
                 // 로비 진입 완료 대기 (최대 5초)
@@ -143,20 +174,46 @@ public class FindMatching : MonoBehaviourPunCallbacks
                     lobbyTimer += 0.1f;
                 }
                 
-                if (!PhotonNetwork.InLobby && isMatching)
+                // 매칭이 취소되었는지 먼저 확인
+                if (!isMatching)
                 {
-                    CancelMatching();
+                    Debug.Log("FindMatching: 매칭이 취소됨 - 연결 시퀀스 중단");
                     yield break;
                 }
+                
+                // 로비 진입 실패 확인
+                if (!PhotonNetwork.InLobby)
+                {
+                    Debug.LogError($"FindMatching: 로비 진입 타임아웃 ({lobbyTimeout}초 초과)");
+                    UpdateUI("로비 진입 실패... 재시도 중");
+                    
+                    // 재연결 시도
+                    yield return new WaitForSeconds(RETRY_DELAY);
+                    
+                    if (isMatching && !isGameStarting)
+                    {
+                        Debug.Log("FindMatching: 로비 재진입 시도");
+                        StartCoroutine(HandleConnectionSequence());
+                    }
+                    
+                    yield break;
+                }
+                
+                Debug.Log("FindMatching: 로비 진입 완료");
             }
             else
             {
+                Debug.LogWarning($"FindMatching: 클라이언트 상태가 ConnectedToMasterServer가 아님 - {PhotonNetwork.NetworkClientState}");
+                
                 // 상태가 맞지 않으면 잠시 대기 후 재시도
                 yield return new WaitForSeconds(0.5f);
-                if (isMatching)
+                
+                if (isMatching && !isGameStarting)
                 {
+                    Debug.Log("FindMatching: 연결 시퀀스 재시도");
                     StartCoroutine(HandleConnectionSequence());
                 }
+                
                 yield break;
             }
         }
@@ -187,10 +244,16 @@ public class FindMatching : MonoBehaviourPunCallbacks
     public void CancelMatching()
     {
         if (!isMatching) return;
+        
+        Debug.Log("FindMatching: 매칭 취소 시작");
 
         isMatching = false;
         isGameStarting = false;
-        isMasterServerConnected = false; // 연결 상태 초기화
+        isMasterServerConnected = false;
+        
+        // 재시도 카운터 리셋
+        roomJoinRetryCount = 0;
+        roomCreateRetryCount = 0;
 
         if (matchingCoroutine != null)
         {
@@ -198,20 +261,112 @@ public class FindMatching : MonoBehaviourPunCallbacks
             matchingCoroutine = null;
         }
 
-        // 모든 코루틴을 강제로 중단 (참조가 없어도)
+        // 모든 코루틴을 강제로 중단
         StopAllCoroutines();
         
+        // 안전한 방 나가기 및 연결 완전 해제
+        StartCoroutine(SafeCleanupAndDisconnect());
+    }
+    
+    /// <summary>
+    /// 안전한 방 정리 및 연결 완전 해제 (코루틴)
+    /// </summary>
+    private IEnumerator SafeCleanupAndDisconnect()
+    {
+        // 로컬 플레이어 Properties 정리
+        if (PhotonNetwork.LocalPlayer != null)
+        {
+            var props = new ExitGames.Client.Photon.Hashtable();
+            props["playerReady"] = null;
+            props["nickname"] = null;
+            PhotonNetwork.LocalPlayer.SetCustomProperties(props);
+            
+            Debug.Log("FindMatching: 로컬 플레이어 Properties 초기화");
+        }
+        
+        // 방에서 나가기
         if (PhotonNetwork.InRoom)
         {
+            Debug.Log("FindMatching: 방 나가기 시작");
             PhotonNetwork.LeaveRoom();
+            
+            // 방 나가기 완료 대기 (최대 3초)
+            float timeout = 3f;
+            float timer = 0f;
+            
+            while (PhotonNetwork.InRoom && timer < timeout)
+            {
+                yield return new WaitForSeconds(0.1f);
+                timer += 0.1f;
+            }
+            
+            if (PhotonNetwork.InRoom)
+            {
+                Debug.LogWarning("FindMatching: 방 나가기 타임아웃");
+            }
+            else
+            {
+                Debug.Log("FindMatching: 방 나가기 완료");
+            }
         }
-
+        
+        // 로비에서 나가기
         if (PhotonNetwork.InLobby)
         {
+            Debug.Log("FindMatching: 로비 나가기 시작");
             PhotonNetwork.LeaveLobby();
+            
+            // 로비 나가기 완료 대기 (최대 2초)
+            float timeout = 2f;
+            float timer = 0f;
+            
+            while (PhotonNetwork.InLobby && timer < timeout)
+            {
+                yield return new WaitForSeconds(0.1f);
+                timer += 0.1f;
+            }
+            
+            if (PhotonNetwork.InLobby)
+            {
+                Debug.LogWarning("FindMatching: 로비 나가기 타임아웃");
+            }
+            else
+            {
+                Debug.Log("FindMatching: 로비 나가기 완료");
+            }
         }
-
+        
+        // Photon 연결 완전 해제 (핵심!)
+        if (PhotonNetwork.IsConnected)
+        {
+            Debug.Log("FindMatching: Photon 연결 해제 시작");
+            PhotonNetwork.Disconnect();
+            
+            // 연결 해제 완료 대기 (최대 3초)
+            float timeout = 3f;
+            float timer = 0f;
+            
+            while (PhotonNetwork.IsConnected && timer < timeout)
+            {
+                yield return new WaitForSeconds(0.1f);
+                timer += 0.1f;
+            }
+            
+            if (PhotonNetwork.IsConnected)
+            {
+                Debug.LogWarning("FindMatching: 연결 해제 타임아웃");
+            }
+            else
+            {
+                Debug.Log("FindMatching: Photon 연결 완전 해제 완료");
+            }
+        }
+        
+        // UI 리셋
         ResetUI();
+        UpdateUI("매칭 취소");
+        
+        Debug.Log("FindMatching: 매칭 취소 완료 (완전 연결 해제)");
     }
 
     private void TryJoinOrCreateRoom()
@@ -492,11 +647,56 @@ public class FindMatching : MonoBehaviourPunCallbacks
 
     public override void OnJoinRandomFailed(short returnCode, string message)
     {
+        Debug.LogWarning($"FindMatching: JoinRandomRoom 실패 - {returnCode}: {message}");
+        
+        // 매칭이 취소되었거나 게임이 시작되었으면 재시도 안함
+        if (!isMatching || isGameStarting)
+        {
+            return;
+        }
+
+        
+        // 방 생성 시도
         CreateNewRoom();
+    }
+    
+    public override void OnJoinRoomFailed(short returnCode, string message)
+    {
+        Debug.LogWarning($"FindMatching: JoinRoom 실패 - {returnCode}: {message}");
+        
+        // 매칭이 취소되었거나 게임이 시작되었으면 재시도 안함
+        if (!isMatching || isGameStarting)
+        {
+            return;
+        }
+        
+        // 방 입장 재시도
+        StartCoroutine(RetryJoinRoom());
     }
 
     public override void OnJoinedRoom()
     {
+        // 일반 매칭 중이 아니라면 무시 (TutorialFindMatching으로 입장한 경우)
+        if (!isMatching)
+        {
+            return;
+        }
+        
+        // 튜토리얼 방인지 확인 (필터링)
+        if (PhotonNetwork.CurrentRoom != null && 
+            PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("isTutorial", out object isTutorialObj) &&
+            (bool)isTutorialObj == true)
+        {
+            Debug.LogWarning("FindMatching: 튜토리얼 방에 입장 - 나가기");
+            PhotonNetwork.LeaveRoom();
+            StartCoroutine(RetryJoinRoom());
+            return;
+        }
+        
+        // 방 입장 성공 - 재시도 카운터 리셋
+        roomJoinRetryCount = 0;
+        roomCreateRetryCount = 0;
+        
         int currentPlayers = PhotonNetwork.CurrentRoom.PlayerCount;
 
         string roomState = PhotonNetwork.CurrentRoom.CustomProperties.ContainsKey(ROOM_STATE_KEY) 
@@ -505,6 +705,7 @@ public class FindMatching : MonoBehaviourPunCallbacks
 
         if (roomState == ROOM_STATE_STARTING || roomState == ROOM_STATE_IN_GAME)
         {
+            Debug.LogWarning("FindMatching: 이미 시작된 방 - 나가기");
             PhotonNetwork.LeaveRoom();
             StartCoroutine(RetryJoinRoom());
             return;
@@ -552,15 +753,45 @@ public class FindMatching : MonoBehaviourPunCallbacks
 
     private IEnumerator RetryJoinRoom()
     {
-        yield return new WaitForSeconds(1f);
-        if (isMatching)
+        yield return new WaitForSeconds(RETRY_DELAY);
+        
+        // 재시도 전 상태 확인
+        if (!isMatching || isGameStarting)
         {
-            TryJoinOrCreateRoom();
+            yield break;
         }
+        
+        // 재시도 횟수 증가
+        roomJoinRetryCount++;
+        
+        // 최대 재시도 횟수 초과 시
+        if (roomJoinRetryCount >= MAX_RETRY_COUNT)
+        {
+            // 매칭 취소 처리
+            StartCoroutine(HandleMatchingFailure());
+            yield break;
+        }
+        
+        // 연결 상태 확인
+        if (!PhotonNetwork.IsConnectedAndReady || !PhotonNetwork.InLobby)
+        {
+            Debug.LogWarning("FindMatching: 네트워크 연결 상태 불안정 - 재연결 시도");
+            
+            // 재연결 시도
+            StartCoroutine(HandleConnectionSequence());
+            yield break;
+        }
+        
+        TryJoinOrCreateRoom();
     }
 
     public override void OnCreatedRoom()
     {
+        
+        // 방 생성 성공 - 재시도 카운터 리셋
+        roomJoinRetryCount = 0;
+        roomCreateRetryCount = 0;
+        
         if (isMatching && !isGameStarting)
         {
             float elapsedTime = matchingTimer;
@@ -622,27 +853,101 @@ public class FindMatching : MonoBehaviourPunCallbacks
         StopAllCoroutines();
         
         ResetUI();
-        UpdateUI("네트워크 연결이 끊어졌습니다.");
     }
 
     public override void OnCreateRoomFailed(short returnCode, string message)
     {
-        UpdateUI("방 생성에 실패했습니다. 다시 시도해주세요.");
+        Debug.LogWarning($"FindMatching: CreateRoom 실패 - {returnCode}: {message} (재시도: {roomCreateRetryCount + 1}/{MAX_RETRY_COUNT})");
+        
+        // 매칭이 취소되었거나 게임이 시작되었으면 재시도 안함
+        if (!isMatching || isGameStarting)
+        {
+            return;
+        }
+        
+        // 재시도 횟수 증가
+        roomCreateRetryCount++;
+        
+        // 최대 재시도 횟수 초과 시
+        if (roomCreateRetryCount >= MAX_RETRY_COUNT)
+        {
+            
+            // 매칭 취소 처리
+            StartCoroutine(HandleMatchingFailure());
+            return;
+        }
+        // 재시도
         StartCoroutine(RetryCreateRoom());
     }
 
     private IEnumerator RetryCreateRoom()
     {
-        yield return new WaitForSeconds(1f);
-        if (isMatching)
+        yield return new WaitForSeconds(RETRY_DELAY);
+        
+        // 재시도 전 상태 확인
+        if (!isMatching || isGameStarting)
         {
-            CreateNewRoom();
+            yield break;
         }
+        
+        // 연결 상태 확인
+        if (!PhotonNetwork.IsConnectedAndReady || !PhotonNetwork.InLobby)
+        {
+            Debug.LogWarning("FindMatching: 네트워크 연결 상태 불안정 - 재연결 시도");
+            
+            // 재연결 시도
+            StartCoroutine(HandleConnectionSequence());
+            yield break;
+        }
+        
+        Debug.Log($"FindMatching: 방 생성 재시도 #{roomCreateRetryCount}");
+        CreateNewRoom();
     }
 
     public override void OnCustomAuthenticationFailed(string debugMessage)
     {
+        Debug.LogError($"FindMatching: 인증 실패 - {debugMessage}");
         UpdateUI("인증 실패! App ID를 확인하세요.");
+        
+        // 매칭 실패 처리
+        if (isMatching)
+        {
+            StartCoroutine(HandleMatchingFailure());
+        }
+    }
+    
+    /// <summary>
+    /// 매칭 완전 실패 처리 (최대 재시도 초과 시)
+    /// </summary>
+    private IEnumerator HandleMatchingFailure()
+    {
+        Debug.LogError("FindMatching: 매칭 완전 실패 - 연결 해제 시작");
+        
+        isMatching = false;
+        isGameStarting = false;
+        
+        // 모달 윈도우에 실패 메시지 표시
+        if (modalWindow != null)
+        {
+            modalWindow.titleText = "매칭 실패";
+            modalWindow.descriptionText = "네트워크 오류로 매칭에 실패했습니다.\n잠시 후 다시 시도해주세요.";
+            modalWindow.showCancelButton = false;
+            modalWindow.showConfirmButton = false;
+            modalWindow.UpdateUI();
+        }
+        
+        // 안전한 연결 해제
+        yield return StartCoroutine(SafeCleanupAndDisconnect());
+        
+        // 3초 후 모달 닫기
+        yield return new WaitForSeconds(3f);
+        
+        if (modalWindow != null)
+        {
+            modalWindow.CloseWindow();
+        }
+        
+        UpdateUI("매칭 실패");
     }
 
     public override void OnRoomPropertiesUpdate(ExitGames.Client.Photon.Hashtable propertiesThatChanged)
@@ -692,15 +997,5 @@ public class FindMatching : MonoBehaviourPunCallbacks
     }
 
     #endregion
-
-#region 버튼 클릭 이벤트
-
-    public void OnClickTutorialButton()
-    {
-        LoadingController.LoadWithLoadingScene("Tutorial", true);
-    }
-
-#endregion
-
 
 }

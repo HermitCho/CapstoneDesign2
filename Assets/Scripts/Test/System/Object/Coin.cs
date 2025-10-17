@@ -20,7 +20,7 @@ public class Coin : MonoBehaviour
     [SerializeField] private ParticleSystem coinEffect;
 
     private Vector3 originalPosition;
-    private Renderer coinRenderer;
+    private Renderer[] coinRenderers;
     private bool isCollected = false;
     private float limitBobbingHeight;
 
@@ -43,7 +43,7 @@ public class Coin : MonoBehaviour
     private void Init()
     {
         originalPosition = transform.position;
-        coinRenderer = GetComponent<Renderer>();
+        coinRenderers = GetComponentsInChildren<Renderer>();
         coinController = FindObjectOfType<CoinController>();
     }
 
@@ -92,11 +92,14 @@ public class Coin : MonoBehaviour
         isCollected = true;
         
         // 코인 투명도 0으로 설정
-        if (coinRenderer != null)
+        if (coinRenderers != null)
         {
-            Color color = coinRenderer.material.color;
-            color.a = 0f;
-            coinRenderer.material.color = color;
+            foreach (Renderer renderer in coinRenderers)
+            {
+                Color color = renderer.material.color;
+                color.a = 0f;
+                renderer.material.color = color;
+            }
         }
         
         // 파티클 효과 재생 (선택사항)
@@ -114,11 +117,14 @@ public class Coin : MonoBehaviour
         yield return new WaitForSeconds(spawnTime);
         
         // 코인 투명도를 원래대로 복원
-        if (coinRenderer != null)
+        if (coinRenderers != null)
         {
-            Color color = coinRenderer.material.color;
-            color.a = 1f;
-            coinRenderer.material.color = color;
+            foreach (Renderer renderer in coinRenderers)
+            {
+                Color color = renderer.material.color;
+                color.a = 1f;
+                renderer.material.color = color;
+            }
         }
         
         isCollected = false;
