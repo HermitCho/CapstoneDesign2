@@ -1789,7 +1789,7 @@ CanvasGroup:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 790040230}
   m_Enabled: 1
-  m_Alpha: 0
+  m_Alpha: 1
   m_Interactable: 1
   m_BlocksRaycasts: 1
   m_IgnoreParentGroups: 0
@@ -4741,6 +4741,11 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 4149293322761776019, guid: 17aaa1738c4182846847ee114ef01e91,
+        type: 3}
+      propertyPath: m_Enabled
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 4981831852452779999, guid: 17aaa1738c4182846847ee114ef01e91,
         type: 3}
       propertyPath: m_LocalPosition.x
@@ -4796,6 +4801,26 @@ PrefabInstance:
       propertyPath: m_Name
       value: Map
       objectReference: {fileID: 0}
+    - target: {fileID: 6716794552989514624, guid: 17aaa1738c4182846847ee114ef01e91,
+        type: 3}
+      propertyPath: m_Convex
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8091799702786541248, guid: 17aaa1738c4182846847ee114ef01e91,
+        type: 3}
+      propertyPath: m_Enabled
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8091799702786541248, guid: 17aaa1738c4182846847ee114ef01e91,
+        type: 3}
+      propertyPath: m_Materials.Array.size
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 8091799702786541248, guid: 17aaa1738c4182846847ee114ef01e91,
+        type: 3}
+      propertyPath: m_Materials.Array.data[1]
+      value: 
+      objectReference: {fileID: 2100000, guid: b302782e2f590e143a8687679fd95591, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -5371,12 +5396,12 @@ PrefabInstance:
     - target: {fileID: 3979184030245584799, guid: 33c705a7be24a774d992bf444cf34370,
         type: 3}
       propertyPath: m_Alpha
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4080925138872764998, guid: 33c705a7be24a774d992bf444cf34370,
         type: 3}
       propertyPath: currentPanelIndex
-      value: 2
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 4080925138872764998, guid: 33c705a7be24a774d992bf444cf34370,
         type: 3}
@@ -5618,7 +5643,7 @@ PrefabInstance:
     - target: {fileID: 6924061882835613926, guid: 33c705a7be24a774d992bf444cf34370,
         type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -29.999695
+      value: -29.999756
       objectReference: {fileID: 0}
     - target: {fileID: 6968531170487650180, guid: 33c705a7be24a774d992bf444cf34370,
         type: 3}
@@ -5783,7 +5808,7 @@ PrefabInstance:
     - target: {fileID: 8075566144738817865, guid: 33c705a7be24a774d992bf444cf34370,
         type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 50.00061
+      value: 50.000854
       objectReference: {fileID: 0}
     - target: {fileID: 8489353682665813538, guid: 33c705a7be24a774d992bf444cf34370,
         type: 3}
