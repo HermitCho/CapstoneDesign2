@@ -30,7 +30,7 @@ public class TestGun : MonoBehaviourPun
     [SerializeField] private ParticleSystem shellEjectEffect;
 
     [Header("Aiming System")]
-    private Transform fireTransform;
+    [SerializeField] private Transform fireTransform;
 
     private MoveController moveController;
     private SkillController skillController;
@@ -55,7 +55,6 @@ public class TestGun : MonoBehaviourPun
     protected virtual void Awake()
     {
         photonViewCached = GetComponent<PhotonView>();
-        fireTransform = transform; // fireTransform 초기화
         damage = gunData.damage;
         testShoot = GetComponentInParent<TestShoot>(); // TestShoot 스크립트 찾기
 

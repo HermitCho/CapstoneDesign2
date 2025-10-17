@@ -10,6 +10,7 @@ public class AdrenalinSkill : Skill
 {
     [Header("강화 효과 배율")]
     [SerializeField, Range(0.01f, 1f)] private float buffMultiplier = 0.2f; // +10%
+    [SerializeField] private Transform effectTransform;
     private LivingEntity living;
     private TestGun gun;
 
@@ -32,7 +33,7 @@ public class AdrenalinSkill : Skill
         if (living == null) return;
         // ✅ RPC를 한 번만 호출하여, 이펙트 오브젝트를 생성하고 모든 제어권을 넘깁니다.
         ApplyStrengthBuffAndDestroyAsync(living, gun, buffMultiplier, duration).Forget();
-        PlayFollowEffectAtRemote(executor);
+        PlayFollowEffectOnHeartAtRemote(executor, effectTransform);
     }
 
 
