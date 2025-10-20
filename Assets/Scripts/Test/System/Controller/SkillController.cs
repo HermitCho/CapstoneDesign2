@@ -8,6 +8,7 @@ using System.Linq;
 
 public class SkillController : MonoBehaviourPun
 {
+    public static System.Action OnLocalSkillUsed; // 로컬 플레이어가 스킬을 실제로 사용 완료했을 때
 
     #region 변수
     private DataBase.ItemData itemData;
@@ -235,6 +236,8 @@ public class SkillController : MonoBehaviourPun
         if (photonView.IsMine && skill != null && skill.Index == skillIndex)
         {
             skill.Execute(this, pos, dir);
+            // 로컬 실행 시 스킬 사용 이벤트 발행
+            OnLocalSkillUsed?.Invoke();
         }
 
         PlaySkillEffectByIndex(skillIndex, pos, dir);
@@ -258,6 +261,8 @@ public class SkillController : MonoBehaviourPun
         if (photonView.IsMine && skill != null && skill.Index == skillIndex)
         {
             skill.CastExecute(this, pos, dir);
+            // 로컬 캐스트 실행 시도 또한 사용으로 간주 (캐스팅형 스킬 지원)
+            OnLocalSkillUsed?.Invoke();
         }
 
         PlaySkillCastEffectByIndex(skillIndex, pos, dir);
