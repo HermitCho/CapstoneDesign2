@@ -354,6 +354,19 @@ public abstract class Skill : MonoBehaviourPun
         }
     }
 
+    public void PlayFollowEffectOnHeartAtRemote(SkillController executor, Transform heartPosition)
+    {
+        if (skillEffect != null && isFollowing)
+        {
+            SpawnEffectFollow(skillEffect, heartPosition, effectDuration);
+        }
+
+        if (skillSound != null && AudioManager.Inst != null)
+        {
+            AudioManager.Inst.PlayClipAtPoint(skillSound, executor.transform.position, 1f, 1f, null, executor.transform);
+        }
+    }
+
     public void PlayCastEffectAtRemote(SkillController executor, Vector3 pos, Vector3 dir)
     {
         if (castTimeSkillEffect != null && !isCastingFollowing)
@@ -372,6 +385,19 @@ public abstract class Skill : MonoBehaviourPun
         if (castTimeSkillEffect != null && isCastingFollowing)
         {
             SpawnEffectFollow(castTimeSkillEffect, executor.transform, effectCastingDuration);
+        }
+
+        if (castTimeSkillSound != null && AudioManager.Inst != null)
+        {
+            AudioManager.Inst.PlayClipAtPoint(castTimeSkillSound, executor.transform.position, 1f, 1f, null, executor.transform);
+        }
+    }
+
+    public void PlayFollowCastEffectOnHeartAtRemote(SkillController executor, Transform heartPosition)
+    {
+        if (castTimeSkillEffect != null && isCastingFollowing)
+        {
+            SpawnEffectFollow(skillEffect, heartPosition, effectDuration);
         }
 
         if (castTimeSkillSound != null && AudioManager.Inst != null)

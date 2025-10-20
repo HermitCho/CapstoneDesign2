@@ -30,7 +30,7 @@ public class TestGun : MonoBehaviourPun
     [SerializeField] private ParticleSystem shellEjectEffect;
 
     [Header("Aiming System")]
-    private Transform fireTransform;
+    [SerializeField] private Transform fireTransform;
 
     private MoveController moveController;
     private SkillController skillController;
@@ -55,7 +55,6 @@ public class TestGun : MonoBehaviourPun
     protected virtual void Awake()
     {
         photonViewCached = GetComponent<PhotonView>();
-        fireTransform = transform; // fireTransform 초기화
         damage = gunData.damage;
         testShoot = GetComponentInParent<TestShoot>(); // TestShoot 스크립트 찾기
 
@@ -160,8 +159,8 @@ public class TestGun : MonoBehaviourPun
     /// </summary>
     private bool IsSkillBeingUsed()
     {
-        if (skillController == null ) return false;
-        
+        if (skillController == null) return false;
+
         // MoveController에서 프리뷰가 활성화되어 있거나 스킬 사용이 차단된 상태인지 확인
         return !skillController.CanUseSkill() || skillController.IsPreviewActive();
     }
@@ -225,6 +224,9 @@ public class TestGun : MonoBehaviourPun
 
     private float GetCurrentSpreadAngle()
     {
+        if (gunData.isShotgun)
+            return gunData.spreadAngle / 1.5f;
+
         if (CameraController.isZoomed)
             return 0f;
         return gunData.spreadAngle;
@@ -319,19 +321,19 @@ public class TestGun : MonoBehaviourPun
     {
         // 재장전 상태를 모든 클라이언트에 동기화
         photonViewCached.RPC("RPC_SetReloadingState", RpcTarget.All, true);
-        
+
         // 소유자만 사운드 재생
         if (photonViewCached.IsMine)
         {
             PlayReloadSound();
         }
-        
+
         yield return new WaitForSeconds(gunData.reloadTime);
 
         // 재장전 완료를 모든 클라이언트에 동기화
         photonViewCached.RPC("RPC_CompleteReload", RpcTarget.All);
     }
-    
+
     /// <summary>
     /// 재장전 상태 설정 (모든 클라이언트)
     /// </summary>

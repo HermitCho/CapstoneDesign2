@@ -25,6 +25,9 @@ public class Coin : MonoBehaviour
     private float limitBobbingHeight;
 
     private CoinController coinController;
+    
+    // 각 Renderer의 원본 머티리얼 배열 저장
+    private List<Material[]> originalMaterials = new List<Material[]>();
 
     void Start()
     {
@@ -45,6 +48,14 @@ public class Coin : MonoBehaviour
         originalPosition = transform.position;
         coinRenderers = GetComponentsInChildren<Renderer>();
         coinController = FindObjectOfType<CoinController>();
+        
+        // 각 Renderer의 모든 머티리얼을 저장
+        foreach (Renderer renderer in coinRenderers)
+        {
+            // materials를 사용하면 모든 머티리얼을 가져옴
+            Material[] materials = renderer.materials;
+            originalMaterials.Add(materials);
+        }
     }
 
     private void RotateCoin()
@@ -91,14 +102,23 @@ public class Coin : MonoBehaviour
     {
         isCollected = true;
         
-        // 코인 투명도 0으로 설정
-        if (coinRenderers != null)
+        // 코인 투명도 0으로 설정 (모든 Renderer의 모든 머티리얼)
+        if (coinRenderers != null && originalMaterials.Count > 0)
         {
-            foreach (Renderer renderer in coinRenderers)
+            for (int i = 0; i < coinRenderers.Length; i++)
             {
-                Color color = renderer.material.color;
-                color.a = 0f;
-                renderer.material.color = color;
+                Material[] materials = coinRenderers[i].materials;
+                
+                // 각 Renderer의 모든 머티리얼을 투명하게 설정
+                for (int j = 0; j < materials.Length; j++)
+                {
+                    Color color = materials[j].color;
+                    color.a = 0f;
+                    materials[j].color = color;
+                }
+                
+                // 변경된 머티리얼 배열을 다시 할당
+                coinRenderers[i].materials = materials;
             }
         }
         
@@ -116,14 +136,23 @@ public class Coin : MonoBehaviour
     {
         yield return new WaitForSeconds(spawnTime);
         
-        // 코인 투명도를 원래대로 복원
-        if (coinRenderers != null)
+        // 코인 투명도를 원래대로 복원 (모든 Renderer의 모든 머티리얼)
+        if (coinRenderers != null && originalMaterials.Count > 0)
         {
-            foreach (Renderer renderer in coinRenderers)
+            for (int i = 0; i < coinRenderers.Length; i++)
             {
-                Color color = renderer.material.color;
-                color.a = 1f;
-                renderer.material.color = color;
+                Material[] materials = coinRenderers[i].materials;
+                
+                // 각 Renderer의 모든 머티리얼을 불투명하게 복원
+                for (int j = 0; j < materials.Length; j++)
+                {
+                    Color color = materials[j].color;
+                    color.a = 1f;
+                    materials[j].color = color;
+                }
+                
+                // 변경된 머티리얼 배열을 다시 할당
+                coinRenderers[i].materials = materials;
             }
         }
         
