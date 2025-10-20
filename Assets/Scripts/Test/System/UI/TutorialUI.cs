@@ -8,6 +8,7 @@ using Photon.Pun;
 
 public class TutorialUI : MonoBehaviourPun
 {
+    public System.Action OnTutorialClosed; // 튜토리얼 패널이 사용자 클릭으로 닫힐 때 알림
     /// <summary>
     /// UI 피벗 위치 열거형 (0, 0.5, 1 중 선택)
     /// </summary>
@@ -288,6 +289,7 @@ public class TutorialUI : MonoBehaviourPun
         if (tutorialAlwaysPlayMessageTextUI != null)
         {
             tutorialAlwaysPlayMessageTextUI.text = "";
+            tutorialAlwaysPlayMessageTextUI.gameObject.SetActive(false);
         }
         
         if (tutorialCompleteStickerImage != null)
@@ -314,6 +316,8 @@ public class TutorialUI : MonoBehaviourPun
         if (completedTutorials.Contains(tutorialId)) return;
 
         if (currentActiveTutorial != null && currentActiveTutorial != this) return;
+
+        InitializeComponents();
 
         StartTutorial(other);
     }
@@ -423,6 +427,12 @@ public class TutorialUI : MonoBehaviourPun
                 {
                     tutorial.StopCoroutine(tutorial.alwaysPlayTypingCoroutine);
                     tutorial.alwaysPlayTypingCoroutine = null;
+                }
+
+                if (tutorial.tutorialAlwaysPlayMessageTextUI != null)
+                {
+                    tutorial.tutorialAlwaysPlayMessageTextUI.text = "";
+                    tutorial.tutorialAlwaysPlayMessageTextUI.gameObject.SetActive(false);
                 }
             }
             
@@ -564,6 +574,9 @@ public class TutorialUI : MonoBehaviourPun
         isActive = false;
         canSkip = false;
         currentActiveTutorial = null;
+
+        // 외부 시스템 알림 (코인 튜토리얼 등)
+        OnTutorialClosed?.Invoke();
     }
 
     private void ShowAlwaysPanel()
@@ -597,6 +610,7 @@ public class TutorialUI : MonoBehaviourPun
             // ✅ 텍스트가 있을 때만 타이핑 시작
             if (!string.IsNullOrEmpty(tutorialAlwaysPlayMessageText) && tutorialAlwaysPlayMessageTextUI != null)
             {
+                tutorialAlwaysPlayMessageTextUI.gameObject.SetActive(true);
                 alwaysPlayTypingCoroutine = StartCoroutine(TypeAlwaysPlayMessage());
             }
         });
@@ -673,12 +687,15 @@ public class TutorialUI : MonoBehaviourPun
         
         completeStickerCanvasGroup.alpha = 0f;
         completeStickerRect.localScale = Vector3.zero;
-        
-        // Complete Sticker 애니메이션 (Always Panel 위에 붙는 효과)
+
+        // Complete Sticker 애니메이션 (스티커가 붙는 감각 강화)
         completeStickerSequence = DOTween.Sequence();
-        completeStickerSequence.Append(completeStickerRect.DOScale(1.2f, stickerAnimDuration * 0.5f).SetEase(Ease.OutBack));
-        completeStickerSequence.Append(completeStickerRect.DOScale(1f, stickerAnimDuration * 0.3f).SetEase(Ease.InOutQuad));
-        completeStickerSequence.Join(completeStickerCanvasGroup.DOFade(1f, stickerAnimDuration * 0.3f).SetEase(Ease.OutQuad));
+        // 약간 회전 진동과 팝 효과
+        completeStickerSequence.Append(completeStickerRect.DOScale(1.15f, stickerAnimDuration * 0.45f).SetEase(Ease.OutBack));
+        completeStickerSequence.Join(completeStickerCanvasGroup.DOFade(1f, stickerAnimDuration * 0.35f).SetEase(Ease.OutQuad));
+        completeStickerSequence.Join(completeStickerRect.DORotate(new Vector3(0f, 0f, 6f), stickerAnimDuration * 0.22f).SetEase(Ease.OutQuad));
+        completeStickerSequence.Append(completeStickerRect.DORotate(Vector3.zero, stickerAnimDuration * 0.18f).SetEase(Ease.InOutQuad));
+        completeStickerSequence.Append(completeStickerRect.DOScale(1f, stickerAnimDuration * 0.25f).SetEase(Ease.InOutQuad));
     }
 
     public static void ResetAllTutorials()

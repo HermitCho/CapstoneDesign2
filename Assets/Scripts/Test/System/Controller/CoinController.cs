@@ -5,6 +5,7 @@ using Photon.Pun;
 
 public class CoinController : MonoBehaviourPun
 {
+    public static System.Action<int> LocalCoinChanged; // 로컬 코인 수 변경 알림
     #region 변수
 
     [Header("코인 관리")]
@@ -67,6 +68,9 @@ public class CoinController : MonoBehaviourPun
         
         // HUDPanel에 코인 변경 알림
         NotifyHUDCoinChanged();
+
+        // 로컬 코인 변경 이벤트 알림
+        LocalCoinChanged?.Invoke(currentCoin);
     }
 
     /// <summary>
@@ -197,6 +201,9 @@ public class CoinController : MonoBehaviourPun
         
         // HUDPanel에 코인 변경 알림
         NotifyHUDCoinChanged();
+
+        // 로컬 코인 변경 이벤트 알림
+        LocalCoinChanged?.Invoke(currentCoin);
     }
 
     /// <summary>
@@ -225,6 +232,9 @@ public class CoinController : MonoBehaviourPun
 
         // HUDPanel에 코인 변경 알림
         NotifyHUDCoinChanged();
+
+        // 로컬 코인 변경 이벤트 알림
+        LocalCoinChanged?.Invoke(currentCoin);
     }
 
     #endregion
