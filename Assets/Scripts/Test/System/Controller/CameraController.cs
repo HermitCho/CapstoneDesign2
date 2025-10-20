@@ -558,7 +558,7 @@ public class CameraController : MonoBehaviourPun
         if (Physics.Raycast(pivotPoint, directionToCamera, out hit, maxDistance))
         {
             // 플레이어 자신은 무시 (캐싱된 값 사용)
-            if (hit.collider.CompareTag(cachedPlayerTag) || hit.collider.CompareTag("Shop"))
+            if (hit.collider.CompareTag(cachedPlayerTag) || hit.collider.CompareTag("Shop") || hit.collider.CompareTag("Coin"))
             {
                 return maxDistance;
             }
