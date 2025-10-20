@@ -67,7 +67,7 @@ public class Slowball : MonoBehaviourPun
         {
             string prefabPath = "Prefabs/ItemObject/" + slowFieldPrefab.name;
 
-            PhotonNetwork.Instantiate(prefabPath, position + new Vector3(0, 0.1f, 0), Quaternion.identity);
+            PhotonNetwork.Instantiate(prefabPath, position + new Vector3(0, 0.02f, 0), Quaternion.identity);
         }
         // 투사체 오브젝트 파괴
         PhotonNetwork.Destroy(gameObject);
