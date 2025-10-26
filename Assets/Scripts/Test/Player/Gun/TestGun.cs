@@ -9,6 +9,8 @@ using Photon.Pun;
 /// </summary>
 public class TestGun : MonoBehaviourPun
 {
+    public static System.Action OnLocalReloadStarted; // 로컬 플레이어가 재장전을 실제로 시작했을 때
+    
     #region Enums
     public enum GunState
     {
@@ -314,6 +316,10 @@ public class TestGun : MonoBehaviourPun
 
         // 소유자만 재장전 시작 (상태 변경은 RPC로 동기화)
         StartCoroutine(ReloadRoutine());
+        
+        // 로컬 재장전 시작 이벤트 발행 (실제 재장전이 시작될 때만)
+        OnLocalReloadStarted?.Invoke();
+        
         return true;
     }
 

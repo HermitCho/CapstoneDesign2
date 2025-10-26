@@ -7,6 +7,7 @@ using DG.Tweening;
 
 public class Crown : MonoBehaviourPun
 {
+    public static System.Action OnLocalCrownAttached; // 로컬 플레이어가 왕관을 획득했을 때
 
     private DataBase.TeddyBearData teddyBearData;
     private Collider crownCollider;
@@ -215,6 +216,9 @@ public class Crown : MonoBehaviourPun
         {
             TestShoot.SetIsShooting(false);
             isAttached = true;
+            
+            // 로컬 왕관 부착 이벤트 발행
+            OnLocalCrownAttached?.Invoke();
         }
     }
 

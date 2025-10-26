@@ -42,6 +42,7 @@ public class TutorialShoot : MonoBehaviour
         {
             tutorialUI.OnTutorialClosed -= BeginCounting;
         }
+        TestGun.OnLocalReloadStarted -= OnReloadStarted;
         isCounting = false;
     }
 
@@ -63,21 +64,17 @@ public class TutorialShoot : MonoBehaviour
         }
         lastMagAmmo = currentMagAmmo;
 
-        // 재장전 완료 확인
-        if (playerGun.CurrentState == TestGun.GunState.Ready && reloadsCompleted < requiredReloads)
-        {
-            // 이전에 재장전 중이었다가 Ready 상태가 되면 재장전 완료
-            if (shotsFired > 0) // 최소 한 번은 발사한 후에만 재장전 완료로 인정
-            {
-                reloadsCompleted++;
-            }
-        }
-
         // 모든 조건 만족 시 완료
         if (hasZoomed && shotsFired >= requiredShots && reloadsCompleted >= requiredReloads)
         {
             CompleteTutorial();
         }
+    }
+    
+    private void OnReloadStarted()
+    {
+        if (!isCounting) return;
+        reloadsCompleted++;
     }
 
     private void BeginCounting()
@@ -92,6 +89,9 @@ public class TutorialShoot : MonoBehaviour
         hasZoomed = false;
         lastMagAmmo = playerGun.CurrentMagAmmo;
         isCounting = true;
+        
+        // 재장전 이벤트 구독
+        TestGun.OnLocalReloadStarted += OnReloadStarted;
     }
 
     private void LocateLocalPlayer()
@@ -133,6 +133,7 @@ public class TutorialShoot : MonoBehaviour
     private void CompleteTutorial()
     {
         isCounting = false;
+        TestGun.OnLocalReloadStarted -= OnReloadStarted;
 
         if (tutorialUI != null)
         {
