@@ -5,6 +5,8 @@ using Photon.Pun;
 
 public class ShopController : MonoBehaviourPun
 {
+    public static System.Action OnLocalItemPurchased; // 로컬 플레이어가 아이템 구매 완료 시
+    
     #region 변수
 
     [Header("상점 설정")]
@@ -547,6 +549,10 @@ public class ShopController : MonoBehaviourPun
                         itemPv.ViewID, photonView.ViewID);
 
                     Debug.Log($"ShopController: 아이템 생성 및 RPC 요청 완료 - {itemObjectName} (ViewID: {itemPv.ViewID})");
+                    
+                    // 로컬 구매 완료 이벤트 발행
+                    OnLocalItemPurchased?.Invoke();
+                    
                     return true;
                 }
             }
