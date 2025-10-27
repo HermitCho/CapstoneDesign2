@@ -9,13 +9,22 @@ public class CircleWaveEffect : MonoBehaviour
 
     [Header("물결 설정")]
     [SerializeField] private int waveCount = 15;
-    [SerializeField] private float waveSpeed = 0.1f;
+
+    [SerializeField, Tooltip("파동 속도 최소값")]
+    private float minWaveSpeed = 0.05f;
+    [SerializeField, Tooltip("파동 속도 최대값 (최고속도 제한)")]
+    private float maxWaveSpeed = 0.2f;
+
     [SerializeField] private float minTiling = 0.01f;
     [SerializeField] private float maxTiling = 1.5f;
-    [SerializeField] private float waveInterval = 1f;
+
+    [Header("파형 간 간격 랜덤 설정")]
+    [SerializeField] private float minWaveInterval = 0.05f;
+    [SerializeField] private float maxWaveInterval = 0.15f;
 
     private List<Material> waveMats = new List<Material>();
     private List<float> waveTimers = new List<float>();
+    private List<float> waveSpeeds = new List<float>();
 
     void Start()
     {
@@ -31,12 +40,23 @@ public class CircleWaveEffect : MonoBehaviour
 
         waveMats.Clear();
         waveTimers.Clear();
+        waveSpeeds.Clear();
+
+        float currentInterval = 0f;
 
         for (int i = 0; i < waveCount; i++)
         {
             Material newMat = new Material(baseMat);
             waveMats.Add(newMat);
-            waveTimers.Add(i * waveInterval);
+
+            // 각 파형 간격 랜덤
+            float interval = Random.Range(minWaveInterval, maxWaveInterval);
+            currentInterval += interval;
+            waveTimers.Add(currentInterval);
+
+            // 각 파형 속도 랜덤
+            float speed = Random.Range(minWaveSpeed, maxWaveSpeed);
+            waveSpeeds.Add(speed);
         }
 
         Material[] newMats = rend.materials;
@@ -53,7 +73,8 @@ public class CircleWaveEffect : MonoBehaviour
             Material mat = waveMats[i];
             if (mat == null) continue;
 
-            waveTimers[i] += Time.deltaTime * waveSpeed;
+            // 각 파형마다 속도 다르게 적용
+            waveTimers[i] += Time.deltaTime * waveSpeeds[i];
             if (waveTimers[i] > 1f) waveTimers[i] -= 1f;
 
             float t = waveTimers[i];
