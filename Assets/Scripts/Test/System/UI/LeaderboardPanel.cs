@@ -568,7 +568,7 @@ public class LeaderboardPanel : MonoBehaviour
     /// </summary>
     private void LeaderboardUIUpdate()
     {
-        Debug.Log("📊 리더보드 업데이트 시작");
+        Debug.Log("리더보드 업데이트 시작");
         
         // 기존 랭킹 오브젝트 제거
         ClearRankingObjects();
@@ -585,26 +585,36 @@ public class LeaderboardPanel : MonoBehaviour
         // 상위 30명 또는 전체 인원 (둘 중 작은 값)
         int displayCount = Mathf.Min(30, sortedUsers.Count);
         
-        Debug.Log($"🏆 상위 {displayCount}명 리더보드 생성 중...");
+        Debug.Log($" 상위 {displayCount}명 리더보드 생성 중...");
         
-        // 랭킹 오브젝트 생성
+        // 랭킹 오브젝트 애니메이션과 함께 생성
+        StartCoroutine(AnimateRankingObjects(displayCount, sortedUsers));
+        
+        Debug.Log($"리더보드 업데이트 완료 - {displayCount}명 표시");
+    }
+    
+    /// <summary>
+    /// 랭킹 오브젝트들을 순차적으로 애니메이션과 함께 생성
+    /// </summary>
+    private IEnumerator AnimateRankingObjects(int displayCount, List<UserGameData> sortedUsers)
+    {
         for (int i = 0; i < displayCount; i++)
         {
-            CreateRankingObject(i + 1, sortedUsers[i]);
+            // 오브젝트 팝업만 대기하고, 내부 요소는 비동기로 처리
+            StartCoroutine(CreateAndAnimateRankingObject(i + 1, sortedUsers[i]));
+            yield return new WaitForSeconds(0.2f); // 0.2초 간격으로 다음 오브젝트 생성
         }
-        
-        Debug.Log($"✅ 리더보드 업데이트 완료 - {displayCount}명 표시");
     }
 
     /// <summary>
-    /// 랭킹 오브젝트 생성
+    /// 랭킹 오브젝트 생성 및 애니메이션
     /// </summary>
-    private void CreateRankingObject(int rank, UserGameData userData)
+    private IEnumerator CreateAndAnimateRankingObject(int rank, UserGameData userData)
     {
         if (rankingObjectPrefab == null || rankingObjectParent == null)
         {
-            Debug.LogError("❌ 랭킹 오브젝트 프리팹 또는 부모 오브젝트가 설정되지 않았습니다!");
-            return;
+            Debug.LogError("랭킹 오브젝트 프리팹 또는 부모 오브젝트가 설정되지 않았습니다!");
+            yield break;
         }
         
         // 프리팹 인스턴스 생성
@@ -615,8 +625,8 @@ public class LeaderboardPanel : MonoBehaviour
         Transform infoTransform = FindChildWithTag(rankingObj.transform, "Info");
         if (infoTransform == null)
         {
-            Debug.LogError($"❌ 랭킹 오브젝트에서 'Info' 태그를 찾을 수 없습니다! (Rank: {rank})");
-            return;
+            Debug.LogError($"랭킹 오브젝트에서 'Info' 태그를 찾을 수 없습니다! (Rank: {rank})");
+            yield break;
         }
         
         // Tier, Rate, Name 자식 오브젝트 찾기
@@ -624,61 +634,118 @@ public class LeaderboardPanel : MonoBehaviour
         Transform rateTransform = infoTransform.Find("Rate");
         Transform nameTransform = infoTransform.Find("Name");
         
-        // Tier 이미지 설정
-        if (tierTransform != null)
+        Image tierImage = tierTransform?.GetComponent<Image>();
+        TextMeshProUGUI rateText = rateTransform?.GetComponent<TextMeshProUGUI>();
+        TextMeshProUGUI nameText = nameTransform?.GetComponent<TextMeshProUGUI>();
+        
+        // 데이터 설정
+        if (tierImage != null)
         {
-            Image tierImage = tierTransform.GetComponent<Image>();
-            if (tierImage != null)
-            {
-                tierImage.sprite = GetTierSprite(userData.rate);
-            }
-            else
-            {
-                Debug.LogWarning($"⚠️ Tier 오브젝트에 Image 컴포넌트가 없습니다! (Rank: {rank})");
-            }
-        }
-        else
-        {
-            Debug.LogWarning($"⚠️ 'Tier' 자식 오브젝트를 찾을 수 없습니다! (Rank: {rank})");
+            tierImage.sprite = GetTierSprite(userData.rate);
         }
         
-        // Rate 텍스트 설정
-        if (rateTransform != null)
+        // 내부 요소들 초기 상태 설정 (완전히 숨김)
+        if (tierImage != null)
         {
-            TextMeshProUGUI rateText = rateTransform.GetComponent<TextMeshProUGUI>();
-            if (rateText != null)
-            {
-                rateText.text = userData.rate.ToString();
-            }
-            else
-            {
-                Debug.LogWarning($"⚠️ Rate 오브젝트에 TextMeshProUGUI 컴포넌트가 없습니다! (Rank: {rank})");
-            }
+            tierImage.color = new Color(1f, 1f, 1f, 0f);
+            tierImage.transform.localScale = Vector3.zero;
         }
-        else
+        if (rateText != null)
         {
-            Debug.LogWarning($"⚠️ 'Rate' 자식 오브젝트를 찾을 수 없습니다! (Rank: {rank})");
+            rateText.alpha = 0f;
+            rateText.transform.localScale = Vector3.zero;
+            rateText.text = "0";
         }
-        
-        // Name 텍스트 설정
-        if (nameTransform != null)
+        if (nameText != null)
         {
-            TextMeshProUGUI nameText = nameTransform.GetComponent<TextMeshProUGUI>();
-            if (nameText != null)
-            {
-                nameText.text = userData.nickname;
-            }
-            else
-            {
-                Debug.LogWarning($"⚠️ Name 오브젝트에 TextMeshProUGUI 컴포넌트가 없습니다! (Rank: {rank})");
-            }
-        }
-        else
-        {
-            Debug.LogWarning($"⚠️ 'Name' 자식 오브젝트를 찾을 수 없습니다! (Rank: {rank})");
+            nameText.alpha = 0f;
+            nameText.transform.localScale = Vector3.zero;
+            nameText.text = userData.nickname;
         }
         
-        Debug.Log($"🏅 {rank}등: {userData.nickname} (Rate: {userData.rate}) - 랭킹 오브젝트 생성 완료");
+        // 랭킹 오브젝트 팝업 애니메이션
+        rankingObj.transform.localScale = Vector3.zero;
+        
+        // 오브젝트 팝업
+        Sequence objSeq = DOTween.Sequence();
+        objSeq.Append(rankingObj.transform.DOScale(1.05f, 0.15f).SetEase(Ease.OutBack));
+        objSeq.Append(rankingObj.transform.DOScale(1f, 0.08f).SetEase(Ease.InOutQuad));
+        
+        // 사운드 재생
+        if (AudioManager.Inst != null)
+        {
+            AudioManager.Inst.PlayOneShot("SFX_UI_PopLeaderboardText");
+        }
+        
+        // 오브젝트 팝업 완료 후 내부 요소 애니메이션 시작 (비동기)
+        StartCoroutine(AnimateRankingElements(tierImage, rateText, nameText, userData.rate));
+    }
+    
+    /// <summary>
+    /// 랭킹 요소들의 순차 애니메이션 (Rate → Tier → Name)
+    /// </summary>
+    private IEnumerator AnimateRankingElements(Image tierImage, TextMeshProUGUI rateText, TextMeshProUGUI nameText, int targetRate)
+    {
+        // 0.4초 대기
+        yield return new WaitForSeconds(0.4f);
+        
+        // 1. Rate 텍스트 팝업
+        if (rateText != null)
+        {
+            Sequence rateSeq = DOTween.Sequence();
+            rateSeq.Append(rateText.transform.DOScale(1.1f, 0.15f).SetEase(Ease.OutBack));
+            rateSeq.Join(rateText.DOFade(1f, 0.1f).SetEase(Ease.OutQuad));
+            rateSeq.Append(rateText.transform.DOScale(1f, 0.08f).SetEase(Ease.InOutQuad));
+            yield return rateSeq.WaitForCompletion();
+            
+            // 점수 증가 애니메이션 (0.8초 동안)
+            yield return StartCoroutine(AnimateRankingRate(rateText, targetRate));
+        }
+        
+        // 2. Tier 이미지 팝업
+        if (tierImage != null)
+        {
+            tierImage.DOFade(1f, 0.15f).SetEase(Ease.OutQuad);
+            Sequence tierSeq = DOTween.Sequence();
+            tierSeq.Append(tierImage.transform.DOScale(1.1f, 0.12f).SetEase(Ease.OutBack));
+            tierSeq.Append(tierImage.transform.DOScale(1f, 0.08f).SetEase(Ease.InOutQuad));
+            yield return tierSeq.WaitForCompletion();
+        }
+        
+        // 3. Name 텍스트 팝업
+        if (nameText != null)
+        {
+            Sequence nameSeq = DOTween.Sequence();
+            nameSeq.Append(nameText.transform.DOScale(1.1f, 0.12f).SetEase(Ease.OutBack));
+            nameSeq.Join(nameText.DOFade(1f, 0.1f).SetEase(Ease.OutQuad));
+            nameSeq.Append(nameText.transform.DOScale(1f, 0.08f).SetEase(Ease.InOutQuad));
+        }
+    }
+    
+    /// <summary>
+    /// 랭킹 오브젝트의 Rate 텍스트 증가 애니메이션 (간소화 버전)
+    /// </summary>
+    private IEnumerator AnimateRankingRate(TextMeshProUGUI rateText, int targetRate)
+    {
+        if (rateText == null) yield break;
+        
+        float duration = 0.8f; // 0.8초 동안 증가
+        float elapsed = 0f;
+        int currentRate = 0;
+        
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float progress = elapsed / duration;
+            
+            currentRate = Mathf.RoundToInt(Mathf.Lerp(0, targetRate, progress));
+            rateText.text = currentRate.ToString();
+            
+            yield return null;
+        }
+        
+        // 최종 값 보장
+        rateText.text = targetRate.ToString();
     }
 
     /// <summary>
