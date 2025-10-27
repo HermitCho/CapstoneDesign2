@@ -554,8 +554,8 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1291773999}
   m_HandleRect: {fileID: 1422740706}
   m_Direction: 2
-  m_Value: -0.00000030517577
-  m_Size: 0.85713696
+  m_Value: -0.0000073242186
+  m_Size: 0.85645247
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -9039,7 +9039,7 @@ MeshRenderer:
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: 3fe5d0b0500a06a44af0c3e30f51a593, type: 2}
-  - {fileID: 2100000, guid: b7ed2f93346260840ad609d5ff291b65, type: 2}
+  - {fileID: 2100000, guid: b2c9250a082536545a27724a57e86032, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -9082,13 +9082,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   circleMaterialIndex: 1
-  waveCount: 20
+  waveCount: 10
   waveSpeed: 0.1
   minTiling: 0.01
   maxTiling: 1.5
-  waveInterval: 0.1
-  minThickness: 0.8
-  maxThickness: 1.5
+  waveInterval: 0.4
 --- !u!1 &272901929
 GameObject:
   m_ObjectHideFlags: 0
@@ -18495,6 +18493,7 @@ GameObject:
   - component: {fileID: 551405681}
   - component: {fileID: 551405680}
   - component: {fileID: 551405679}
+  - component: {fileID: 551405682}
   m_Layer: 0
   m_Name: Background
   m_TagString: Untagged
@@ -18589,6 +18588,24 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 551405677}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &551405682
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 551405677}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c64da89219209544d9383df23a991fa6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  circleMaterialIndex: 1
+  waveCount: 10
+  waveSpeed: 0.1
+  minTiling: 0.01
+  maxTiling: 1.5
+  waveInterval: 0.4
 --- !u!1 &553047442
 GameObject:
   m_ObjectHideFlags: 0
@@ -28369,13 +28386,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   circleMaterialIndex: 1
-  waveCount: 20
+  waveCount: 10
   waveSpeed: 0.1
   minTiling: 0.01
   maxTiling: 1.5
-  waveInterval: 0.1
-  minThickness: 0.8
-  maxThickness: 1.5
+  waveInterval: 0.4
 --- !u!1 &848164086
 GameObject:
   m_ObjectHideFlags: 0
@@ -39443,7 +39458,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 100.00005}
+  m_AnchoredPosition: {x: 0, y: 100.00069}
   m_SizeDelta: {x: 0, y: 700}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1180348478
@@ -40682,7 +40697,7 @@ PrefabInstance:
     - target: {fileID: 2393741488666459665, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
       propertyPath: m_SizeDelta.x
-      value: 0
+      value: 96.14
       objectReference: {fileID: 0}
     - target: {fileID: 2393741488666459665, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
@@ -40790,7 +40805,7 @@ PrefabInstance:
     - target: {fileID: 2393741490227731185, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
       propertyPath: m_SizeDelta.x
-      value: 0
+      value: 136.5
       objectReference: {fileID: 0}
     - target: {fileID: 2393741490227731185, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
@@ -40805,7 +40820,7 @@ PrefabInstance:
     - target: {fileID: 2393741490227731185, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 1803.8806
+      value: 1803.9194
       objectReference: {fileID: 0}
     - target: {fileID: 2393741490227731185, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
@@ -41011,7 +41026,7 @@ PrefabInstance:
     - target: {fileID: 6044724140025765848, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
       propertyPath: m_SizeDelta.x
-      value: 0
+      value: 30.36
       objectReference: {fileID: 0}
     - target: {fileID: 6044724140025765848, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
@@ -41046,7 +41061,7 @@ PrefabInstance:
     - target: {fileID: 7477022311405558977, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
       propertyPath: m_SizeDelta.x
-      value: 0
+      value: 14.36
       objectReference: {fileID: 0}
     - target: {fileID: 7477022311405558977, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
@@ -45518,7 +45533,7 @@ MeshRenderer:
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: 4036a1e0a2f4ff3448648f607e22e809, type: 2}
-  - {fileID: 2100000, guid: 2e81b649e9f972841a7e021c92ad688d, type: 2}
+  - {fileID: 2100000, guid: 101861bc6852f3d4cb243f1f5df12f31, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -45561,13 +45576,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   circleMaterialIndex: 1
-  waveCount: 20
+  waveCount: 10
   waveSpeed: 0.1
   minTiling: 0.01
   maxTiling: 1.5
-  waveInterval: 0.1
-  minThickness: 0.8
-  maxThickness: 1.5
+  waveInterval: 0.4
 --- !u!1 &1302339103
 GameObject:
   m_ObjectHideFlags: 0
@@ -62771,13 +62784,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   circleMaterialIndex: 1
-  waveCount: 20
+  waveCount: 10
   waveSpeed: 0.1
   minTiling: 0.01
   maxTiling: 1.5
-  waveInterval: 0.1
-  minThickness: 0.8
-  maxThickness: 1.5
+  waveInterval: 0.4
 --- !u!1 &1755316735
 GameObject:
   m_ObjectHideFlags: 0
@@ -64766,7 +64777,7 @@ PrefabInstance:
     - target: {fileID: 2393741488666459665, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
       propertyPath: m_SizeDelta.x
-      value: 0
+      value: 96.14
       objectReference: {fileID: 0}
     - target: {fileID: 2393741488666459665, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
@@ -64874,7 +64885,7 @@ PrefabInstance:
     - target: {fileID: 2393741490227731185, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
       propertyPath: m_SizeDelta.x
-      value: 0
+      value: 139.44
       objectReference: {fileID: 0}
     - target: {fileID: 2393741490227731185, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
@@ -64889,7 +64900,7 @@ PrefabInstance:
     - target: {fileID: 2393741490227731185, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 1614.4407
+      value: 1614.4795
       objectReference: {fileID: 0}
     - target: {fileID: 2393741490227731185, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
@@ -65095,7 +65106,7 @@ PrefabInstance:
     - target: {fileID: 6044724140025765848, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
       propertyPath: m_SizeDelta.x
-      value: 0
+      value: 33.3
       objectReference: {fileID: 0}
     - target: {fileID: 6044724140025765848, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
@@ -65130,7 +65141,7 @@ PrefabInstance:
     - target: {fileID: 7477022311405558977, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
       propertyPath: m_SizeDelta.x
-      value: 0
+      value: 17.3
       objectReference: {fileID: 0}
     - target: {fileID: 7477022311405558977, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
@@ -68542,7 +68553,7 @@ MeshRenderer:
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: 96943f18424352649ad9721a5aaf853b, type: 2}
-  - {fileID: 2100000, guid: 601f61c5765ffcf42bd71faa25b2a44f, type: 2}
+  - {fileID: 2100000, guid: 500923eff3746c4439085f9fab4b1eb7, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -68585,13 +68596,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   circleMaterialIndex: 1
-  waveCount: 20
+  waveCount: 10
   waveSpeed: 0.1
   minTiling: 0.01
   maxTiling: 1.5
-  waveInterval: 0.1
-  minThickness: 0.8
-  maxThickness: 1.5
+  waveInterval: 0.4
 --- !u!1 &1926421579
 GameObject:
   m_ObjectHideFlags: 0
@@ -73328,6 +73337,7 @@ GameObject:
   - component: {fileID: 2055235151}
   - component: {fileID: 2055235150}
   - component: {fileID: 2055235149}
+  - component: {fileID: 2055235152}
   m_Layer: 0
   m_Name: Background
   m_TagString: Untagged
@@ -73422,6 +73432,24 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2055235147}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &2055235152
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2055235147}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c64da89219209544d9383df23a991fa6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  circleMaterialIndex: 1
+  waveCount: 10
+  waveSpeed: 0.1
+  minTiling: 0.01
+  maxTiling: 1.5
+  waveInterval: 0.4
 --- !u!1 &2061684713
 GameObject:
   m_ObjectHideFlags: 0
