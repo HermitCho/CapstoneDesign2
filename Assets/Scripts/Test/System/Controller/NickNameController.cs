@@ -4,11 +4,22 @@ using UnityEngine;
 using TMPro;
 using Michsky.UI.Heat;
 using Photon.Pun;
+using DG.Tweening;
 
 public class NickNameController : MonoBehaviour
 {
-    [Header("UI References")]
+    [Header("UI Text 참조")]
     [SerializeField] private TMP_InputField nicknameInputField;
+
+    [Header("UI 오브젝트 참조")]
+    [SerializeField] private GameObject nicknameObject;
+    
+    [Header("부유 애니메이션 설정")]
+    [SerializeField] private float floatDistance = 1f; // 위아래 이동 거리
+    [SerializeField] private float floatDuration = 2f;  // 한 사이클 시간
+    
+    private Vector3 originalPosition;
+    private Tween floatTween;
     /// <summary>
     /// 닉네임 설정 (데이터베이스 기반 시스템 호환)
     /// 현재 로그인된 사용자의 닉네임을 사용
@@ -99,6 +110,47 @@ public class NickNameController : MonoBehaviour
         
         // InputField 이벤트 연결
         SetupInputFieldEvents();
+        
+        // 부유 애니메이션 시작
+        StartFloatingAnimation();
+    }
+    
+    void OnDestroy()
+    {
+        // 애니메이션 정리
+        StopFloatingAnimation();
+    }
+    
+    /// <summary>
+    /// 부유 애니메이션 시작
+    /// </summary>
+    private void StartFloatingAnimation()
+    {
+        if (nicknameObject == null) return;
+        
+        // 원본 위치 저장
+        RectTransform rectTransform = nicknameObject.GetComponent<RectTransform>();
+        if (rectTransform != null)
+        {
+            originalPosition = rectTransform.anchoredPosition;
+            
+            // 위아래로 부드럽게 움직이는 무한 루프 애니메이션
+            floatTween = rectTransform.DOAnchorPosY(originalPosition.y + floatDistance, floatDuration)
+                .SetEase(Ease.InOutSine)
+                .SetLoops(-1, LoopType.Yoyo);
+        }
+    }
+    
+    /// <summary>
+    /// 부유 애니메이션 중지
+    /// </summary>
+    private void StopFloatingAnimation()
+    {
+        if (floatTween != null)
+        {
+            floatTween.Kill();
+            floatTween = null;
+        }
     }
     
     /// <summary>
