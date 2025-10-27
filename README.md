@@ -29,7 +29,6 @@
 |NVIDIA GeForce GTX 1050 또는 AMD Radeon RX 560 (VRAM 4GB)|NVIDIA GeForce RTX 3060 또는 AMD Radeon RX 6600 (VRAM 8GB 이상)|
 |HDD (SATA 7200 RPM)|SSD (NVMe 권장)|
 |광대역 인터넷 연결|광대역 인터넷 연결 (유선 연결 권장)|
-|테스트1|테스트2|
 
 ## Case Study
   *
