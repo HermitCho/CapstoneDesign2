@@ -5,6 +5,7 @@ using TMPro;
 using Michsky.UI.Heat;
 using UnityEngine.UI;
 using System.Linq;
+using DG.Tweening;
 
 public class LeaderboardPanel : MonoBehaviour
 {
@@ -17,9 +18,10 @@ public class LeaderboardPanel : MonoBehaviour
     [SerializeField] private TextMeshProUGUI myLoseText; [Space(5)]
     [Tooltip("레이팅 텍스트")]
     [SerializeField] private TextMeshProUGUI myRatingText; [Space(10)]
+    [Tooltip("텍스트 애니메이션 딜레이")]
+    [SerializeField] private float textAnimationDelay = 0.2f;
 
     [Header("티어")]
-
     [Header("전체 티어 스프라이트")]
     [Tooltip("브론즈 티어 스프라이트")]
     [SerializeField] private Sprite bronzeTierSprite; [Space(5)]
@@ -214,18 +216,8 @@ public class LeaderboardPanel : MonoBehaviour
         
         if (gameData != null)
         {
-            // UI 업데이트
-            if (myNameText != null)
-                myNameText.text = gameData.nickname;
-            
-            if (myWinText != null)
-                myWinText.text = gameData.win.ToString();
-            
-            if (myLoseText != null)
-                myLoseText.text = gameData.lose.ToString();
-            
-            if (myRatingText != null)
-                myRatingText.text = gameData.rate.ToString();
+            // 애니메이션과 함께 UI 업데이트
+            StartCoroutine(AnimateProfileTexts(gameData));
             
             Debug.Log($"✅ 프로필 업데이트 완료: {gameData.nickname} (Rate: {gameData.rate})");
         }
@@ -234,6 +226,62 @@ public class LeaderboardPanel : MonoBehaviour
             Debug.LogWarning("⚠️ 게임 데이터를 찾을 수 없습니다.");
             ClearProfileUI();
         }
+    }
+    
+    /// <summary>
+    /// 프로필 텍스트들을 순차적으로 팝 애니메이션과 함께 표시
+    /// </summary>
+    private IEnumerator AnimateProfileTexts(UserGameData gameData)
+    {
+        // 초기 상태 설정 (투명 + 축소)
+        TextMeshProUGUI[] textComponents = { myNameText, myWinText, myLoseText, myRatingText };
+        string[] textValues = { gameData.nickname, gameData.win.ToString(), gameData.lose.ToString(), gameData.rate.ToString() };
+        
+        for (int i = 0; i < textComponents.Length; i++)
+        {
+            if (textComponents[i] != null)
+            {
+                textComponents[i].alpha = 0f;
+                textComponents[i].transform.localScale = Vector3.zero;
+            }
+        }
+        
+        // 티어 UI 초기화 (스포 방지)
+        if (myTierImage != null)
+        {
+            myTierImage.color = new Color(1f, 1f, 1f, 0f); // 완전 투명
+        }
+        if (myTierRatingText != null)
+        {
+            myTierRatingText.alpha = 0f; // 완전 투명
+        }
+        
+        // 순차적으로 팝 애니메이션
+        for (int i = 0; i < textComponents.Length; i++)
+        {
+            if (textComponents[i] != null)
+            {
+                // 텍스트 설정
+                textComponents[i].text = textValues[i];
+                
+                // 발랄한 팝 애니메이션 (OutBack 사용)
+                Sequence seq = DOTween.Sequence();
+                seq.Append(textComponents[i].transform.DOScale(1.1f, 0.2f).SetEase(Ease.OutBack));
+                seq.Join(textComponents[i].DOFade(1f, 0.15f).SetEase(Ease.OutQuad));
+                seq.Append(textComponents[i].transform.DOScale(1f, 0.1f).SetEase(Ease.InOutQuad));
+                
+                // 사운드 재생
+                if (AudioManager.Inst != null)
+                {
+                    AudioManager.Inst.PlayOneShot("SFX_UI_PopLeaderboardText");
+                }
+                
+                yield return new WaitForSeconds(textAnimationDelay);
+            }
+        }
+        
+        // 프로필 텍스트 완료 후 티어 레이팅 애니메이션 시작
+        yield return StartCoroutine(AnimateTierRating(gameData.rate));
     }
 
     /// <summary>
@@ -275,22 +323,168 @@ public class LeaderboardPanel : MonoBehaviour
             return;
         }
         
-        int userRate = gameData.rate;
-        Sprite tierSprite = GetTierSprite(userRate);
+        Debug.Log($"✅ 티어 업데이트 준비 완료: Rate {gameData.rate} -> {GetTierName(gameData.rate)}");
+        // 애니메이션은 AnimateTierRating에서 처리됨
+    }
+    
+    /// <summary>
+    /// 티어 레이팅 점수가 0부터 목표 점수까지 증가하는 애니메이션
+    /// </summary>
+    private IEnumerator AnimateTierRating(int targetRate)
+    {
+        if (myTierRatingText == null || myTierImage == null) yield break;
         
-        // 티어 이미지 설정
+        // 초기 상태 설정
+        myTierRatingText.text = "0";
+        myTierImage.sprite = bronzeTierSprite;
+        myTierImage.transform.localScale = Vector3.zero;
+        
+        // 첫 티어 스프라이트 등장 애니메이션
+        yield return StartCoroutine(AnimateTierSpriteAppear());
+        
+        // 점수 증가 애니메이션 (0 → targetRate)
+        float duration = 2f; // 2초 동안 증가
+        float elapsed = 0f;
+        int currentRate = 0;
+        int lastTier = GetTierLevel(0);
+        
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float progress = elapsed / duration;
+            
+            // Ease.OutQuad로 점수 증가
+            currentRate = Mathf.RoundToInt(Mathf.Lerp(0, targetRate, progress));
+            
+            // 텍스트 업데이트
+            myTierRatingText.text = currentRate.ToString();
+            
+            // 티어 레벨 확인
+            int newTier = GetTierLevel(currentRate);
+            if (newTier != lastTier)
+            {
+                // 티어가 변경되었을 때
+                myTierImage.sprite = GetTierSprite(currentRate);
+                yield return StartCoroutine(AnimateTierChange());
+                lastTier = newTier;
+            }
+            
+            // 점수 증가 사운드 (10점마다)
+            if (currentRate % 10 == 0 && currentRate > 0)
+            {
+                if (AudioManager.Inst != null)
+                {
+                    AudioManager.Inst.PlayOneShot("SFX_UI_LeaderboardRatingText");
+                }
+            }
+            
+            yield return null;
+        }
+        
+        // 최종 값 보장
+        myTierRatingText.text = targetRate.ToString();
+        myTierImage.sprite = GetTierSprite(targetRate);
+    }
+    
+    /// <summary>
+    /// 티어 스프라이트 첫 등장 애니메이션
+    /// </summary>
+    private IEnumerator AnimateTierSpriteAppear()
+    {
+        if (myTierImage == null) yield break;
+        
+        // 티어 이미지와 레이팅 텍스트 표시 (페이드 인)
         if (myTierImage != null)
         {
-            myTierImage.sprite = tierSprite;
+            myTierImage.DOFade(1f, 0.3f).SetEase(Ease.OutQuad);
         }
-        
-        // 티어 레이팅 텍스트 설정
         if (myTierRatingText != null)
         {
-            myTierRatingText.text = userRate.ToString();
+            myTierRatingText.DOFade(1f, 0.3f).SetEase(Ease.OutQuad);
         }
         
-        Debug.Log($"✅ 티어 업데이트 완료: Rate {userRate} -> {GetTierName(userRate)}");
+        yield return new WaitForSeconds(0.15f);
+        
+        // 브론즈 티어 사운드
+        if (AudioManager.Inst != null)
+        {
+            AudioManager.Inst.PlayOneShot("SFX_UI_LeaderboardBronze");
+        }
+        
+        // 스케일 애니메이션 + 회전
+        Sequence seq = DOTween.Sequence();
+        seq.Append(myTierImage.transform.DOScale(1.15f, 0.25f).SetEase(Ease.OutBack));
+        seq.Join(myTierImage.transform.DORotate(new Vector3(0f, 0f, 5f), 0.15f).SetEase(Ease.OutQuad));
+        seq.Append(myTierImage.transform.DORotate(Vector3.zero, 0.15f).SetEase(Ease.InOutQuad));
+        seq.Join(myTierImage.transform.DOScale(1f, 0.15f).SetEase(Ease.InOutQuad));
+        
+        yield return seq.WaitForCompletion();
+    }
+    
+    /// <summary>
+    /// 티어 변경 시 애니메이션
+    /// </summary>
+    private IEnumerator AnimateTierChange()
+    {
+        if (myTierImage == null) yield break;
+        
+        // 현재 티어에 맞는 사운드 재생
+        int currentRate = int.Parse(myTierRatingText.text);
+        PlayTierSound(currentRate);
+        
+        // 스케일 증가 + 오른쪽 회전 → 원위치
+        Sequence seq = DOTween.Sequence();
+        seq.Append(myTierImage.transform.DOScale(1.15f, 0.2f).SetEase(Ease.OutBack));
+        seq.Join(myTierImage.transform.DORotate(new Vector3(0f, 0f, 5f), 0.12f).SetEase(Ease.OutQuad));
+        seq.Append(myTierImage.transform.DORotate(Vector3.zero, 0.12f).SetEase(Ease.InOutQuad));
+        seq.Join(myTierImage.transform.DOScale(1f, 0.12f).SetEase(Ease.InOutQuad));
+        
+        yield return seq.WaitForCompletion();
+    }
+    
+    /// <summary>
+    /// 티어에 맞는 사운드 재생
+    /// </summary>
+    private void PlayTierSound(int rate)
+    {
+        if (AudioManager.Inst == null) return;
+        
+        string soundName = "";
+        
+        if (rate >= 2700 && IsTopTenPercent(rate))
+        {
+            soundName = "SFX_UI_LeaderboardMaster";
+        }
+        else if (rate >= 1901)
+        {
+            soundName = "SFX_UI_LeaderboardDiamond";
+        }
+        else if (rate >= 1301)
+        {
+            soundName = "SFX_UI_LeaderboardGold";
+        }
+        else if (rate >= 801)
+        {
+            soundName = "SFX_UI_LeaderboardSilver";
+        }
+        else
+        {
+            soundName = "SFX_UI_LeaderboardBronze";
+        }
+        
+        AudioManager.Inst.PlayOneShot(soundName);
+    }
+    
+    /// <summary>
+    /// 점수 기반 티어 레벨 반환 (0=Bronze, 1=Silver, 2=Gold, 3=Diamond, 4=Master)
+    /// </summary>
+    private int GetTierLevel(int rate)
+    {
+        if (rate >= 2700 && IsTopTenPercent(rate)) return 4; // Master
+        else if (rate >= 1901) return 3; // Diamond
+        else if (rate >= 1301) return 2; // Gold
+        else if (rate >= 801) return 1;  // Silver
+        else return 0; // Bronze
     }
 
     /// <summary>
@@ -374,7 +568,7 @@ public class LeaderboardPanel : MonoBehaviour
     /// </summary>
     private void LeaderboardUIUpdate()
     {
-        Debug.Log("📊 리더보드 업데이트 시작");
+        Debug.Log("리더보드 업데이트 시작");
         
         // 기존 랭킹 오브젝트 제거
         ClearRankingObjects();
@@ -391,26 +585,36 @@ public class LeaderboardPanel : MonoBehaviour
         // 상위 30명 또는 전체 인원 (둘 중 작은 값)
         int displayCount = Mathf.Min(30, sortedUsers.Count);
         
-        Debug.Log($"🏆 상위 {displayCount}명 리더보드 생성 중...");
+        Debug.Log($" 상위 {displayCount}명 리더보드 생성 중...");
         
-        // 랭킹 오브젝트 생성
+        // 랭킹 오브젝트 애니메이션과 함께 생성
+        StartCoroutine(AnimateRankingObjects(displayCount, sortedUsers));
+        
+        Debug.Log($"리더보드 업데이트 완료 - {displayCount}명 표시");
+    }
+    
+    /// <summary>
+    /// 랭킹 오브젝트들을 순차적으로 애니메이션과 함께 생성
+    /// </summary>
+    private IEnumerator AnimateRankingObjects(int displayCount, List<UserGameData> sortedUsers)
+    {
         for (int i = 0; i < displayCount; i++)
         {
-            CreateRankingObject(i + 1, sortedUsers[i]);
+            // 오브젝트 팝업만 대기하고, 내부 요소는 비동기로 처리
+            StartCoroutine(CreateAndAnimateRankingObject(i + 1, sortedUsers[i]));
+            yield return new WaitForSeconds(0.2f); // 0.2초 간격으로 다음 오브젝트 생성
         }
-        
-        Debug.Log($"✅ 리더보드 업데이트 완료 - {displayCount}명 표시");
     }
 
     /// <summary>
-    /// 랭킹 오브젝트 생성
+    /// 랭킹 오브젝트 생성 및 애니메이션
     /// </summary>
-    private void CreateRankingObject(int rank, UserGameData userData)
+    private IEnumerator CreateAndAnimateRankingObject(int rank, UserGameData userData)
     {
         if (rankingObjectPrefab == null || rankingObjectParent == null)
         {
-            Debug.LogError("❌ 랭킹 오브젝트 프리팹 또는 부모 오브젝트가 설정되지 않았습니다!");
-            return;
+            Debug.LogError("랭킹 오브젝트 프리팹 또는 부모 오브젝트가 설정되지 않았습니다!");
+            yield break;
         }
         
         // 프리팹 인스턴스 생성
@@ -421,8 +625,8 @@ public class LeaderboardPanel : MonoBehaviour
         Transform infoTransform = FindChildWithTag(rankingObj.transform, "Info");
         if (infoTransform == null)
         {
-            Debug.LogError($"❌ 랭킹 오브젝트에서 'Info' 태그를 찾을 수 없습니다! (Rank: {rank})");
-            return;
+            Debug.LogError($"랭킹 오브젝트에서 'Info' 태그를 찾을 수 없습니다! (Rank: {rank})");
+            yield break;
         }
         
         // Tier, Rate, Name 자식 오브젝트 찾기
@@ -430,61 +634,118 @@ public class LeaderboardPanel : MonoBehaviour
         Transform rateTransform = infoTransform.Find("Rate");
         Transform nameTransform = infoTransform.Find("Name");
         
-        // Tier 이미지 설정
-        if (tierTransform != null)
+        Image tierImage = tierTransform?.GetComponent<Image>();
+        TextMeshProUGUI rateText = rateTransform?.GetComponent<TextMeshProUGUI>();
+        TextMeshProUGUI nameText = nameTransform?.GetComponent<TextMeshProUGUI>();
+        
+        // 데이터 설정
+        if (tierImage != null)
         {
-            Image tierImage = tierTransform.GetComponent<Image>();
-            if (tierImage != null)
-            {
-                tierImage.sprite = GetTierSprite(userData.rate);
-            }
-            else
-            {
-                Debug.LogWarning($"⚠️ Tier 오브젝트에 Image 컴포넌트가 없습니다! (Rank: {rank})");
-            }
-        }
-        else
-        {
-            Debug.LogWarning($"⚠️ 'Tier' 자식 오브젝트를 찾을 수 없습니다! (Rank: {rank})");
+            tierImage.sprite = GetTierSprite(userData.rate);
         }
         
-        // Rate 텍스트 설정
-        if (rateTransform != null)
+        // 내부 요소들 초기 상태 설정 (완전히 숨김)
+        if (tierImage != null)
         {
-            TextMeshProUGUI rateText = rateTransform.GetComponent<TextMeshProUGUI>();
-            if (rateText != null)
-            {
-                rateText.text = userData.rate.ToString();
-            }
-            else
-            {
-                Debug.LogWarning($"⚠️ Rate 오브젝트에 TextMeshProUGUI 컴포넌트가 없습니다! (Rank: {rank})");
-            }
+            tierImage.color = new Color(1f, 1f, 1f, 0f);
+            tierImage.transform.localScale = Vector3.zero;
         }
-        else
+        if (rateText != null)
         {
-            Debug.LogWarning($"⚠️ 'Rate' 자식 오브젝트를 찾을 수 없습니다! (Rank: {rank})");
+            rateText.alpha = 0f;
+            rateText.transform.localScale = Vector3.zero;
+            rateText.text = "0";
         }
-        
-        // Name 텍스트 설정
-        if (nameTransform != null)
+        if (nameText != null)
         {
-            TextMeshProUGUI nameText = nameTransform.GetComponent<TextMeshProUGUI>();
-            if (nameText != null)
-            {
-                nameText.text = userData.nickname;
-            }
-            else
-            {
-                Debug.LogWarning($"⚠️ Name 오브젝트에 TextMeshProUGUI 컴포넌트가 없습니다! (Rank: {rank})");
-            }
-        }
-        else
-        {
-            Debug.LogWarning($"⚠️ 'Name' 자식 오브젝트를 찾을 수 없습니다! (Rank: {rank})");
+            nameText.alpha = 0f;
+            nameText.transform.localScale = Vector3.zero;
+            nameText.text = userData.nickname;
         }
         
-        Debug.Log($"🏅 {rank}등: {userData.nickname} (Rate: {userData.rate}) - 랭킹 오브젝트 생성 완료");
+        // 랭킹 오브젝트 팝업 애니메이션
+        rankingObj.transform.localScale = Vector3.zero;
+        
+        // 오브젝트 팝업
+        Sequence objSeq = DOTween.Sequence();
+        objSeq.Append(rankingObj.transform.DOScale(1.05f, 0.15f).SetEase(Ease.OutBack));
+        objSeq.Append(rankingObj.transform.DOScale(1f, 0.08f).SetEase(Ease.InOutQuad));
+        
+        // 사운드 재생
+        if (AudioManager.Inst != null)
+        {
+            AudioManager.Inst.PlayOneShot("SFX_UI_PopLeaderboardText");
+        }
+        
+        // 오브젝트 팝업 완료 후 내부 요소 애니메이션 시작 (비동기)
+        StartCoroutine(AnimateRankingElements(tierImage, rateText, nameText, userData.rate));
+    }
+    
+    /// <summary>
+    /// 랭킹 요소들의 순차 애니메이션 (Rate → Tier → Name)
+    /// </summary>
+    private IEnumerator AnimateRankingElements(Image tierImage, TextMeshProUGUI rateText, TextMeshProUGUI nameText, int targetRate)
+    {
+        // 0.4초 대기
+        yield return new WaitForSeconds(0.4f);
+        
+        // 1. Rate 텍스트 팝업
+        if (rateText != null)
+        {
+            Sequence rateSeq = DOTween.Sequence();
+            rateSeq.Append(rateText.transform.DOScale(1.1f, 0.15f).SetEase(Ease.OutBack));
+            rateSeq.Join(rateText.DOFade(1f, 0.1f).SetEase(Ease.OutQuad));
+            rateSeq.Append(rateText.transform.DOScale(1f, 0.08f).SetEase(Ease.InOutQuad));
+            yield return rateSeq.WaitForCompletion();
+            
+            // 점수 증가 애니메이션 (0.8초 동안)
+            yield return StartCoroutine(AnimateRankingRate(rateText, targetRate));
+        }
+        
+        // 2. Tier 이미지 팝업
+        if (tierImage != null)
+        {
+            tierImage.DOFade(1f, 0.15f).SetEase(Ease.OutQuad);
+            Sequence tierSeq = DOTween.Sequence();
+            tierSeq.Append(tierImage.transform.DOScale(1.1f, 0.12f).SetEase(Ease.OutBack));
+            tierSeq.Append(tierImage.transform.DOScale(1f, 0.08f).SetEase(Ease.InOutQuad));
+            yield return tierSeq.WaitForCompletion();
+        }
+        
+        // 3. Name 텍스트 팝업
+        if (nameText != null)
+        {
+            Sequence nameSeq = DOTween.Sequence();
+            nameSeq.Append(nameText.transform.DOScale(1.1f, 0.12f).SetEase(Ease.OutBack));
+            nameSeq.Join(nameText.DOFade(1f, 0.1f).SetEase(Ease.OutQuad));
+            nameSeq.Append(nameText.transform.DOScale(1f, 0.08f).SetEase(Ease.InOutQuad));
+        }
+    }
+    
+    /// <summary>
+    /// 랭킹 오브젝트의 Rate 텍스트 증가 애니메이션 (간소화 버전)
+    /// </summary>
+    private IEnumerator AnimateRankingRate(TextMeshProUGUI rateText, int targetRate)
+    {
+        if (rateText == null) yield break;
+        
+        float duration = 0.8f; // 0.8초 동안 증가
+        float elapsed = 0f;
+        int currentRate = 0;
+        
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float progress = elapsed / duration;
+            
+            currentRate = Mathf.RoundToInt(Mathf.Lerp(0, targetRate, progress));
+            rateText.text = currentRate.ToString();
+            
+            yield return null;
+        }
+        
+        // 최종 값 보장
+        rateText.text = targetRate.ToString();
     }
 
     /// <summary>
