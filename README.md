@@ -1,11 +1,11 @@
 # 한밭대학교 컴퓨터공학과 MSG팀
 ## 팀 구성
 
-20201763 김지용
+20201763 김지용 [BeginnerKJY](https://github.com/BeginnerKJY)
 
-20201817 조민기
+20201817 조민기 [HermitCho](https://github.com/HermitCho)
 
-20201822 홍준용
+20201822 홍준용 [junyong0717](https://github.com/junyong0717)
 
 ## Teamate Project Background
 * 필요성
