@@ -207,16 +207,21 @@ public class TutorialSpawnController : MonoBehaviourPunCallbacks
             return;
         }
         
+        // ✅ 튜토리얼은 무조건 첫 번째 캐릭터 사용 (인덱스 0 고정)
+        int tutorialCharacterIndex = 0;
+        
+        Debug.Log($"✅ TutorialSpawnController: 튜토리얼 전용 캐릭터 사용 - 인덱스 {tutorialCharacterIndex} 고정");
+        
         // 첫 번째 캐릭터 프리팹 가져오기
-        GameObject firstCharacterPrefab = cachedPlayerPrefabData[0];
+        GameObject firstCharacterPrefab = cachedPlayerPrefabData[tutorialCharacterIndex];
         
         if (firstCharacterPrefab == null)
         {
-            Debug.LogError("TutorialSpawnController: 첫 번째 캐릭터 프리팹이 null입니다!");
+            Debug.LogError($"TutorialSpawnController: 인덱스 {tutorialCharacterIndex}의 캐릭터 프리팹이 null입니다!");
             return;
         }
         
-        Debug.Log($"TutorialSpawnController: 첫 번째 캐릭터 스폰 - {firstCharacterPrefab.name}");
+        Debug.Log($"TutorialSpawnController: 튜토리얼 캐릭터 스폰 - {firstCharacterPrefab.name} (인덱스: {tutorialCharacterIndex})");
         
         // 스폰 코루틴 시작
         StartCoroutine(SpawnCharacterCoroutine(firstCharacterPrefab));

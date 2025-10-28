@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using UnityEngine;
 using Photon.Pun;
+using System.Collections.Generic;
 
 public class ShopController : MonoBehaviourPun
 {
@@ -25,6 +26,10 @@ public class ShopController : MonoBehaviourPun
     private ShopStand currentLookingShopStand;
     private float purchaseHoldTimer = 0f;
     private bool isPurchaseHolding = false;
+    
+    // 프리팹 캐싱 (렉 방지)
+    private static Dictionary<string, GameObject> cachedItemPrefabs = null;
+    private static bool isCacheInitialized = false;
 
     #endregion
 
@@ -91,6 +96,9 @@ public class ShopController : MonoBehaviourPun
         // 입력 이벤트 구독
         InputManager.OnShootPressed += OnShootPressed;
         InputManager.OnShootCanceledPressed += OnShootCanceled;
+        
+        // 프리팹 캐시 초기화 (첫 구매 시 렉 방지)
+        InitializeItemPrefabCache();
 
         Debug.Log("ShopController - 초기화 완료");
     }
@@ -100,6 +108,40 @@ public class ShopController : MonoBehaviourPun
         // 입력 이벤트 구독 해제
         InputManager.OnShootPressed -= OnShootPressed;
         InputManager.OnShootCanceledPressed -= OnShootCanceled;
+    }
+    
+    /// <summary>
+    /// 아이템 프리팹 캐시 초기화 (최초 1회만 실행)
+    /// </summary>
+    private void InitializeItemPrefabCache()
+    {
+        if (isCacheInitialized) return;
+        
+        StartCoroutine(InitializeCacheAsync());
+    }
+    
+    /// <summary>
+    /// 비동기 캐시 초기화 (로딩 시 렉 분산)
+    /// </summary>
+    private System.Collections.IEnumerator InitializeCacheAsync()
+    {
+        if (isCacheInitialized) yield break;
+        
+        cachedItemPrefabs = new Dictionary<string, GameObject>();
+        
+        // Resources.LoadAll을 백그라운드에서 실행 (첫 프레임에만 영향)
+        GameObject[] allPrefabs = Resources.LoadAll<GameObject>("Prefabs/Items");
+        
+        foreach (GameObject prefab in allPrefabs)
+        {
+            if (prefab != null && !cachedItemPrefabs.ContainsKey(prefab.name))
+            {
+                cachedItemPrefabs[prefab.name] = prefab;
+            }
+        }
+        
+        isCacheInitialized = true;
+        yield return null;
     }
 
     #endregion
@@ -569,26 +611,34 @@ public class ShopController : MonoBehaviourPun
     }
 
     /// <summary>
-    /// 아이템 오브젝트 이름으로 Resources 폴더 내의 프리팹을 찾아 반환합니다.
-    /// (이 함수는 FindItemObjectByName을 대체하며, ItemController의 캐시와 일치해야 합니다.)
+    /// 아이템 오브젝트 이름으로 캐시된 프리팹을 찾아 반환합니다.
+    /// (렉 방지: 캐시 사용)
     /// </summary>
     GameObject FindItemPrefabInResources(string itemObjectName)
     {
-        // ItemController에서 사용하는 캐시된 프리팹 목록을 활용하는 것이 가장 좋지만,
-        // ShopController에서 직접 접근이 어렵다면 Resources.LoadAll을 다시 사용합니다.
-
-        // ⭐ 효율성을 위해 ItemController의 캐시를 사용하도록 리팩토링하는 것을 권장합니다.
-
-        GameObject[] allPrefabs = Resources.LoadAll<GameObject>("");
-        foreach (GameObject prefab in allPrefabs)
+        // 캐시가 초기화되지 않았으면 즉시 초기화 (안전장치)
+        if (!isCacheInitialized || cachedItemPrefabs == null)
         {
-            if (prefab != null && prefab.name == itemObjectName)
+            cachedItemPrefabs = new Dictionary<string, GameObject>();
+            GameObject[] allPrefabs = Resources.LoadAll<GameObject>("Prefabs/Items");
+            
+            foreach (GameObject prefab in allPrefabs)
             {
-                // 실제 프리팹을 반환
-                return prefab;
+                if (prefab != null && !cachedItemPrefabs.ContainsKey(prefab.name))
+                {
+                    cachedItemPrefabs[prefab.name] = prefab;
+                }
             }
+            isCacheInitialized = true;
         }
-
+        
+        // 캐시에서 빠르게 찾기 (O(1) 성능)
+        if (cachedItemPrefabs.ContainsKey(itemObjectName))
+        {
+            return cachedItemPrefabs[itemObjectName];
+        }
+        
+        // 캐시에 없으면 null 반환
         return null;
     }
 

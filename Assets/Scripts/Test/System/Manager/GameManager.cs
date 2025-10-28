@@ -21,7 +21,7 @@ public class GameManager : Singleton<GameManager>
     private Crown currentTeddyBear;
     
     // 게임 시간 관리
-    private float gameStartTime = 0f;
+    private double gameStartTime = 0f;
     private bool isGameActuallyStarted = false;
 
     // 상점 관리 (제거됨 - Shop.cs에서 직접 관리)
@@ -187,7 +187,7 @@ public class GameManager : Singleton<GameManager>
         if (isGameActuallyStarted) return;
         
         isGameActuallyStarted = true;
-        gameStartTime = Time.time;
+        gameStartTime = PhotonNetwork.Time;
         
         // 마스터 클라이언트가 권위적 시간을 방 속성에 설정
         if (PhotonNetwork.IsMasterClient)
@@ -641,7 +641,7 @@ public class GameManager : Singleton<GameManager>
         }
         
         // 마스터 클라이언트이거나 방 속성이 없는 경우 로컬 시간 사용
-        return Time.time - gameStartTime;
+        return (float)(PhotonNetwork.Time - gameStartTime);
     }
 
     // GetShopTime 제거 (Shop.cs에서 직접 관리)
