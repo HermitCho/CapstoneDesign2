@@ -28,6 +28,7 @@ public class ModalTextEffect : MonoBehaviour
     [Header("Sequence Settings")]
     [Tooltip("열릴 때 바로 타이틀 강조를 실행할지")] public bool emphasizeTitleAtOpen = true;
     [Tooltip("타이틀 강조가 끝난 뒤 설명 타이핑을 시작할지")] public bool delayDescriptionUntilTitleEmphasis = true;
+    [Tooltip("컴포넌트가 Enable될 때마다 효과를 재생할지")] public bool replayOnEnable = true;
 
     [Header("Description Typing (Per-Char)")]
     [Tooltip("설명을 글자 단위로 노출하며 마지막 글자를 강조합니다")] public bool perCharDescriptionEmphasis = true;
@@ -58,6 +59,28 @@ public class ModalTextEffect : MonoBehaviour
         }
     }
 
+    void OnDisable()
+    {
+        // ModalWindowManager 경로를 통하지 않고 비활성화되는 경우를 대비한 안전장치
+        HandleClose();
+    }
+
+    void OnEnable()
+    {
+        if (replayOnEnable)
+        {
+            // OnEnable 직후에는 컴포넌트가 아직 활성화되지 않을 수 있으므로 프레임 지연
+            StartCoroutine(DelayedHandleOpen());
+        }
+    }
+
+    IEnumerator DelayedHandleOpen()
+    {
+        // 한 프레임 대기하여 모든 컴포넌트가 활성화될 시간을 줌
+        yield return null;
+        HandleOpen();
+    }
+
     /// <summary>
     /// 모달창이 열릴 때 실행되는 타이핑/강조 효과
     /// </summary>
@@ -73,6 +96,8 @@ public class ModalTextEffect : MonoBehaviour
 
         if (title != null)
         {
+            title.gameObject.SetActive(true);
+            title.enabled = true;
             title.DOKill();
             title.transform.DOKill();
             title.text = string.Empty;
@@ -98,7 +123,13 @@ public class ModalTextEffect : MonoBehaviour
 
         if (desc != null)
         {
+            desc.gameObject.SetActive(true);
+            desc.enabled = true;
             desc.DOKill();
+            // 가시성/상태 초기화 (이전 세션에서 부분 노출 상태가 남지 않도록)
+            desc.ForceMeshUpdate();
+            desc.color = descriptionNormalColor;
+            desc.alpha = 1f; // 알파 값 보장
             if (descriptionRoutine != null)
             {
                 StopCoroutine(descriptionRoutine);
@@ -107,10 +138,14 @@ public class ModalTextEffect : MonoBehaviour
 
             if (perCharDescriptionEmphasis)
             {
+                // 글자 단위 모드에서는 처음에 0개만 보이게 시작
+                desc.maxVisibleCharacters = 0;
                 descriptionRoutine = StartCoroutine(TypeDescriptionPerChar(desc, dContent, descDelay));
             }
             else
             {
+                // 일반 타이핑 모드에서는 전체가 보이는 상태에서 텍스트가 채워지도록 설정
+                desc.maxVisibleCharacters = int.MaxValue;
                 desc.text = string.Empty;
                 var tween = desc.DOText(dContent, typingDuration).SetEase(Ease.Linear);
                 if (descDelay > 0f)
@@ -142,7 +177,12 @@ public class ModalTextEffect : MonoBehaviour
                 descriptionRoutine = null;
             }
             // 색상 초기화
+            desc.ForceMeshUpdate();
             ResetAllCharacterColors(desc, descriptionNormalColor);
+            // 텍스트/가시성 초기화 (탭 전환 등으로 onClose만 호출되고 onOpen 타이밍이 애매할 때 대비)
+            desc.maxVisibleCharacters = int.MaxValue;
+            desc.text = string.Empty;
+            desc.ForceMeshUpdate();
         }
     }
 
