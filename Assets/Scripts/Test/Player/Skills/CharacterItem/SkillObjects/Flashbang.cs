@@ -12,7 +12,7 @@ public class Flashbang : MonoBehaviourPun
     [Header("섬광탄 설정")]
     [SerializeField] private float damage = 30f;
     [SerializeField] private float speed = 15f;
-    [SerializeField] private float lifetime = 2f; // 섬광탄 수명
+    [SerializeField] private float lifetime = 1.2f; // 섬광탄 수명
     [SerializeField] private float explosionRadius = 5f; // 폭발 반경
     [SerializeField] private float stunTime = 2f;
 
