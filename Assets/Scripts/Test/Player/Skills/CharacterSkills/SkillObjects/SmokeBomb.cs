@@ -33,6 +33,7 @@ public class SmokeBomb : MonoBehaviourPun
     [PunRPC]
     void RPC_PlaySmoke()
     {
+        transform.localRotation = Quaternion.identity;
         StartCoroutine(WaitSmokeEffect());
     }
 

@@ -18,6 +18,7 @@ public class HiddenSmoke : MonoBehaviourPun
     [PunRPC]
     public void InitializeHiddenSmoke()
     {
+        transform.localRotation = Quaternion.identity;
         StartCoroutine("StartSmokeEffect");
     }
 

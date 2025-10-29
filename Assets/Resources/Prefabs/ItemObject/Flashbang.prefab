@@ -83,6 +83,11 @@ PrefabInstance:
       propertyPath: m_Materials.Array.size
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 2708598583397607899, guid: 6398d43fe79ea0140913dc5530c646af,
+        type: 3}
+      propertyPath: clearBehavior
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 2708598583397607910, guid: 6398d43fe79ea0140913dc5530c646af,
         type: 3}
       propertyPath: playOnAwake
@@ -118,6 +123,12 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 6398d43fe79ea0140913dc5530c646af, type: 3}
+--- !u!198 &914889955758721309 stripped
+ParticleSystem:
+  m_CorrespondingSourceObject: {fileID: 2708598583397607910, guid: 6398d43fe79ea0140913dc5530c646af,
+    type: 3}
+  m_PrefabInstance: {fileID: 2964696347558027515}
+  m_PrefabAsset: {fileID: 0}
 --- !u!4 &914889955758721315 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2708598583397607896, guid: 6398d43fe79ea0140913dc5530c646af,
@@ -248,7 +259,7 @@ MonoBehaviour:
   lifetime: 2
   explosionRadius: 5
   stunTime: 2
-  explosionEffect: {fileID: 0}
+  explosionEffect: {fileID: 914889955758721309}
   explosionSound: {fileID: 8300000, guid: 284a632bdc0e5bc4db707d6163950144, type: 3}
 --- !u!136 &732481842886520600
 CapsuleCollider:

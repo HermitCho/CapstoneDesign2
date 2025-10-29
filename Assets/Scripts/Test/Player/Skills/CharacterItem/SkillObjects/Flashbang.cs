@@ -46,7 +46,6 @@ public class Flashbang : MonoBehaviourPun
         // 마스터 클라이언트만 충돌 및 데미지 처리를 담당
         if (PhotonNetwork.IsMasterClient)
         {
-            Debug.Log("섬광탄이 닿음 " + collision.transform.name);
             hasExploded = true;
             Vector3 explosionPosition = transform.position;
 
@@ -60,9 +59,11 @@ public class Flashbang : MonoBehaviourPun
     private void ExplodeAndApplyAreaStunRPC(Vector3 explosionPosition)
     {
         // 폭발 이펙트 생성
+        Debug.Log("[Flashbang - ExplodeAndApplyAreaStunRPC] - 이펙트 있나? " + explosionEffect);
         if (explosionEffect != null)
         {
             explosionEffect.Play();
+            Debug.Log("[Flashbang - ExplodeAndApplyAreaStunRPC] - 이펙트 실행");
         }
 
         // 마스터 클라이언트만 범위 내 플레이어에게 데미지 적용
