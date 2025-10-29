@@ -193,7 +193,7 @@ public class SkillController : MonoBehaviourPun
         if (!CanUseSkill()) return;
         if (!skill.CanUse)
         {
-            Debug.LogWarning($"⚠️ {activeItem.SkillName} 은(는) 쿨타임 중이거나 사용 횟수가 부족합니다!");
+            Debug.LogWarning($"⚠️ {skill.SkillName} 은(는) 쿨타임 중이거나 사용 횟수가 부족합니다!");
             return;
         }
         // 만약 다른 스킬의 프리뷰가 이미 활성 상태라면: 다른 스킬이면 이전 프리뷰 취소 후 새 프리뷰 시작

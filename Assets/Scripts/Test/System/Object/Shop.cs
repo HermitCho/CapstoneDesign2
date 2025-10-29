@@ -269,7 +269,6 @@ public class Shop : MonoBehaviourPun
         ShopStand shopStand = shopStands[positionIndex];
         if (shopStand == null) return;
 
-        Debug.Log("[Shop - GenerateItemAtPosition] 특정 위치 아이템 생성 작업 시작 ");
         // 기존 아이템이 있다면 제거
         if (currentItems[positionIndex] != null)
         {
@@ -416,8 +415,8 @@ public class Shop : MonoBehaviourPun
             return itemPrefabs[Random.Range(0, itemPrefabs.Length)];
         }
 
-        Debug.Log("[Shop - SelectItemByProbability()] 최종 선택 아이템 목록: " +
-                  string.Join(", ", availableItems.Select(item => item.name)));
+        // Debug.Log("[Shop - SelectItemByProbability()] 최종 선택 아이템 목록: " +
+        //           string.Join(", ", availableItems.Select(item => item.name)));
         return availableItems[Random.Range(0, availableItems.Count)];
     }
 
@@ -474,7 +473,7 @@ public class Shop : MonoBehaviourPun
                 // 비마스터 클라이언트에서도 currentItems 배열 업데이트
                 if (positionIndex < currentItems.Length)
                 {
-                    Debug.Log("[Shop - FindAndSyncItemWithDelay()] 현재 아이템 리스트가 있는지 확인 + " + currentItems);
+                    //Debug.Log("[Shop - FindAndSyncItemWithDelay()] 현재 아이템 리스트가 있는지 확인 + " + currentItems);
                     //Debug.Log("[Shop - FindAndSyncItemWithDelay()] 현재 아이템 + " + currentItems[positionIndex].name);
                     currentItems[positionIndex] = item;
                 }
@@ -506,7 +505,7 @@ public class Shop : MonoBehaviourPun
             // 해당 위치에 아이템이 없으면 새로 생성
             if (currentItems[positionIndex] == null)
             {
-                Debug.Log("[Shop - RequestItemRegeneration()] 현재 아이템 없음 + " + currentItems[positionIndex]);
+                //Debug.Log("[Shop - RequestItemRegeneration()] 현재 아이템 없음 + " + currentItems[positionIndex]);
                 GenerateItemAtPosition(positionIndex);
             }
             else
@@ -515,7 +514,7 @@ public class Shop : MonoBehaviourPun
                 PhotonView itemPV = currentItems[positionIndex].GetComponent<PhotonView>();
                 if (itemPV != null && itemPV.ViewID > 0)
                 {
-                    Debug.Log("[Shop - RequestItemRegeneration()] 현재 아이템 있음 SyncItemToShopStand 호출");
+                    //Debug.Log("[Shop - RequestItemRegeneration()] 현재 아이템 있음 SyncItemToShopStand 호출");
                     photonView.RPC("SyncItemToShopStand", RpcTarget.Others, positionIndex, itemPV.ViewID);
                 }
             }
@@ -550,7 +549,7 @@ public class Shop : MonoBehaviourPun
     void RequestPurchaseItem(int itemViewID, int buyerViewID)
     {
         if (!PhotonNetwork.IsMasterClient) return;
-        Debug.Log($"[Shop - RequestPurchaseItem] 구매해줄 아이템 : {itemViewID}, 구매해줄 이용자 : {buyerViewID}");
+        //Debug.Log($"[Shop - RequestPurchaseItem] 구매해줄 아이템 : {itemViewID}, 구매해줄 이용자 : {buyerViewID}");
 
         PhotonView itemPV = PhotonView.Find(itemViewID);
         PhotonView buyerPV = PhotonView.Find(buyerViewID);

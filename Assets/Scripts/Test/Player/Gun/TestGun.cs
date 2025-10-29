@@ -10,7 +10,7 @@ using Photon.Pun;
 public class TestGun : MonoBehaviourPun
 {
     public static System.Action OnLocalReloadStarted; // 로컬 플레이어가 재장전을 실제로 시작했을 때
-    
+
     #region Enums
     public enum GunState
     {
@@ -195,6 +195,7 @@ public class TestGun : MonoBehaviourPun
 
     protected virtual void Shot(Vector3 shootDirection)
     {
+        Debug.Log("[TestGun - Shot] - 샷");
         for (int i = 0; i < gunData.pelletCount; i++)
         {
             Vector3 pelletDirection = CalculatePelletDirection(shootDirection);
@@ -254,7 +255,7 @@ public class TestGun : MonoBehaviourPun
 
             if (target != null && targetView != null)
             {
-                int attackerViewId = livingEntity.photonView.ViewID;
+                int attackerViewId = targetView.ViewID;
 
                 // 마스터 클라이언트로 데미지 RPC 전송
                 targetView.RPC("OnDamage", RpcTarget.All, damage, hit.point, hit.normal, attackerViewId);
@@ -316,10 +317,10 @@ public class TestGun : MonoBehaviourPun
 
         // 소유자만 재장전 시작 (상태 변경은 RPC로 동기화)
         StartCoroutine(ReloadRoutine());
-        
+
         // 로컬 재장전 시작 이벤트 발행 (실제 재장전이 시작될 때만)
         OnLocalReloadStarted?.Invoke();
-        
+
         return true;
     }
 

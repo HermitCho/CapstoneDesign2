@@ -796,6 +796,27 @@ public class MoveController : MonoBehaviourPun, IPunObservable
         }
     }
 
+    [PunRPC]
+    public void RPCSetStunned(float duration)
+    {
+        if (stunRoutine != null)
+            StopCoroutine(stunRoutine);
+
+        stunRoutine = StartCoroutine(StunCoroutine(duration));
+    }
+
+    private Coroutine stunRoutine;
+
+    private IEnumerator StunCoroutine(float duration)
+    {
+        SetStunned(true);
+
+        // 스턴 지속시간 대기
+        yield return new WaitForSeconds(duration);
+
+        SetStunned(false);
+    }
+
     /// <summary>
     /// 현재 기절 상태 확인
     /// </summary>

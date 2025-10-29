@@ -58,7 +58,7 @@ public class TestShoot : MonoBehaviourPun
             if (isShooting)
                 gun.InputFire(true);
         }
-
+        Debug.Log("[TestShoot - OnShootInput] - 샷 인풋 입력");
     }
 
     void OnShootCanceledInput()
