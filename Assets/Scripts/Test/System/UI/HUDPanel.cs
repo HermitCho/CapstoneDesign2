@@ -2,793 +2,1070 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using Michsky.UI.Heat;
-using System.Collections;
+using Photon.Pun;
 using Febucci.UI;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using DG.Tweening;
+using System.Xml.Schema;
 
 /// <summary>
-/// 🎮 통합 HUD 패널
-/// CrosshairUI, HealthUI, ScoreUI, SkillAndItemUI를 모두 포함하는 메인 HUD
+/// 로컬 플레이어의 기본 정보만을 표시하는 간단한 HUD
+/// 다른 플레이어와 완전히 독립적으로 동작
 /// </summary>
-public class HUDPanel : MonoBehaviour
+public class HUDPanel : MonoBehaviourPunCallbacks
 {
-    #region 인스펙터 할당 변수
-
-    [Header("크로스헤어 UI 컴포넌트들")]
-    [SerializeField] private Image crosshairImage;
-    [SerializeField] private RectTransform crosshairContainer;
-
-    [Header("체력바 UI 컴포넌트들")]
-    [SerializeField] private ProgressBar healthProgressBar; // HeatUI ProgressBar
+    [Header("체력 UI")]
+    [SerializeField] private ProgressBar healthProgressBar;
     [SerializeField] private TextMeshProUGUI healthText;
-
-    [Header("점수 UI 컴포넌트들")]
+    [SerializeField] private ProgressBar healthProgressBGBar;
+    
+    [Header("점수 UI")]
     [SerializeField] private TextMeshProUGUI scoreText;
-    [SerializeField] private TextMeshProUGUI multiplierText;
+    [SerializeField] private TextMeshProUGUI scoreMultiplierText;
+    
+    [Header("코인 UI")]
+    [SerializeField] private TextMeshProUGUI coinText;
+    
+    [Header("시간 UI")]
     [SerializeField] private TextMeshProUGUI gameTimeText;
-    [SerializeField] private TextMeshProUGUI attachStatusText;
-    [SerializeField] private TextMeshProUGUI scoreStatusText;
-    [SerializeField] private Image statusIcon;
-
-    [Header("스킬 UI 컴포넌트들")]
+    
+    [Header("스킬 UI")]
     [SerializeField] private Image skillIcon;
     [SerializeField] private Image skillCooldownOverlay;
     [SerializeField] private TextMeshProUGUI skillCooldownText;
-
-    [Header("아이템 UI 컴포넌트들")]
+    
+    [Header("아이템 UI")]
     [SerializeField] private Image itemIcon1;
     [SerializeField] private Image itemIcon2;
     [SerializeField] private Sprite emptyItemIcon;
 
-    [Header("아이템 모달 UI 컴포넌트들")]
-    [SerializeField] private ModalWindowManager itemModalWindow; // HeatUI Modal
+    [Header("킬로그 UI")]
+    [SerializeField] private GameObject killLogParent;
+    [SerializeField] private GameObject killLogPrefab;
 
-    [Header("코인 UI 컴포넌트들")]
-    [SerializeField] private TextMeshProUGUI coinText;
+    [Header("점수판 UI")]
+    [SerializeField] private GameObject scoreBoardParent;
+    [SerializeField] private GameObject player1ScoreBoard;
+    [SerializeField] private TextMeshProUGUI player1ScoreText;
+    [SerializeField] private GameObject player2ScoreBoard;
+    [SerializeField] private TextMeshProUGUI player2ScoreText;
+    [SerializeField] private GameObject player3ScoreBoard;
+    [SerializeField] private TextMeshProUGUI player3ScoreText;
+    [SerializeField] private GameObject player4ScoreBoard;
+    [SerializeField] private TextMeshProUGUI player4ScoreText;
 
+    [Header("조준점 UI")]
+    [SerializeField] private Animator zoomAnimator;
 
-    #endregion
-
-    #region 내부 상태 변수들
-
+    [Header("장탄수 UI")]
+    [SerializeField] private TextMeshProUGUI currentAmmoCountText;
+    [SerializeField] private TextMeshProUGUI maxAmmoCountText;
+    [SerializeField] private ProgressBar ammoBar;
+    [SerializeField] private Image reloadIcon;
+    [SerializeField] private Image ammoIcon;
+    
+    // 로컬 플레이어 참조
+    private GameObject localPlayer;
+    private LivingEntity localLivingEntity;
+    private CoinController localCoinController;
+    private Skill localCharacterSkill;
+    private ItemController localItemController;
+    private CameraController localCameraController;
+    private TestGun localGun;
+    
+    // UI 상태
     private float currentHealth = 100f;
     private float maxHealth = 100f;
-    private bool isTargeting = false;
-    private bool isItemUIOpen = false;
-    private int currentSpawnedCharacterIndex = -1;
-    private GameObject currentCharacterPrefab; // 현재 캐릭터 프리팹 정보 저장
-    private CharacterSkill currentCharacterSkill; // 현재 캐릭터 스킬 정보 저장
-    private Sprite currentSkillIcon; // 현재 스킬 아이콘 스프라이트 저장
-    private Sprite currentItemIcon1; // 현재 아이템1 아이콘 스프라이트 저장
-    private Sprite currentItemIcon2; // 현재 아이템2 아이콘 스프라이트 저장
-    private TestTeddyBear currentTeddyBear; // 현재 테디베어 컴포넌트 저장
-    private int currentCoin = 0; // 현재 코인 저장
+    private int currentCoin = 0;
+    private float currentScore = 0f;
     
-    // TextAnimator 관련 변수들
-    private float lastMultiplier = -1f; // 마지막 배율 값 
-    private TextAnimator_TMP multiplierTextAnimator; // TextAnimator 컴포넌트 참조
-    private string lastMultiplierText = ""; // 마지막 설정된 텍스트 (중복 설정 방지)
-    private float lastMultiplierUpdateTime = 0f; // 마지막 업데이트 시간 (애니메이션 보호)
-
-    // 추가 TextAnimator 컴포넌트들
-    private TextAnimator_TMP scoreTextAnimator;
-    private TextAnimator_TMP gameTimeTextAnimator;
-    private TextAnimator_TMP coinTextAnimator;
+    // 체력 UI 애니메이션 관련
+    private float previousHealth = 100f;
+    private float targetHealth = 100f;
+    private float displayedHealth = 100f;
+    private bool isHealthAnimating = false;
+    private bool isDamageAnimation = false;
+    private bool isHealAnimation = false;
+    private Tween healthBarTween;
+    private Tween healthBGBarTween;
+    private Tween healthBlinkTween;
+    private Color originalBGColor = Color.white;
+    private Color damageColor = Color.red;
+    private Color healColor = new Color(0.5f, 0.8f, 1f, 1f); // 연한 파란색
     
-    // 각 텍스트의 마지막 상태 추적
-    private string lastScoreText = "";
-    private string lastGameTimeText = "";
-    private string lastCoinText = "";
-    private float lastScoreUpdateTime = 0f;
-    private float lastGameTimeUpdateTime = 0f;
-    private float lastCoinUpdateTime = 0f;
+    // 체력 바 페이드 관련
+    private float lastHealthChangeTime = 0f;
+    private bool isHealthBarFaded = false;
+    private Tween healthBarFadeTween;
+    private Tween healthBGBarFadeTween;
+    private float healthFadeDelay = 3f; // 3초
+    private Color originalHealthBarColor = Color.white;
+    
+    // 시간 관련 (GameManager에서 받아옴)
+    private float gameTime = 0f;
+    private float lastTimeUpdate = 0f;
+    
+    // 스킬 관련
+    private float lastSkillUpdate = 0f;
+    
+    // 아이템 관련
+    private float lastItemUpdate = 0f;
+    
+    // 점수판 관련
+    private List<PlayerScoreData> playerScoreDataList = new List<PlayerScoreData>();
+    private List<GameObject> scoreBoardObjects = new List<GameObject>();
+    private List<TextMeshProUGUI> scoreBoardTexts = new List<TextMeshProUGUI>();
+    private float lastScoreBoardUpdate = 0f;
+    private float scoreBoardUpdateInterval = 1f; // 1초마다 업데이트
+    private bool isAnimating = false;
 
-    #endregion
-
-    #region 데이터베이스 참조
-
-    private DataBase.UIData uiData;
-    private DataBase.PlayerData playerData;
-    private DataBase.ItemData itemData;
-
-    #endregion
-
-    #region 캐싱된 값들 (성능 최적화)
-
-    private Color cachedCrosshairNormalColor;
-    private Color cachedCrosshairTargetColor;
-    private float cachedCrosshairSize;
-
-    private Color cachedHealthNormalColor;
-    private Color cachedHealthWarningColor;
-    private Color cachedHealthDangerColor;
-    private float cachedHealthWarningThreshold;
-    private float cachedHealthDangerThreshold;
-
-    private string cachedScoreFormat;
-    private Color cachedScoreFormatColor;
-
-    private string cachedGeneralMultiplierFormat;
-    private Color cachedGeneralMultiplierFormatColor;
-
-    private string cachedMultiplierFormat;
-    private Color cachedMultiplierFormatColor;
-
-    private string cachedGameTimeFormat;
-    private Color cachedGameTimeFormatColor;
-
-    private string cachedHealthFormat;
-    private Color cachedHealthFormatColor;
-
-    private GameObject cachedPlayerPrefabData;
-
-    private string cachedCoinFormat;
-    private Color cachedCoinFormatColor;
-
-    private bool dataBaseCached = false;
-
-    #endregion
-
-    #region Unity 생명주기
-
-    void Awake()
+    //조준점 관련
+    private bool isZoomed = false;
+    
+    // 장탄수 관련
+    private int currentAmmo = 0;
+    private int maxAmmo = 0;
+    private int previousAmmo = 0;
+    private float lastAmmoChangeTime = 0f;
+    private bool isAmmoUIFaded = false;
+    private bool isReloading = false;
+    private TestGun.GunState previousGunState = TestGun.GunState.Ready;
+    
+    // 장탄수 애니메이션 관련
+    private Tween ammoBarTween;
+    private Tween ammoBarBlinkTween;
+    private Tween ammoIconFadeTween;
+    private Tween ammoBarImageFadeTween;
+    private Tween currentAmmoTextFadeTween;
+    private Tween maxAmmoTextFadeTween;
+    private Tween currentAmmoTextBlinkTween;
+    private Tween reloadIconFadeTween;
+    private Tween reloadIconRotateTween;
+    private Tween reloadIconBlinkTween;
+    private Color originalAmmoBarColor = Color.white;
+    private Color originalAmmoTextColor = Color.white;
+    private Color lowAmmoColor = Color.red;
+    private float lowAmmoThreshold = 0.2f; // 20%
+    private float ammoUIFadeDelay = 3f; // 3초
+    
+    // 성능 최적화 관련
+    private List<PlayerScoreData> previousPlayerDataList = new List<PlayerScoreData>();
+    private bool hasScoreChanged = false;
+    private float lastAmmoUpdate = 0f;
+    
+    /// <summary>
+    /// 플레이어 점수 Properties 초기화 (두 번째 게임 문제 해결)
+    /// </summary>
+    private void ClearPlayerScoreProperties()
     {
-        InitializeHUD();
-    }
-
-    void OnEnable()
-    {
-        CacheDataBaseInfo();
+        if (!PhotonNetwork.IsConnected || PhotonNetwork.LocalPlayer == null) return;
         
-        // HUD 패널이 활성화될 때 현재 플레이어의 CoinController에서 코인 상태 가져오기
-        UpdateCoinFromCurrentPlayer();
-        UpdateItemUI(); // OnEnable 시점에 아이템 아이콘 업데이트
+        // 로컬 플레이어의 점수 관련 Properties 초기화
+        var props = new ExitGames.Client.Photon.Hashtable();
+        props[$"score_{PhotonNetwork.LocalPlayer.ActorNumber}"] = null;
+        props["nickname"] = null; // 닉네임도 초기화하여 재설정되도록
+        
+        PhotonNetwork.LocalPlayer.SetCustomProperties(props);
+        
+        Debug.Log($"HUDPanel: 플레이어 {PhotonNetwork.LocalPlayer.ActorNumber} 점수 Properties 초기화");
     }
-
-    void OnDisable()
-    {
-        // 패널이 비활성화될 때 정리 작업
-    }
-
+    
     void Start()
     {
-        SubscribeToEvents();
-        SetInitialState();
-        FindTeddyBear();
-        Debug.Log("✅ HUDPanel - 초기화 완료, 이벤트 구독됨");
-    }
-
-    void OnDestroy()
-    {
-        UnsubscribeFromEvents();
-    }
-
-    void Update()
-    {
-        // 스킬 쿨타임 업데이트 (스킬 데이터가 로드된 경우에만)
-        if (currentCharacterSkill != null)
-        {
-            UpdateSkillIconState();
-        }
-
-        // 실시간 점수 상태 업데이트
-        UpdateRealTimeScoreStatus();
-
-        // 실시간 게임 시간 업데이트
-        UpdateRealTimeUI();
-
-        // 시간대별 배율 UI 실시간 업데이트 (값이 변경된 경우에만)
+        // 게임 재시작 시 점수 Properties 초기화 (핵심 수정)
+        ClearPlayerScoreProperties();
+        
+        // 로컬 플레이어 찾기 시작
+        StartCoroutine(FindLocalPlayerRoutine());
+        
+        // GameManager 이벤트 구독 (시간 정보만)
         if (GameManager.Instance != null)
         {
-            float currentMultiplier = GameManager.Instance.GetScoreMultiplier();
-            if (Mathf.Abs(currentMultiplier - lastMultiplier) > 0.01f) // 값이 변경된 경우에만 업데이트
+            GameManager.OnGameTimeUpdated += UpdateGameTime;
+            GameManager.OnScoreUpdated += OnScoreChanged;
+        }
+        
+        // LivingEntity 사망 이벤트 구독
+        LivingEntity.OnPlayerDied += HandlePlayerDeath;
+        Debug.Log("HUD: LivingEntity.OnPlayerDied 이벤트 구독 완료");
+        
+        // 점수판 초기화
+        InitializeScoreBoard();
+
+    }
+    
+    void OnDestroy()
+    {
+        // 이벤트 구독 해제
+        if (GameManager.Instance != null)
+        {
+            GameManager.OnGameTimeUpdated -= UpdateGameTime;
+            GameManager.OnScoreUpdated -= OnScoreChanged;
+        }
+        
+        // LivingEntity 사망 이벤트 구독 해제
+        LivingEntity.OnPlayerDied -= HandlePlayerDeath;
+        Debug.Log("HUD: LivingEntity.OnPlayerDied 이벤트 구독 해제 완료");
+        
+        // 체력 애니메이션 정리
+        CleanupHealthAnimations();
+        CleanupFadeAnimations();
+        
+        // 장탄수 애니메이션 정리
+        CleanupAmmoAnimations();
+    }
+    
+    /// <summary>
+    /// Photon 플레이어 프로퍼티 변경 시 호출 (PunCallbacks)
+    /// </summary>
+    public override void OnPlayerPropertiesUpdate(Photon.Realtime.Player targetPlayer, ExitGames.Client.Photon.Hashtable changedProps)
+    {
+        // 점수 관련 프로퍼티가 변경되었는지 확인
+        foreach (var prop in changedProps)
+        {
+            if (prop.Key.ToString().StartsWith("score_"))
             {
-                UpdateMultiplier(currentMultiplier);
-                lastMultiplier = currentMultiplier;
+                ForceUpdateScoreBoard();
+                break;
             }
         }
     }
+    
+    void Update()
+    {
+        // 로컬 플레이어가 없으면 찾기 시도
+        if (localPlayer == null)
+        {
+            return;
+        }
+        
+        // 실시간 업데이트 (0.1초마다)
+        float currentTime = Time.time;
+        
+        // 체력 업데이트
+        if (currentTime - lastTimeUpdate > 0.1f)
+        {
+            UpdateHealth();
+            UpdateCoin(); // 코인도 자동 업데이트
+            UpdateScore(); // 점수도 자동 업데이트
+            lastTimeUpdate = currentTime;
+        }
+        
+        // 스킬 상태 업데이트
+        if (currentTime - lastSkillUpdate > 0.1f)
+        {
+            UpdateSkillUI();
+            lastSkillUpdate = currentTime;
+        }
+        
+        // 아이템 UI 업데이트
+        if (currentTime - lastItemUpdate > 0.1f)
+        {
+            UpdateItemUI();
+            lastItemUpdate = currentTime;
+        }
+        
+        // 장탄수 UI 업데이트
+        if (currentTime - lastAmmoUpdate > 0.1f)
+        {
+            UpdateAmmoUI();
+            lastAmmoUpdate = currentTime;
+        }
+        
+        // 점수판 업데이트 (1초마다)
+        if (currentTime - lastScoreBoardUpdate > scoreBoardUpdateInterval)
+        {
+            UpdateScoreBoard();
+            lastScoreBoardUpdate = currentTime;
+        }
 
-    #endregion
-
-    #region 초기화
-
+        ZoomAnimationControl();
+        
+        // 체력 바 페이드 체크
+        CheckHealthBarFade();
+        
+        // 장탄수 UI 페이드 체크
+        CheckAmmoUIFade();
+        
+        
+    }
+    
+    /// <summary>
+    /// 로컬 플레이어를 찾는 코루틴
+    /// </summary>
+    IEnumerator FindLocalPlayerRoutine()
+    {
+        float searchTime = 0f;
+        float maxSearchTime = 10f; // 최대 10초 검색
+        
+        while (localPlayer == null && searchTime < maxSearchTime)
+        {
+            FindLocalPlayer();
+            
+            if (localPlayer == null)
+            {
+                yield return new WaitForSeconds(0.5f);
+                searchTime += 0.5f;
+            }
+        }
+        
+        if (localPlayer != null)
+        {
+            Debug.Log($"HUD: 로컬 플레이어 연결 완료 - {localPlayer.name}");
+            InitializeHUD();
+        }
+        else
+        {
+            Debug.LogError("HUD: 로컬 플레이어를 찾을 수 없습니다!");
+        }
+    }
+    
+    /// <summary>
+    /// 로컬 플레이어 찾기
+    /// </summary>
+    void FindLocalPlayer()
+    {
+        GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
+        
+        foreach (GameObject player in players)
+        {
+            PhotonView pv = player.GetComponent<PhotonView>();
+            if (pv != null && pv.IsMine)
+            {
+                localPlayer = player;
+                localLivingEntity = player.GetComponent<LivingEntity>();
+                localCoinController = player.GetComponent<CoinController>();
+                localCharacterSkill = player.GetComponent<Skill>();
+                localItemController = player.GetComponent<ItemController>();
+                localCameraController = player.GetComponent<CameraController>();
+                localGun = player.GetComponentInChildren<TestGun>();
+                break;
+            }
+        }
+    }
+    
     /// <summary>
     /// HUD 초기화
     /// </summary>
     void InitializeHUD()
     {
-        CacheDataBaseInfo();
-
-        // TextAnimator 컴포넌트 초기화 (Best Practices 적용)
-        InitializeTextAnimator();
-
-        // 스킬 시스템 초기화는 캐릭터 스폰 완료 후에 처리
-
-        // 초기값 설정
-        SetHealth(100f, 100f);
-        SetCrosshairTargeting(false);
-        UpdateScore(0f);
-        UpdateMultiplier(1f);
-        UpdateGameTime(0f);
-        UpdateAttachStatus(false, 0f);
-        
-        // 아이템 아이콘 초기화 (빈 아이콘으로 표시)
-        ClearItemIcons();
-        
-        // 로컬 CoinController 찾기 및 코인 초기화
-        UpdateCoin(0);
-    }
-
-    /// <summary>
-    /// DataBase 정보 캐싱
-    /// </summary>
-    void CacheDataBaseInfo()
-    {
-        try
+        if (localLivingEntity != null)
         {
-            if (DataBase.Instance == null)
-            {   
-                Debug.LogWarning("DataBase 인스턴스가 없습니다.");
-                return;
-            }
-
-            if (DataBase.Instance.uiData != null)
+            currentHealth = localLivingEntity.CurrentHealth;
+            maxHealth = localLivingEntity.StartingHealth;
+            previousHealth = currentHealth;
+            targetHealth = currentHealth;
+            displayedHealth = currentHealth;
+            
+            // 배경 바의 원래 색상 저장
+            if (healthProgressBGBar != null && healthProgressBGBar.barImage != null)
             {
-                uiData = DataBase.Instance.uiData;
-
-                cachedCrosshairNormalColor = uiData.CrosshairNormalColor;
-                cachedCrosshairTargetColor = uiData.CrosshairTargetColor;
-                cachedCrosshairSize = uiData.CrosshairSize;
-
-                cachedHealthNormalColor = uiData.HealthyColor;
-                cachedHealthWarningColor = uiData.WarningColor;
-                cachedHealthDangerColor = uiData.DangerColor;
-                cachedHealthWarningThreshold = uiData.WaringThreshold;
-                cachedHealthDangerThreshold = uiData.DangerThreshold;       
-
-                cachedScoreFormat = uiData.ScoreText;
-                cachedScoreFormatColor = uiData.ScoreFormatColor;
-
-                cachedGeneralMultiplierFormat = uiData.GeneralMultiplierText;
-                cachedGeneralMultiplierFormatColor = uiData.GeneralMultiplierFormatColor;
-
-                cachedMultiplierFormat = uiData.MultiplierText; 
-                cachedMultiplierFormatColor = uiData.MultiplierFormatColor;
-
-                cachedGameTimeFormat = uiData.GameTimeText;
-                cachedGameTimeFormatColor = uiData.GameTimeFormatColor;
-
-                cachedHealthFormat = uiData.HealthText;
-                cachedHealthFormatColor = uiData.HealthFormatColor; 
-
-                cachedCoinFormat = uiData.CoinText;
-                cachedCoinFormatColor = uiData.CoinFormatColor;
-
-                dataBaseCached = true;
-                Debug.Log("✅ HUDPanel - DataBase 정보 캐싱 완료");
+                originalBGColor = healthProgressBGBar.barImage.color;
             }
-            else
+            
+            // 체력 바의 원래 색상 저장
+            if (healthProgressBar != null && healthProgressBar.barImage != null)
             {
-                Debug.LogWarning("⚠️ HUDPanel - DataBase 접근 실패, 기본값 사용");
-                dataBaseCached = false;
+                originalHealthBarColor = healthProgressBar.barImage.color;
             }
+            
+            // 체력 변화 시간 초기화
+            lastHealthChangeTime = Time.time;
+            
+            UpdateHealthDisplay();
         }
-        catch (System.Exception e)
+        
+        if (localCoinController != null)
         {
-            Debug.LogError($"❌ HUDPanel - DataBase 캐싱 중 오류: {e.Message}");
-            dataBaseCached = false;
+            currentCoin = localCoinController.GetCurrentCoin();
+            UpdateCoinDisplay();
         }
-    }
+        
+        if (localCharacterSkill != null)
+        {
+            UpdateSkillDisplay();
+        }
+        
+        // 초기 점수 표시
+        UpdateScoreDisplay();
 
+        // 초기 아이템 UI 표시
+        UpdateItemUI();
+        
+        // 초기 장탄수 UI 설정
+        if (localGun != null)
+        {
+            InitializeAmmoUI();
+        }
+       
+    }
+    
     /// <summary>
-    /// 초기 상태 설정
+    /// 체력 업데이트
     /// </summary>
-    void SetInitialState()
+    void UpdateHealth()
     {
-        // 크로스헤어 표시
-        ShowCrosshair(true);
-
-        // 아이템 UI 닫힌 상태로 시작
-        CloseItemUI();
-    }
-
-    #endregion
-
-    #region 이벤트 구독/해제
-
-    void SubscribeToEvents()
-    {
-        if (GameManager.Instance != null)
+        if (localLivingEntity == null) return;
+        
+        float newHealth = localLivingEntity.CurrentHealth;
+        float newMaxHealth = localLivingEntity.StartingHealth;
+        
+        // 최대 체력 변경 처리
+        if (Mathf.Abs(newMaxHealth - maxHealth) > 0.1f)
         {
-            // 점수 관련 이벤트
-            GameManager.OnScoreUpdated += UpdateScore;
-            GameManager.OnScoreMultiplierUpdated += UpdateMultiplier;
-            GameManager.OnGameTimeUpdated += UpdateGameTime;
-
-            // 테디베어 관련 이벤트
-            GameManager.OnTeddyBearAttachmentChanged += OnTeddyBearAttachmentChanged;
-            GameManager.OnTeddyBearReattachTimeChanged += OnTeddyBearReattachTimeChanged;
-
-            // 플레이어 체력 이벤트
-            GameManager.OnPlayerHealthChanged += OnPlayerHealthChanged;
-
-            // 크로스헤어 이벤트
-            GameManager.OnCrosshairTargetingChanged += SetCrosshairTargeting;
-
-            // 스킬 이벤트
-            GameManager.OnSkillUsed += UpdateSkillUI;
-            GameManager.OnSkillCooldownStarted += SetSkillCooldown;
-
-            // 캐릭터 스폰 이벤트
-            GameManager.OnCharacterSpawned += OnCharacterSpawned;
+            maxHealth = newMaxHealth;
         }
-
-        // InputManager 이벤트
-        InputManager.OnItemUIPressed += OpenItemUI;
-        InputManager.OnItemUICanceledPressed += CloseItemUI;
-    }
-
-    void UnsubscribeFromEvents()
-    {
-        if (GameManager.Instance != null)
+        
+        // 체력 변경 감지 및 애니메이션 처리
+        if (Mathf.Abs(newHealth - currentHealth) > 0.1f)
         {
-            GameManager.OnScoreUpdated -= UpdateScore;
-            GameManager.OnScoreMultiplierUpdated -= UpdateMultiplier;
-            GameManager.OnGameTimeUpdated -= UpdateGameTime;
-            GameManager.OnTeddyBearAttachmentChanged -= OnTeddyBearAttachmentChanged;
-            GameManager.OnTeddyBearReattachTimeChanged -= OnTeddyBearReattachTimeChanged;
-            GameManager.OnPlayerHealthChanged -= OnPlayerHealthChanged;
-            GameManager.OnCrosshairTargetingChanged -= SetCrosshairTargeting;
-            GameManager.OnSkillUsed -= UpdateSkillUI;
-            GameManager.OnSkillCooldownStarted -= SetSkillCooldown;
-            GameManager.OnCharacterSpawned -= OnCharacterSpawned;
-        }
-
-        InputManager.OnItemUIPressed -= OpenItemUI;
-        InputManager.OnItemUICanceledPressed -= CloseItemUI;
-    }
-
-    #endregion
-
-    #region 크로스헤어 UI
-
-    /// <summary>
-    /// 크로스헤어 표시/숨김
-    /// </summary>
-    public void ShowCrosshair(bool show)
-    {
-        if (crosshairImage != null)
-        {
-            crosshairImage.gameObject.SetActive(show);
+            previousHealth = currentHealth;
+            currentHealth = newHealth;
+            targetHealth = newHealth;
+            
+            // 체력 변화 시간 기록
+            lastHealthChangeTime = Time.time;
+            
+            // 페이드된 상태라면 원래 투명도로 복원
+            if (isHealthBarFaded)
+            {
+                RestoreHealthBarVisibility();
+            }
+            
+            // 체력 변화에 따른 애니메이션 시작
+            StartHealthAnimation();
         }
     }
-
+    
     /// <summary>
-    /// 크로스헤어 타겟팅 상태 설정
-    /// </summary>
-    public void SetCrosshairTargeting(bool targeting)
-    {
-        isTargeting = targeting;
-
-        if (crosshairImage != null)
-        {
-            crosshairImage.color = targeting ? cachedCrosshairTargetColor : cachedCrosshairNormalColor;
-        }
-    }
-
-    /// <summary>
-    /// 크로스헤어 크기 설정 (줌 애니메이션용)
-    /// </summary>
-    public void SetCrosshairSize(float size)
-    {
-        cachedCrosshairSize = Mathf.Clamp(size, 0.1f, 3f);
-
-        if (crosshairContainer != null)
-        {
-            crosshairContainer.localScale = Vector3.one * cachedCrosshairSize;
-        }
-    }
-
-    #endregion
-
-    #region 체력바 UI
-
-    /// <summary>
-    /// 체력 설정
-    /// </summary>
-    public void SetHealth(float current, float max)
-    {
-        currentHealth = Mathf.Clamp(current, 0f, max);
-        maxHealth = Mathf.Max(max, 1f);
-
-        UpdateHealthDisplay();
-    }
-
-    /// <summary>
-    /// 체력 표시 업데이트
+    /// 체력 UI 업데이트 (즉시 업데이트용)
     /// </summary>
     void UpdateHealthDisplay()
     {
-        float healthRatio = currentHealth / maxHealth;
-
-        // HeatUI ProgressBar 업데이트
         if (healthProgressBar != null)
         {
-            healthProgressBar.currentValue = currentHealth;
+            healthProgressBar.currentValue = displayedHealth;
             healthProgressBar.maxValue = maxHealth;
-            healthProgressBar.UpdateUI(); // 반드시 호출!
+            healthProgressBar.UpdateUI();
         }
-
-        // 체력 텍스트 업데이트
+        
+        if (healthProgressBGBar != null)
+        {
+            healthProgressBGBar.maxValue = maxHealth;
+            healthProgressBGBar.UpdateUI();
+        }
+        
         if (healthText != null)
         {
-            healthText.text = string.Format(cachedHealthFormat, currentHealth, maxHealth);
-
-            // 체력 비율에 따른 색상 변경
-            if (healthRatio <= cachedHealthDangerThreshold)
-                healthText.color = cachedHealthDangerColor;
-            else if (healthRatio <= cachedHealthWarningThreshold)
-                healthText.color = cachedHealthWarningColor;
-            else
-                healthText.color = cachedHealthNormalColor;
+            healthText.text = $"{currentHealth:F0}";
         }
     }
-
-    void OnPlayerHealthChanged(float current, float max)
-    {
-        SetHealth(current, max);
-    }
-
-    #endregion
-
-    #region 점수, 시간, 배율 UI
-
+    
     /// <summary>
-    /// 점수 업데이트
+    /// 체력 애니메이션 시작
     /// </summary>
-    public void UpdateScore(float score)
+    void StartHealthAnimation()
     {
-        if (scoreText == null) return;
-
-        // 너무 빠른 연속 호출 방지 (TextAnimator 애니메이션 보호)
-        float currentTime = Time.time;
-        float timeSinceLastUpdate = currentTime - lastScoreUpdateTime;
+        // 기존 애니메이션 정리
+        CleanupHealthAnimations();
         
-        // 0.1초 이내의 연속 호출은 무시 (애니메이션 중단 방지)
-        if (timeSinceLastUpdate < 0.1f && lastScoreUpdateTime > 0f)
+        float healthDifference = targetHealth - previousHealth;
+        
+        if (healthDifference < 0) // 데미지
         {
+            StartDamageAnimation(Mathf.Abs(healthDifference));
+        }
+        else if (healthDifference > 0) // 회복
+        {
+            StartHealAnimation(healthDifference);
+        }
+    }
+    
+    /// <summary>
+    /// 데미지 애니메이션 시작
+    /// </summary>
+    void StartDamageAnimation(float damageAmount)
+    {
+        if (isHealAnimation)
+        {
+            // 회복 중 데미지 처리
+            HandleDamageInterruptHeal(damageAmount);
             return;
         }
-
-        string formattedText = string.Format(cachedScoreFormat, score);
-
-        // 텍스트 내용이 실제로 변경되었을 때만 업데이트 (TextAnimator 애니메이션 보호)
-        if (formattedText != lastScoreText)
-        {
-            scoreText.color = cachedScoreFormatColor;
-
-            // TextAnimator SetText 메서드 사용 (Best Practices 적용)
-            if (scoreTextAnimator != null)
-            {
-                scoreTextAnimator.SetText(formattedText);
-                
-                // 마지막 설정된 텍스트와 시간 저장
-                lastScoreText = formattedText;
-                lastScoreUpdateTime = currentTime;
-            }
-            else
-            {
-                // Fallback: 일반 텍스트 설정
-                scoreText.text = formattedText;
-                lastScoreText = formattedText;
-                lastScoreUpdateTime = currentTime;
-            }
-        }
-    }
-
-    /// <summary>
-    /// 배율 업데이트 (시간대별 포맷 적용)
-    /// </summary>
-    public void UpdateMultiplier(float multiplier)
-    {
-        if (multiplierText == null) return;
-
-        // 너무 빠른 연속 호출 방지 (TextAnimator 애니메이션 보호)
-        float currentTime = Time.time;
-        float timeSinceLastUpdate = currentTime - lastMultiplierUpdateTime;
         
-        // 0.1초 이내의 연속 호출은 무시 (애니메이션 중단 방지)
-        if (timeSinceLastUpdate < 0.1f && lastMultiplierUpdateTime > 0f)
+        isDamageAnimation = true;
+        isHealthAnimating = true;
+        
+        // 배경 바 색상을 빨간색으로 변경
+        if (healthProgressBGBar != null && healthProgressBGBar.barImage != null)
         {
+            healthProgressBGBar.barImage.color = damageColor;
+            healthProgressBGBar.currentValue = previousHealth;
+            healthProgressBGBar.UpdateUI();
+        }
+        
+        // 빨간색 깜박임 시작 (강한 깜박임)
+        StartHealthBlink(damageColor, 0.3f);
+        
+        // 체력 바 부드럽게 감소
+        healthBarTween = DOTween.To(() => displayedHealth, x => {
+            displayedHealth = x;
+            if (healthProgressBar != null)
+            {
+                healthProgressBar.currentValue = displayedHealth;
+                healthProgressBar.UpdateUI();
+            }
+        }, targetHealth, 0.8f)
+        .SetEase(Ease.OutCubic)
+        .OnComplete(() => {
+            // 체력 바 감소 완료 후 배경 바도 감소
+            StartBackgroundBarDecrease();
+        });
+    }
+    
+    /// <summary>
+    /// 회복 애니메이션 시작
+    /// </summary>
+    void StartHealAnimation(float healAmount)
+    {
+        if (isDamageAnimation)
+        {
+            // 데미지 중 회복 처리
+            HandleHealInterruptDamage(healAmount);
             return;
         }
-
-        string formattedText = "";
-        Color textColor = Color.white;
-
-        // 시간대에 따른 포맷 선택 - GameManager 기반 안전한 접근
-        try
+        
+        isHealAnimation = true;
+        isHealthAnimating = true;
+        
+        // 배경 바 색상을 연한 파란색으로 변경하고 회복 지점까지 증가
+        if (healthProgressBGBar != null && healthProgressBGBar.barImage != null)
         {
-            // GameManager 존재 여부만 체크
-            bool hasGameManager = GameManager.Instance != null;
-
-            if (hasGameManager)
-            {
-                float gameTime = GameManager.Instance.GetGameTime();
-                float scoreIncreaseTime = GameManager.Instance.GetScoreIncreaseTime();
-                bool dataBaseCached = GameManager.Instance.IsDataBaseCached();
-
-                if (gameTime >= scoreIncreaseTime)
+            healthProgressBGBar.barImage.color = healColor;
+            
+            // 배경 바를 회복 지점까지 즉시 증가
+            healthProgressBGBar.currentValue = targetHealth;
+            healthProgressBGBar.UpdateUI();
+        }
+        
+        // 파란색 부드러운 깜박임 시작
+        StartHealthBlink(healColor, 0.5f);
+        
+        // 0.3초 후 체력 바 증가 시작
+        DOVirtual.DelayedCall(0.3f, () => {
+            healthBarTween = DOTween.To(() => displayedHealth, x => {
+                displayedHealth = x;
+                if (healthProgressBar != null)
                 {
-                    // 점수배율 적용 시점 이후: multiplierFormat 사용
-                    textColor = multiplier > 1f ? cachedMultiplierFormatColor : cachedGeneralMultiplierFormatColor;
-                    formattedText = string.Format(cachedMultiplierFormat, multiplier);
+                    healthProgressBar.currentValue = displayedHealth;
+                    healthProgressBar.UpdateUI();
                 }
-                else
-                {
-                    textColor = cachedGeneralMultiplierFormatColor;
-                    // 점수배율 적용 전: GeneralMultiplierFormat 사용
-                    formattedText = string.Format(cachedGeneralMultiplierFormat, multiplier);
-                }
-            }
-            else
-            {
-                textColor = cachedGeneralMultiplierFormatColor;
-                // GameManager가 없는 경우
-                formattedText = string.Format(cachedGeneralMultiplierFormat, multiplier);
-            }
-        }
-        catch (System.Exception e)
-        {
-            textColor = cachedGeneralMultiplierFormatColor;
-            // 안전한 fallback
-            formattedText = string.Format(cachedGeneralMultiplierFormat, multiplier);
-        }
-
-        // 텍스트 내용이 실제로 변경되었을 때만 업데이트 (TextAnimator 애니메이션 보호)
-        if (formattedText != lastMultiplierText)
-        {
-            // 색상 설정
-            multiplierText.color = textColor;
-
-            // TextAnimator SetText 메서드 사용 (Best Practices 적용)
-            if (multiplierTextAnimator != null)
-            {
-                // 공식 문서 권장: textAnimator.SetText() 사용
-                multiplierTextAnimator.SetText(formattedText);
-                
-                // 마지막 설정된 텍스트와 시간 저장
-                lastMultiplierText = formattedText;
-                lastMultiplierUpdateTime = currentTime;
-            }
-            else
-            {
-                // Fallback: 일반 텍스트 설정 (TextAnimator 없을 경우에만)
-                multiplierText.text = formattedText;
-                lastMultiplierText = formattedText;
-                lastMultiplierUpdateTime = currentTime;
-                Debug.LogWarning("⚠️ HUDPanel - TextAnimator가 없어 일반 텍스트로 업데이트: " + formattedText);
-            }
-        }
+            }, targetHealth, 0.6f)
+            .SetEase(Ease.OutCubic)
+            .OnComplete(() => {
+                // 회복 완료
+                CompleteHealAnimation();
+            });
+        });
     }
-
+    
     /// <summary>
-    /// 게임 시간 업데이트
+    /// 배경 바 감소 애니메이션
     /// </summary>
-    public void UpdateGameTime(float time)
+    void StartBackgroundBarDecrease()
     {
-        if (gameTimeText == null) return;
-
-        // 너무 빠른 연속 호출 방지 (TextAnimator 애니메이션 보호)
-        float currentTime = Time.time;
-        float timeSinceLastUpdate = currentTime - lastGameTimeUpdateTime;
-        
-        // 0.1초 이내의 연속 호출은 무시 (애니메이션 중단 방지)
-        if (timeSinceLastUpdate < 0.1f && lastGameTimeUpdateTime > 0f)
+        if (healthProgressBGBar != null)
         {
-            return;
-        }
-
-        string formattedText = string.Format(cachedGameTimeFormat, time);
-
-        // 텍스트 내용이 실제로 변경되었을 때만 업데이트 (TextAnimator 애니메이션 보호)
-        if (formattedText != lastGameTimeText)
-        {
-            gameTimeText.color = cachedGameTimeFormatColor;
-
-            // TextAnimator SetText 메서드 사용 (Best Practices 적용)
-            if (gameTimeTextAnimator != null)
-            {
-                gameTimeTextAnimator.SetText(formattedText);
-                
-                // 마지막 설정된 텍스트와 시간 저장
-                lastGameTimeText = formattedText;
-                lastGameTimeUpdateTime = currentTime;
-            }
-            else
-            {
-                // Fallback: 일반 텍스트 설정
-                gameTimeText.text = formattedText;
-                lastGameTimeText = formattedText;
-                lastGameTimeUpdateTime = currentTime;
-            }
-        }
-    }
-
-    /// <summary>
-    /// 테디베어 부착 상태 업데이트
-    /// </summary>
-    public void UpdateAttachStatus(bool isAttached, float timeUntilReattach = 0f)
-    {
-        if (attachStatusText == null) return;
-
-        if (isAttached)
-        {
-            attachStatusText.text = "테디베어 부착됨";
-            attachStatusText.color = Color.green;
-            if (statusIcon != null) statusIcon.color = Color.green;
-        }
-        else if (timeUntilReattach > 0f)
-        {
-            attachStatusText.text = $"재부착까지 {timeUntilReattach:F1}초";
-            attachStatusText.color = Color.yellow;
-            if (statusIcon != null) statusIcon.color = Color.yellow;
+            healthBGBarTween = DOTween.To(() => healthProgressBGBar.currentValue, x => {
+                healthProgressBGBar.currentValue = x;
+                healthProgressBGBar.UpdateUI();
+            }, targetHealth, 0.6f)
+            .SetEase(Ease.OutCubic)
+            .OnComplete(() => {
+                // 데미지 애니메이션 완료
+                CompleteDamageAnimation();
+            });
         }
         else
         {
-            attachStatusText.text = "테디베어 미부착";
-            attachStatusText.color = Color.red;
-            if (statusIcon != null) statusIcon.color = Color.red;
+            CompleteDamageAnimation();
         }
     }
-
+    
     /// <summary>
-    /// 점수 상태 업데이트
+    /// 체력 깜박임 효과
     /// </summary>
-    public void UpdateScoreStatus(string status, float timeRemaining)
+    void StartHealthBlink(Color blinkColor, float blinkSpeed)
     {
-        if (scoreStatusText == null) return;
-
-        if (timeRemaining > 0f)
+        if (healthProgressBGBar != null && healthProgressBGBar.barImage != null)
         {
-            scoreStatusText.text = $"{status} - 증가까지 {timeRemaining:F1}초";
-            scoreStatusText.color = Color.white;
+            var image = healthProgressBGBar.barImage;
+            
+            healthBlinkTween = DOTween.Sequence()
+                .Append(image.DOFade(0f, blinkSpeed))
+                .Append(image.DOFade(150f / 255f, blinkSpeed))
+                .SetLoops(-1, LoopType.Yoyo);
+        }
+    }
+    
+    /// <summary>
+    /// 회복 중 데미지 인터럽트 처리
+    /// </summary>
+    void HandleDamageInterruptHeal(float damageAmount)
+    {
+        float currentBGValue = healthProgressBGBar != null ? healthProgressBGBar.currentValue : displayedHealth;
+        float healAmount = currentBGValue - displayedHealth;
+        
+        if (damageAmount < healAmount)
+        {
+            // 데미지가 회복량보다 작음 - 배경 바만 줄이기
+            float newBGValue = currentBGValue - damageAmount;
+            targetHealth = currentHealth; // 실제 체력으로 업데이트
+            
+            if (healthProgressBGBar != null)
+            {
+                healthBGBarTween?.Kill();
+                healthBGBarTween = DOTween.To(() => healthProgressBGBar.currentValue, x => {
+                    healthProgressBGBar.currentValue = x;
+                    healthProgressBGBar.UpdateUI();
+                }, newBGValue, 0.4f)
+                .SetEase(Ease.OutCubic);
+            }
         }
         else
         {
-            scoreStatusText.text = $"{status} (활성화됨)";
-            scoreStatusText.color = Color.yellow;
+            // 데미지가 회복량보다 큼 - 데미지 애니메이션으로 전환
+            CleanupHealthAnimations();
+            isHealAnimation = false;
+            StartDamageAnimation(damageAmount - healAmount);
         }
     }
-
-    void OnTeddyBearAttachmentChanged(bool isAttached)
-    {
-        UpdateAttachStatus(isAttached, 0f);
-    }
-
-    void OnTeddyBearReattachTimeChanged(float timeRemaining)
-    {
-        if (!GameManager.Instance.IsTeddyBearAttached())
-        {
-            UpdateAttachStatus(false, timeRemaining);
-        }
-    }
-
-    #endregion
-
-    #region 스킬 UI
-
+    
     /// <summary>
-    /// 스킬 쿨다운 설정 (UI 업데이트용)
+    /// 데미지 중 회복 인터럽트 처리
     /// </summary>
-    public void SetSkillCooldown(int skillIndex, float cooldownTime)
+    void HandleHealInterruptDamage(float healAmount)
     {
-        // UI 업데이트에만 집중 - 실제 게임 조작은 하지 않음
-        UpdateSkillUI();
+        float currentBGValue = healthProgressBGBar != null ? healthProgressBGBar.currentValue : displayedHealth;
+        float damageAmount = displayedHealth - currentBGValue;
+        
+        if (healAmount < damageAmount)
+        {
+            // 회복량이 데미지보다 작음 - 배경 바만 증가
+            float newBGValue = currentBGValue + healAmount;
+            targetHealth = currentHealth; // 실제 체력으로 업데이트
+            
+            if (healthProgressBGBar != null)
+            {
+                healthBGBarTween?.Kill();
+                healthBGBarTween = DOTween.To(() => healthProgressBGBar.currentValue, x => {
+                    healthProgressBGBar.currentValue = x;
+                    healthProgressBGBar.UpdateUI();
+                }, newBGValue, 0.4f)
+                .SetEase(Ease.OutCubic);
+            }
+        }
+        else
+        {
+            // 회복량이 데미지보다 큼 - 회복 애니메이션으로 전환
+            CleanupHealthAnimations();
+            isDamageAnimation = false;
+            StartHealAnimation(healAmount - damageAmount);
+        }
+    }
+    
+    /// <summary>
+    /// 데미지 애니메이션 완료
+    /// </summary>
+    void CompleteDamageAnimation()
+    {
+        isDamageAnimation = false;
+        isHealthAnimating = false;
+        
+        // 깜박임 정지 및 원래 색상으로 복원
+        healthBlinkTween?.Kill();
+        if (healthProgressBGBar != null && healthProgressBGBar.barImage != null)
+        {
+            healthProgressBGBar.barImage.color = originalBGColor;
+            healthProgressBGBar.barImage.DOFade(originalBGColor.a, 0.3f);
+        }
+        
+        // 체력 변화 시간 업데이트 (페이드 타이머 리셋)
+        lastHealthChangeTime = Time.time;
+    }
+    
+    /// <summary>
+    /// 회복 애니메이션 완료
+    /// </summary>
+    void CompleteHealAnimation()
+    {
+        isHealAnimation = false;
+        isHealthAnimating = false;
+        
+        // 깜박임 정지 및 원래 색상으로 복원
+        healthBlinkTween?.Kill();
+        if (healthProgressBGBar != null && healthProgressBGBar.barImage != null)
+        {
+            healthProgressBGBar.barImage.color = originalBGColor;
+            healthProgressBGBar.barImage.DOFade(originalBGColor.a, 0.3f);
+        }
+        
+        // 체력 변화 시간 업데이트 (페이드 타이머 리셋)
+        lastHealthChangeTime = Time.time;
+    }
+    
+    /// <summary>
+    /// 체력 애니메이션 정리
+    /// </summary>
+    void CleanupHealthAnimations()
+    {
+        healthBarTween?.Kill();
+        healthBGBarTween?.Kill();
+        healthBlinkTween?.Kill();
+        
+        healthBarTween = null;
+        healthBGBarTween = null;
+        healthBlinkTween = null;
+    }
+    
+    /// <summary>
+    /// 체력 바 페이드 체크
+    /// </summary>
+    void CheckHealthBarFade()
+    {
+        // 애니메이션 중이거나 이미 페이드된 상태면 체크하지 않음
+        if (isHealthAnimating || isHealthBarFaded) return;
+        
+        // 3초간 체력 변화가 없었는지 확인
+        if (Time.time - lastHealthChangeTime >= healthFadeDelay)
+        {
+            FadeHealthBars();
+        }
+    }
+    
+    /// <summary>
+    /// 체력 바들을 페이드 아웃
+    /// </summary>
+    void FadeHealthBars()
+    {
+        if (isHealthBarFaded) return;
+        
+        isHealthBarFaded = true;
+        
+        // 체력 바를 투명도 100 (약 39%)으로 페이드
+        if (healthProgressBar != null && healthProgressBar.barImage != null)
+        {
+            healthBarFadeTween = healthProgressBar.barImage.DOFade(100f / 255f, 0.5f)
+                .SetEase(Ease.OutCubic);
+        }
+        
+        // 배경 바를 투명도 0으로 페이드
+        if (healthProgressBGBar != null && healthProgressBGBar.barImage != null)
+        {
+            healthBGBarFadeTween = healthProgressBGBar.barImage.DOFade(0f, 0.5f)
+                .SetEase(Ease.OutCubic);
+        }
+    }
+    
+    /// <summary>
+    /// 체력 바 투명도를 원래대로 복원
+    /// </summary>
+    void RestoreHealthBarVisibility()
+    {
+        if (!isHealthBarFaded) return;
+        
+        isHealthBarFaded = false;
+        
+        // 페이드 애니메이션 정리
+        healthBarFadeTween?.Kill();
+        healthBGBarFadeTween?.Kill();
+        
+        // 체력 바를 원래 투명도로 복원
+        if (healthProgressBar != null && healthProgressBar.barImage != null)
+        {
+            healthBarFadeTween = healthProgressBar.barImage.DOFade(originalHealthBarColor.a, 0.3f)
+                .SetEase(Ease.OutCubic);
+        }
+        
+        // 배경 바를 원래 투명도로 복원
+        if (healthProgressBGBar != null && healthProgressBGBar.barImage != null)
+        {
+            healthBGBarFadeTween = healthProgressBGBar.barImage.DOFade(originalBGColor.a, 0.3f)
+                .SetEase(Ease.OutCubic);
+        }
+    }
+    
+    /// <summary>
+    /// 페이드 애니메이션 정리
+    /// </summary>
+    void CleanupFadeAnimations()
+    {
+        healthBarFadeTween?.Kill();
+        healthBGBarFadeTween?.Kill();
+        
+        healthBarFadeTween = null;
+        healthBGBarFadeTween = null;
     }
 
+    
     /// <summary>
-    /// 스킬 UI 업데이트 (기존 시스템 호환용)
+    /// 코인 자동 업데이트 (로컬 플레이어에서 직접 가져옴)
+    /// </summary>
+    void UpdateCoin()
+    {
+        if (localCoinController == null) return;
+        
+        int newCoin = localCoinController.GetCurrentCoin();
+        if (newCoin != currentCoin)
+        {
+            currentCoin = newCoin;
+            UpdateCoinDisplay();
+        }
+    }
+    
+    /// <summary>
+    /// 코인 업데이트 (외부 호출용)
+    /// </summary>
+    public void UpdateCoin(int coinAmount)
+    {
+        if (Mathf.Abs(coinAmount - currentCoin) > 0.1f)
+        {
+            currentCoin = coinAmount;
+            UpdateCoinDisplay();
+        }
+    }
+    
+    /// <summary>
+    /// 코인 UI 업데이트
+    /// </summary>
+    void UpdateCoinDisplay()
+    {
+        if (coinText != null)
+        {
+            coinText.text = $"{currentCoin}";
+        }
+    }
+    
+    /// <summary>
+    /// 점수 자동 업데이트 (로컬 플레이어에서 직접 가져옴)
+    /// </summary>
+    void UpdateScore()
+    {
+        if (localCoinController == null) return;
+        
+        float newScore = localCoinController.GetCurrentScore();
+        if (Mathf.Abs(newScore - currentScore) > 0.1f)
+        {
+            float previousScore = currentScore;
+            currentScore = newScore;
+            UpdateScoreDisplay();
+            
+            // 점수가 변경되었을 때 네트워크 동기화
+            if (PhotonNetwork.IsConnected && PhotonNetwork.LocalPlayer != null)
+            {
+                SyncPlayerScoreToNetwork(PhotonNetwork.LocalPlayer.ActorNumber, newScore);
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 점수 UI 업데이트
+    /// </summary>
+    void UpdateScoreDisplay()
+    {
+        if (scoreText != null)
+        {
+            scoreText.text = $"{currentScore:F0}";
+        }
+        else
+        {
+            scoreText.text = "0";
+        }
+    }
+
+
+    void UpdateScoreMultiplier()
+    {
+        if (localCoinController == null) return;
+
+        if (localCoinController.GetIsTeddyBearAttached())
+        {
+            UpdateScoreMultiplierDisplay();
+        }
+        else
+        {
+            scoreMultiplierText.text = "";
+        }
+    }
+
+    void UpdateScoreMultiplierDisplay()
+    {
+        if (scoreMultiplierText != null)
+        {
+            scoreMultiplierText.text = $"<wave>점수 2배!</wave>";
+        }
+    }
+    
+    /// <summary>
+    /// 게임 시간 업데이트 (GameManager에서 받아옴)
+    /// </summary>
+    void UpdateGameTime(float time)
+    {
+        gameTime = time;
+        UpdateTimeDisplay();
+    }
+    
+    /// <summary>
+    /// 시간 UI 업데이트
+    /// </summary>
+    void UpdateTimeDisplay()
+    {
+        if (gameTimeText != null)
+        {
+            int minutes = Mathf.FloorToInt(gameTime / 60f);
+            int seconds = Mathf.FloorToInt(gameTime % 60f);
+            gameTimeText.text = $"{minutes:00}:{seconds:00}";
+        }
+    }
+    
+    /// <summary>
+    /// 스킬 UI 업데이트
     /// </summary>
     void UpdateSkillUI()
     {
-        // 저장된 캐릭터 스킬 정보가 있으면 상태만 업데이트
-        if (currentCharacterSkill != null)
+        if (localCharacterSkill == null) return;
+        
+        // 스킬 아이콘 설정
+        if (skillIcon != null && localCharacterSkill.SkillIcon != null)
         {
-            UpdateSkillIconState();
-            return;
+            skillIcon.sprite = localCharacterSkill.SkillIcon;
+            skillIcon.color = localCharacterSkill.SkillColor;
         }
-
-        // 저장된 정보가 없으면 새로 로드
-        LoadCharacterPrefabData();
-        LoadSkillIconFromCharacterSkill();
-        ConnectSkillIconToHUD();
-        UpdateSkillIconState();
+        
+        UpdateSkillState();
     }
-
+    
     /// <summary>
-    /// 스킬 쿨타임 실시간 업데이트
+    /// 스킬 상태 업데이트
     /// </summary>
-    public void UpdateSkillCooldowns()
+    void UpdateSkillState()
     {
-        // 저장된 캐릭터 스킬 정보가 있으면 상태만 업데이트
-        if (currentCharacterSkill != null)
+        if (localCharacterSkill == null || skillIcon == null) return;
+        
+        bool isOnCooldown = localCharacterSkill.RemainingCooldown > 0f;
+        skillIcon.color = isOnCooldown ? Color.gray : Color.white;
+        
+        // 쿨다운 오버레이
+        if (skillCooldownOverlay != null)
         {
-            UpdateSkillIconState();
-            return;
-        }
-
-        // 스킬 데이터가 로드되지 않은 경우, 스폰된 캐릭터에서 다시 시도
-        SpawnController spawnController = FindObjectOfType<SpawnController>();
-        if (spawnController != null)
-        {
-            currentCharacterSkill = spawnController.GetCurrentSpawnedCharacterSkill();
-            if (currentCharacterSkill != null)
+            if (isOnCooldown && localCharacterSkill.Cooldown > 0f)
             {
-                // 스킬 아이콘도 함께 로드
-                currentSkillIcon = currentCharacterSkill.SkillIcon;
-                if (currentSkillIcon != null && skillIcon != null)
-                {
-                    skillIcon.sprite = currentSkillIcon;
-                    skillIcon.color = currentCharacterSkill.SkillColor;
-                }
-                UpdateSkillIconState();
+                float fillAmount = localCharacterSkill.RemainingCooldown / localCharacterSkill.Cooldown;
+                skillCooldownOverlay.fillAmount = fillAmount;
+                skillCooldownOverlay.gameObject.SetActive(true);
+            }
+            else
+            {
+                skillCooldownOverlay.gameObject.SetActive(false);
+            }
+        }
+        
+        // 쿨다운 텍스트
+        if (skillCooldownText != null)
+        {
+            if (isOnCooldown)
+            {
+                skillCooldownText.text = localCharacterSkill.RemainingCooldown.ToString("F1");
+                skillCooldownText.gameObject.SetActive(true);
+            }
+            else
+            {
+                skillCooldownText.gameObject.SetActive(false);
             }
         }
     }
-
-    #endregion
-
-    #region 아이템 UI
-
+    
     /// <summary>
-    /// 아이템 UI 업데이트
+    /// 스킬 표시 초기화
     /// </summary>
+    void UpdateSkillDisplay()
+    {
+        if (localCharacterSkill == null) return;
+        
+        if (skillIcon != null && localCharacterSkill.SkillIcon != null)
+        {
+            skillIcon.sprite = localCharacterSkill.SkillIcon;
+            skillIcon.color = localCharacterSkill.SkillColor;
+        }
+        
+        UpdateSkillState();
+    }
+    
+
+    
+    /// <summary>
+    /// 외부에서 호출 가능한 메서드들
+    /// </summary>
+    public void RefreshHUD()
+    {
+        if (localPlayer != null)
+        {
+            InitializeHUD();
+        }
+    }
+    
+    public void SetHUDVisible(bool visible)
+    {
+        gameObject.SetActive(visible);
+    }
+    
+    // Getter 메서드들
+    public float GetCurrentHealth() => currentHealth;
+    public float GetMaxHealth() => maxHealth;
+    public int GetCurrentCoin() => currentCoin;
+    public float GetCurrentScore() => currentScore;
+    
+    /// <summary>
+    /// 현재 점수판 데이터 리스트 반환 (GameOverController용)
+    /// </summary>
+    public List<PlayerScoreData> GetPlayerScoreDataList()
+    {
+        // 최신 점수판 데이터 수집
+        CollectAllPlayersData();
+        SortPlayersByScore();
+        
+        return playerScoreDataList;
+    }
+    
+    /// <summary>
+    /// 외부 호환성을 위한 메서드들
+    /// </summary>
+    
+    // 아이템 UI 업데이트 
     public void UpdateItemUI()
     {
-        UpdateItemIcons();
-    }
-
-    /// <summary>
-    /// 아이템 아이콘 업데이트
-    /// </summary>
-    private void UpdateItemIcons()
-    {
-        // 현재 플레이어의 ItemController 찾기
-        ItemController itemController = FindCurrentPlayerItemController();
-        if (itemController == null)
-        {
-            Debug.LogWarning("⚠️ HUDPanel - 현재 플레이어의 ItemController를 찾을 수 없습니다.");
-            ClearItemIcons();
-            return;
-        }
-
+        if (localItemController == null) return;
+        
         try
         {
-            // ItemSlot1의 모든 아이템 가져오기
-            Transform itemSlot = itemController.GetItemSlot1();
+            Transform itemSlot = localItemController.GetItemSlot1();
             if (itemSlot == null)
             {
-                Debug.LogWarning("⚠️ HUDPanel - ItemSlot을 찾을 수 없습니다.");
                 ClearItemIcons();
                 return;
             }
-
+            
             int itemCount = itemSlot.childCount;
-            if (itemCount == 0)
-            {
-                // 아이템이 없으면 아이콘 초기화
-                ClearItemIcons();
-                return;
-            }
-
-            // 첫 번째 아이템 (itemIcon1에 표시) - 활성화된 아이템
+            
+            // 첫 번째 아이템
             if (itemCount >= 1)
             {
-                Transform firstChild = itemSlot.GetChild(itemSlot.childCount - 1); // 마지막 자식이 활성화된 아이템
+                Transform firstChild = itemSlot.GetChild(itemCount - 1);
                 if (firstChild != null)
                 {
-                    CharacterItem firstItem = firstChild.GetComponent<CharacterItem>();
+                    Skill firstItem = firstChild.GetComponent<Skill>();
                     if (firstItem != null)
                     {
                         bool isActive = firstChild.gameObject.activeInHierarchy;
@@ -799,19 +1076,19 @@ public class HUDPanel : MonoBehaviour
                         ClearItemIcon(itemIcon1);
                     }
                 }
-                else
-                {
-                    ClearItemIcon(itemIcon1);
-                }
             }
-
-            // 두 번째 아이템 (itemIcon2에 표시) - 비활성화된 아이템
+            else
+            {
+                ClearItemIcon(itemIcon1);
+            }
+            
+            // 두 번째 아이템
             if (itemCount >= 2)
             {
-                Transform secondChild = itemSlot.GetChild(itemSlot.childCount - 2); // 두 번째 마지막 자식
+                Transform secondChild = itemSlot.GetChild(itemCount - 2);
                 if (secondChild != null)
                 {
-                    CharacterItem secondItem = secondChild.GetComponent<CharacterItem>();
+                    Skill secondItem = secondChild.GetComponent<Skill>();
                     if (secondItem != null)
                     {
                         bool isActive = secondChild.gameObject.activeInHierarchy;
@@ -822,867 +1099,1054 @@ public class HUDPanel : MonoBehaviour
                         ClearItemIcon(itemIcon2);
                     }
                 }
-                else
-                {
-                    ClearItemIcon(itemIcon2);
-                }
             }
             else
             {
-                // 두 번째 아이템이 없으면 아이콘 초기화
                 ClearItemIcon(itemIcon2);
             }
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"❌ HUDPanel - 아이템 아이콘 업데이트 중 오류: {e.Message}");
+            Debug.LogError($"HUD: 아이템 UI 업데이트 중 오류 - {e.Message}");
             ClearItemIcons();
         }
     }
-
-    /// <summary>
-    /// 아이템 아이콘 업데이트
-    /// </summary>
-    /// <param name="iconImage">업데이트할 아이콘 이미지</param>
-    /// <param name="skillIcon">스킬 아이콘 스프라이트</param>
-    /// <param name="skillColor">스킬 색상</param>
-    /// <param name="isActive">활성화 상태</param>
+    
+    // 스킬 데이터 업데이트 (외부 호출용)
+    public void UpdateSkillDataFromSpawnedCharacter()
+    {
+        if (localCharacterSkill != null)
+        {
+            UpdateSkillDisplay();
+        }
+    }
+    
+    // 아이템 아이콘 업데이트 헬퍼 메서드
     private void UpdateItemIcon(Image iconImage, Sprite skillIcon, Color skillColor, bool isActive)
     {
-        if (iconImage == null)
-        {
-            Debug.LogWarning("⚠️ HUDPanel - 아이콘 이미지가 null입니다.");
-            return;
-        }
-
+        if (iconImage == null) return;
+        
         if (skillIcon == null)
         {
-            Debug.LogWarning("⚠️ HUDPanel - 스킬 아이콘이 null입니다. 빈 아이콘으로 표시합니다.");
-            // 스킬 아이콘이 없으면 빈 아이콘 표시
             iconImage.sprite = emptyItemIcon;
             iconImage.color = Color.white;
             iconImage.gameObject.SetActive(true);
             return;
         }
-
-        // 아이콘 설정 (비활성화되어 있어도 아이콘은 표시)
+        
         iconImage.sprite = skillIcon;
-        iconImage.color = isActive ? skillColor : Color.gray; // 비활성화된 아이템은 회색
-        iconImage.gameObject.SetActive(true); // 항상 활성화
+        iconImage.color = isActive ? skillColor : Color.gray;
+        iconImage.gameObject.SetActive(true);
     }
-
-    /// <summary>
-    /// 특정 아이템 아이콘 초기화
-    /// </summary>
-    /// <param name="iconImage">초기화할 아이콘 이미지</param>
+    
+    // 아이템 아이콘 클리어 헬퍼 메서드
     private void ClearItemIcon(Image iconImage)
     {
         if (iconImage != null)
         {
             iconImage.sprite = emptyItemIcon;
-            iconImage.color = Color.white; // 빈 아이콘은 흰색으로 표시
-            iconImage.gameObject.SetActive(true); // 빈 아이콘도 표시
+            iconImage.color = Color.white;
+            iconImage.gameObject.SetActive(true);
         }
     }
-
-    /// <summary>
-    /// 모든 아이템 아이콘 초기화
-    /// </summary>
+    
+    // 모든 아이템 아이콘 클리어
     private void ClearItemIcons()
     {
         ClearItemIcon(itemIcon1);
         ClearItemIcon(itemIcon2);
     }
 
-    #endregion
 
 
-    #region 아이템 UI (모달창)
 
-    /// <summary>
-    /// 아이템 UI 열기
-    /// </summary>
-    public void OpenItemUI()
+    private void HandlePlayerDeath(LivingEntity victim)
     {
-        if (itemModalWindow == null) return;
-        if (!gameObject.activeSelf) return;
-        if (!itemModalWindow.isOn)
-        {
+        if (victim == null) return;
 
-            TestShoot.SetIsShooting(false);
+        LivingEntity attacker = victim.GetAttacker();
+        if (attacker != null)
+        {
+            // 모든 클라이언트에서 킬로그 생성
+        GameObject killLog = Instantiate(killLogPrefab, killLogParent.transform);
+            Debug.Log($"HUD: 킬로그 생성 - {killLog.name}");
+            
+     
+        QuestItem questItem = killLog.GetComponent<QuestItem>();
+
+            Photon.Realtime.Player attackerPlayer = attacker.photonView.Owner;
+            Photon.Realtime.Player victimPlayer = victim.photonView.Owner;
+
+            string attackerNickname = GetPlayerNickname(attackerPlayer);
+            string victimNickname = GetPlayerNickname(victimPlayer);
+            
+            // 킬로그 텍스트 설정
+            questItem.questText = $"{attackerNickname}       {victimNickname}";
+            questItem.UpdateUI();
+
+            // Animate quest
+            questItem.AnimateQuest();
+
+
+        }
+    }
+    
+    private IEnumerator DestroyKillLogAfterDelay(GameObject killLog, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        
+        if (killLog != null)
+        {
+            Debug.Log($"HUD: 킬로그 제거 - {killLog.name}");
+            Destroy(killLog);
+        }
+    }
+
+
+
+
+    #region 점수판 관련 메서드
+    
+    /// <summary>
+    /// 점수판 초기화
+    /// </summary>
+    private void InitializeScoreBoard()
+    {
+        // 점수판 UI 요소들을 리스트에 추가
+        scoreBoardObjects.Clear();
+        scoreBoardTexts.Clear();
+        
+        if (player1ScoreBoard != null)
+        {
+            scoreBoardObjects.Add(player1ScoreBoard);
+            scoreBoardTexts.Add(player1ScoreText);
+        }
+        if (player2ScoreBoard != null)
+        {
+            scoreBoardObjects.Add(player2ScoreBoard);
+            scoreBoardTexts.Add(player2ScoreText);
+        }
+        if (player3ScoreBoard != null)
+        {
+            scoreBoardObjects.Add(player3ScoreBoard);
+            scoreBoardTexts.Add(player3ScoreText);
+        }
+        if (player4ScoreBoard != null)
+        {
+            scoreBoardObjects.Add(player4ScoreBoard);
+            scoreBoardTexts.Add(player4ScoreText);
+        }
+        
+        // 초기에는 모든 점수판을 비활성화
+        foreach (var scoreBoard in scoreBoardObjects)
+        {
+            if (scoreBoard != null)
+                scoreBoard.SetActive(false);
+        }
+        
+    }
+    
+    /// <summary>
+    /// 점수판 업데이트 (메인 메서드)
+    /// </summary>
+    public void UpdateScoreBoard()
+    {
+        if (isAnimating) return; // 애니메이션 중이면 업데이트 건너뛰기
+        
+        // 현재 방의 모든 플레이어 데이터 수집
+        CollectAllPlayersData();
+        
+        // 변경 사항 확인 (성능 최적화)
+        if (!HasPlayerDataChanged())
+        {
+            return; // 변경사항이 없으면 업데이트 건너뛰기
+        }
+        
+        // 점수 기준으로 정렬
+        SortPlayersByScore();
+        
+        // UI 업데이트
+        UpdateScoreBoardUI();
+        
+        // 순위 변경이 있다면 애니메이션 실행
+        CheckAndAnimateRankingChanges();
+        
+        // 현재 데이터를 이전 데이터로 저장
+        SaveCurrentDataAsPrevious();
+    }
+    
+    /// <summary>
+    /// 플레이어 데이터가 변경되었는지 확인 (성능 최적화)
+    /// </summary>
+    private bool HasPlayerDataChanged()
+    {
+        // 플레이어 수가 다르면 변경됨
+        if (playerScoreDataList.Count != previousPlayerDataList.Count)
+        {
+            return true;
+        }
+        
+        // 각 플레이어의 점수나 닉네임이 변경되었는지 확인
+        for (int i = 0; i < playerScoreDataList.Count; i++)
+        {
+            if (i >= previousPlayerDataList.Count)
+            {
+                return true;
+            }
+            
+            var current = playerScoreDataList[i];
+            var previous = previousPlayerDataList[i];
+            
+            // 플레이어 ID, 점수, 닉네임 중 하나라도 다르면 변경됨
+            if (current.playerId != previous.playerId ||
+                Mathf.Abs(current.score - previous.score) > 0.1f ||
+                current.nickname != previous.nickname)
+            {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    /// <summary>
+    /// 현재 데이터를 이전 데이터로 저장
+    /// </summary>
+    private void SaveCurrentDataAsPrevious()
+    {
+        previousPlayerDataList.Clear();
+        foreach (var playerData in playerScoreDataList)
+        {
+            previousPlayerDataList.Add(new PlayerScoreData(
+                playerData.playerId,
+                playerData.nickname,
+                playerData.score,
+                playerData.isLocalPlayer,
+                playerData.playerPhotonView
+            ));
+        }
+    }
+    
+    /// <summary>
+    /// 모든 플레이어의 데이터를 수집
+    /// </summary>
+    private void CollectAllPlayersData()
+    {
+        playerScoreDataList.Clear();
+        
+        // Photon 네트워크의 모든 플레이어 가져오기
+        var allPlayers = PhotonNetwork.PlayerList;
         
         
-            isItemUIOpen = true;
-            itemModalWindow.OpenWindow();
-
-            // 마우스 커서 보이게 하고 고정 해제
-            Cursor.lockState = CursorLockMode.None;
-            Cursor.visible = true;
-        }
-    }
-
-    /// <summary>
-    /// 아이템 UI 닫기
-    /// </summary>
-    public void CloseItemUI()
-    {
-        if (itemModalWindow == null) return;
-
-        if (itemModalWindow.isOn)
+        foreach (var player in allPlayers)
         {
-
-            if(!currentTeddyBear.IsAttached())
+            // 플레이어의 GameObject 찾기
+            GameObject playerObject = FindPlayerObjectByPhotonPlayer(player);
+            if (playerObject == null) 
             {
-                TestShoot.SetIsShooting(true);
+                continue;
             }
-
-            isItemUIOpen = false;
-            itemModalWindow.CloseWindow();
-
-            // 마우스 커서 숨기고 중앙에 고정
-            Cursor.lockState = CursorLockMode.Locked;
-            Cursor.visible = false;
-
-            if (!currentTeddyBear.IsAttached())
-            {
-                TestShoot.SetIsShooting(true);
-            }
+            
+            // 점수 가져오기
+            float playerScore = GetPlayerScore(playerObject);
+            
+            // 닉네임 가져오기
+            string nickname = GetPlayerNickname(player);
+            
+            // PhotonView 가져오기
+            PhotonView pv = playerObject.GetComponent<PhotonView>();
+            
+            // 로컬 플레이어인지 확인
+            bool isLocal = pv != null && pv.IsMine;
+            
+            // 플레이어 데이터 생성
+            PlayerScoreData playerData = new PlayerScoreData(
+                player.ActorNumber,
+                nickname,
+                playerScore,
+                isLocal,
+                pv
+            );
+            
+            playerScoreDataList.Add(playerData); 
         }
     }
-
+    
     /// <summary>
-    /// 아이템 UI 토글
+    /// PhotonPlayer로부터 해당하는 GameObject 찾기
     /// </summary>
-    public void ToggleItemUI()
+    private GameObject FindPlayerObjectByPhotonPlayer(Photon.Realtime.Player player)
     {
-        if (isItemUIOpen)
-            CloseItemUI();
-        else
-            OpenItemUI();
-    }
-    #endregion
-
-    #region 아이템 아이콘 업데이트
-
-  
-
-    #endregion
-
-    #region 실시간 업데이트
-
-    /// <summary>
-    /// 실시간 점수 상태 업데이트
-    /// </summary>
-    void UpdateRealTimeScoreStatus()
-    {
-        if (GameManager.Instance == null) return;
-
-        float gameTime = GameManager.Instance.GetGameTime();
-        float scoreIncreaseTime = GameManager.Instance.GetScoreIncreaseTime();
-
-        if (gameTime >= scoreIncreaseTime)
-        {
-            UpdateScoreStatus("증가한 점수", 0f);
-        }
-        else
-        {
-            float remaining = scoreIncreaseTime - gameTime;
-            UpdateScoreStatus("기본 점수", remaining);
-        }
-
-        // 재부착 시간 실시간 업데이트
-        if (!GameManager.Instance.IsTeddyBearAttached())
-        {
-            float timeUntil = GameManager.Instance.GetTimeUntilReattach();
-            UpdateAttachStatus(false, timeUntil);
-        }
-    }
-
-    /// <summary>
-    /// 실시간 배율 업데이트 (게임 시간은 이벤트로 처리)
-    /// </summary>
-    void UpdateRealTimeUI()
-    {
-        if (GameManager.Instance == null) return;
-
-        // 배율만 실시간으로 업데이트 (게임 시간은 OnGameTimeUpdated 이벤트로 처리)
-        float currentMultiplier = GameManager.Instance.GetScoreMultiplier();
-        UpdateMultiplier(currentMultiplier);
-    }
-
-    #endregion
-
-    #region 캐릭터 스폰 이벤트 처리
-
-    /// <summary>
-    /// 캐릭터 스폰 완료 시 호출되는 이벤트 핸들러
-    /// </summary>
-    void OnCharacterSpawned()
-    {
-        Debug.Log("🎯 HUDPanel - 캐릭터 스폰 완료, 스킬 시스템 초기화 시작");
-
-        // 약간의 지연 후 스킬 시스템 초기화 (스폰 완료 보장)
-        StartCoroutine(InitializeSkillSystemAfterSpawn());
-    }
-
-    /// <summary>
-    /// 스폰 완료 후 스킬 시스템 초기화
-    /// </summary>
-    IEnumerator InitializeSkillSystemAfterSpawn()
-    {
-        // 스폰 완료를 확실히 보장하기 위한 짧은 지연
-        yield return new WaitForSeconds(0.1f);
-
-        // 스킬 데이터 업데이트
-        UpdateSkillDataFromSpawnedCharacter();
-
-        Debug.Log("✅ HUDPanel - 스킬 시스템 초기화 완료");
-    }
-
-    #endregion
-
-    #region 스킬 데이터 관리
-
-    /// <summary>
-    /// 스폰된 캐릭터 프리팹 정보 받아오기 (1단계)
-    /// </summary>
-    public void LoadCharacterPrefabData()
-    {
-        // SpawnController에서 현재 스폰된 캐릭터 인덱스 가져오기
-        SpawnController spawnController = FindObjectOfType<SpawnController>();
-        if (spawnController == null)    
-        {
-            Debug.LogWarning("⚠️ HUDPanel - SpawnController를 찾을 수 없습니다.");
-            return;
-        }
-
-        int currentSpawnedCharacterIndex = spawnController.NotifyHUDOfCharacterSpawn();
-        if (currentSpawnedCharacterIndex < 0)
-        {
-            Debug.LogWarning("⚠️ HUDPanel - 스폰된 캐릭터 인덱스가 유효하지 않습니다: " + currentSpawnedCharacterIndex);
-            return;
-        }
-
-        // DataBase에서 해당 인덱스의 프리팹 정보 가져오기
-        if (!dataBaseCached || DataBase.Instance == null)
-        {
-            Debug.LogWarning("⚠️ HUDPanel - DataBase가 캐싱되지 않았습니다.");
-            return;
-        }
-
-        try
-        {
-            currentCharacterPrefab = DataBase.Instance.playerData.PlayerPrefabData[currentSpawnedCharacterIndex];
-            if (currentCharacterPrefab == null)
-            {
-                Debug.LogError($"❌ HUDPanel - 캐릭터 인덱스 {currentSpawnedCharacterIndex}의 프리팹이 null입니다.");
-                return;
-            }
-
-            this.currentSpawnedCharacterIndex = currentSpawnedCharacterIndex;
-            Debug.Log($"✅ HUDPanel - 캐릭터 프리팹 정보 로드 완료: 인덱스 {currentSpawnedCharacterIndex}");
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"❌ HUDPanel - 프리팹 정보 로드 중 오류: {e.Message}");
-        }
-    }
-
-    /// <summary>
-    /// CharacterSkill 정보에서 스킬 아이콘 스프라이트 받아오기 (2단계)
-    /// </summary>
-    public void LoadSkillIconFromCharacterSkill()
-    {
-        if (currentCharacterPrefab == null)
-        {
-            Debug.LogWarning("⚠️ HUDPanel - 캐릭터 프리팹 정보가 없습니다. LoadCharacterPrefabData()를 먼저 호출하세요.");
-            return;
-        }
-
-        try
-        {
-            // SpawnController에서 실제 스폰된 캐릭터 인스턴스의 CharacterSkill 가져오기
-            SpawnController spawnController = FindObjectOfType<SpawnController>();
-            if (spawnController == null)
-            {
-                Debug.LogWarning("⚠️ HUDPanel - SpawnController를 찾을 수 없습니다.");
-                return;
-            }
-
-            currentCharacterSkill = spawnController.GetCurrentSpawnedCharacterSkill();
-            if (currentCharacterSkill == null)
-            {
-                Debug.LogWarning($"⚠️ HUDPanel - 스폰된 캐릭터에 CharacterSkill이 없습니다.");
-                return;
-            }
-
-            // 스킬 아이콘 스프라이트 가져오기
-            currentSkillIcon = currentCharacterSkill.SkillIcon;
-            if (currentSkillIcon == null)
-            {
-                Debug.LogWarning($"⚠️ HUDPanel - 스킬 '{currentCharacterSkill.SkillName}'의 아이콘이 null입니다.");
-                return;
-            }
-
-            Debug.Log($"✅ HUDPanel - 스킬 아이콘 로드 완료: {currentCharacterSkill.SkillName}");
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"❌ HUDPanel - 스킬 아이콘 로드 중 오류: {e.Message}");
-        }
-    }
-
-    /// <summary>
-    /// 받아온 스킬 아이콘을 HUDPanel에 연결하기 (3단계)
-    /// </summary>
-    public void ConnectSkillIconToHUD()
-    {
-        if (currentSkillIcon == null)
-        {
-            Debug.LogWarning("⚠️ HUDPanel - 스킬 아이콘이 없습니다. LoadSkillIconFromCharacterSkill()를 먼저 호출하세요.");
-            return;
-        }
-
-        if (skillIcon == null)
-        {
-            Debug.LogWarning("⚠️ HUDPanel - skillIcon UI 컴포넌트가 null입니다.");
-            return;
-        }
-
-        try
-        {
-            // 스킬 아이콘을 HUD에 연결
-            skillIcon.sprite = currentSkillIcon;
-            skillIcon.color = currentCharacterSkill.SkillColor;
-
-            Debug.Log($"✅ HUDPanel - 스킬 아이콘 HUD 연결 완료: {currentCharacterSkill.SkillName}");
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"❌ HUDPanel - 스킬 아이콘 HUD 연결 중 오류: {e.Message}");
-        }
-    }
-
-    /// <summary>
-    /// 스킬 아이콘 상태 업데이트 (4단계)
-    /// </summary>
-    public void UpdateSkillIconState()
-    {
-        if (currentCharacterSkill == null)
-        {
-            Debug.LogWarning("⚠️ HUDPanel - 캐릭터 스킬 정보가 없습니다.");
-            return;
-        }
-
-        if (skillIcon == null)
-        {
-            Debug.LogWarning("⚠️ HUDPanel - skillIcon UI 컴포넌트가 null입니다.");
-            return;
-        }
-
-        try
-        {
-            // 스킬 사용 가능 여부에 따른 아이콘 색상 업데이트
-            bool isOnCooldown = currentCharacterSkill.RemainingCooldown > 0f;
-            skillIcon.color = isOnCooldown ? Color.gray : Color.white;
-
-            // 쿨다운 오버레이 업데이트
-            if (skillCooldownOverlay != null)
-            {
-                if (isOnCooldown && currentCharacterSkill.CooldownTime > 0f)
-                {
-                    float fillAmount = currentCharacterSkill.RemainingCooldown / currentCharacterSkill.CooldownTime;
-                    skillCooldownOverlay.fillAmount = fillAmount;
-                    skillCooldownOverlay.gameObject.SetActive(true);
-                }
-                else
-                {
-                    skillCooldownOverlay.gameObject.SetActive(false);
-                }
-            }
-
-            // 쿨다운 텍스트 업데이트
-            if (skillCooldownText != null)
-            {
-                if (isOnCooldown)
-                {
-                    skillCooldownText.text = currentCharacterSkill.RemainingCooldown.ToString("F1");
-                    skillCooldownText.gameObject.SetActive(true);
-                }
-                else
-                {
-                    skillCooldownText.gameObject.SetActive(false);
-                }
-            }
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"❌ HUDPanel - 스킬 아이콘 상태 업데이트 중 오류: {e.Message}");
-        }
-    }
-
-    /// <summary>
-    /// 전체 스킬 데이터 업데이트 (모든 단계를 순차적으로 실행)
-    /// </summary>
-    public void UpdateSkillDataFromSpawnedCharacter()
-    {
-        LoadCharacterPrefabData();        // 1단계: 프리팹 정보 받아오기
-        LoadSkillIconFromCharacterSkill(); // 2단계: 스킬 아이콘 받아오기
-        ConnectSkillIconToHUD();          // 3단계: HUD에 연결
-        UpdateSkillIconState();           // 4단계: 상태 업데이트
-    }
-
-    /// <summary>
-    /// 캐릭터 인덱스로부터 스킬 데이터를 가져와 HUD 업데이트 (기존 호환성 유지)
-    /// </summary>
-    public void UpdateSkillDataFromCharacterIndex(int characterIndex)
-    {
-        if (!dataBaseCached || DataBase.Instance == null)
-        {
-            Debug.LogWarning("⚠️ HUDPanel - DataBase가 캐싱되지 않았습니다.");
-            return;
-        }
-
-        try
-        {
-            // playerData의 프리팹 데이터 배열에서 해당 인덱스의 프리팹 가져오기
-            currentCharacterPrefab = DataBase.Instance.playerData.PlayerPrefabData[characterIndex];
-            if (currentCharacterPrefab == null)
-            {
-                Debug.LogError($"❌ HUDPanel - 캐릭터 인덱스 {characterIndex}의 프리팹이 null입니다.");
-                return;
-            }
-
-            this.currentSpawnedCharacterIndex = characterIndex;
-
-            // 나머지 단계들 실행
-            LoadSkillIconFromCharacterSkill();
-            ConnectSkillIconToHUD();
-            UpdateSkillIconState();
-
-            Debug.Log($"✅ HUDPanel - 캐릭터 인덱스 {characterIndex}의 스킬 데이터 업데이트 완료");
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"❌ HUDPanel - 스킬 데이터 업데이트 중 오류: {e.Message}");
-        }
-    }
-
-    /// <summary>
-    /// 캐릭터 스킬로부터 스킬 데이터를 가져와 HUD 업데이트
-    /// </summary>
-    public void UpdateSkillDataFromCharacterSkill(CharacterSkill characterSkill)
-    {
-        if (characterSkill == null)
-        {
-            Debug.LogWarning("⚠️ HUDPanel - CharacterSkill이 null입니다.");
-            return;
-        }
-
-        try
-        {
-            currentCharacterSkill = characterSkill;
-            currentSkillIcon = characterSkill.SkillIcon;
-
-            ConnectSkillIconToHUD();
-
-            Debug.Log($"✅ HUDPanel - 스킬 '{characterSkill.SkillName}' 데이터 업데이트 완료");
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"❌ HUDPanel - 스킬 데이터 업데이트 중 오류: {e.Message}");
-        }
-    }
-
-    #endregion
-
-    #region 공개 메서드들
-
-    /// <summary>
-    /// HUD 표시/숨김
-    /// </summary>
-    public void SetHUDVisible(bool visible)
-    {
-        gameObject.SetActive(visible);
-    }
-
-    /// <summary>
-    /// 현재 체력 정보
-    /// </summary>
-    public float GetCurrentHealth() => currentHealth;
-    public float GetMaxHealth() => maxHealth;
-    public float GetHealthRatio() => currentHealth / maxHealth;
-
-    /// <summary>
-    /// 아이템 UI 상태 확인
-    /// </summary>
-    public bool IsItemUIOpen() => isItemUIOpen;
-
-    /// <summary>
-    /// 스킬 상태 확인 (UI 표시용)
-    /// </summary>
-    public bool IsSkillReady(int skillIndex)
-    {
-        // UI 표시용으로만 사용 - 실제 게임 조작은 하지 않음
-        // 현재는 항상 true 반환 (실제 스킬 상태는 CharacterSkill에서 관리)
-        return true;
-    }
-
-    #endregion
-
-
-    #region 컴포넌트 찾기
-    void FindTeddyBear()
-    {
-        if (currentTeddyBear == null)
-        {
-            currentTeddyBear = FindObjectOfType<TestTeddyBear>();
-            if (currentTeddyBear != null)
-            {
-                Debug.Log("테디베어를 찾았습니다!");
-            }
-        }
-    }
-
-    #endregion
-
-    #region 코인 UI 관리
-    /// <summary>
-    /// 코인 UI 업데이트 (CoinController로부터 받은 값 사용)
-    /// </summary>
-    /// <param name="coinAmount">표시할 코인 수</param>
-    public void UpdateCoin(int coinAmount)
-    {
-        if (coinText == null) return;
-
-        // 너무 빠른 연속 호출 방지 (TextAnimator 애니메이션 보호)
-        float currentTime = Time.time;
-        float timeSinceLastUpdate = currentTime - lastCoinUpdateTime;
+        GameObject[] playerObjects = GameObject.FindGameObjectsWithTag("Player");
         
-        // 0.1초 이내의 연속 호출은 무시 (애니메이션 중단 방지)
-        if (timeSinceLastUpdate < 0.1f && lastCoinUpdateTime > 0f)
+        foreach (GameObject playerObj in playerObjects)
         {
-            return;
-        }
-
-        currentCoin = coinAmount;
-        string formattedText = string.Format(cachedCoinFormat, currentCoin);
-
-        // 텍스트 내용이 실제로 변경되었을 때만 업데이트 (TextAnimator 애니메이션 보호)
-        if (formattedText != lastCoinText)
-        {
-            coinText.color = cachedCoinFormatColor;
-
-            // TextAnimator SetText 메서드 사용 (Best Practices 적용)
-            if (coinTextAnimator != null)
+            PhotonView pv = playerObj.GetComponent<PhotonView>();
+            if (pv != null && pv.Owner.ActorNumber == player.ActorNumber)
             {
-                coinTextAnimator.SetText(formattedText);
+                return playerObj;
+            }
+        }
+        
+        return null;
+    }
+    
+    /// <summary>
+    /// 플레이어의 점수 가져오기 (네트워크 동기화 우선)
+    /// </summary>
+    private float GetPlayerScore(GameObject playerObject)
+    {
+        PhotonView pv = playerObject.GetComponent<PhotonView>();
+        if (pv != null && pv.Owner != null)
+        {
+            // 로컬 플레이어인 경우 CoinController에서 직접 가져오기
+            if (pv.IsMine)
+            {
+                CoinController coinController = playerObject.GetComponent<CoinController>();
+                if (coinController != null)
+                {
+                    float localScore = coinController.GetCurrentScore();
+                    return localScore;
+                }
+            }
+            else
+            {
+                // 원격 플레이어인 경우 네트워크에서 가져오기
+                float networkScore = GetPlayerScoreFromNetwork(pv.Owner);
+                return networkScore;
+            }
+        }
+        
+        return 0f;
+    }
+    
+    /// <summary>
+    /// 플레이어의 닉네임 가져오기
+    /// </summary>
+    private string GetPlayerNickname(Photon.Realtime.Player player)
+    {
+        if (player == null) return "Unknown";
+        
+        // 1. PhotonPlayer의 커스텀 프로퍼티에서 닉네임 가져오기 (최우선)
+        if (player.CustomProperties != null && player.CustomProperties.TryGetValue("nickname", out object nicknameObj))
+        {
+            string nickname = nicknameObj?.ToString();
+            if (!string.IsNullOrEmpty(nickname))
+            {
+                return nickname;
+            }
+        }
+        
+        // 2. Photon NickName 속성 확인
+        if (!string.IsNullOrEmpty(player.NickName))
+        {
+            return player.NickName;
+        }
+        
+        // 3. 로컬 플레이어인 경우 PlayerPrefs/CurrentUser에서 가져오기
+        if (player.IsLocal)
+        {
+            string localNickname = "";
+            
+            // CurrentUser 확인
+            if (CurrentUser.Instance != null && CurrentUser.Instance.IsLoggedIn())
+            {
+                localNickname = CurrentUser.Instance.GetNickname();
+            }
+            
+            // PlayerPrefs 확인
+            if (string.IsNullOrEmpty(localNickname))
+            {
+                localNickname = PlayerPrefs.GetString("NickName", "");
+            }
+            
+            if (!string.IsNullOrEmpty(localNickname))
+            {
+                return localNickname;
+            }
+        }
+        
+        // 4. 기본값으로 Player + ActorNumber 사용
+        return $"Player{player.ActorNumber}";
+    }
+    
+    /// <summary>
+    /// 플레이어들을 점수 기준으로 정렬
+    /// </summary>
+    private void SortPlayersByScore()
+    {
+        playerScoreDataList = playerScoreDataList
+            .OrderByDescending(p => p.score)
+            .ThenBy(p => p.playerId) // 점수가 같으면 ID 순으로
+            .ToList();
+    }
+    
+    /// <summary>
+    /// 점수판 UI 업데이트
+    /// </summary>
+    private void UpdateScoreBoardUI()
+    {
+        // 모든 점수판을 먼저 비활성화
+        foreach (var scoreBoard in scoreBoardObjects)
+        {
+            if (scoreBoard != null)
+                scoreBoard.SetActive(false);
+        }
+        
+        // 플레이어 데이터에 따라 점수판 업데이트
+        for (int i = 0; i < playerScoreDataList.Count && i < scoreBoardObjects.Count; i++)
+        {
+            PlayerScoreData playerData = playerScoreDataList[i];
+            
+            // 해당 순위의 점수판 활성화
+            scoreBoardObjects[i].SetActive(true);
+            
+            // 순위와 함께 표시
+            string displayText = $"{playerData.nickname}   {playerData.score:F0}";
+            
+            // 로컬 플레이어인 경우 하이라이트
+            if (playerData.isLocalPlayer)
+            {
+                displayText = $"<color=yellow>{displayText}</color>";
+            }
+            
+            scoreBoardTexts[i].text = displayText;
+            
+        }
+    }
+    
+    /// <summary>
+    /// 순위 변경 확인 및 애니메이션 실행
+    /// </summary>
+    private void CheckAndAnimateRankingChanges()
+    {
+        // 이전 순위와 현재 순위를 비교하여 변경이 있는지 확인
+        bool needsReordering = HasRankingChanged();
+        
+        if (needsReordering)
+        {
+            StartCoroutine(AnimateScoreBoardReordering());
+        }
+    }
+    
+    /// <summary>
+    /// 순위가 변경되었는지 확인
+    /// </summary>
+    private bool HasRankingChanged()
+    {
+        if (previousPlayerDataList.Count != playerScoreDataList.Count)
+        {
+            return true;
+        }
+        
+        // 순위 비교 (같은 순서인지 확인)
+        for (int i = 0; i < playerScoreDataList.Count && i < previousPlayerDataList.Count; i++)
+        {
+            if (playerScoreDataList[i].playerId != previousPlayerDataList[i].playerId)
+            {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    /// <summary>
+    /// 점수판 순서 변경 애니메이션
+    /// </summary>
+    private IEnumerator AnimateScoreBoardReordering()
+    {
+        isAnimating = true;
+        
+        // 현재 위치와 순서 정보 저장
+        Dictionary<GameObject, Vector3> originalPositions = new Dictionary<GameObject, Vector3>();
+        Dictionary<GameObject, int> originalIndices = new Dictionary<GameObject, int>();
+        
+        for (int i = 0; i < scoreBoardObjects.Count; i++)
+        {
+            var scoreBoard = scoreBoardObjects[i];
+            if (scoreBoard != null)
+            {
+                originalPositions[scoreBoard] = scoreBoard.transform.localPosition;
+                originalIndices[scoreBoard] = scoreBoard.transform.GetSiblingIndex();
+            }
+        }
+        
+        // 먼저 새로운 순서로 정렬
+        for (int i = 0; i < playerScoreDataList.Count && i < scoreBoardObjects.Count; i++)
+        {
+            scoreBoardObjects[i].transform.SetSiblingIndex(i);
+        }
+        
+        // Layout 업데이트를 위해 잠시 대기
+        yield return new WaitForEndOfFrame();
+        
+        // Layout Group 강제 업데이트
+        LayoutRebuilder.ForceRebuildLayoutImmediate(scoreBoardParent.GetComponent<RectTransform>());
+        
+        // 새로운 목표 위치 저장
+        Dictionary<GameObject, Vector3> targetPositions = new Dictionary<GameObject, Vector3>();
+        foreach (var scoreBoard in scoreBoardObjects)
+        {
+            if (scoreBoard != null)
+            {
+                targetPositions[scoreBoard] = scoreBoard.transform.localPosition;
+            }
+        }
+        
+        // 원래 순서와 위치로 되돌리기
+        foreach (var scoreBoard in scoreBoardObjects)
+        {
+            if (scoreBoard != null && originalIndices.ContainsKey(scoreBoard))
+            {
+                scoreBoard.transform.SetSiblingIndex(originalIndices[scoreBoard]);
+                scoreBoard.transform.localPosition = originalPositions[scoreBoard];
+            }
+        }
+        
+        // Layout 업데이트를 위해 다시 대기
+        yield return new WaitForEndOfFrame();
+        
+        // DOTween을 사용한 부드러운 이동 애니메이션
+        List<Tween> tweens = new List<Tween>();
+        
+        foreach (var scoreBoard in scoreBoardObjects)
+        {
+            if (scoreBoard != null && targetPositions.ContainsKey(scoreBoard))
+            {
+                // 먼저 올바른 순서로 설정
+                int targetIndex = scoreBoardObjects.IndexOf(scoreBoard);
+                scoreBoard.transform.SetSiblingIndex(targetIndex);
                 
-                // 마지막 설정된 텍스트와 시간 저장
-                lastCoinText = formattedText;
-                lastCoinUpdateTime = currentTime;
-            }
-            else
-            {
-                // Fallback: 일반 텍스트 설정
-                coinText.text = formattedText;
-                lastCoinText = formattedText;
-                lastCoinUpdateTime = currentTime;
+                // 그 다음 위치 애니메이션 실행
+                var tween = scoreBoard.transform
+                    .DOLocalMove(targetPositions[scoreBoard], 0.5f)
+                    .SetEase(Ease.OutCubic);
+                tweens.Add(tween);
             }
         }
+        
+        // 모든 애니메이션이 완료될 때까지 대기
+        yield return new WaitForSeconds(0.5f);
+        
+        // 애니메이션 완료 후 정리
+        foreach (var tween in tweens)
+        {
+            if (tween != null && tween.IsActive())
+                tween.Kill();
+        }
+        
+        // 최종 Layout 업데이트
+        LayoutRebuilder.ForceRebuildLayoutImmediate(scoreBoardParent.GetComponent<RectTransform>());
+        
+        isAnimating = false;
+    }
+    
+    /// <summary>
+    /// 점수판 강제 업데이트 (외부 호출용)
+    /// </summary>
+    public void ForceUpdateScoreBoard()
+    {
+        lastScoreBoardUpdate = 0f; // 즉시 업데이트되도록 설정
+    }
+    
+    /// <summary>
+    /// 점수 변경 시 호출되는 이벤트 핸들러
+    /// </summary>
+    private void OnScoreChanged(float newScore)
+    {
+        // 로컬 플레이어의 점수가 변경되었을 때 네트워크로 동기화
+        if (PhotonNetwork.IsConnected && PhotonNetwork.LocalPlayer != null)
+        {
+            SyncPlayerScoreToNetwork(PhotonNetwork.LocalPlayer.ActorNumber, newScore);
+        }
+        
+        // 점수가 변경되면 즉시 점수판 업데이트
+        ForceUpdateScoreBoard();
+    }
+    
+    /// <summary>
+    /// 플레이어 점수를 네트워크로 동기화
+    /// </summary>
+    private void SyncPlayerScoreToNetwork(int playerId, float score)
+    {
+        // Photon Custom Properties에 점수 저장
+        var props = new ExitGames.Client.Photon.Hashtable();
+        props[$"score_{playerId}"] = score;
+        PhotonNetwork.LocalPlayer.SetCustomProperties(props);
+        
+        Debug.Log($"HUDPanel: 점수 네트워크 동기화 - Player {playerId}: {score}점");
+        
+        // RPC 제거 - Custom Properties로만 동기화
+    }
+    
+    // RPC 메서드 제거됨 - Custom Properties만 사용
+    
+    /// <summary>
+    /// Photon Custom Properties에서 플레이어 점수 가져오기
+    /// </summary>
+    private float GetPlayerScoreFromNetwork(Photon.Realtime.Player player)
+    {
+        if (player == null) return 0f;
+        
+        // Custom Properties에서 점수 확인
+        string scoreKey = $"score_{player.ActorNumber}";
+        if (player.CustomProperties.TryGetValue(scoreKey, out object scoreObj))
+        {
+            if (scoreObj != null && float.TryParse(scoreObj.ToString(), out float networkScore))
+            {
+                Debug.Log($"HUDPanel: 네트워크에서 점수 가져오기 - Player {player.ActorNumber}: {networkScore}점");
+                return networkScore;
+            }
+        }
+        
+        Debug.LogWarning($"HUDPanel: Player {player.ActorNumber}의 점수를 네트워크에서 찾을 수 없음");
+        return 0f;
     }
 
-    /// <summary>
-    /// 현재 플레이어의 CoinController에서 코인 상태를 가져와 HUD에 업데이트
-    /// </summary>
-    private void UpdateCoinFromCurrentPlayer()
-    {
-        if (GameManager.Instance == null)
-        {
-            Debug.LogWarning("⚠️ HUDPanel - GameManager가 없어 현재 플레이어의 CoinController를 찾을 수 없습니다.");
-            return;
-        }
+    // IPunObservable 인터페이스 제거됨 - Custom Properties만 사용
 
-        CoinController coinController = GameManager.Instance.GetCurrentPlayerCoinController();
-        if (coinController != null)
+    #endregion
+
+
+    #region 조준점 관련
+    
+    private void ZoomAnimationControl()
+    {
+        if(localCameraController.IsZoom())
         {
-            UpdateCoin(coinController.GetCurrentCoin());
+            zoomAnimator.SetBool("Zoom",true);
         }
         else
         {
-            Debug.LogWarning("⚠️ HUDPanel - 현재 플레이어의 CoinController를 찾을 수 없습니다.");
-            UpdateCoin(0); // 기본값 설정
+            zoomAnimator.SetBool("Zoom",false);
         }
     }
+
     #endregion
-
+    
+    #region 장탄수 UI 시스템
+    
     /// <summary>
-    /// 현재 플레이어의 ItemController 찾기 (싱글 기반, Photon2 확장 고려)
+    /// 장탄수 UI 초기화
     /// </summary>
-    /// <returns>현재 플레이어의 ItemController</returns>
-    private ItemController FindCurrentPlayerItemController()
+    private void InitializeAmmoUI()
     {
-        // 캐릭터가 스폰되기 전에는 ItemController가 존재하지 않음
-        if (GameManager.Instance == null)
-        {
-            Debug.Log("⚠️ HUDPanel - GameManager가 없어 ItemController를 찾을 수 없습니다.");
-            return null;
-        }
-
-        // 플레이어 태그로 찾기 (싱글 환경에서는 안전)
-        // 나중에 Photon2 환경에서는 PhotonNetwork.LocalPlayer 사용
-        GameObject currentPlayer = GameObject.FindGameObjectWithTag("Player");
-        if (currentPlayer == null)
-        {
-            Debug.Log("⚠️ HUDPanel - 플레이어가 아직 스폰되지 않았습니다.");
-            return null;
-        }
-
-        // ItemController 찾기
-        ItemController itemController = currentPlayer.GetComponent<ItemController>();
-        if (itemController == null)
-        {
-            // 플레이어에 직접 ItemController가 없으면 자식에서 찾기
-            itemController = currentPlayer.GetComponentInChildren<ItemController>();
-        }
-
-        if (itemController == null)
-        {
-            Debug.LogWarning("⚠️ HUDPanel - 플레이어에 ItemController가 없습니다.");
-            return null;
-        }
-
-        return itemController;
-    }
-
-    /// <summary>
-    /// Photon2 환경에서 로컬 플레이어의 ItemController 찾기 (미래 확장용)
-    /// </summary>
-    /// <returns>로컬 플레이어의 ItemController</returns>
-    private ItemController FindLocalPlayerItemControllerPhoton()
-    {
-        // Photon2 환경에서만 사용
-        // 현재는 주석 처리, 나중에 Photon2 추가 시 활성화
-        /*
-        if (PhotonNetwork.LocalPlayer != null)
-        {
-            // PhotonView를 통해 로컬 플레이어 찾기
-            PhotonView[] photonViews = FindObjectsOfType<PhotonView>();
-            foreach (PhotonView pv in photonViews)
-            {
-                if (pv.IsMine)
-                {
-                    ItemController itemController = pv.GetComponent<ItemController>();
-                    if (itemController != null)
-                    {
-                        return itemController;
-                    }
-                }
-            }
-        }
-        */
+        if (localGun == null) return;
         
-        // 현재는 싱글 환경이므로 기본 방법 사용
-        return FindCurrentPlayerItemController();
-    }
-
-    /// <summary>
-    /// TextAnimator 컴포넌트 초기화 (Best Practices 적용)
-    /// </summary>
-    private void InitializeTextAnimator()
-    {
-        // multiplierText TextAnimator 초기화
-        if (multiplierText != null)
+        // GunData에서 최대 탄약 가져오기
+        GunData gunData = localGun.GetGunData();
+        if (gunData != null)
         {
-            multiplierTextAnimator = multiplierText.GetComponent<TextAnimator_TMP>();
-            if (multiplierTextAnimator == null)
+            maxAmmo = gunData.maxAmmo;
+            currentAmmo = localGun.CurrentMagAmmo;
+            previousAmmo = currentAmmo;
+            
+            // ProgressBar 초기화
+            if (ammoBar != null)
             {
-                multiplierTextAnimator = multiplierText.gameObject.AddComponent<TextAnimator_TMP>();
-                Debug.Log("✅ HUDPanel - TextAnimator_TMP 컴포넌트를 multiplierText에 추가했습니다.");
+                ammoBar.maxValue = maxAmmo;
+                ammoBar.currentValue = currentAmmo;
+                
+                // 원래 색상 저장
+                if (ammoBar.barImage != null)
+                {
+                    originalAmmoBarColor = ammoBar.barImage.color;
+                }
+                
+                ammoBar.UpdateUI();
             }
-            else
+            
+            // 텍스트 초기화
+            UpdateAmmoText();
+            
+            // 텍스트 원래 색상 저장
+            if (currentAmmoCountText != null)
             {
-                Debug.Log("✅ HUDPanel - multiplierText 기존 TextAnimator_TMP 컴포넌트를 찾았습니다.");
+                originalAmmoTextColor = currentAmmoCountText.color;
             }
-        }
-
-        // scoreText TextAnimator 초기화
-        if (scoreText != null)
-        {
-            scoreTextAnimator = scoreText.GetComponent<TextAnimator_TMP>();
-            if (scoreTextAnimator == null)
+            
+            // 장탄수 변화 시간 초기화
+            lastAmmoChangeTime = Time.time;
+            
+            // 리로드 아이콘 초기화 (투명하게)
+            if (reloadIcon != null)
             {
-                scoreTextAnimator = scoreText.gameObject.AddComponent<TextAnimator_TMP>();
-                Debug.Log("✅ HUDPanel - TextAnimator_TMP 컴포넌트를 scoreText에 추가했습니다.");
+                Color iconColor = reloadIcon.color;
+                iconColor.a = 0f;
+                reloadIcon.color = iconColor;
             }
-            else
+            
+            Debug.Log($"HUD: 장탄수 UI 초기화 완료 - Current: {currentAmmo}, Max: {maxAmmo}");
+        }
+    }
+    
+    /// <summary>
+    /// 장탄수 UI 업데이트 (매 프레임)
+    /// </summary>
+    private void UpdateAmmoUI()
+    {
+        if (localGun == null) return;
+        
+        int newAmmo = localGun.CurrentMagAmmo;
+        TestGun.GunState currentState = localGun.CurrentState; // 인스턴스 속성 사용
+        
+        // 장탄수 변화 감지
+        if (newAmmo != currentAmmo)
+        {
+            previousAmmo = currentAmmo;
+            currentAmmo = newAmmo;
+            lastAmmoChangeTime = Time.time;
+            
+            // 페이드된 상태라면 복원
+            if (isAmmoUIFaded)
             {
-                Debug.Log("✅ HUDPanel - scoreText 기존 TextAnimator_TMP 컴포넌트를 찾았습니다.");
+                RestoreAmmoUIVisibility();
             }
+            
+            // 장탄수 애니메이션 시작
+            StartAmmoChangeAnimation();
         }
-
-        // gameTimeText TextAnimator 초기화
-        if (gameTimeText != null)
+        
+        // 재장전 상태 변화 감지
+        if (currentState != previousGunState)
         {
-            gameTimeTextAnimator = gameTimeText.GetComponent<TextAnimator_TMP>();
-            if (gameTimeTextAnimator == null)
+            previousGunState = currentState;
+            
+            if (currentState == TestGun.GunState.Reloading && !isReloading)
             {
-                gameTimeTextAnimator = gameTimeText.gameObject.AddComponent<TextAnimator_TMP>();
-                Debug.Log("✅ HUDPanel - TextAnimator_TMP 컴포넌트를 gameTimeText에 추가했습니다.");
+                // 재장전 시작
+                StartReloadAnimation();
             }
-            else
+            else if (currentState == TestGun.GunState.Ready && isReloading)
             {
-                Debug.Log("✅ HUDPanel - gameTimeText 기존 TextAnimator_TMP 컴포넌트를 찾았습니다.");
+                // 재장전 완료
+                StopReloadAnimation();
             }
         }
-
-        // coinText TextAnimator 초기화
-        if (coinText != null)
-        {
-            coinTextAnimator = coinText.GetComponent<TextAnimator_TMP>();
-            if (coinTextAnimator == null)
-            {
-                coinTextAnimator = coinText.gameObject.AddComponent<TextAnimator_TMP>();
-                Debug.Log("✅ HUDPanel - TextAnimator_TMP 컴포넌트를 coinText에 추가했습니다.");
-            }
-            else
-            {
-                Debug.Log("✅ HUDPanel - coinText 기존 TextAnimator_TMP 컴포넌트를 찾았습니다.");
-            }
-        }
-
-        Debug.Log("🎨 HUDPanel - 모든 TextAnimator 초기화 완료. <shake>, <wave>, <bounce> 등 태그 사용 가능");
     }
-
+    
     /// <summary>
-    /// 모든 TextAnimator 메시 새로고침 (Best Practices 권장)
-    /// TMPro.ForceMeshUpdate() 대신 사용
+    /// 장탄수 텍스트 업데이트
     /// </summary>
-    public void RefreshAllTextMeshes()
+    private void UpdateAmmoText()
     {
-        RefreshMultiplierTextMesh();
-        RefreshScoreTextMesh();
-        RefreshGameTimeTextMesh();
-        RefreshCoinTextMesh();
-    }
-
-    /// <summary>
-    /// Multiplier TextAnimator 메시 새로고침
-    /// </summary>
-    public void RefreshMultiplierTextMesh()
-    {
-        if (multiplierTextAnimator != null)
+        if (currentAmmoCountText != null)
         {
-            multiplierTextAnimator.ScheduleMeshRefresh();
+            currentAmmoCountText.text = $"{currentAmmo}";
+            maxAmmoCountText.text = $"/ {maxAmmo}";
         }
     }
-
+    
     /// <summary>
-    /// Score TextAnimator 메시 새로고침
+    /// 장탄수 변화 애니메이션 시작
     /// </summary>
-    public void RefreshScoreTextMesh()
+    private void StartAmmoChangeAnimation()
     {
-        if (scoreTextAnimator != null)
+        // 기존 애니메이션 정리
+        ammoBarTween?.Kill();
+        
+        // ProgressBar 값 부드럽게 변경
+        if (ammoBar != null)
         {
-            scoreTextAnimator.ScheduleMeshRefresh();
+            ammoBarTween = DOTween.To(() => ammoBar.currentValue, x => {
+                ammoBar.currentValue = x;
+                ammoBar.UpdateUI();
+            }, currentAmmo, 0.3f)
+            .SetEase(Ease.OutCubic)
+            .OnComplete(() => {
+                // 애니메이션 완료 후 색상 체크
+                CheckAmmoBarColor();
+            });
+        }
+        
+        // 텍스트 업데이트
+        UpdateAmmoText();
+    }
+    
+    /// <summary>
+    /// 장탄수 바 및 텍스트 색상 체크 (20% 이하일 때 빨간색 깜박임)
+    /// </summary>
+    private void CheckAmmoBarColor()
+    {
+        if (ammoBar == null || ammoBar.barImage == null) return;
+        
+        float ammoRatio = (float)currentAmmo / maxAmmo;
+        
+        if (ammoRatio <= lowAmmoThreshold)
+        {
+            // 20% 이하 - 빨간색으로 변경하고 깜박임
+            StartLowAmmoBlinking();
+        }
+        else
+        {
+            // 20% 초과 - 원래 색상으로 복원하고 깜박임 중지
+            StopLowAmmoBlinking();
         }
     }
-
+    
     /// <summary>
-    /// GameTime TextAnimator 메시 새로고침
+    /// 낮은 장탄수 깜박임 시작 (바 + 텍스트)
     /// </summary>
-    public void RefreshGameTimeTextMesh()
+    private void StartLowAmmoBlinking()
     {
-        if (gameTimeTextAnimator != null)
+        if (ammoBar == null || ammoBar.barImage == null) return;
+        
+        // 기존 깜박임 중지
+        ammoBarBlinkTween?.Kill();
+        currentAmmoTextBlinkTween?.Kill();
+        
+        // 바 색상을 빨간색으로 변경
+        ammoBar.barImage.color = lowAmmoColor;
+        
+        // 바 깜박임 시작
+        ammoBarBlinkTween = DOTween.Sequence()
+            .Append(ammoBar.barImage.DOFade(0.3f, 0.5f))
+            .Append(ammoBar.barImage.DOFade(1f, 0.5f))
+            .SetLoops(-1, LoopType.Yoyo);
+        
+        // 텍스트 색상을 빨간색으로 변경하고 깜박임
+        if (currentAmmoCountText != null)
         {
-            gameTimeTextAnimator.ScheduleMeshRefresh();
+            currentAmmoCountText.color = lowAmmoColor;
+            
+            // 텍스트 깜박임 시작 (바와 동일한 패턴)
+            currentAmmoTextBlinkTween = DOTween.Sequence()
+                .Append(currentAmmoCountText.DOFade(0.3f, 0.5f))
+                .Append(currentAmmoCountText.DOFade(1f, 0.5f))
+                .SetLoops(-1, LoopType.Yoyo);
         }
     }
-
+    
     /// <summary>
-    /// Coin TextAnimator 메시 새로고침
+    /// 낮은 장탄수 깜박임 중지 (바 + 텍스트)
     /// </summary>
-    public void RefreshCoinTextMesh()
+    private void StopLowAmmoBlinking()
     {
-        if (coinTextAnimator != null)
+        if (ammoBar == null || ammoBar.barImage == null) return;
+        
+        // 깜박임 중지
+        ammoBarBlinkTween?.Kill();
+        ammoBarBlinkTween = null;
+        currentAmmoTextBlinkTween?.Kill();
+        currentAmmoTextBlinkTween = null;
+        
+        // 바 원래 색상으로 복원
+        ammoBar.barImage.DOColor(originalAmmoBarColor, 0.3f).SetEase(Ease.OutCubic);
+        
+        // 텍스트 원래 색상으로 복원
+        if (currentAmmoCountText != null)
         {
-            coinTextAnimator.ScheduleMeshRefresh();
+            currentAmmoCountText.DOColor(originalAmmoTextColor, 0.3f).SetEase(Ease.OutCubic);
         }
     }
-
-    #region TextAnimator 테스트 메서드들 (에디터 전용)
-
+    
     /// <summary>
-    /// 모든 TextAnimator 테스트 메서드 실행
+    /// 재장전 애니메이션 시작
     /// </summary>
-    [System.Diagnostics.Conditional("UNITY_EDITOR")]
-    public void TestAllTextAnimations()
+    private void StartReloadAnimation()
     {
-        TestMultiplierAnimation();
-        TestScoreAnimation();
-        TestGameTimeAnimation();
-        TestCoinAnimation();
+        if (reloadIcon == null) return;
+        
+        isReloading = true;
+        
+        // 기존 애니메이션 정리
+        reloadIconFadeTween?.Kill();
+        reloadIconRotateTween?.Kill();
+        reloadIconBlinkTween?.Kill();
+        
+        // 투명도를 100으로 변경 (255에서 100은 약 0.39)
+        Color targetColor = reloadIcon.color;
+        targetColor.a = 100f / 255f;
+        
+        reloadIconFadeTween = reloadIcon.DOColor(targetColor, 0.2f)
+            .SetEase(Ease.OutCubic)
+            .OnComplete(() => {
+                // 회전 애니메이션 시작
+                StartReloadRotation();
+                
+                // 깜박임 애니메이션 시작
+                StartReloadBlinking();
+            });
     }
-
+    
     /// <summary>
-    /// Multiplier TextAnimator 테스트 메서드
+    /// 리로드 아이콘 회전 애니메이션
     /// </summary>
-    [System.Diagnostics.Conditional("UNITY_EDITOR")]
-    public void TestMultiplierAnimation()
+    private void StartReloadRotation()
     {
-        if (multiplierTextAnimator != null)
+        if (reloadIcon == null) return;
+        
+        // 360도 회전 (무한 반복)
+        reloadIconRotateTween = reloadIcon.transform
+            .DORotate(new Vector3(0f, 0f, -360f), 1f, RotateMode.FastBeyond360)
+            .SetEase(Ease.Linear)
+            .SetLoops(-1, LoopType.Restart);
+    }
+    
+    /// <summary>
+    /// 리로드 아이콘 깜박임 애니메이션
+    /// </summary>
+    private void StartReloadBlinking()
+    {
+        if (reloadIcon == null) return;
+        
+        // 투명도 20~100 사이 깜박임
+        reloadIconBlinkTween = DOTween.Sequence()
+            .Append(reloadIcon.DOFade(20f / 255f, 0.5f))
+            .Append(reloadIcon.DOFade(100f / 255f, 0.5f))
+            .SetLoops(-1, LoopType.Yoyo)
+            .SetEase(Ease.InOutSine);
+    }
+    
+    /// <summary>
+    /// 재장전 애니메이션 중지
+    /// </summary>
+    private void StopReloadAnimation()
+    {
+        if (reloadIcon == null) return;
+        
+        isReloading = false;
+        
+        // 모든 애니메이션 중지
+        reloadIconFadeTween?.Kill();
+        reloadIconRotateTween?.Kill();
+        reloadIconBlinkTween?.Kill();
+        
+        // 회전 초기화
+        reloadIcon.transform.rotation = Quaternion.identity;
+        
+        // 투명도를 0으로 변경
+        reloadIcon.DOFade(0f, 0.3f).SetEase(Ease.OutCubic);
+    }
+    
+    /// <summary>
+    /// 장탄수 UI 페이드 체크 (3초 동안 변화 없으면)
+    /// </summary>
+    private void CheckAmmoUIFade()
+    {
+        // 재장전 중이거나 이미 페이드된 상태면 체크하지 않음
+        if (isReloading || isAmmoUIFaded) return;
+        
+        // 3초간 변화가 없었는지 확인
+        if (Time.time - lastAmmoChangeTime >= ammoUIFadeDelay)
         {
-            string testText = "<shake>×2.5</shake>";
-            multiplierTextAnimator.SetText(testText);
-            lastMultiplierText = testText;
-            Debug.Log("🎭 HUDPanel - Multiplier Shake 애니메이션 테스트: " + testText);
+            FadeAmmoUI();
         }
     }
-
+    
     /// <summary>
-    /// Score TextAnimator 테스트 메서드
+    /// 장탄수 UI 페이드 아웃
     /// </summary>
-    [System.Diagnostics.Conditional("UNITY_EDITOR")]
-    public void TestScoreAnimation()
+    private void FadeAmmoUI()
     {
-        if (scoreTextAnimator != null)
+        if (isAmmoUIFaded) return;
+        
+        isAmmoUIFaded = true;
+        
+        // ammoIcon 페이드
+        if (ammoIcon != null)
         {
-            string testText = "<bounce>SCORE: 1,500</bounce>";
-            scoreTextAnimator.SetText(testText);
-            lastScoreText = testText;
-            Debug.Log("🎭 HUDPanel - Score Bounce 애니메이션 테스트: " + testText);
+            ammoIconFadeTween = ammoIcon.DOFade(100f / 255f, 0.5f).SetEase(Ease.OutCubic);
+        }
+        
+        // ammoBar의 barImage 페이드
+        if (ammoBar != null && ammoBar.barImage != null)
+        {
+            ammoBarImageFadeTween = ammoBar.barImage.DOFade(100f / 255f, 0.5f).SetEase(Ease.OutCubic);
+        }
+        
+        // currentAmmoCountText 페이드
+        if (currentAmmoCountText != null)
+        {
+            Color textColor = currentAmmoCountText.color;
+            textColor.a = 100f / 255f;
+            currentAmmoTextFadeTween = currentAmmoCountText.DOColor(textColor, 0.5f).SetEase(Ease.OutCubic);
+        }
+
+        if (maxAmmoCountText != null)
+        {
+            Color textColor = maxAmmoCountText.color;
+            textColor.a = 100f / 255f;
+            maxAmmoTextFadeTween = maxAmmoCountText.DOColor(textColor, 0.5f).SetEase(Ease.OutCubic);
         }
     }
-
+    
     /// <summary>
-    /// GameTime TextAnimator 테스트 메서드
+    /// 장탄수 UI 투명도 복원
     /// </summary>
-    [System.Diagnostics.Conditional("UNITY_EDITOR")]
-    public void TestGameTimeAnimation()
+    private void RestoreAmmoUIVisibility()
     {
-        if (gameTimeTextAnimator != null)
+        if (!isAmmoUIFaded) return;
+        
+        isAmmoUIFaded = false;
+        
+        // 페이드 애니메이션 정리
+        ammoIconFadeTween?.Kill();
+        ammoBarImageFadeTween?.Kill();
+        currentAmmoTextFadeTween?.Kill();
+        maxAmmoTextFadeTween?.Kill();
+        
+        // ammoIcon 복원
+        if (ammoIcon != null)
         {
-            string testText = "<wave>TIME: 03:45</wave>";
-            gameTimeTextAnimator.SetText(testText);
-            lastGameTimeText = testText;
-            Debug.Log("🎭 HUDPanel - GameTime Wave 애니메이션 테스트: " + testText);
+            ammoIconFadeTween = ammoIcon.DOFade(1f, 0.2f).SetEase(Ease.OutCubic);
+        }
+        
+        // ammoBar의 barImage 복원
+        if (ammoBar != null && ammoBar.barImage != null)
+        {
+            Color currentColor = ammoBar.barImage.color;
+            currentColor.a = 1f;
+            ammoBarImageFadeTween = ammoBar.barImage.DOColor(currentColor, 0.2f).SetEase(Ease.OutCubic);
+        }
+        
+        // currentAmmoCountText 복원
+        if (currentAmmoCountText != null)
+        {
+            Color textColor = currentAmmoCountText.color;
+            textColor.a = 1f;
+            currentAmmoTextFadeTween = currentAmmoCountText.DOColor(textColor, 0.2f).SetEase(Ease.OutCubic);
+        }
+
+        if (maxAmmoCountText != null)
+        {
+            Color textColor = maxAmmoCountText.color;
+            textColor.a = 1f;
+            maxAmmoTextFadeTween = maxAmmoCountText.DOColor(textColor, 0.2f).SetEase(Ease.OutCubic);
         }
     }
-
+    
     /// <summary>
-    /// Coin TextAnimator 테스트 메서드
+    /// 장탄수 애니메이션 정리
     /// </summary>
-    [System.Diagnostics.Conditional("UNITY_EDITOR")]
-    public void TestCoinAnimation()
+    private void CleanupAmmoAnimations()
     {
-        if (coinTextAnimator != null)
-        {
-            string testText = "<shake><color=yellow>💰 999</color></shake>";
-            coinTextAnimator.SetText(testText);
-            lastCoinText = testText;
-            Debug.Log("🎭 HUDPanel - Coin Shake 애니메이션 테스트: " + testText);
-        }
+        ammoBarTween?.Kill();
+        ammoBarBlinkTween?.Kill();
+        ammoIconFadeTween?.Kill();
+        ammoBarImageFadeTween?.Kill();
+        currentAmmoTextFadeTween?.Kill();
+        maxAmmoTextFadeTween?.Kill();
+        currentAmmoTextBlinkTween?.Kill();
+        reloadIconFadeTween?.Kill();
+        reloadIconRotateTween?.Kill();
+        reloadIconBlinkTween?.Kill();
+        
+        ammoBarTween = null;
+        ammoBarBlinkTween = null;
+        ammoIconFadeTween = null;
+        ammoBarImageFadeTween = null;
+        currentAmmoTextFadeTween = null;
+        maxAmmoTextFadeTween = null;
+        currentAmmoTextBlinkTween = null;
+        reloadIconFadeTween = null;
+        reloadIconRotateTween = null;
+        reloadIconBlinkTween = null;
     }
-
+    
     #endregion
-} 
+}
+
+
+

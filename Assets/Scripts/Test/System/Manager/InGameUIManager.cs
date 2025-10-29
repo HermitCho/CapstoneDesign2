@@ -1,6 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using Michsky.UI.Heat;
+using Photon.Pun;
 
 /// <summary>
 /// 🎮 패널 매니저 기반 UI 시스템
@@ -8,92 +9,107 @@ using Michsky.UI.Heat;
 /// </summary>
 public class InGameUIManager : MonoBehaviour
 {
-    [Header("🎮 HeatUI 패널 매니저")]
+    [Header("HeatUI 패널 매니저")]
     [SerializeField] private PanelManager panelManager;
+
+    [Header("GameOver 모달 창 설정")]
+    [SerializeField] private ModalWindowManager gameOverModalWindowManager;
     
-    [Header("📱 게임 패널들")]
-    [SerializeField] private HUDPanel hudPanel;
-    [SerializeField] private SelectCharPanel selectCharPanel;
-    
-    [Header("🎯 패널 이름 설정")]
+    [Header("패널 이름 설정")]
+    [SerializeField] private string readyPanelName = "Ready";
     [SerializeField] private string hudPanelName = "HUD";
-    [SerializeField] private string selectCharPanelName = "Select Character";
     [SerializeField] private string shopPanelName = "Shop";
     [SerializeField] private string pausePanelName = "Pause";
     [SerializeField] private string gameOverPanelName = "GameOver";
+
+
     
-    [Header("🎯 스폰 컨트롤러")]
-    [SerializeField] private SpawnController spawnController;
-    
-    [Header("⚙️ UI 관리 설정")]
-    [SerializeField] private bool debugMode = false;
-    [SerializeField] private bool autoStartWithSelectChar = true;
-    [SerializeField] private bool autoStartWithHUD = false;
-    
-    [Header("📊 캐릭터 프리팹 데이터")]
-    //[SerializeField] private GameObject[] characterPrefabs;
-    [SerializeField] private float characterSelectionTime = 30f;
-    
-    [Header("🎯 현재 상태")]
-    [SerializeField] private string currentPanel = "";
-    [SerializeField] private bool isInitialized = false;
-    [SerializeField] private int selectedCharacterIndex = -1;
-    [SerializeField] private bool isCharacterSelectionPending = false;
+    [Header(" 현재 상태")]
+    private string currentPanel = "";
+    private bool isGameOverPanelActive = false; // GameOverPanel 활성화 상태 추적
     
     #region Unity 생명주기
     
-    void Awake()
-    {
-        InitializeUIManager();
-    }
-    
     void Start()
     {
-        if (autoStartWithSelectChar)
-        {
-            ShowSelectCharPanel();
-        }
-        else if (autoStartWithHUD)
-        {
-            ShowHUDPanel();
-        }
+        // 게임 단계에 따라 적절한 패널 표시
+        CheckGamePhaseAndShowPanel();
     }
     
-    #endregion
-    
-    #region 초기화
+    void Update()
+    {
+        // Room Properties 변경 감지하여 UI 전환
+        CheckGamePhaseAndShowPanel();
+    }
     
     /// <summary>
-    /// UI 매니저 초기화
+    /// 게임 단계 확인 후 적절한 패널 표시 (최적화된 실무 스타일)
     /// </summary>
-    void InitializeUIManager()
+    private void CheckGamePhaseAndShowPanel()
     {
-        if (panelManager == null)
+        // GameOverPanel이 활성화된 경우 더 이상 자동 전환하지 않음
+        if (isGameOverPanelActive)
         {
-            panelManager = FindObjectOfType<PanelManager>();
+            return;
         }
         
-        if (hudPanel == null)
+        string targetPanel = "Ready"; // 기본값
+        
+        if (PhotonNetwork.InRoom && PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("gamePhase", out object phase))
         {
-            Debug.LogWarning("⚠️ HUDPanel이 할당되지 않았습니다.");
+            string gamePhase = phase.ToString();
+            
+            if (gamePhase == "GAMEOVER")
+            {
+                // GAMEOVER 상태에서는 자동 전환 중지 (ShowGameOverPanel에서 수동 처리)
+                return;
+            }
+            else if (gamePhase == "PLAYING")
+            {
+                targetPanel = "HUD";
+            }
+            else
+            {
+                targetPanel = "Ready";
+            }
         }
         
-        if (selectCharPanel == null)
+        // 중복 호출 방지
+        if (currentPanel != targetPanel)
         {
-            Debug.LogWarning("⚠️ SelectCharPanel이 할당되지 않았습니다.");
+            currentPanel = targetPanel;
+            
+            if (targetPanel == "HUD")
+            {
+                ShowHUDPanel();
+            }
+            else
+            {
+                ShowReadyPanel();
+            }
         }
-        
-        if (spawnController == null)
-        {
-            spawnController = FindObjectOfType<SpawnController>();
-        }
-        
-        isInitialized = true;
     }
     
+    // OnGameActuallyStarted 메서드 제거 - Room Properties 기반으로 변경
+    
     #endregion
+
     
     #region 패널 전환
+    
+    /// <summary>
+    /// Ready 패널 표시
+    /// </summary>
+    public void ShowReadyPanel()
+    {
+        if (panelManager != null)
+        {
+            panelManager.OpenPanel(readyPanelName);
+            currentPanel = readyPanelName;
+        }
+        
+        SetMenuMouseCursor();
+    }
     
     /// <summary>
     /// HUD 패널 표시
@@ -109,20 +125,6 @@ public class InGameUIManager : MonoBehaviour
         SetGameplayMouseCursor();
     }
     
-    /// <summary>
-    /// 캐릭터 선택 패널 표시
-    /// </summary>
-    public void ShowSelectCharPanel()
-    {
-        if (panelManager != null)
-        {
-            panelManager.OpenPanel(selectCharPanelName);
-            currentPanel = selectCharPanelName;
-        }
-        
-        SetSelectionMouseCursor();
-    }
-
     /// <summary>
     /// 일시정지 패널 표시
     /// </summary>
@@ -155,12 +157,39 @@ public class InGameUIManager : MonoBehaviour
     /// </summary>
     public void ShowGameOverPanel(float finalScore)
     {
-        if (panelManager != null)
+        if (panelManager != null && gameOverModalWindowManager != null)
         {
-            panelManager.OpenPanel(gameOverPanelName);
-            currentPanel = gameOverPanelName;
+            // GameOverPanel 활성화 상태 설정 (자동 전환 방지)
+            isGameOverPanelActive = true;
+            
             SetMenuMouseCursor();
-            Debug.Log($"✅ InGameUIManager: 게임 오버 패널 표시 - 최종 점수: {finalScore}");
+            gameOverModalWindowManager.OpenWindow();
+
+            StartCoroutine(ShowGameOverPanelCoroutine(3f));
+        }
+    }
+
+    IEnumerator ShowGameOverPanelCoroutine(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        gameOverModalWindowManager.CloseWindow();
+        panelManager.OpenPanel(gameOverPanelName);
+        currentPanel = gameOverPanelName;
+        
+        Debug.Log("InGameUIManager: GameOverPanel 활성화 완료 - 자동 전환 차단됨");
+        
+        // GameOverPanel 활성화 후 SetWinnerPlayer 호출
+        yield return new WaitForSeconds(0.1f); // 패널 완전 활성화 대기
+        
+        GameOverController gameOverController = FindObjectOfType<GameOverController>();
+        if (gameOverController != null)
+        {
+            gameOverController.SetWinnerPlayer();
+            Debug.Log("InGameUIManager: GameOverController.SetWinnerPlayer() 호출 완료");
+        }
+        else
+        {
+            Debug.LogError("InGameUIManager: GameOverController를 찾을 수 없습니다!");
         }
     }
     
@@ -174,12 +203,6 @@ public class InGameUIManager : MonoBehaviour
         Cursor.lockState = CursorLockMode.Locked;
     }
     
-    public void SetSelectionMouseCursor()
-    {
-        Cursor.visible = true;
-        Cursor.lockState = CursorLockMode.None;
-    }
-    
     public void SetMenuMouseCursor()
     {
         Cursor.visible = true;
@@ -188,51 +211,6 @@ public class InGameUIManager : MonoBehaviour
     
     #endregion
     
-    #region 캐릭터 선택 처리
-    
-    public void OnCharacterSelectionConfirmed(int characterIndex)
-    {
-        selectedCharacterIndex = characterIndex;
-        isCharacterSelectionPending = true;
-        
-        StartCoroutine(WaitForSelectionTimeAndSpawn());
-    }
-    
-    public void OnCharacterSelectionCanceled()
-    {
-        selectedCharacterIndex = -1;
-        isCharacterSelectionPending = false;
-    }
-    
-    IEnumerator WaitForSelectionTimeAndSpawn()
-    {
-        if (selectCharPanel != null)
-        {
-            while (selectCharPanel.IsSelectionActive())
-            {
-                yield return null;
-            }
-        }
-        
-        yield return new WaitForSeconds(1f);
-        
-        SpawnSelectedCharacter();
-        ShowHUDPanel();
-    }
-    
-    void SpawnSelectedCharacter()
-    {
-        if (spawnController != null && selectedCharacterIndex >= 0)
-        {
-            // GameObject prefabToSpawn = characterPrefabs[selectedCharacterIndex];
-            // spawnController.SpawnCharacterPrefab(prefabToSpawn);
-            spawnController.SpawnCharacter(selectedCharacterIndex);
-        }
-        
-        isCharacterSelectionPending = false;
-    }
-    
-    #endregion
     
     #region 유틸리티 메서드
     
@@ -241,54 +219,16 @@ public class InGameUIManager : MonoBehaviour
         return panelManager;
     }
     
-    public bool IsInitialized()
-    {
-        return isInitialized;
-    }
-    
-    public bool IsSelectCharPanelActive()
-    {
-        return currentPanel == selectCharPanelName && selectCharPanel != null && selectCharPanel.gameObject.activeInHierarchy;
-    }
-    
-    public SelectCharPanel GetSelectCharPanel()
-    {
-        return selectCharPanel;
-    }
-    
-    public SpawnController GetSpawnController()
-    {
-        return spawnController;
-    }
-    
     /// <summary>
-    /// 현재 선택된 캐릭터 인덱스 반환
+    /// 게임 상태 리셋 (새 게임 시작 시 호출)
     /// </summary>
-    public int GetSelectedCharacterIndex()
+    public void ResetGameState()
     {
-        return selectedCharacterIndex;
+        isGameOverPanelActive = false;
+        currentPanel = "";
+        Debug.Log("InGameUIManager: 게임 상태 리셋 - 자동 전환 재활성화");
     }
-    
-    // /// <summary>
-    // /// 사용 가능한 캐릭터 프리팹 배열 반환
-    // /// </summary>
-    // public GameObject[] GetCharacterPrefabs()
-    // {
-    //     return characterPrefabs;
-    // }
-    
-    /// <summary>
-    /// 캐릭터 선택 시간 반환
-    /// </summary>
-    public float GetCharacterSelectionTime()
-    {
-        return characterSelectionTime;
-    }
-    
-    public bool IsCharacterSelectionPending()
-    {
-        return isCharacterSelectionPending;
-    }
+
     
     #endregion
 } 

@@ -1,7 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
 /// <summary>
 /// 데이터베이스
 /// 카메라, 플레이어, 테디베어 데이터 설정 가능
@@ -271,7 +270,7 @@ public class DataBase : Singleton<DataBase>
             get { return airAcceleration; }
         }
         [Space(10)]
-        [Tooltip("공중 최대 속도 - 공중에서 도달할 수 있는 최대 속도 제한 값값")]
+        [Tooltip("공중 최대 속도 - 공중에서 도달할 수 있는 최대 속도 제한 값")]
         [Range(5f, 20f)]
         [SerializeField] private float airMaxSpeed = 8f;
         public float AirMaxSpeed
@@ -468,6 +467,36 @@ public class DataBase : Singleton<DataBase>
             set { playTime = value; }
             get { return playTime; }
         }
+
+        [Space(10)]
+        [Header("사망 시 잃어버리는 코인 비율")]
+        [Range(0f, 1f)]
+        [SerializeField] private float coinLossRate = 0.3f;
+        public float CoinLossRate
+        {
+            set { coinLossRate = value; }
+            get { return coinLossRate; }
+        }
+
+        [Space(10)]
+        [Header("사망 시 잃어버리는 점수 비율")]
+        [Range(0f, 1f)]
+        [SerializeField] private float scoreLossRate = 0.3f;
+        public float ScoreLossRate
+        {
+            set { scoreLossRate = value; }
+            get { return scoreLossRate; }
+        }
+
+        [Space(10)]
+        [Header("상점 시간 설정")]
+        [Range(0f, 360f)]
+        [SerializeField] private float shopTime = 30f;
+        public float ShopTime
+        {
+            set { shopTime = value; }
+            get { return shopTime; }
+        }
     }
 
     [System.Serializable]
@@ -627,80 +656,6 @@ public class DataBase : Singleton<DataBase>
             get { return healthFormatColor; }
         }
 
-        [Space(20)]
-        [Header("SelectCharacter Panel 설정")]
-        [Tooltip("최대 캐릭터 슬롯 수")]
-        [SerializeField] private int maxCharacterSlots = 4;
-        public int MaxCharacterSlots
-        {
-            set { maxCharacterSlots = value; }
-            get { return maxCharacterSlots; }
-        }
-        [Space(10)]
-        [Tooltip("현재 선택된 캐릭터 인덱스 - 초기 설정 용도")]
-        [SerializeField] private int currentSelectedIndex = 0;
-        public int CurrentSelectedIndex
-        {
-            set { currentSelectedIndex = value; }
-            get { return currentSelectedIndex; }
-        }
-        [Space(10)]
-        [Tooltip("캐릭터 선택 시간 텍스트 설정")]
-        [SerializeField] private string selectionTimeText = "남은 시간: {0:F0}초";
-        public string SelectionTimeText
-        {
-            set { selectionTimeText = value; }
-            get { return selectionTimeText; }
-        }
-        [Space(10)]
-        [Tooltip("캐릭터 선택 시간 설정 - 초기 상태태")]
-        [SerializeField] private float selectionTime = 10f;
-        public float SelectionTime
-        {
-            set { selectionTime = value; }
-            get { return selectionTime; }
-        }
-        [Space(10)]
-        [Tooltip("캐릭터 선택 시간 텍스트 색상 설정 - 정상 상태")]
-        [SerializeField] private Color selectionTimeNormalFormatColor = Color.black;
-        public Color SelectionTimeNormalFormatColor
-        {
-            set { selectionTimeNormalFormatColor = value; }
-            get { return selectionTimeNormalFormatColor; }
-        }
-        [Space(10)]
-        [Tooltip("캐릭터 선택 시간 설정 - 경고 상태")]
-        [SerializeField] private float selectionWarningTime = 5f;
-        public float SelectionWarningTime
-        {
-            set { selectionWarningTime = value; }
-            get { return selectionWarningTime; }
-        }
-        [Space(10)]
-        [Tooltip("캐릭터 선택 시간 텍스트 색상 설정 - 경고 상태")]
-        [SerializeField] private Color selectionTimeWarningFormatColor = Color.yellow;
-        public Color SelectionTimeWarningFormatColor
-        {
-            set { selectionTimeWarningFormatColor = value; }
-            get { return selectionTimeWarningFormatColor; }
-        }
-        [Space(10)]
-        [Tooltip("캐릭터 선택 시간 설정 - 위험 상태")]
-        [SerializeField] private float selectionDangerTime = 3f;
-        public float SelectionDangerTime
-        {
-            set { selectionDangerTime = value; }
-            get { return selectionDangerTime; }
-        }
-        [Space(10)]
-        [Tooltip("캐릭터 선택 시간 텍스트 색상 설정 - 위험 상태")]
-        [SerializeField] private Color selectionTimeDangerFormatColor = Color.red;
-        public Color SelectionTimeDangerFormatColor
-        {
-            set { selectionTimeDangerFormatColor = value; }
-            get { return selectionTimeDangerFormatColor; }
-        }
-
 
         [Space(10)]
         [Header("코인 설정")]
@@ -726,8 +681,6 @@ public class DataBase : Singleton<DataBase>
     [System.Serializable]
     public class PlayerData
     {
-
-        [Space(20)]
         [Header("플레이어 데이터")] 
         [Tooltip("플레이어 프리팹 데이터 설정")]
         [SerializeField] private List<GameObject> playerPrefabData = new List<GameObject>();
@@ -735,7 +688,20 @@ public class DataBase : Singleton<DataBase>
         {
             set { playerPrefabData = value; }
             get { return playerPrefabData; }
-        }        
+        }     
+    }
+
+    [System.Serializable]
+    public class LobbyData
+    {
+        [Header("로비 캐릭터 데이터")]
+        [Tooltip("로비 캐릭터 프리팹 데이터 설정 - 실제 게임 캐릭터 인덱스와 일치해야함 ")]
+        [SerializeField] private List<GameObject> lobbyCharacterPrefabData = new List<GameObject>();
+        public List<GameObject> LobbyCharacterPrefabData
+        {
+            set { lobbyCharacterPrefabData = value; }
+            get { return lobbyCharacterPrefabData; }
+        }
     }
 
 
@@ -781,6 +747,54 @@ public class DataBase : Singleton<DataBase>
     [Header("플레이어 데이터")]
     public PlayerData playerData;
 
+    [Header("로비 데이터")]
+    public LobbyData lobbyData;
+
     [Header("아이템 데이터")]
     public ItemData itemData;
+
+    public override void Awake()
+    {
+        base.Awake();
+        
+        // DataBase가 씬 전환 시에도 유지되도록 보장
+        if (transform.parent == null)
+        {
+            DontDestroyOnLoad(gameObject);
+            Debug.Log("✅ DataBase: DontDestroyOnLoad 설정 완료");
+        }
+        else
+        {
+            DontDestroyOnLoad(transform.root.gameObject);
+            Debug.Log("✅ DataBase: Root GameObject에 DontDestroyOnLoad 설정 완료");
+        }
+        
+        // PlayerPrefs에서 저장된 설정값 자동 로드 (SettingPanel 열지 않아도 적용)
+        LoadSettingsFromPlayerPrefs();
+    }
+    
+    /// <summary>
+    /// PlayerPrefs에서 저장된 설정값 로드 및 적용
+    /// </summary>
+    private void LoadSettingsFromPlayerPrefs()
+    {
+        // 감도 설정 로드
+        float xSens = PlayerPrefs.GetFloat("XSensitivity", -1f);
+        float ySens = PlayerPrefs.GetFloat("YSensitivity", -1f);
+        
+        // 저장된 값이 있으면 적용 (기본값 1.0)
+        if (xSens >= 0f && playerMoveData != null)
+        {
+            playerMoveData.RotationSpeed = xSens * 10f; // 0-1 범위를 0-10으로 변환
+            Debug.Log($"DataBase: X축 감도 로드 - {xSens} (RotationSpeed: {xSens * 10f})");
+        }
+        
+        if (ySens >= 0f && cameraData != null)
+        {
+            cameraData.MouseSensitivityY = ySens * 10f; // 0-1 범위를 0-10으로 변환
+            Debug.Log($"DataBase: Y축 감도 로드 - {ySens} (MouseSensitivityY: {ySens * 10f})");
+        }
+        
+        // 볼륨 설정은 AudioManager가 자체적으로 로드하므로 여기서는 처리하지 않음
+    }
 }

@@ -34,18 +34,90 @@ MonoBehaviour:
   RunInBackground: 1
   StartInOfflineMode: 0
   RpcList:
+  - ApplySlowEffect
+  - CastExecuteItem
+  - CastExecuteSkill
   - ClickRpc
   - DestroyRpc
   - DestroySpaceship
+  - ExecuteItem
+  - ExecuteSkill
+  - ExplodeAndApplyAreaDamageRPC
   - Fire
+  - InitializeAndLaunch
+  - InitializeTrap
+  - OnDamage
+  - OnDestroy
+  - OnGameStarting
+  - OnItemPurchased
+  - OnTriggerEnter
+  - OnTriggerExit
+  - PlayBurningSound
+  - PlayExplosionSound
+  - PlaySound
+  - ProcessPurchase
+  - ProvidesVisibility
+  - RemoveSlowEffect
+  - RequestInitialItems
+  - RequestItemRegeneration
+  - RequestPurchaseItem
   - RespawnSpaceship
-  - OnGameTransitionStarted
-  - UpdateTransitionProgress
+  - RestoreHealth
+  - RestoreShield
+  - RPC_CompleteReload
   - RPC_Die
+  - RPC_InputFire
+  - RPC_OnHitEffect
+  - RPC_PlayFootStepSound
+  - RPC_PlayJumpSound
+  - RPC_PlayLandSound
+  - RPC_Reload
   - RPC_Revive
-  - RPC_ApplyDamage
-  - RPC_RestoreHealth
-  - RPC_RestoreShield
+  - RPC_Shot
+  - RPC_SyncAmmo
+  - RPC_UpdateHealth
+  - RpcAttachToPlayer
+  - RpcDetachFromPlayer
+  - SlowFieldLifetime
+  - SpawnSlowFieldRPC
+  - SyncItemToShopStand
+  - SyncRenewTimer
+  - UpdateHealth
+  - CancelCountdownRPC
+  - StartCountdownRPC
+  - InitializeShield
+  - RPC_SetParent
+  - Set_Count_invincibility
+  - RPC_PlaySmoke
+  - SmokeActive
+  - HealingSmokeActive
+  - RPC_OnHealEffect
+  - InitializeHiddenSmoke
+  - RpcPlayDeathAnimation
+  - RpcPlayReloadAnimation
+  - RpcPlayReviveAnimation
+  - RpcPlaySkillAnimation
+  - RpcPlayVictoryPose
+  - DestroyTrap
+  - RequestDestroyByOwner
+  - ShowExplosionEffect
+  - PlayImpactSound
+  - PlayThrowingSound
+  - RPCSlowFieldLifetime
+  - ApplySpeedBuff
+  - ApplyStrengthBuff
+  - RemoveSpeedBuff
+  - ApplyStrengthBuffForExecutor
+  - RPC_AttachNetworkItem
+  - EffectStart
+  - InitializeEffect
+  - InitializeEffectAndBuff
+  - RPC_SetReloadingState
+  - RpcDestroyCrown
+  - RevealEnemiesForLocalPlayer
+  - DeliverEffectStartCorutine
+  - RPCSetStunned
+  - ExplodeAndApplyAreaStunRPC
   DisableAutoOpenWizard: 1
-  ShowSettings: 1
+  ShowSettings: 0
   DevRegionSetOnce: 1

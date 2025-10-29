@@ -1,0 +1,107 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &55746767992445694
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6961788088059566015}
+  - component: {fileID: -7425598937113555892}
+  - component: {fileID: 6983521555461215589}
+  - component: {fileID: -1506189242794600060}
+  m_Layer: 0
+  m_Name: Flash-Item
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6961788088059566015
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 55746767992445694}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &-7425598937113555892
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 55746767992445694}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9db721eb234dafa4cbbb4bf4ef966dc3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  skillName: "\uC810\uBA78 \uC2A4\uD0AC"
+  skillDescription: "\uC55E\uC73C\uB85C \uC810\uBA78"
+  cooldown: 0
+  duration: 20
+  effectDuration: 1
+  effectCastingDuration: 3
+  castTime: 0
+  destroyTime: 20
+  isFollowing: 1
+  isCastingFollowing: 0
+  index: 0
+  skillIcon: {fileID: 21300000, guid: a033cea4a39ce430ea12f95b9b9edb9e, type: 3}
+  skillColor: {r: 1, g: 1, b: 1, a: 1}
+  skillEffect: {fileID: 34545940018427765, guid: 8ff992d01a5c0c44bae6fe6d48faed12,
+    type: 3}
+  castTimeSkillEffect: {fileID: 0}
+  skillSound: {fileID: 8300000, guid: ddaff993cd19b9045aa2d507ebd7fbe6, type: 3}
+  castTimeSkillSound: {fileID: 8300000, guid: 68858e8b2de8ca9408dd5ca934425766, type: 3}
+  price: 1
+  skillAnimationTriggerName: Item01
+  dashForce: 100
+  groundCheckDistance: 0.1
+  maxDashTime: 2
+--- !u!114 &6983521555461215589
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 55746767992445694}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 326a1037688daca45b4ef81a6147712a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxUses: -1
+  startUses: -1
+--- !u!114 &-1506189242794600060
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 55746767992445694}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aa584fbee541324448dd18d8409c7a41, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ObservedComponentsFoldoutOpen: 1
+  Group: 0
+  prefixField: -1
+  Synchronization: 3
+  OwnershipTransfer: 0
+  observableSearch: 2
+  ObservedComponents: []
+  sceneViewId: 0
+  InstantiationId: 0
+  isRuntimeInstantiated: 0

@@ -5,9 +5,9 @@ using UnityEngine;
 [CreateAssetMenu(fileName = "ScriptableObjects", menuName = "ScriptableObjects/Test/Gun")]
 public class GunData : ScriptableObject
 {
-    [Header("총 기본 스탯탯")]
+    [Header("총 기본 스탯")]
     public string gunName;
-    public int damage;
+    public float damage;
     public float range;
     public float fireRate;
     public int maxAmmo;
@@ -29,4 +29,5 @@ public class GunData : ScriptableObject
     public float bulletTrailStartWidth = 0.05f; // 시작 두께
     public float bulletTrailEndWidth = 0.02f; // 끝 두께
     public float bulletTrailDuration = 0.03f; // 궤적 유지 시간
+    public bool isShotgun;
 }

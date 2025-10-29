@@ -1,20 +1,37 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Photon.Pun;
 
-public class CoinController : MonoBehaviour
+public class CoinController : MonoBehaviourPun
 {
+    public static System.Action<int> LocalCoinChanged; // 로컬 코인 수 변경 알림
     #region 변수
 
     [Header("코인 관리")]
     [SerializeField] private int currentCoin = 0;
     
+    [Header("점수 관리")]
+    private float currentScore = 0f;
+    private float scoreMultiplier = 1f;
+
+    private PhotonView photonView;
+
+
+    private bool isTeddyBearAttached = false;
+
     #endregion
 
     #region Unity 생명주기
 
+    void Awake()
+    {
+        photonView = GetComponent<PhotonView>();
+    }
+
     void Start()
     {
+        if (!photonView.IsMine) return;
         InitializeCoin();
     }
 
@@ -28,7 +45,8 @@ public class CoinController : MonoBehaviour
     private void InitializeCoin()
     {
         currentCoin = 0;
-        Debug.Log("✅ CoinController - 코인 초기화 완료");
+        currentScore = 0f;
+        scoreMultiplier = 1f;
     }
 
     #endregion
@@ -41,9 +59,120 @@ public class CoinController : MonoBehaviour
     /// <param name="amount">추가할 코인 수</param>
     public void AddCoin(int amount)
     {
+        if (!photonView.IsMine) return;
+
         currentCoin += amount;
+        AudioManager.Inst.PlayOneShot("SFX_Game_GetCoin");
+        // 테디베어 점수도 함께 증가
+        AddTeddyBearScore(amount);
+        
         // HUDPanel에 코인 변경 알림
         NotifyHUDCoinChanged();
+
+        // 로컬 코인 변경 이벤트 알림
+        LocalCoinChanged?.Invoke(currentCoin);
+    }
+
+    /// <summary>
+    /// 코인 수량에 따른 테디베어 점수 추가
+    /// </summary>
+    /// <param name="coinAmount">획득한 코인 수량</param>
+    private void AddTeddyBearScore(int coinAmount)
+    {
+        if (!photonView.IsMine) return;
+        
+        // GameManager를 통해 테디베어 점수 증가
+        if (GameManager.Instance != null)
+        {
+            // 테디베어가 부착되어 있는지 확인
+            isTeddyBearAttached = GameManager.Instance.IsTeddyBearAttached();
+            
+            // 기본 점수 (코인 1개당 1점)
+            float baseScore = coinAmount;
+            
+            // 테디베어가 부착되어 있다면 배율 적용
+            if (isTeddyBearAttached)
+            {
+                scoreMultiplier = GameManager.Instance.GetScoreIncreaseRate();
+                baseScore *= scoreMultiplier;
+            }
+            else
+            {
+                scoreMultiplier = 1f;
+            }
+            
+            // 점수 추가
+            AddScore(baseScore);
+        }
+    }
+    
+    /// <summary>
+    /// 점수 추가
+    /// </summary>
+    /// <param name="scoreToAdd">추가할 점수</param>
+    public void AddScore(float scoreToAdd)
+    {
+        if (!photonView.IsMine) return;
+        
+        currentScore += scoreToAdd;
+        
+        // 네트워크로 점수 동기화
+        SyncScoreToNetwork();
+    }
+    
+    /// <summary>
+    /// 점수 차감
+    /// </summary>
+    /// <param name="scoreToSubtract">차감할 점수</param>
+    public void SubtractScore(float scoreToSubtract)
+    {
+        if (!photonView.IsMine) return;
+        
+        float amount = Mathf.Abs(scoreToSubtract);
+        
+        // 현재 점수보다 많이 차감하려는 경우 방지
+        if (amount > currentScore)
+        {
+            currentScore = 0f;
+        }
+        else
+        {
+            currentScore -= amount;
+        }
+        
+        // 네트워크로 점수 동기화
+        SyncScoreToNetwork();
+    }
+    
+    /// <summary>
+    /// 점수 초기화
+    /// </summary>
+    public void ResetScore()
+    {
+        if (!photonView.IsMine) return;
+        
+        currentScore = 0f;
+        
+        // 네트워크로 점수 동기화
+        SyncScoreToNetwork();
+    }
+    
+    /// <summary>
+    /// 현재 점수 가져오기
+    /// </summary>
+    /// <returns>현재 점수</returns>
+    public float GetCurrentScore()
+    {
+        return currentScore;
+    }
+    
+    /// <summary>
+    /// 현재 점수 배율 가져오기
+    /// </summary>
+    /// <returns>현재 점수 배율</returns>
+    public float GetScoreMultiplier()
+    {
+        return scoreMultiplier;
     }
 
     /// <summary>
@@ -52,18 +181,44 @@ public class CoinController : MonoBehaviour
     /// <param name="amount">차감할 코인 수</param>
     public void SubtractCoin(int amount)
     {
-        currentCoin -= amount;
+        if (!photonView.IsMine) return;
+        
+        // 음수 값 방지
+        if (amount < 0)
+        {
+            return;
+        }
+        
+        // 현재 코인보다 많이 차감하려는 경우 방지
+        if (amount > currentCoin)
+        {
+            currentCoin = 0;
+        }
+        else
+        {
+            currentCoin -= amount;
+        }
+        
         // HUDPanel에 코인 변경 알림
         NotifyHUDCoinChanged();
+
+        // 로컬 코인 변경 이벤트 알림
+        LocalCoinChanged?.Invoke(currentCoin);
     }
 
     /// <summary>
     /// 현재 코인 수 가져오기
     /// </summary>
-    /// <returns>현재 코인 수</returns>
+    /// <returns>현재 코인 수 (다른 플레이어인 경우 -1 반환)</returns>
     public int GetCoin()
     {
-        return currentCoin;
+        // PhotonView가 없는 경우 (싱글플레이) 또는 로컬 플레이어인 경우
+        if (photonView == null || photonView.IsMine)
+        {
+            return currentCoin;
+        }
+        
+        return -1; // 다른 플레이어의 코인은 접근 불가
     }
 
     /// <summary>
@@ -71,10 +226,15 @@ public class CoinController : MonoBehaviour
     /// </summary>
     public void ResetCoin()
     {
+        if (!photonView.IsMine) return;
+
         currentCoin = 0;
 
         // HUDPanel에 코인 변경 알림
         NotifyHUDCoinChanged();
+
+        // 로컬 코인 변경 이벤트 알림
+        LocalCoinChanged?.Invoke(currentCoin);
     }
 
     #endregion
@@ -82,16 +242,11 @@ public class CoinController : MonoBehaviour
     #region UI 알림 메서드
 
     /// <summary>
-    /// HUDPanel에 코인 변경 알림
+    /// HUDPanel에 코인 변경 알림 (이벤트 기반으로 변경)
     /// </summary>
     private void NotifyHUDCoinChanged()
     {
-        // HUD 패널이 비활성화되어 있어도 코인 업데이트를 위해 강제로 찾기
-        HUDPanel hudPanel = FindObjectOfType<HUDPanel>();
-        if (hudPanel != null)
-        {
-            hudPanel.UpdateCoin(currentCoin);
-        }
+        if (!photonView.IsMine) return;
     }
 
     #endregion
@@ -105,6 +260,85 @@ public class CoinController : MonoBehaviour
     public int GetCurrentCoin()
     {
         return currentCoin;
+    }
+
+
+    public bool GetIsTeddyBearAttached()
+    {
+        return isTeddyBearAttached;
+    }
+    
+    /// <summary>
+    /// 점수를 네트워크로 동기화
+    /// </summary>
+    private void SyncScoreToNetwork()
+    {
+        if (!photonView.IsMine || !PhotonNetwork.IsConnected) return;
+        
+        try
+        {
+            // Photon Custom Properties에 점수 저장
+            var props = new ExitGames.Client.Photon.Hashtable();
+            string scoreKey = $"score_{PhotonNetwork.LocalPlayer.ActorNumber}";
+            props[scoreKey] = currentScore;
+            
+            // 닉네임도 함께 동기화 (처음 한 번만)
+            if (!PhotonNetwork.LocalPlayer.CustomProperties.ContainsKey("nickname"))
+            {
+                string nickname = PlayerPrefs.GetString("NickName", $"Player{PhotonNetwork.LocalPlayer.ActorNumber}");
+                props["nickname"] = nickname;
+            }
+            
+            PhotonNetwork.LocalPlayer.SetCustomProperties(props);
+            
+            Debug.Log($"CoinController: 점수 네트워크 동기화 완료 - Player {PhotonNetwork.LocalPlayer.ActorNumber}: {currentScore}점");
+            
+            // 추가 검증: 설정된 값 확인
+            StartCoroutine(VerifyNetworkSync(scoreKey, currentScore));
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"CoinController: 점수 네트워크 동기화 실패 - {e.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// 네트워크 동기화 검증
+    /// </summary>
+    private System.Collections.IEnumerator VerifyNetworkSync(string scoreKey, float expectedScore)
+    {
+        yield return new WaitForSeconds(0.2f); // 동기화 대기 시간 증가
+        
+        if (PhotonNetwork.LocalPlayer.CustomProperties.TryGetValue(scoreKey, out object syncedScore))
+        {
+            float syncedScoreFloat = float.Parse(syncedScore.ToString());
+            if (Mathf.Abs(syncedScoreFloat - expectedScore) > 0.01f)
+            {
+                Debug.LogWarning($"CoinController: 점수 동기화 불일치 - 예상: {expectedScore}, 실제: {syncedScoreFloat}");
+                
+                // 강제로 다시 설정
+                var props = new ExitGames.Client.Photon.Hashtable();
+                props[scoreKey] = expectedScore;
+                PhotonNetwork.LocalPlayer.SetCustomProperties(props);
+                
+                Debug.Log($"CoinController: 점수 강제 재동기화 시도 - {expectedScore}");
+            }
+            else
+            {
+                Debug.Log($"CoinController: 점수 동기화 확인 완료 - {expectedScore}");
+            }
+        }
+        else
+        {
+            Debug.LogWarning($"CoinController: 점수 동기화 실패 - {scoreKey} 키를 찾을 수 없음");
+            
+            // 강제로 설정
+            var props = new ExitGames.Client.Photon.Hashtable();
+            props[scoreKey] = expectedScore;
+            PhotonNetwork.LocalPlayer.SetCustomProperties(props);
+            
+            Debug.Log($"CoinController: 점수 강제 설정 - {expectedScore}");
+        }
     }
 
     #endregion

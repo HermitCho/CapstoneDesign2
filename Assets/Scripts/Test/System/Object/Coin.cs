@@ -20,11 +20,14 @@ public class Coin : MonoBehaviour
     [SerializeField] private ParticleSystem coinEffect;
 
     private Vector3 originalPosition;
-    private Renderer coinRenderer;
+    private Renderer[] coinRenderers;
     private bool isCollected = false;
     private float limitBobbingHeight;
 
     private CoinController coinController;
+    
+    // 각 Renderer의 원본 머티리얼 배열 저장
+    private List<Material[]> originalMaterials = new List<Material[]>();
 
     void Start()
     {
@@ -43,8 +46,16 @@ public class Coin : MonoBehaviour
     private void Init()
     {
         originalPosition = transform.position;
-        coinRenderer = GetComponent<Renderer>();
+        coinRenderers = GetComponentsInChildren<Renderer>();
         coinController = FindObjectOfType<CoinController>();
+        
+        // 각 Renderer의 모든 머티리얼을 저장
+        foreach (Renderer renderer in coinRenderers)
+        {
+            // materials를 사용하면 모든 머티리얼을 가져옴
+            Material[] materials = renderer.materials;
+            originalMaterials.Add(materials);
+        }
     }
 
     private void RotateCoin()
@@ -77,7 +88,6 @@ public class Coin : MonoBehaviour
             if (playerCoinController != null)
             {
                 playerCoinController.AddCoin(1);
-                AudioManager.Inst.PlayOneShot("SFX_Game_GetCoin");
             }
 
 
@@ -92,12 +102,24 @@ public class Coin : MonoBehaviour
     {
         isCollected = true;
         
-        // 코인 투명도 0으로 설정
-        if (coinRenderer != null)
+        // 코인 투명도 0으로 설정 (모든 Renderer의 모든 머티리얼)
+        if (coinRenderers != null && originalMaterials.Count > 0)
         {
-            Color color = coinRenderer.material.color;
-            color.a = 0f;
-            coinRenderer.material.color = color;
+            for (int i = 0; i < coinRenderers.Length; i++)
+            {
+                Material[] materials = coinRenderers[i].materials;
+                
+                // 각 Renderer의 모든 머티리얼을 투명하게 설정
+                for (int j = 0; j < materials.Length; j++)
+                {
+                    Color color = materials[j].color;
+                    color.a = 0f;
+                    materials[j].color = color;
+                }
+                
+                // 변경된 머티리얼 배열을 다시 할당
+                coinRenderers[i].materials = materials;
+            }
         }
         
         // 파티클 효과 재생 (선택사항)
@@ -114,12 +136,24 @@ public class Coin : MonoBehaviour
     {
         yield return new WaitForSeconds(spawnTime);
         
-        // 코인 투명도를 원래대로 복원
-        if (coinRenderer != null)
+        // 코인 투명도를 원래대로 복원 (모든 Renderer의 모든 머티리얼)
+        if (coinRenderers != null && originalMaterials.Count > 0)
         {
-            Color color = coinRenderer.material.color;
-            color.a = 1f;
-            coinRenderer.material.color = color;
+            for (int i = 0; i < coinRenderers.Length; i++)
+            {
+                Material[] materials = coinRenderers[i].materials;
+                
+                // 각 Renderer의 모든 머티리얼을 불투명하게 복원
+                for (int j = 0; j < materials.Length; j++)
+                {
+                    Color color = materials[j].color;
+                    color.a = 1f;
+                    materials[j].color = color;
+                }
+                
+                // 변경된 머티리얼 배열을 다시 할당
+                coinRenderers[i].materials = materials;
+            }
         }
         
         isCollected = false;
