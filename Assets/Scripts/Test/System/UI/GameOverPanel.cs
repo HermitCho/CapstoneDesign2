@@ -178,10 +178,43 @@ public class GameOverPanel : MonoBehaviour
 
     public void OnMainMenuButtonClicked()
     {
+        // ✅ 왕관을 착용하고 있다면 먼저 떨어뜨리기
+        DetachCrownIfWearing();
+        
         // Player Properties 완전 초기화
         ClearAllPlayerProperties();
         
         StartCoroutine(LeaveRoomAndLoadLobby());
+    }
+    
+    /// <summary>
+    /// 로컬 플레이어가 왕관을 착용하고 있다면 떨어뜨리기
+    /// </summary>
+    private void DetachCrownIfWearing()
+    {
+        // Crown 오브젝트 찾기
+        Crown crown = FindObjectOfType<Crown>();
+        if (crown == null) return;
+        
+        // 왕관이 부착되어 있지 않으면 무시
+        if (!crown.IsAttached()) return;
+        
+        // 로컬 플레이어 찾기
+        GameObject[] allPlayers = GameObject.FindGameObjectsWithTag("Player");
+        foreach (GameObject playerObj in allPlayers)
+        {
+            PhotonView pv = playerObj.GetComponent<PhotonView>();
+            if (pv != null && pv.IsMine)
+            {
+                // 왕관이 이 플레이어의 자식인지 확인
+                if (crown.transform.parent != null && crown.transform.IsChildOf(playerObj.transform))
+                {
+                    Debug.Log("👑 GameOverPanel: 로비로 돌아가기 전 왕관 떨어뜨림");
+                    crown.DetachFromPlayer();
+                    return;
+                }
+            }
+        }
     }
     
     /// <summary>
