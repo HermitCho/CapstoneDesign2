@@ -472,7 +472,42 @@ public class CameraController : MonoBehaviourPun
     public void DisableCameraControl()
     {
         cameraControlEnabled = false;
+        
+        // ✅ 줌 상태라면 강제로 해제
+        if (isZoomed)
+        {
+            ForceResetZoom();
+        }
+        
         Debug.Log("❌ CameraController: 카메라 조작 비활성화");
+    }
+    
+    /// <summary>
+    /// 줌 상태 강제 해제 (게임 종료 시 사용)
+    /// </summary>
+    public void ForceResetZoom()
+    {
+        if (!photonView.IsMine) return;
+        if (mainCamera == null || !isZoomed) return;
+        
+        isZoomed = false;
+        
+        // 기존 애니메이션 중지
+        zoomTween?.Kill();
+        
+        // 즉시 원본 FOV로 복원 (애니메이션 없이)
+        if (originalFOV > 0f)
+        {
+            mainCamera.fieldOfView = originalFOV;
+        }
+        
+        // 회전 부드러움을 원본 값으로 복원
+        if (rotationSmoothTimeStored)
+        {
+            cachedRotationSmoothTime = originalRotationSmoothTime;
+        }
+        
+        Debug.Log("✅ CameraController: 줌 상태 강제 해제 완료");
     }
 
     /// <summary>

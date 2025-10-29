@@ -309,6 +309,10 @@ public class GameOverController : MonoBehaviourPunCallbacks
                 CameraController cameraController = playerObj.GetComponent<CameraController>();
                 if(cameraController != null)
                 {
+                    // ✅ 줌 상태 강제 해제 (게임 종료 시)
+                    cameraController.ForceResetZoom();
+                    
+                    // 카메라 조작 비활성화
                     cameraController.DisableCameraControl();
                     cameraController.enabled = false;
                 }
