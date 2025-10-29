@@ -54,14 +54,48 @@ public class GameOverController : MonoBehaviourPunCallbacks
             isWinnerLocal = playerRankings[0].isLocalPlayer;
         }
 
-        // 로컬 플레이어가 승자인 경우에만 이동
-        CheckAndMoveWinner();
-
-        // GameOverPanel에 순위 정보 전달
+        // ✅ 1단계: 카메라를 cameraPosition으로 즉시 이동
+        SetCameraPosition();
+        
+        // ✅ 2단계: 플레이어 컨트롤 비활성화
+        DisableLocalPlayerControls(isWinnerLocal);
+        
+        // ✅ 3단계: GameOverPanel에 순위 정보 전달 (애니메이션 시작)
         UpdateGameOverPanel();
+        
+        // ✅ 4단계: 승리 캐릭터 이동은 패널 애니메이션 완료 후에 실행
+        // (OnPanelAnimationComplete()에서 호출됨)
         
         // 모든 클라이언트에서 자신의 순위를 직접 계산하고 구글 시트 업데이트
         UpdateGameResultForLocalPlayer();
+    }
+    
+    /// <summary>
+    /// GameOverPanel 애니메이션 완료 시 호출됨
+    /// </summary>
+    public void OnPanelAnimationComplete()
+    {
+        // 승리 캐릭터를 winnerPosition으로 이동
+        if (isWinnerLocal && winnerPlayer != null)
+        {
+            StartCoroutine(MoveWinnerToPositionAfterAnimation());
+        }
+    }
+    
+    /// <summary>
+    /// 애니메이션 완료 후 승리 캐릭터 이동
+    /// </summary>
+    private IEnumerator MoveWinnerToPositionAfterAnimation()
+    {
+        yield return new WaitForSeconds(0.3f);
+        
+        if (winnerPlayer != null && winnerPosition != null)
+        {
+            SimpleTeleport(winnerPlayer, winnerPosition.position, winnerPosition.rotation);
+            
+            // 승리 플레이어의 점프 활성화
+            EnableWinnerJump();
+        }
     }
 
     /// <summary>
@@ -208,48 +242,6 @@ public class GameOverController : MonoBehaviourPunCallbacks
         return null;
     }
 
-    /// <summary>
-    /// 승자 확인 및 처리
-    /// </summary>
-    private void CheckAndMoveWinner()
-    {
-        if(winnerPlayer != null)
-        {
-            PhotonView winnerPV = winnerPlayer.GetComponent<PhotonView>();
-            if(winnerPV != null && winnerPV.IsMine)
-            {
-                // 로컬 플레이어가 승자인 경우 - 플레이어 이동 + 카메라 설정
-                StartCoroutine(MoveWinnerToPosition());
-            }
-            else
-            {
-                // 로컬 플레이어가 승자가 아닌 경우 - 카메라만 이동
-                StartCoroutine(SetupNonWinnerView());
-            }
-        }
-        else
-        {
-            // 승자를 찾을 수 없는 경우에도 카메라 이동
-            StartCoroutine(SetupNonWinnerView());
-        }
-    }
-
-    private IEnumerator MoveWinnerToPosition()
-    {
-        // 로컬 플레이어만 컨트롤 비활성화 (점프는 제외)
-        DisableLocalPlayerControls(true); // true = 승리 플레이어 (점프 가능)
-        
-        yield return new WaitForSeconds(0.5f);
-        
-        if(winnerPlayer != null && winnerPosition != null)
-        {
-            SimpleTeleport(winnerPlayer, winnerPosition.position, winnerPosition.rotation);
-            SetCameraPosition();
-            
-            // 승리 플레이어의 점프 다시 활성화
-            EnableWinnerJump();
-        }
-    }
     
     /// <summary>
     /// 승리 플레이어의 점프 활성화
@@ -324,19 +316,6 @@ public class GameOverController : MonoBehaviourPunCallbacks
         Cursor.lockState = CursorLockMode.None;
     }
 
-    /// <summary>
-    /// 승자가 아닌 플레이어들을 위한 게임 오버 처리
-    /// </summary>
-    private IEnumerator SetupNonWinnerView()
-    {
-        // 로컬 플레이어 컨트롤 비활성화 (점프 포함 모두 차단)
-        DisableLocalPlayerControls(false); // false = 일반 플레이어 (모든 조작 차단)
-        
-        yield return new WaitForSeconds(0.5f);
-        
-        // 카메라를 cameraPosition으로 이동
-        SetCameraPosition();
-    }
 
 
     /// <summary>
