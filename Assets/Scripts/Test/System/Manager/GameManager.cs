@@ -184,15 +184,35 @@ public class GameManager : Singleton<GameManager>
     /// </summary>
     private void StartGame()
     {
-        if (isGameActuallyStarted) return;
+        if (isGameActuallyStarted)
+        {
+            return;
+        }
         
         isGameActuallyStarted = true;
-        gameStartTime = PhotonNetwork.Time;
         
-        // 마스터 클라이언트가 권위적 시간을 방 속성에 설정
-        if (PhotonNetwork.IsMasterClient)
+        // ✅ Room Properties에서 게임 시작 시간 가져오기 (마스터가 설정한 값)
+        if (PhotonNetwork.InRoom && PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("gameStartTime", out object startTimeObj))
         {
-            SetMasterGameTime();
+            if (startTimeObj is double)
+            {
+                gameStartTime = (double)startTimeObj;
+            }
+            else
+            {
+                gameStartTime = PhotonNetwork.Time;
+            }
+        }
+        else
+        {
+            // Room Properties에 없으면 현재 시간 사용 (백업)
+            gameStartTime = PhotonNetwork.Time;
+            
+            // 마스터 클라이언트가 설정하지 않았다면 직접 설정
+            if (PhotonNetwork.IsMasterClient)
+            {
+                SetMasterGameTime();
+            }
         }
         
         // UI 활성화 및 게임 시작 알림
@@ -340,17 +360,25 @@ public class GameManager : Singleton<GameManager>
     /// </summary>
     void ResetGameState()
     {
+        Debug.Log("GameManager: ResetGameState() 호출 - 게임 상태 완전 초기화");
+        
         // 1. DataBase 정보 먼저 캐싱 (PlayTime 확보)
         CacheDataBaseInfo();
         
         // 2. 게임 시간 완전 초기화
-        gameStartTime = Time.time;
+        gameStartTime = 0f; // ✅ 0으로 초기화 (StartGame에서 PhotonNetwork.Time으로 재설정)
+        isGameActuallyStarted = false; // ✅ 게임 시작 플래그 초기화 (중요!)
         isGameOver = false;
         
-        // 마스터 클라이언트가 권위적 시간을 방 속성에 설정
-        if (PhotonNetwork.IsMasterClient)
+        Debug.Log($"GameManager: 게임 시작 플래그 초기화 - isGameActuallyStarted: {isGameActuallyStarted}, isGameOver: {isGameOver}");
+        
+        // 마스터 클라이언트가 권위적 시간을 방 속성에서 제거 (초기화)
+        if (PhotonNetwork.IsMasterClient && PhotonNetwork.InRoom)
         {
-            SetMasterGameTime();
+            PhotonHashtable props = new PhotonHashtable();
+            props["gameStartTime"] = null;
+            props["currentGameTime"] = null;
+            PhotonNetwork.CurrentRoom.SetCustomProperties(props);
         }
         
         // 3. 점수 완전 초기화

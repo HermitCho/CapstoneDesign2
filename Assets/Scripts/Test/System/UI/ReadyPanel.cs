@@ -365,7 +365,7 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
         
         if (playerCountText != null)
         {
-            playerCountText.text = $"{readyCount}/{totalCount} Ready";
+            playerCountText.text = $"{readyCount}/{totalCount} 준비됨!";
         }
     }
     
@@ -521,7 +521,16 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
             Debug.Log("ReadyPanel: 마스터 클라이언트가 게임 단계를 PLAYING으로 변경");
             var props = new ExitGames.Client.Photon.Hashtable();
             props["gamePhase"] = "PLAYING";
+            
+            // ✅ 게임 시작 시간도 함께 설정 (2번째 게임 시간 초기화 문제 해결)
+            props["gameStartTime"] = PhotonNetwork.Time;
+            props["playTime"] = DataBase.Instance != null && DataBase.Instance.gameData != null 
+                ? DataBase.Instance.gameData.PlayTime 
+                : 360f;
+            
             PhotonNetwork.CurrentRoom.SetCustomProperties(props);
+            
+            Debug.Log($"ReadyPanel: 게임 시작 시간 설정 - PhotonNetwork.Time: {PhotonNetwork.Time}");
         }
         
         // ReadyPanel 비활성화 (Room Properties로 게임 시작이 전달됨)
