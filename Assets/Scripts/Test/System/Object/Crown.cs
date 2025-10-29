@@ -251,18 +251,17 @@ public class Crown : MonoBehaviourPun
         
         // 왕관 회전 애니메이션 시작
         StartCrownRotation();
-
-        Debug.Log($"👑 Crown attached to {playerPV.Owner.NickName}");
     }
 
     // Outline 컴포넌트 초기화
     void InitializeOutline()
     {
         // Outline 컴포넌트가 없으면 추가
-        outlineComponent = gameObject.GetComponent<Outline>();
+        outlineComponent = gameObject.GetComponentInChildren<Outline>();
         if (outlineComponent == null)
         {
-            outlineComponent = gameObject.AddComponent<Outline>();
+           Debug.LogError("Outline 컴포넌트가 없습니다.");
+           return;
         }
         
         // 초기 설정
