@@ -24,6 +24,7 @@ public class infraredPerspectiveSkill : Skill
         {
             photonView.RPC(nameof(RevealEnemiesForLocalPlayer), RpcTarget.All, PhotonNetwork.LocalPlayer.ActorNumber);
         }
+        PlayFollowEffectAtRemote(executor);
     }
 
     [PunRPC]
