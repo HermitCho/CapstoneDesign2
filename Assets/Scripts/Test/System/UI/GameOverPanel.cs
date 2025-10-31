@@ -21,6 +21,7 @@ public class GameOverPanel : MonoBehaviour
     [SerializeField] private GameObject _winnerBackgroundObject;
 
     [Header("리더보드 텍스트")]
+    [SerializeField] private Image _1stCrownImage;
     [Tooltip("1등 랭킹 이미지")]
     [SerializeField] private Image _1stRankingImage;
     [Tooltip("1등 점수 텍스트")]
