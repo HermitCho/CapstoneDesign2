@@ -382,6 +382,9 @@ public class TutorialUI : MonoBehaviourPun
         {
             TestShoot.SetIsShooting(false);
         }
+
+        // ✅ Q스킬 입력 차단용 전역 잠금
+        SkillController.IsSkillLocked = true;
         
         // 애니메이션 정지
         if (playerAnimationController != null)
@@ -409,6 +412,9 @@ public class TutorialUI : MonoBehaviourPun
         {
             TestShoot.SetIsShooting(true);
         }
+
+        // ✅ Q스킬 잠금 해제
+        SkillController.IsSkillLocked = false;
 
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;

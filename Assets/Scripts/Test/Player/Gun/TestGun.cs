@@ -247,17 +247,34 @@ public class TestGun : MonoBehaviourPun
     private void ProcessPelletHit(Vector3 direction)
     {
         int layerMask = ~LayerMask.GetMask("PlayerPosition");
+
         if (Physics.Raycast(fireTransform.position, direction, out RaycastHit hit, gunData.range, layerMask, QueryTriggerInteraction.Ignore))
         {
+            // --- 기존 LivingEntity 피격 처리 ---
             IDamageable target = hit.collider.GetComponent<IDamageable>();
             PhotonView targetView = hit.collider.GetComponent<PhotonView>();
 
             if (target != null && targetView != null)
             {
                 int attackerViewId = livingEntity.photonView.ViewID;
-
-                // 마스터 클라이언트로 데미지 RPC 전송
                 targetView.RPC("OnDamage", RpcTarget.All, damage, hit.point, hit.normal, attackerViewId);
+            }
+
+            // --- ✅ TargetMove 감지 및 파괴 ---
+            TargetMove targetMove = hit.collider.GetComponent<TargetMove>();
+            if (targetMove != null)
+            {
+                // 튜토리얼용 카운트 처리
+                var tutorialShoot = FindObjectOfType<TutorialShoot>();
+                if (tutorialShoot != null)
+                    tutorialShoot.OnTargetDestroyed();
+
+                // 과녁 폭발 이펙트
+                GameObject effect = Instantiate(Resources.Load<GameObject>("HitEffect"), hit.point, Quaternion.identity);
+                Destroy(effect, 2f);
+
+                // 과녁 파괴
+                Destroy(targetMove.gameObject);
             }
         }
     }

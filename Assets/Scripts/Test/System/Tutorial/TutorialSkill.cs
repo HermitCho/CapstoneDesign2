@@ -12,60 +12,51 @@ public class TutorialSkill : MonoBehaviour
     [SerializeField] private TutorialComplete tutorialComplete;
     [Space(10)]
 
-    [Header("스킬 사용 횟수")]
-    [SerializeField] private int requiredSkillUses = 3;
-    
-    private bool isCounting = false;
-    private int usedCount = 0;
+    [Header("스킬 목표 트리거")]
+    [SerializeField] private Collider skillGoalTrigger; // ✅ 스킬 목표 구역
+
+    private bool isActive = false;
+    private bool isCompleted = false;
 
     void OnEnable()
     {
         if (tutorialUI != null)
-        {
-            tutorialUI.OnTutorialClosed += BeginCounting;
-        }
+            tutorialUI.OnTutorialClosed += ActivateTrigger;
     }
 
     void OnDisable()
     {
         if (tutorialUI != null)
-        {
-            tutorialUI.OnTutorialClosed -= BeginCounting;
-        }
-        SkillController.OnLocalSkillUsed -= OnLocalSkillUsed;
-        isCounting = false;
+            tutorialUI.OnTutorialClosed -= ActivateTrigger;
     }
 
-    private void BeginCounting()
+    private void ActivateTrigger()
     {
-        usedCount = 0;
-        isCounting = true;
-        SkillController.OnLocalSkillUsed += OnLocalSkillUsed;
+        isActive = true;
+        if (skillGoalTrigger != null)
+            skillGoalTrigger.enabled = true;
     }
 
-    private void OnLocalSkillUsed()
+    private void OnTriggerEnter(Collider other)
     {
-        if (!isCounting) return;
-        usedCount++;
-        if (usedCount >= requiredSkillUses)
-        {
-            CompleteTutorial();
-        }
+        if (!isActive || isCompleted) return;
+        if (!other.CompareTag("Player")) return;
+
+        // ✅ 플레이어가 SkillGoal 트리거에 닿으면 미션 완료
+        CompleteTutorial();
     }
 
     private void CompleteTutorial()
     {
-        isCounting = false;
-        SkillController.OnLocalSkillUsed -= OnLocalSkillUsed;
+        isCompleted = true;
+        isActive = false;
 
         if (tutorialUI != null)
-        {
             tutorialUI.ShowCompleteSticker();
-        }
+
         if (tutorialComplete != null)
-        {
             tutorialComplete.OpenDoor();
-        }
+
+        Debug.Log("✅ 스킬 튜토리얼 완료 (SkillGoal 트리거 도달)");
     }
 }
-
