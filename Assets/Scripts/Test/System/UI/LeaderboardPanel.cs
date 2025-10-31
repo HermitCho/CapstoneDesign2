@@ -365,6 +365,11 @@ public class LeaderboardPanel : MonoBehaviour
             {
                 // 티어가 변경되었을 때
                 myTierImage.sprite = GetTierSprite(currentRate);
+                
+                // ✅ 스프라이트 변경 시 네이티브 사이즈 재설정 후 2배 확대
+                myTierImage.SetNativeSize();
+                myTierImage.rectTransform.sizeDelta = myTierImage.rectTransform.sizeDelta * 2f;
+                
                 yield return StartCoroutine(AnimateTierChange());
                 lastTier = newTier;
             }
@@ -384,6 +389,10 @@ public class LeaderboardPanel : MonoBehaviour
         // 최종 값 보장
         myTierRatingText.text = targetRate.ToString();
         myTierImage.sprite = GetTierSprite(targetRate);
+        
+        // ✅ 최종 스프라이트도 네이티브 사이즈로 설정
+        myTierImage.SetNativeSize();
+        myTierImage.rectTransform.sizeDelta = myTierImage.rectTransform.sizeDelta * 2f;
     }
     
     /// <summary>
@@ -392,6 +401,10 @@ public class LeaderboardPanel : MonoBehaviour
     private IEnumerator AnimateTierSpriteAppear()
     {
         if (myTierImage == null) yield break;
+        
+        // ✅ 네이티브 사이즈 설정 후 2배 확대
+        myTierImage.SetNativeSize();
+        myTierImage.rectTransform.sizeDelta = myTierImage.rectTransform.sizeDelta * 2f;
         
         // 티어 이미지와 레이팅 텍스트 표시 (페이드 인)
         if (myTierImage != null)
@@ -642,6 +655,10 @@ public class LeaderboardPanel : MonoBehaviour
         if (tierImage != null)
         {
             tierImage.sprite = GetTierSprite(userData.rate);
+            
+            // ✅ 네이티브 사이즈 설정 후 2배 확대
+            tierImage.SetNativeSize();
+            tierImage.rectTransform.sizeDelta = tierImage.rectTransform.sizeDelta;
         }
         
         // 내부 요소들 초기 상태 설정 (완전히 숨김)

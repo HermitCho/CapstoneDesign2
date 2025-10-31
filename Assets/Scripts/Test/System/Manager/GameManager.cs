@@ -215,8 +215,53 @@ public class GameManager : Singleton<GameManager>
             }
         }
         
-        // UI 활성화 및 게임 시작 알림
         EnableGameUI();
+        
+        StartCoroutine(EnablePlayerControlsDelayed());
+    }
+    
+    /// <summary>
+    /// 게임 시작 시 플레이어 조작 활성화
+    /// </summary>
+    private IEnumerator EnablePlayerControlsDelayed()
+    {
+        yield return new WaitForSeconds(0.2f);
+        
+        GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
+        
+        foreach (GameObject player in players)
+        {
+            PhotonView pv = player.GetComponent<PhotonView>();
+            if (pv != null && pv.IsMine)
+            {
+                MoveController moveController = player.GetComponent<MoveController>();
+                if (moveController != null)
+                {
+                    moveController.EnableMoveControls();
+                }
+                
+                SkillController skillController = player.GetComponent<SkillController>();
+                if (skillController != null)
+                {
+                    skillController.EnableSkillControls();
+                }
+                
+                TestGun gun = player.GetComponentInChildren<TestGun>();
+                if (gun != null)
+                {
+                    gun.enabled = true;
+                }
+                
+                CameraController cameraController = player.GetComponent<CameraController>();
+                if (cameraController != null)
+                {
+                    cameraController.enabled = true;
+                }
+            }
+        }
+        
+        Cursor.visible = false;
+        Cursor.lockState = CursorLockMode.Locked;
     }
     
     /// <summary>

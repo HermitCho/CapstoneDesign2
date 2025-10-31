@@ -55,10 +55,23 @@ public class SpawnController : MonoBehaviourPunCallbacks
     
     void Update()
     {
-        // Room Properties 기반으로 게임 시작 감지
         if (!hasSpawnedPlayer && !isSpawning && PhotonNetwork.InRoom)
         {
-            CheckGamePhaseAndSpawn();
+            CheckSpawnTrigger();
+        }
+    }
+    
+    /// <summary>
+    /// Room Properties에서 스폰 트리거 확인
+    /// </summary>
+    private void CheckSpawnTrigger()
+    {
+        if (PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("spawnCharacters", out object spawnFlag))
+        {
+            if (spawnFlag is bool shouldSpawn && shouldSpawn)
+            {
+                SpawnSelectedCharacterOnAwake();
+            }
         }
     }
     
@@ -73,7 +86,7 @@ public class SpawnController : MonoBehaviourPunCallbacks
         
         if (!hasSpawnedPlayer && !isSpawning && PhotonNetwork.InRoom)
         {
-            CheckGamePhaseAndSpawn();
+            CheckSpawnTrigger();
         }
     }
 
@@ -110,44 +123,7 @@ public class SpawnController : MonoBehaviourPunCallbacks
             return;
         }
         
-        CheckGamePhaseAndSpawn();
-    }
-    
-    /// <summary>
-    /// 게임 단계를 확인하고 적절한 시점에 스폰
-    /// </summary>
-    private void CheckGamePhaseAndSpawn()
-    {
-        if (PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("gamePhase", out object phase))
-        {
-            string gamePhase = phase.ToString();
-            
-            if (gamePhase == "PLAYING")
-            {
-                StartCoroutine(WaitAndSpawnCharacter());
-            }
-            // READY 상태에서는 대기 (Room Properties 변경으로 PLAYING 감지)
-        }
-        else
-        {
-            // 게임 단계가 설정되지 않은 경우 기본 동작
-            StartCoroutine(WaitAndSpawnCharacter());
-        }
-    }
-    
-    // OnGameActuallyStarted 메서드 제거 - Room Properties 기반으로 변경
-    
-    /// <summary>
-    /// 방 입장 후 안정화를 위해 대기 후 캐릭터 스폰
-    /// </summary>
-    private IEnumerator WaitAndSpawnCharacter()
-    {
-        yield return new WaitForSeconds(1f);
-        
-        if (!hasSpawnedPlayer && !isSpawning)
-        {
-            SpawnSelectedCharacterOnAwake();
-        }
+        CheckSpawnTrigger();
     }
 
     void CacheDataBaseInfo()
@@ -254,8 +230,8 @@ public class SpawnController : MonoBehaviourPunCallbacks
             PhotonView pv = currentSpawnedCharacter.GetComponent<PhotonView>();
             if(pv != null && pv.IsMine)
             {
-                // 로컬 플레이어 스폰 시 닉네임을 Photon Custom Properties에 설정
                 SetPlayerNicknameProperty();
+                DisableCharacterControlsOnSpawn(currentSpawnedCharacter);
             }
 
             if (spawnParent != null)
@@ -271,8 +247,43 @@ public class SpawnController : MonoBehaviourPunCallbacks
         }
 
         NotifyGameManagerOfSpawnedCharacter();
-        hasSpawnedPlayer = true; // 스폰 완료 플래그 설정
+        hasSpawnedPlayer = true;
         isSpawning = false;
+    }
+    
+    /// <summary>
+    /// 캐릭터 스폰 시 모든 컨트롤 비활성화
+    /// </summary>
+    private void DisableCharacterControlsOnSpawn(GameObject character)
+    {
+        if (character == null) return;
+        
+        MoveController moveController = character.GetComponent<MoveController>();
+        if (moveController != null)
+        {
+            moveController.DisableMoveControls();
+        }
+        
+        SkillController skillController = character.GetComponent<SkillController>();
+        if (skillController != null)
+        {
+            skillController.DisableSkillControls();
+        }
+        
+        TestGun gun = character.GetComponentInChildren<TestGun>();
+        if (gun != null)
+        {
+            gun.enabled = false;
+        }
+        
+        CameraController cameraController = character.GetComponent<CameraController>();
+        if (cameraController != null)
+        {
+            cameraController.enabled = true;
+        }
+        
+        Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.None;
     }
     
     /// <summary>
