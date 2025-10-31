@@ -4,6 +4,7 @@ using UnityEngine;
 using TMPro;
 using Photon.Pun;
 using System;
+using DG.Tweening;
 
 /// <summary>
 /// 게임 시작 전 준비 단계를 관리하는 패널
@@ -24,14 +25,20 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
     [SerializeField] private float minWaitingPlayerTime = 20;
     [SerializeField] private float countdownDuration = 5f;
     
+    [Header("카운트다운 애니메이션 설정")]
+    [SerializeField] private float countdownPopScale = 1.5f;
+    [SerializeField] private float countdownRotationAngle = 15f;
+    [SerializeField] private float countdownPopDuration = 0.3f;
+    
     private int currentPlayerCount = 0;
     
     private bool isCountdownStarted = false;
     private bool isGameStarted = false;
+    private bool areCharactersSpawned = false;
     private Coroutine countdownCoroutine;
     private Coroutine waitingCoroutine;
     private Coroutine waitingTextAnimationCoroutine;
-    private Coroutine cameraFixCoroutine;
+    private Tween countdownTween;
     
     // 이벤트 제거 - Room Properties 기반으로 변경
     
@@ -52,42 +59,39 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
     
     void Start()
     {
-        // 게임 재시작 시 플레이어 Ready 상태 초기화 (핵심 수정)
         ClearPlayerReadyState();
         
         InitializeReadyState();
         SetupCamera();
         UpdatePlayerCountDisplay();
         
-        // 방 속성 변경 감지
         if (PhotonNetwork.InRoom)
         {
             CheckGamePhase();
         }
         
-        // 플레이어 로딩 상태 추적 시작 (모든 클라이언트)
         if (PhotonNetwork.IsMasterClient)
         {
-            Debug.Log("ReadyPanel: 마스터 클라이언트 - 플레이어 로딩 추적 시작");
             StartPlayerLoadingTracker();
         }
         else
         {
-            Debug.Log("ReadyPanel: 비마스터 클라이언트 - UI 업데이트 추적 시작");
             StartNonMasterUITracker();
         }
         
-        // 현재 방의 플레이어 수 설정
         currentPlayerCount = PhotonNetwork.CurrentRoom.PlayerCount;
         
-        // 초기 UI 업데이트
         UpdatePlayerCountUI();
         
-        // 로컬 플레이어 로딩 완료 알림
         StartCoroutine(NotifyPlayerReady());
         
-        // Waiting 텍스트 애니메이션 시작
         StartWaitingTextAnimation();
+    }
+    
+    void OnDestroy()
+    {
+        countdownTween?.Kill();
+        countdownTween = null;
     }
     
     /// <summary>
@@ -255,9 +259,7 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
     /// </summary>
     private IEnumerator NonMasterUIUpdateCoroutine()
     {
-        Debug.Log("ReadyPanel: 비마스터 UI 추적 시작");
-        
-        while (!isCountdownStarted && !isGameStarted)
+        while (!areCharactersSpawned && !isGameStarted)
         {
             var allPlayers = PhotonNetwork.PlayerList;
             currentPlayerCount = allPlayers.Length;
@@ -274,13 +276,10 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
                 }
             }
             
-            Debug.Log($"ReadyPanel: 비마스터 UI - {readyPlayerCount}/{currentPlayerCount}");
             UpdatePlayerReadyStatus(readyPlayerCount, currentPlayerCount);
             
             yield return new WaitForSeconds(0.5f);
         }
-        
-        Debug.Log("ReadyPanel: 비마스터 UI 추적 종료");
     }
     
     /// <summary>
@@ -289,38 +288,29 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
     private IEnumerator WaitForPlayersOrTimeout()
     {
         float elapsedTime = 0f;
-        Debug.Log($"ReadyPanel: 플레이어 로딩 추적 시작 - 최대 대기 시간: {minWaitingPlayerTime}초");
         
-        while (elapsedTime < minWaitingPlayerTime && !isCountdownStarted && !isGameStarted)
+        while (elapsedTime < minWaitingPlayerTime && !areCharactersSpawned && !isGameStarted)
         {
-            // 현재 방의 모든 플레이어 확인 (동적으로 업데이트)
             var allPlayers = PhotonNetwork.PlayerList;
-            currentPlayerCount = allPlayers.Length; // 자동으로 플레이어 수 업데이트
+            currentPlayerCount = allPlayers.Length;
             int readyPlayerCount = 0;
             
             foreach (var player in allPlayers)
             {
-                // null-safe 체크
                 if (player.CustomProperties.TryGetValue($"playerReady_{player.ActorNumber}", out object readyValue))
                 {
                     if (readyValue != null && readyValue is bool boolValue && boolValue)
                     {
                         readyPlayerCount++;
-                        Debug.Log($"ReadyPanel: 플레이어 {player.ActorNumber} 준비 완료");
                     }
                 }
             }
             
-            Debug.Log($"ReadyPanel: 로딩 상태 체크 - {readyPlayerCount}/{currentPlayerCount} 준비됨, 경과 시간: {elapsedTime:F1}초");
-            
-            // 플레이어 상태 UI 업데이트
             UpdatePlayerReadyStatus(readyPlayerCount, currentPlayerCount);
             
-            // 모든 플레이어가 준비되었다면 카운트다운 시작
             if (readyPlayerCount >= currentPlayerCount && currentPlayerCount > 0)
             {
-                Debug.Log("ReadyPanel: 모든 플레이어 준비 완료 - 카운트다운 시작");
-                StartCountdown();
+                TriggerCharacterSpawn();
                 yield break;
             }
             
@@ -328,12 +318,52 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
             elapsedTime += 0.5f;
         }
         
-        // 타임아웃 도달 - 준비된 플레이어들끼리 게임 시작
-        if (!isCountdownStarted && !isGameStarted)
+        if (!areCharactersSpawned && !isGameStarted)
         {
-            Debug.Log("ReadyPanel: 타임아웃 도달 - 강제 카운트다운 시작");
-            StartCountdown();
+            TriggerCharacterSpawn();
         }
+    }
+    
+    /// <summary>
+    /// 캐릭터 스폰 트리거
+    /// </summary>
+    private void TriggerCharacterSpawn()
+    {
+        if (areCharactersSpawned) return;
+        
+        areCharactersSpawned = true;
+        StopWaitingTextAnimation();
+        
+        if (readyText != null)
+        {
+            readyText.text = "Get Ready!";
+            readyText.fontSize = 100;
+        }
+        
+        if (playerCountText != null)
+        {
+            playerCountText.gameObject.SetActive(false);
+        }
+        
+        if (PhotonNetwork.IsMasterClient)
+        {
+            var props = new ExitGames.Client.Photon.Hashtable();
+            props["spawnCharacters"] = true;
+            PhotonNetwork.CurrentRoom.SetCustomProperties(props);
+            
+            StartCoroutine(WaitForSpawnAndStartCountdown());
+        }
+    }
+    
+    /// <summary>
+    /// 캐릭터 스폰 대기 후 카운트다운 시작
+    /// </summary>
+    private IEnumerator WaitForSpawnAndStartCountdown()
+    {
+        yield return new WaitForSeconds(2f);
+        
+        UnityEngine.Debug.Log("ReadyPanel: 스폰 대기 완료 - 카운트다운 시작");
+        StartCountdown();
     }
     
     /// <summary>
@@ -341,11 +371,8 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
     /// </summary>
     private void UpdatePlayerReadyStatus(int readyCount, int totalCount)
     {
-        Debug.Log($"ReadyPanel: 플레이어 준비 상태 업데이트 - {readyCount}/{totalCount}");
-        
         if (readyCount > 0)
         {
-            // 일부 플레이어가 준비되었으면 Loading 표시
             StopWaitingTextAnimation();
             
             if (readyText != null)
@@ -356,7 +383,6 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
         }
         else
         {
-            // 아무도 준비되지 않았으면 계속 Waiting 애니메이션
             if (waitingTextAnimationCoroutine == null)
             {
                 StartWaitingTextAnimation();
@@ -374,15 +400,12 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
     /// </summary>
     private void UpdatePlayerCountUI()
     {
-        // 현재 방의 모든 플레이어 확인
         var allPlayers = PhotonNetwork.PlayerList;
         int totalCount = allPlayers.Length;
         int readyCount = 0;
         
-        // 준비된 플레이어 수 계산
         foreach (var player in allPlayers)
         {
-            // null-safe 체크
             if (player.CustomProperties.TryGetValue($"playerReady_{player.ActorNumber}", out object readyValue))
             {
                 if (readyValue != null && readyValue is bool boolValue && boolValue)
@@ -392,9 +415,6 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
             }
         }
         
-        Debug.Log($"ReadyPanel: UI 업데이트 - {readyCount}/{totalCount} Ready (클라이언트: {(PhotonNetwork.IsMasterClient ? "마스터" : "비마스터")})");
-        
-        // UI 업데이트
         UpdatePlayerReadyStatus(readyCount, totalCount);
     }
     
@@ -414,16 +434,14 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
     {
         if (!PhotonNetwork.IsMasterClient || isCountdownStarted) return;
         
-        Debug.Log("ReadyPanel: 마스터 클라이언트가 카운트다운 시작");
+        UnityEngine.Debug.Log("ReadyPanel: StartCountdown 호출됨 (마스터)");
         
-        // Room Properties로 카운트다운 시작 알림 (isCountdownStarted는 HandleCountdownStart에서 설정)
         var props = new ExitGames.Client.Photon.Hashtable();
         props["countdownStarted"] = true;
         props["countdownStartTime"] = PhotonNetwork.Time;
         PhotonNetwork.CurrentRoom.SetCustomProperties(props);
         
-        // 마스터 클라이언트도 즉시 카운트다운 시작
-        HandleCountdownStart();
+        UnityEngine.Debug.Log($"ReadyPanel: Room Properties 설정 완료 - countdownStartTime: {PhotonNetwork.Time}");
     }
     
     /// <summary>
@@ -431,7 +449,7 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
     /// </summary>
     private void HandleCountdownStart()
     {
-        Debug.Log("ReadyPanel: HandleCountdownStart 호출됨");
+        UnityEngine.Debug.Log("ReadyPanel: HandleCountdownStart 호출됨");
         
         if (countdownCoroutine != null)
         {
@@ -439,48 +457,114 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
         }
         
         isCountdownStarted = true;
-        
-        // Waiting 애니메이션 중지
         StopWaitingTextAnimation();
         
-        Debug.Log("ReadyPanel: 카운트다운 코루틴 시작");
+        UnityEngine.Debug.Log("ReadyPanel: 카운트다운 코루틴 시작");
         countdownCoroutine = StartCoroutine(CountdownCoroutine());
     }
     
     /// <summary>
-    /// 카운트다운 코루틴
+    /// 카운트다운 코루틴 (간단한 방식)
     /// </summary>
     private IEnumerator CountdownCoroutine()
     {
-        Debug.Log($"ReadyPanel: CountdownCoroutine 시작 - countdownDuration: {countdownDuration}");
-
-        // 5-4-3-2-1 카운트다운
+        UnityEngine.Debug.Log($"ReadyPanel: 카운트다운 시작 - countdownDuration: {countdownDuration}");
+        
         for (int i = (int)countdownDuration; i > 0; i--)
         {
-            Debug.Log($"ReadyPanel: 카운트다운 - {i}");
+            UnityEngine.Debug.Log($"ReadyPanel: 카운트 {i} 애니메이션 시작");
+            yield return StartCoroutine(AnimateCountdownNumber(i));
+            UnityEngine.Debug.Log($"ReadyPanel: 카운트 {i} 애니메이션 완료");
             
-            if (readyText != null)
+            if (i > 1)
             {
-                readyText.text = i.ToString();
-                readyText.fontSize = 200;
+                UnityEngine.Debug.Log($"ReadyPanel: 다음 카운트까지 대기 중...");
+                yield return new WaitForSeconds(0.5f);
             }
-            
-            yield return new WaitForSeconds(1f);
         }
         
-        // START!
-        Debug.Log("ReadyPanel: START! 표시");
-        if (readyText != null)
-        {
-            readyText.text = "START!";
-            readyText.fontSize = 200;
-        }
+        UnityEngine.Debug.Log("ReadyPanel: START 애니메이션 시작");
+        yield return StartCoroutine(AnimateStartText());
         
-        yield return new WaitForSeconds(1f);
-        
-        // 게임 실제 시작
-        Debug.Log("ReadyPanel: StartActualGame 호출");
+        UnityEngine.Debug.Log("ReadyPanel: 게임 시작 호출");
         StartActualGame();
+    }
+    
+    /// <summary>
+    /// 카운트다운 숫자 애니메이션 (카트라이더 스타일)
+    /// </summary>
+    private IEnumerator AnimateCountdownNumber(int number)
+    {
+        if (readyText == null) yield break;
+        
+        readyText.text = number.ToString();
+        readyText.fontSize = 200;
+        readyText.alpha = 1f;
+        
+        if (AudioManager.Inst != null)
+        {
+            AudioManager.Inst.PlayOneShot("SFX_UI_Ready_Countdown");
+        }
+        
+        countdownTween?.Kill();
+        
+        readyText.transform.localScale = Vector3.zero;
+        readyText.transform.localRotation = Quaternion.Euler(0f, 0f, -countdownRotationAngle);
+        
+        Sequence seq = DOTween.Sequence();
+        
+        seq.Append(readyText.transform.DOScale(countdownPopScale, 0.2f)
+            .SetEase(Ease.OutBack));
+        seq.Join(readyText.transform.DORotate(new Vector3(0f, 0f, countdownRotationAngle), 0.15f)
+            .SetEase(Ease.OutQuad));
+        seq.Append(readyText.transform.DORotate(Vector3.zero, 0.1f)
+            .SetEase(Ease.InOutQuad));
+        seq.Join(readyText.transform.DOScale(1f, 0.15f)
+            .SetEase(Ease.InOutQuad));
+        
+        seq.Append(readyText.transform.DOScale(0.8f, 0.25f)
+            .SetEase(Ease.InBack));
+        seq.Join(readyText.DOFade(0f, 0.2f)
+            .SetEase(Ease.InQuad));
+        
+        countdownTween = seq;
+        
+        yield return seq.WaitForCompletion();
+    }
+    
+    /// <summary>
+    /// START 텍스트 애니메이션
+    /// </summary>
+    private IEnumerator AnimateStartText()
+    {
+        if (readyText == null) yield break;
+        
+        readyText.text = "START!";
+        readyText.fontSize = 200;
+        readyText.alpha = 1f;
+        
+        if (AudioManager.Inst != null)
+        {
+            AudioManager.Inst.PlayOneShot("SFX_UI_Ready_Start");
+        }
+        
+        countdownTween?.Kill();
+        
+        readyText.transform.localScale = Vector3.zero;
+        readyText.transform.localRotation = Quaternion.identity;
+        
+        Sequence seq = DOTween.Sequence();
+        
+        seq.Append(readyText.transform.DOScale(countdownPopScale * 1.2f, 0.25f)
+            .SetEase(Ease.OutBack));
+        seq.Join(readyText.DOFade(1f, 0.15f)
+            .SetEase(Ease.OutQuad));
+        seq.Append(readyText.transform.DOScale(1f, 0.2f)
+            .SetEase(Ease.InOutQuad));
+        
+        countdownTween = seq;
+        
+        yield return seq.WaitForCompletion();
     }
     
     /// <summary>
@@ -490,50 +574,35 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
     {
         if (isGameStarted) return;
         
-        Debug.Log("ReadyPanel: 실제 게임 시작!");
-        
         isGameStarted = true;
         
-        // 모든 애니메이션 중지
         StopWaitingTextAnimation();
         
-        // GameOverController 다시 활성화
         GameOverController gameOverController = FindObjectOfType<GameOverController>();
         if (gameOverController != null)
         {
             gameOverController.enabled = true;
         }
         
-        // GameOverPanel 다시 활성화 (비활성화 상태로 두되, 컴포넌트는 활성화)
-        GameOverPanel gameOverPanel = FindObjectOfType<GameOverPanel>(true); // 비활성화된 것도 찾기
+        GameOverPanel gameOverPanel = FindObjectOfType<GameOverPanel>(true);
         if (gameOverPanel != null)
         {
             gameOverPanel.gameObject.SetActive(true);
-            gameOverPanel.gameObject.SetActive(false); // 즉시 다시 비활성화 (컴포넌트만 활성화)
-            Debug.Log("ReadyPanel: GameOverPanel 컴포넌트 활성화");
+            gameOverPanel.gameObject.SetActive(false);
         }
         
-
-        
-        // 마스터 클라이언트가 게임 단계를 PLAYING으로 변경
         if (PhotonNetwork.IsMasterClient)
         {
-            Debug.Log("ReadyPanel: 마스터 클라이언트가 게임 단계를 PLAYING으로 변경");
             var props = new ExitGames.Client.Photon.Hashtable();
             props["gamePhase"] = "PLAYING";
-            
-            // ✅ 게임 시작 시간도 함께 설정 (2번째 게임 시간 초기화 문제 해결)
             props["gameStartTime"] = PhotonNetwork.Time;
             props["playTime"] = DataBase.Instance != null && DataBase.Instance.gameData != null 
                 ? DataBase.Instance.gameData.PlayTime 
                 : 360f;
             
             PhotonNetwork.CurrentRoom.SetCustomProperties(props);
-            
-            Debug.Log($"ReadyPanel: 게임 시작 시간 설정 - PhotonNetwork.Time: {PhotonNetwork.Time}");
         }
         
-        // ReadyPanel 비활성화 (Room Properties로 게임 시작이 전달됨)
         gameObject.SetActive(false);
     }
     
@@ -582,33 +651,32 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
             PhotonView pv = player.GetComponent<PhotonView>();
             if (pv != null && pv.IsMine)
             {
-                // 로컬 플레이어의 움직임 컨트롤러 활성화
                 MoveController moveController = player.GetComponent<MoveController>();
                 if (moveController != null)
                 {
-                    moveController.enabled = true;
+                    moveController.EnableMoveControls();
                 }
                 
-                // 스킬 컨트롤러 활성화
                 SkillController skillController = player.GetComponent<SkillController>();
                 if (skillController != null)
                 {
-                    skillController.enabled = true;
+                    skillController.EnableSkillControls();
                 }
                 
-                // 카메라 컨트롤러 활성화
-                if (readyCamera != null)
+                TestGun gun = player.GetComponentInChildren<TestGun>();
+                if (gun != null)
                 {
-                    CameraController camController = readyCamera.GetComponent<CameraController>();
-                    if (camController != null)
-                    {
-                        camController.enabled = true;
-                    }
+                    gun.enabled = true;
+                }
+                
+                CameraController cameraController = player.GetComponent<CameraController>();
+                if (cameraController != null)
+                {
+                    cameraController.enabled = true;
                 }
             }
         }
         
-        // 마우스 커서 숨김
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Locked;
     }
@@ -633,15 +701,11 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
     
     public override void OnPlayerEnteredRoom(Photon.Realtime.Player newPlayer)
     {
-        // 플레이어 수 업데이트
         currentPlayerCount = PhotonNetwork.CurrentRoom.PlayerCount;
-        Debug.Log($"ReadyPanel: 플레이어 입장 - 현재 플레이어 수: {currentPlayerCount}");
         
-        // 모든 클라이언트에서 UI 업데이트
         UpdatePlayerCountUI();
         
-        // 새 플레이어가 들어왔을 때 UI 추적 재시작 (모든 클라이언트)
-        if (!isCountdownStarted)
+        if (!areCharactersSpawned)
         {
             if (PhotonNetwork.IsMasterClient)
             {
@@ -656,15 +720,11 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
     
     public override void OnPlayerLeftRoom(Photon.Realtime.Player otherPlayer)
     {
-        // 플레이어 수 업데이트
         currentPlayerCount = PhotonNetwork.CurrentRoom.PlayerCount;
-        Debug.Log($"ReadyPanel: 플레이어 퇴장 - 현재 플레이어 수: {currentPlayerCount}");
         
-        // 모든 클라이언트에서 UI 업데이트
         UpdatePlayerCountUI();
         
-        // 플레이어가 나갔을 때 UI 추적 재시작 (모든 클라이언트)
-        if (!isCountdownStarted)
+        if (!areCharactersSpawned)
         {
             if (PhotonNetwork.IsMasterClient)
             {
@@ -676,7 +736,6 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
             }
         }
         
-        // 카운트다운 중이었다면 중단
         if (isCountdownStarted && !isGameStarted)
         {
             if (PhotonNetwork.IsMasterClient)
@@ -690,20 +749,14 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
     
     public override void OnPlayerPropertiesUpdate(Photon.Realtime.Player targetPlayer, ExitGames.Client.Photon.Hashtable changedProps)
     {
-        // 플레이어 로딩 상태가 변경되었을 때
         foreach (var prop in changedProps)
         {
             if (prop.Key.ToString().StartsWith("playerReady_"))
             {
-                Debug.Log($"ReadyPanel: 플레이어 {targetPlayer.ActorNumber} 준비 상태 변경됨");
-                
-                // 모든 클라이언트에서 UI 업데이트
                 UpdatePlayerCountUI();
                 
-                // 마스터 클라이언트만 카운트다운 로직 처리
-                if (PhotonNetwork.IsMasterClient && !isCountdownStarted)
+                if (PhotonNetwork.IsMasterClient && !areCharactersSpawned)
                 {
-                    // 로딩 상태 변경 시 즉시 확인
                     CheckAllPlayersReady();
                 }
                 break;
@@ -717,12 +770,11 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
     private void CheckAllPlayersReady()
     {
         var allPlayers = PhotonNetwork.PlayerList;
-        currentPlayerCount = allPlayers.Length; // 플레이어 수 업데이트
+        currentPlayerCount = allPlayers.Length;
         int readyPlayerCount = 0;
         
         foreach (var player in allPlayers)
         {
-            // null-safe 체크
             if (player.CustomProperties.TryGetValue($"playerReady_{player.ActorNumber}", out object readyValue))
             {
                 if (readyValue != null && readyValue is bool boolValue && boolValue)
@@ -732,13 +784,11 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
             }
         }
         
-        // UI 업데이트
         UpdatePlayerReadyStatus(readyPlayerCount, currentPlayerCount);
         
-        // 모든 플레이어가 준비되었다면 즉시 카운트다운 시작
-        if (readyPlayerCount >= currentPlayerCount && currentPlayerCount > 0 && !isCountdownStarted)
+        if (readyPlayerCount >= currentPlayerCount && currentPlayerCount > 0 && !areCharactersSpawned)
         {
-            StartCountdown();
+            TriggerCharacterSpawn();
         }
     }
     
@@ -767,15 +817,40 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
     
     public override void OnRoomPropertiesUpdate(ExitGames.Client.Photon.Hashtable propertiesThatChanged)
     {
+        UnityEngine.Debug.Log($"ReadyPanel: OnRoomPropertiesUpdate - Keys: {string.Join(", ", propertiesThatChanged.Keys)}");
+        
         if (propertiesThatChanged.ContainsKey("gamePhase"))
         {
             CheckGamePhase();
         }
         
-        // 카운트다운 시작/취소 처리
+        if (propertiesThatChanged.ContainsKey("spawnCharacters"))
+        {
+            UnityEngine.Debug.Log("ReadyPanel: spawnCharacters 감지됨");
+            
+            if (!areCharactersSpawned)
+            {
+                areCharactersSpawned = true;
+                StopWaitingTextAnimation();
+                
+                if (readyText != null)
+                {
+                    readyText.text = "Get Ready!";
+                    readyText.fontSize = 100;
+                }
+                
+                if (playerCountText != null)
+                {
+                    playerCountText.gameObject.SetActive(false);
+                }
+            }
+        }
+        
         if (propertiesThatChanged.ContainsKey("countdownStarted"))
         {
             bool countdownStarted = (bool)propertiesThatChanged["countdownStarted"];
+            
+            UnityEngine.Debug.Log($"ReadyPanel: countdownStarted = {countdownStarted}, isCountdownStarted = {isCountdownStarted}");
             
             if (countdownStarted && !isCountdownStarted)
             {
