@@ -5,7 +5,7 @@ using DG.Tweening;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 
-public class TitleAnimation : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler
+public class TitleAnimation : MonoBehaviour, IPointerClickHandler
 {
     [Header("타이틀 이미지")]
     [SerializeField] private Image titleImage;
@@ -15,9 +15,9 @@ public class TitleAnimation : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     [SerializeField] private float appearDuration = 0.5f;
     [SerializeField] private float appearScale = 1.2f;
     
-    [Header("호버 애니메이션 설정")]
-    [SerializeField] private float hoverScale = 1.1f;
-    [SerializeField] private float hoverDuration = 0.3f;
+    [Header("호흡 애니메이션 설정 (자동 반복)")]
+    [SerializeField] private float breatheScale = 1.05f;
+    [SerializeField] private float breatheDuration = 2f;
     
     [Header("클릭 애니메이션 설정")]
     [SerializeField] private float shakeStrength = 20f;
@@ -25,10 +25,9 @@ public class TitleAnimation : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     [SerializeField] private float shakeDuration = 0.5f;
     
     private Vector3 originalScale;
-    private Tween hoverTween;
+    private Tween breatheTween;
     private Tween shakeTween;
     private Tween appearTween;
-    private bool isHovering = false;
     private bool hasAppeared = false;
     
     void Awake()
@@ -103,7 +102,26 @@ public class TitleAnimation : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         appearSequence.Append(titleImage.transform.DOScale(originalScale, appearDuration * 0.4f)
             .SetEase(Ease.InOutQuad));
         
+        // ✅ 등장 애니메이션 완료 후 호흡 애니메이션 시작
+        appearSequence.OnComplete(() => StartBreatheAnimation());
+        
         appearTween = appearSequence;
+    }
+    
+    /// <summary>
+    /// 호흡 애니메이션 (자동으로 커졌다 작아졌다 반복)
+    /// </summary>
+    private void StartBreatheAnimation()
+    {
+        if (titleImage == null) return;
+        
+        // 기존 호흡 애니메이션 정리
+        breatheTween?.Kill();
+        
+        // 부드럽게 커졌다 작아졌다 (1.0 ↔ 1.05) 무한 반복
+        breatheTween = titleImage.transform.DOScale(originalScale * breatheScale, breatheDuration)
+            .SetEase(Ease.InOutSine)
+            .SetLoops(-1, LoopType.Yoyo); // 무한 반복 + 왕복
     }
     
     /// <summary>
@@ -189,43 +207,6 @@ public class TitleAnimation : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     }
     
     /// <summary>
-    /// 마우스가 타이틀 이미지에 진입할 때
-    /// </summary>
-    public void OnPointerEnter(PointerEventData eventData)
-    {
-        if (titleImage == null || isHovering) return;
-        
-        isHovering = true;
-        
-        // 랜덤 스와이프 사운드 재생
-        PlayRandomSwipeSound();
-        
-        // 기존 애니메이션 중지
-        hoverTween?.Kill();
-        
-        // 부드럽게 커지는 애니메이션
-        hoverTween = titleImage.transform.DOScale(originalScale * hoverScale, hoverDuration)
-            .SetEase(Ease.OutQuad);
-    }
-    
-    /// <summary>
-    /// 마우스가 타이틀 이미지에서 나갈 때
-    /// </summary>
-    public void OnPointerExit(PointerEventData eventData)
-    {
-        if (titleImage == null) return;
-        
-        isHovering = false;
-        
-        // 기존 애니메이션 중지
-        hoverTween?.Kill();
-        
-        // 원래 크기로 부드럽게 복원
-        hoverTween = titleImage.transform.DOScale(originalScale, hoverDuration)
-            .SetEase(Ease.OutQuad);
-    }
-    
-    /// <summary>
     /// 마우스 왼쪽 클릭 시
     /// </summary>
     public void OnPointerClick(PointerEventData eventData)
@@ -250,19 +231,6 @@ public class TitleAnimation : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     }
     
     /// <summary>
-    /// 랜덤 스와이프 사운드 재생
-    /// </summary>
-    private void PlayRandomSwipeSound()
-    {
-        if (AudioManager.Inst == null) return;
-        
-        string[] swipeSounds = { "SFX_UI_TitleSwipe1", "SFX_UI_TitleSwipe2", "SFX_UI_TitleSwipe3" };
-        string randomSound = swipeSounds[Random.Range(0, swipeSounds.Length)];
-        
-        AudioManager.Inst.PlayOneShot(randomSound);
-    }
-    
-    /// <summary>
     /// 랜덤 클릭 사운드 재생
     /// </summary>
     private void PlayRandomClickSound()
@@ -281,10 +249,10 @@ public class TitleAnimation : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     private void CleanupAnimations()
     {
         appearTween?.Kill();
-        hoverTween?.Kill();
+        breatheTween?.Kill();
         shakeTween?.Kill();
         appearTween = null;
-        hoverTween = null;
+        breatheTween = null;
         shakeTween = null;
     }
 }
