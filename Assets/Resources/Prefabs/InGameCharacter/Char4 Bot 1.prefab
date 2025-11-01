@@ -2613,6 +2613,7 @@ GameObject:
   - component: {fileID: 4145963399478240286}
   - component: {fileID: -3119862890576332665}
   - component: {fileID: 8807383909582652069}
+  - component: {fileID: 2983696980712738351}
   m_Layer: 0
   m_Name: Char4 Bot 1
   m_TagString: Player
@@ -3588,6 +3589,22 @@ MonoBehaviour:
   skillAnimationTriggerName: None
   buffMultiplier: 0.2
   effectTransform: {fileID: 8251619625560785866}
+--- !u!114 &2983696980712738351
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2419043527781987115}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2c71e41e0d9544e47bf951c87f2d106c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  animator: {fileID: 8951422393623688171}
+  win1TriggerName: Win1
+  win2TriggerName: Win2
+  win3TriggerName: Win3
 --- !u!1 &2439646248035847138
 GameObject:
   m_ObjectHideFlags: 0

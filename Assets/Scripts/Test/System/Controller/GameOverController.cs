@@ -95,6 +95,25 @@ public class GameOverController : MonoBehaviourPunCallbacks
             
             // 승리 플레이어의 점프 활성화
             EnableWinnerJump();
+            
+            // ✅ 승리 플레이어의 Victory 애니메이션 조작 활성화
+            EnableWinnerVictoryControl();
+        }
+    }
+    
+    /// <summary>
+    /// 승리 플레이어의 Victory 애니메이션 조작 활성화
+    /// </summary>
+    private void EnableWinnerVictoryControl()
+    {
+        if (!isWinnerLocal || winnerPlayer == null) return;
+        
+        // 승리 플레이어의 VictoryAnimationController 찾기
+        VictoryAnimationController victoryController = winnerPlayer.GetComponent<VictoryAnimationController>();
+        
+        if (victoryController != null)
+        {
+            victoryController.EnableVictoryControl();
         }
     }
 
