@@ -317,7 +317,6 @@ public class GameManager : Singleton<GameManager>
         if (lastSceneName != currentSceneName)
         {
             isGameOver = false;
-            Debug.Log($"GameManager: 씬 전환 감지 ({lastSceneName} → {currentSceneName}) - isGameOver 리셋");
         }
         
         // 씬이 바뀌었고, 게임 씬인 경우

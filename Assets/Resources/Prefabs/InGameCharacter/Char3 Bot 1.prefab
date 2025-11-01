@@ -7880,7 +7880,7 @@ MonoBehaviour:
   fixTransforms: 1
   solver:
     executedInEditor: 0
-    IKPosition: {x: 3.5615978, y: 2.2046556, z: 2.4368544}
+    IKPosition: {x: 2.3290033, y: 3.9043715, z: 0.075945884}
     IKPositionWeight: 0.2
     root: {fileID: 5690197841959242218}
     target: {fileID: 7888351766706447623}
@@ -7898,10 +7898,10 @@ MonoBehaviour:
       length: 0
       sqrMag: 0
       axis: {x: 0, y: 0, z: 0}
-    transform: {fileID: 0}
+    transform: {fileID: 7091374087639084329}
     axis: {x: 0, y: 0, z: 1}
     poleAxis: {x: 0, y: 1, z: 0}
-    polePosition: {x: 0.34816635, y: -0.54572344, z: 2.7674546}
+    polePosition: {x: 5.320777, y: 1.0754104, z: 1.098835}
     poleWeight: 0
     poleTarget: {fileID: 0}
     clampWeight: 0.1
@@ -8287,6 +8287,10 @@ MonoBehaviour:
   win1TriggerName: Win1
   win2TriggerName: Win2
   win3TriggerName: Win3
+  win1StateName: Win1
+  win2StateName: Win2
+  win3StateName: Win3
+  animationDuration: 3
 --- !u!1 &5040938060442839961
 GameObject:
   m_ObjectHideFlags: 0
@@ -13975,6 +13979,12 @@ Transform:
 --- !u!1 &4349426813046992143 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 6967427566910705834, guid: ed1bb558a8fc8c54aa9815aaaf16eb42,
+    type: 3}
+  m_PrefabInstance: {fileID: 6696011319449206181}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &7091374087639084329 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 4504899217313009804, guid: ed1bb558a8fc8c54aa9815aaaf16eb42,
     type: 3}
   m_PrefabInstance: {fileID: 6696011319449206181}
   m_PrefabAsset: {fileID: 0}

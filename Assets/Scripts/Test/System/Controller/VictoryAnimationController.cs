@@ -29,11 +29,18 @@ public class VictoryAnimationController : MonoBehaviourPun
     [Tooltip("Victory 애니메이션이 재생되는 동안 IK를 비활성화할 시간")]
     [SerializeField] private float animationDuration = 3f;
     
+    [Header("레이어 설정")]
+    [Tooltip("Upper Body 레이어 인덱스 (보통 1)")]
+    [SerializeField] private int upperBodyLayerIndex = 1;
+    
     // 승리 플레이어만 조작 가능 여부
     private bool canControlVictoryAnimation = false;
     
     // FinalIK 컴포넌트 캐싱
     private Component fullBodyBipedIK;
+    
+    // Upper Body Layer 원래 Weight 저장
+    private float originalUpperBodyWeight = 1f;
     
     void Start()
     {
@@ -52,13 +59,25 @@ public class VictoryAnimationController : MonoBehaviourPun
     /// </summary>
     private void FindFullBodyBipedIK()
     {
-        Component[] allComponents = GetComponentsInChildren<Component>();
-        foreach (Component comp in allComponents)
+        // ✅ 1단계: 같은 GameObject에서 먼저 찾기
+        Component[] components = GetComponents<Component>();
+        foreach (Component comp in components)
         {
-            if (comp.GetType().Name == "FullBodyBipedIK")
+            if (comp != null && comp.GetType().Name == "FullBodyBipedIK")
             {
                 fullBodyBipedIK = comp;
-                break;
+                return;
+            }
+        }
+        
+        // ✅ 2단계: 자식 GameObject에서 찾기
+        Component[] childComponents = GetComponentsInChildren<Component>(true);
+        foreach (Component comp in childComponents)
+        {
+            if (comp != null && comp.GetType().Name == "FullBodyBipedIK")
+            {
+                fullBodyBipedIK = comp;
+                return;
             }
         }
     }
@@ -104,7 +123,7 @@ public class VictoryAnimationController : MonoBehaviourPun
     /// </summary>
     private void PlayVictoryAnimation(int animationIndex)
     {
-        if (animator == null) return;
+        if (animator == null || photonView == null) return;
         
         // ✅ RPC를 통해 모든 클라이언트에서 애니메이션 재생
         photonView.RPC("RPC_PlayVictoryAnimation", RpcTarget.All, animationIndex);
@@ -141,29 +160,30 @@ public class VictoryAnimationController : MonoBehaviourPun
         
         if (string.IsNullOrEmpty(triggerName) || string.IsNullOrEmpty(stateName)) return;
         
-        Debug.Log($"🎭 VictoryAnimationController: Victory 애니메이션 재생 시도 - Index: {animationIndex}, State: {stateName}, Trigger: {triggerName}");
-        
         // ✅ FinalIK 일시적으로 비활성화 (애니메이션 재생을 위해)
         DisableIK();
         
-        // ✅ 방법 1: CrossFade로 강제 전환 (0.1초 전환 시간)
-        // 현재 상태와 무관하게 즉시 전환
-        animator.CrossFadeInFixedTime(stateName, 0.1f, 0, 0f);
+        // ✅ Upper Body Layer Weight를 0으로 설정 (Base Layer 애니메이션만 재생)
+        if (animator.layerCount > upperBodyLayerIndex)
+        {
+            // 원래 weight 저장
+            originalUpperBodyWeight = animator.GetLayerWeight(upperBodyLayerIndex);
+            animator.SetLayerWeight(upperBodyLayerIndex, 0f);
+        }
         
-        // ✅ 방법 2: 트리거도 함께 설정 (보험용)
+        // ✅ Base Layer에 애니메이션 재생 (전신 애니메이션)
+        animator.CrossFadeInFixedTime(stateName, 0.1f, 0, 0f);
         animator.SetTrigger(triggerName);
         
-        // ✅ 방법 3: 강제 업데이트로 트리거 즉시 처리
+        // ✅ 강제 업데이트로 트리거 즉시 처리
         animator.Update(0f);
-        
-        Debug.Log($"✅ VictoryAnimationController: CrossFade 실행 완료 - 현재 상태: {animator.GetCurrentAnimatorStateInfo(0).IsName(stateName)}");
         
         // ✅ 애니메이션 재생 후 IK 다시 활성화 (코루틴)
         StartCoroutine(ReEnableIKAfterAnimation());
     }
     
     /// <summary>
-    /// FinalIK 비활성화 (리플렉션 사용)
+    /// FinalIK 비활성화 (리플렉션 사용 - Weight 방식)
     /// </summary>
     private void DisableIK()
     {
@@ -171,17 +191,34 @@ public class VictoryAnimationController : MonoBehaviourPun
         
         try
         {
-            // 리플렉션으로 enabled 속성 비활성화
-            var enabledProperty = fullBodyBipedIK.GetType().GetProperty("enabled");
+            var ikType = fullBodyBipedIK.GetType();
+            
+            // ✅ 방법 1: solver.IKPositionWeight를 0으로 설정
+            var solverProperty = ikType.GetProperty("solver");
+            if (solverProperty != null)
+            {
+                var solver = solverProperty.GetValue(fullBodyBipedIK);
+                if (solver != null)
+                {
+                    var solverType = solver.GetType();
+                    var ikPositionWeightProperty = solverType.GetProperty("IKPositionWeight");
+                    if (ikPositionWeightProperty != null)
+                    {
+                        ikPositionWeightProperty.SetValue(solver, 0f);
+                    }
+                }
+            }
+            
+            // ✅ 방법 2: enabled도 함께 비활성화
+            var enabledProperty = ikType.GetProperty("enabled");
             if (enabledProperty != null)
             {
                 enabledProperty.SetValue(fullBodyBipedIK, false);
-                Debug.Log("🔧 VictoryAnimationController: FinalIK 비활성화");
             }
         }
         catch (System.Exception e)
         {
-            Debug.LogWarning($"VictoryAnimationController: IK 비활성화 실패 - {e.Message}");
+            // 무시
         }
     }
     
@@ -194,17 +231,40 @@ public class VictoryAnimationController : MonoBehaviourPun
         
         try
         {
-            // 리플렉션으로 enabled 속성 활성화
-            var enabledProperty = fullBodyBipedIK.GetType().GetProperty("enabled");
+            var ikType = fullBodyBipedIK.GetType();
+            
+            // ✅ 방법 1: solver.IKPositionWeight를 1로 복원
+            var solverProperty = ikType.GetProperty("solver");
+            if (solverProperty != null)
+            {
+                var solver = solverProperty.GetValue(fullBodyBipedIK);
+                if (solver != null)
+                {
+                    var solverType = solver.GetType();
+                    var ikPositionWeightProperty = solverType.GetProperty("IKPositionWeight");
+                    if (ikPositionWeightProperty != null)
+                    {
+                        ikPositionWeightProperty.SetValue(solver, 1f);
+                    }
+                }
+            }
+            
+            // ✅ 방법 2: enabled도 함께 활성화
+            var enabledProperty = ikType.GetProperty("enabled");
             if (enabledProperty != null)
             {
                 enabledProperty.SetValue(fullBodyBipedIK, true);
-                Debug.Log("🔧 VictoryAnimationController: FinalIK 재활성화");
             }
         }
         catch (System.Exception e)
         {
-            Debug.LogWarning($"VictoryAnimationController: IK 활성화 실패 - {e.Message}");
+            // 무시
+        }
+        
+        // ✅ Upper Body Layer Weight 복원
+        if (animator != null && animator.layerCount > upperBodyLayerIndex)
+        {
+            animator.SetLayerWeight(upperBodyLayerIndex, originalUpperBodyWeight);
         }
     }
     
