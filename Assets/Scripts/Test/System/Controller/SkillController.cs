@@ -10,6 +10,7 @@ public class SkillController : MonoBehaviourPun
 {
     public static System.Action OnLocalSkillUsed; // 로컬 플레이어가 스킬을 실제로 사용 완료했을 때
     public static System.Action OnLocalItemUsed; // 로컬 플레이어가 아이템을 실제로 사용 완료했을 때
+    public static bool IsSkillLocked = false; // 튜토리얼 중 잠금용
 
     #region 변수
     private DataBase.ItemData itemData;
@@ -189,6 +190,10 @@ public class SkillController : MonoBehaviourPun
     /// </summary>
     public void UseSkill()
     {
+
+        // 🔒 튜토리얼 등으로 잠금된 경우 Q스킬 완전 차단
+        if (IsSkillLocked) return;
+        
         if (skill == null) return;
         if (!CanUseSkill()) return;
         if (!skill.CanUse)

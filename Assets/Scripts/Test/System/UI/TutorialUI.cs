@@ -256,11 +256,11 @@ public class TutorialUI : MonoBehaviourPun
 
     private void InitializeUI()
     {
-        if (tutorialWindowImage != null)
-        {
-            tutorialWindowImage.gameObject.SetActive(false);
-            windowCanvasGroup.alpha = 0f;
-        }
+        // if (tutorialWindowImage != null)
+        // {
+        //     tutorialWindowImage.gameObject.SetActive(false);
+        //     windowCanvasGroup.alpha = 0f;
+        // }
 
         if (tutorialArrowImage != null)
         {
@@ -382,6 +382,9 @@ public class TutorialUI : MonoBehaviourPun
         {
             TestShoot.SetIsShooting(false);
         }
+
+        // ✅ Q스킬 입력 차단용 전역 잠금
+        SkillController.IsSkillLocked = true;
         
         // 애니메이션 정지
         if (playerAnimationController != null)
@@ -409,6 +412,9 @@ public class TutorialUI : MonoBehaviourPun
         {
             TestShoot.SetIsShooting(true);
         }
+
+        // ✅ Q스킬 잠금 해제
+        SkillController.IsSkillLocked = false;
 
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
@@ -460,21 +466,21 @@ public class TutorialUI : MonoBehaviourPun
     {
         if (tutorialWindowImage == null || windowRect == null) yield break;
 
-        tutorialWindowImage.gameObject.SetActive(true);
+        // tutorialWindowImage.gameObject.SetActive(true);
 
-        Vector2 startSize = new Vector2(windowSizeWidth * 2f, windowSizeHeight * 2f);
-        Vector2 targetSize = new Vector2(windowSizeWidth, windowSizeHeight);
-        Vector2 targetPosition = new Vector2(windowPositionX, windowPositionY);
+        // Vector2 startSize = new Vector2(windowSizeWidth * 2f, windowSizeHeight * 2f);
+        // Vector2 targetSize = new Vector2(windowSizeWidth, windowSizeHeight);
+        // Vector2 targetPosition = new Vector2(windowPositionX, windowPositionY);
 
-        windowRect.sizeDelta = startSize;
-        windowRect.anchoredPosition = targetPosition;
-        windowCanvasGroup.alpha = 0f;
+        // windowRect.sizeDelta = startSize;
+        // windowRect.anchoredPosition = targetPosition;
+        // windowCanvasGroup.alpha = 0f;
 
-        windowSequence = DOTween.Sequence();
-        windowSequence.Append(windowCanvasGroup.DOFade(1f, windowAnimDuration * 0.3f).SetEase(Ease.OutQuad));
-        windowSequence.Join(windowRect.DOSizeDelta(targetSize, windowAnimDuration).SetEase(Ease.OutBack));
+        // windowSequence = DOTween.Sequence();
+        // windowSequence.Append(windowCanvasGroup.DOFade(1f, windowAnimDuration * 0.3f).SetEase(Ease.OutQuad));
+        // windowSequence.Join(windowRect.DOSizeDelta(targetSize, windowAnimDuration).SetEase(Ease.OutBack));
 
-        yield return windowSequence.WaitForCompletion();
+        // yield return windowSequence.WaitForCompletion();
     }
 
     private IEnumerator AnimateArrow()
@@ -544,10 +550,10 @@ public class TutorialUI : MonoBehaviourPun
 
         CleanupAnimations();
         
-        if (tutorialWindowImage != null)
-        {
-            tutorialWindowImage.gameObject.SetActive(false);
-        }
+        // if (tutorialWindowImage != null)
+        // {
+        //     tutorialWindowImage.gameObject.SetActive(false);
+        // }
         
         if (tutorialArrowImage != null)
         {

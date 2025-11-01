@@ -62,7 +62,7 @@ public class GameOverPanel : MonoBehaviour
     
     [Header("애니메이션 설정")]
     [Tooltip("점수 증가 애니메이션 시간")]
-    [SerializeField] private float scoreAnimationDuration = 1.5f;
+    [SerializeField] private float scoreAnimationDuration = 0.8f; // 1.5초 → 0.8초로 빠르게
     [Tooltip("점수 10점당 사운드 재생 간격")]
     [SerializeField] private float scorePerSound = 10f;
     
@@ -79,6 +79,9 @@ public class GameOverPanel : MonoBehaviour
     private Vector2 winnerOriginalPosition;
     private Vector3 winnerOriginalRotation;
     private bool winnerPositionSaved = false;
+    
+    // 왕관 호흡 애니메이션 Tween
+    private Tween crownBreatheTween;
 
 
 #region Unity 생명주기
@@ -129,6 +132,21 @@ public class GameOverPanel : MonoBehaviour
         
         // EXIT 스티커 애니메이션 정리
         CleanupExitStickerAnimation();
+        
+        // 왕관 호흡 애니메이션 정리
+        CleanupCrownBreatheAnimation();
+    }
+    
+    /// <summary>
+    /// 왕관 호흡 애니메이션 정리
+    /// </summary>
+    private void CleanupCrownBreatheAnimation()
+    {
+        if (crownBreatheTween != null)
+        {
+            crownBreatheTween.Kill();
+            crownBreatheTween = null;
+        }
     }
 
 #endregion
@@ -232,7 +250,6 @@ public class GameOverPanel : MonoBehaviour
                 // 왕관이 이 플레이어의 자식인지 확인
                 if (crown.transform.parent != null && crown.transform.IsChildOf(playerObj.transform))
                 {
-                    Debug.Log("👑 GameOverPanel: 로비로 돌아가기 전 왕관 떨어뜨림");
                     crown.DetachFromPlayer();
                     return;
                 }
@@ -335,6 +352,15 @@ public class GameOverPanel : MonoBehaviour
             canvasGroup.alpha = 0f;
         }
         
+        // ✅ 왕관 이미지 초기화 (Scale 0 + 완전 투명)
+        if (_1stCrownImage != null)
+        {
+            _1stCrownImage.transform.localScale = Vector3.zero;
+            Color crownColor = _1stCrownImage.color;
+            crownColor.a = 0f;
+            _1stCrownImage.color = crownColor;
+        }
+        
         // 모든 랭킹 UI 초기화
         InitializeRankingUI(_1stRankingImage, _1stNameText, _1stScoreText);
         InitializeRankingUI(_2ndRankingImage, _2ndNameText, _2ndScoreText);
@@ -404,14 +430,17 @@ public class GameOverPanel : MonoBehaviour
             yield return StartCoroutine(AnimateRanking(1, _2ndRankingImage, _2ndNameText, _2ndScoreText));
         }
         
-        // 1등 (인덱스 0)
+        // 1등 (인덱스 0) - 왕관 포함 특별 애니메이션
         if (playerCount >= 1)
         {
-            yield return StartCoroutine(AnimateRanking(0, _1stRankingImage, _1stNameText, _1stScoreText));
+            yield return StartCoroutine(AnimateFirstPlaceWithCrown(0));
         }
         
         // Winner Background 애니메이션
         yield return StartCoroutine(AnimateWinnerBackground());
+        
+        // ✅ Winner Background 애니메이션 완료 후 왕관 호흡 애니메이션 시작
+        StartCrownBreatheAnimation();
         
         // 모든 애니메이션 완료
         isAnimationComplete = true;
@@ -497,7 +526,7 @@ public class GameOverPanel : MonoBehaviour
     {
         float currentScore = 0f;
         float elapsedTime = 0f;
-        float lastSoundScore = 0f;
+        int lastDisplayedScore = 0; // 마지막으로 표시된 점수 (정수)
         
         while (elapsedTime < scoreAnimationDuration)
         {
@@ -505,12 +534,15 @@ public class GameOverPanel : MonoBehaviour
             float t = Mathf.Clamp01(elapsedTime / scoreAnimationDuration);
             
             currentScore = Mathf.Lerp(0f, targetScore, t);
-            scoreText.text = $"{Mathf.RoundToInt(currentScore)}";
+            int displayScore = Mathf.RoundToInt(currentScore);
             
-            // 10점마다 사운드 재생
-            if (currentScore - lastSoundScore >= scorePerSound)
+            // 점수가 1씩 증가할 때마다 사운드 재생
+            if (displayScore > lastDisplayedScore)
             {
-                lastSoundScore = currentScore;
+                lastDisplayedScore = displayScore;
+                scoreText.text = $"{displayScore}";
+                
+                // 매 점수 증가마다 사운드 재생
                 if (AudioManager.Inst != null)
                 {
                     AudioManager.Inst.PlayOneShot("SFX_UI_LeaderboardRatingText");
@@ -522,6 +554,118 @@ public class GameOverPanel : MonoBehaviour
         
         // 최종 점수 설정
         scoreText.text = $"{Mathf.RoundToInt(targetScore)}";
+    }
+    
+    /// <summary>
+    /// 1등 랭킹 애니메이션 (RankingImage → NameText → ScoreText → CrownImage)
+    /// </summary>
+    private IEnumerator AnimateFirstPlaceWithCrown(int rankIndex)
+    {
+        if (rankIndex >= cachedRankings.Count) yield break;
+        
+        var playerData = cachedRankings[rankIndex];
+        
+        // 1. Ranking Image 뿅 튀어나오기
+        if (_1stRankingImage != null)
+        {
+            if (AudioManager.Inst != null)
+            {
+                AudioManager.Inst.PlayOneShot("SFX_UI_GameOver_PopScore");
+            }
+            
+            Sequence imageSequence = DOTween.Sequence();
+            imageSequence.Append(_1stRankingImage.DOFade(1f, 0.2f).SetEase(Ease.OutQuad));
+            imageSequence.Join(_1stRankingImage.transform.DOScale(1.2f, 0.3f).SetEase(Ease.OutBack));
+            imageSequence.Append(_1stRankingImage.transform.DOScale(1f, 0.1f).SetEase(Ease.InOutQuad));
+            
+            yield return imageSequence.WaitForCompletion();
+        }
+        
+        yield return new WaitForSeconds(0.1f);
+        
+        // 2. Name Text 뿅 튀어나오기
+        if (_1stNameText != null)
+        {
+            if (AudioManager.Inst != null)
+            {
+                AudioManager.Inst.PlayOneShot("SFX_UI_GameOver_PopScore");
+            }
+            
+            string displayName = playerData.nickname;
+            if (playerData.isLocalPlayer)
+            {
+                displayName = $"<color=yellow>{displayName}</color>";
+            }
+            _1stNameText.text = displayName;
+            
+            Sequence nameSequence = DOTween.Sequence();
+            nameSequence.Append(_1stNameText.DOFade(1f, 0.2f).SetEase(Ease.OutQuad));
+            nameSequence.Join(_1stNameText.transform.DOScale(1.2f, 0.3f).SetEase(Ease.OutBack));
+            nameSequence.Append(_1stNameText.transform.DOScale(1f, 0.1f).SetEase(Ease.InOutQuad));
+            
+            yield return nameSequence.WaitForCompletion();
+        }
+        
+        yield return new WaitForSeconds(0.1f);
+        
+        // 3. Score Text 점수 증가 애니메이션
+        if (_1stScoreText != null)
+        {
+            _1stScoreText.transform.localScale = Vector3.one;
+            _1stScoreText.alpha = 1f;
+            
+            yield return StartCoroutine(AnimateScoreIncrease(_1stScoreText, playerData.score));
+        }
+        
+        yield return new WaitForSeconds(0.2f);
+        
+        // 4. Crown Image 뿅 튀어나오기 + 사운드
+        if (_1stCrownImage != null)
+        {
+            // 사운드 재생
+            if (AudioManager.Inst != null)
+            {
+                AudioManager.Inst.PlayOneShot("SFX_UI_GameOver_PopScore");
+            }
+            
+            // 초기 상태 강제 설정 (확실하게)
+            _1stCrownImage.transform.localScale = Vector3.zero;
+            Color crownStartColor = _1stCrownImage.color;
+            crownStartColor.a = 0f;
+            _1stCrownImage.color = crownStartColor;
+            
+            // 애니메이션 시퀀스 (뿅 튀어나오기)
+            Sequence crownSequence = DOTween.Sequence();
+            
+            // 페이드 인
+            crownSequence.Append(_1stCrownImage.DOFade(1f, 0.2f).SetEase(Ease.OutQuad));
+            
+            // 스케일 애니메이션 (0 → 1.2 → 1.0)
+            crownSequence.Join(_1stCrownImage.transform.DOScale(1.2f, 0.3f).SetEase(Ease.OutBack));
+            crownSequence.Append(_1stCrownImage.transform.DOScale(1f, 0.1f).SetEase(Ease.InOutQuad));
+            
+            yield return crownSequence.WaitForCompletion();
+        }
+        
+        yield return new WaitForSeconds(0.3f); // 다음 애니메이션까지 대기
+    }
+    
+    /// <summary>
+    /// 왕관 호흡 애니메이션 시작 (무한 반복)
+    /// </summary>
+    private void StartCrownBreatheAnimation()
+    {
+        // 기존 애니메이션 정리
+        CleanupCrownBreatheAnimation();
+        
+        // 왕관 호흡 애니메이션 (1.0 ↔ 1.1, 부드럽게 반복)
+        if (_1stCrownImage != null)
+        {
+            crownBreatheTween = _1stCrownImage.transform
+                .DOScale(Vector3.one * 1.1f, 1.5f)
+                .SetEase(Ease.InOutSine)
+                .SetLoops(-1, LoopType.Yoyo); // 무한 반복 + 왕복
+        }
     }
     
     /// <summary>
@@ -541,7 +685,7 @@ public class GameOverPanel : MonoBehaviour
         // 사운드 재생
         if (AudioManager.Inst != null)
         {
-            AudioManager.Inst.PlayOneShot("SFX_UI_GameOver_AttachWinner");
+            AudioManager.Inst.PlayOneShot("SFX_UI_GameOver_Victory");
         }
         
         // RectTransform 및 CanvasGroup 가져오기
@@ -559,18 +703,21 @@ public class GameOverPanel : MonoBehaviour
         // 시작 위치: 화면 위쪽 밖 + 오른쪽으로 약간 치우침
         Vector2 startPosition = new Vector2(targetPosition.x + 300f, targetPosition.y + 1000f);
         winnerRect.anchoredPosition = startPosition;
-        winnerRect.localEulerAngles = new Vector3(0f, 0f, -30f); // 약간 기울어진 상태
+        winnerRect.localEulerAngles = new Vector3(0f, 0f, 0f); // 시작 회전 0도
         
         // 애니메이션 시퀀스
         Sequence winnerSequence = DOTween.Sequence();
         
-        // 1. 페이드 인 + 위치 이동 + 회전 (휘리릭 날아오는 느낌)
+        // 1. 페이드 인 + 위치 이동 + 2바퀴 회전 (빙글빙글 날아오는 느낌)
         winnerSequence.Append(canvasGroup.DOFade(1f, 0.3f).SetEase(Ease.OutQuad));
-        winnerSequence.Join(winnerRect.DOAnchorPos(targetPosition, 0.6f).SetEase(Ease.OutQuad));
-        winnerSequence.Join(winnerRect.DORotate(targetRotation, 0.5f).SetEase(Ease.OutBack));
+        winnerSequence.Join(winnerRect.DOAnchorPos(targetPosition, 0.8f).SetEase(Ease.OutQuad));
         
-        // 2. 스케일 증가 (탄성 효과) - 자식 요소들도 함께 애니메이션
-        winnerSequence.Join(_winnerBackgroundObject.transform.DOScale(1.2f, 0.5f).SetEase(Ease.OutBack));
+        // ✅ 2바퀴 회전 (720도 = 360도 × 2)
+        winnerSequence.Join(winnerRect.DORotate(new Vector3(0f, 0f, 720f), 0.8f, RotateMode.FastBeyond360).SetEase(Ease.OutQuad));
+        
+        // 2. 최종 회전 위치로 보정 + 스케일 증가 (탄성 효과)
+        winnerSequence.Append(winnerRect.DORotate(targetRotation, 0.2f).SetEase(Ease.OutBack));
+        winnerSequence.Join(_winnerBackgroundObject.transform.DOScale(1.2f, 0.3f).SetEase(Ease.OutBack));
         
         // 3. 살짝 튕기는 효과
         winnerSequence.Append(_winnerBackgroundObject.transform.DOScale(0.95f, 0.1f).SetEase(Ease.InQuad));

@@ -312,6 +312,13 @@ public class GameManager : Singleton<GameManager>
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         string currentSceneName = scene.name;
+        
+        // ✅ 씬이 바뀔 때마다 게임 오버 상태 리셋 (튜토리얼 씬 등에서 애니메이션 작동하도록)
+        if (lastSceneName != currentSceneName)
+        {
+            isGameOver = false;
+        }
+        
         // 씬이 바뀌었고, 게임 씬인 경우
         if (lastSceneName != currentSceneName && IsGameScene(currentSceneName))
         {         
@@ -904,6 +911,13 @@ public class GameManager : Singleton<GameManager>
                             cameraController.DisableCameraControl();
                             cameraController.enabled = false;
                         }
+                    }
+                    
+                    // ✅ VictoryAnimationController 비활성화 (모든 플레이어 - 승리자만 나중에 활성화)
+                    VictoryAnimationController victoryController = playerObj.GetComponent<VictoryAnimationController>();
+                    if (victoryController != null)
+                    {
+                        victoryController.DisableVictoryControl();
                     }
                 }
             }

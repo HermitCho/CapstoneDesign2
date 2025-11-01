@@ -2613,6 +2613,7 @@ GameObject:
   - component: {fileID: 4145963399478240286}
   - component: {fileID: -3119862890576332665}
   - component: {fileID: 8807383909582652069}
+  - component: {fileID: 2983696980712738351}
   m_Layer: 0
   m_Name: Char4 Bot 1
   m_TagString: Player
@@ -3195,7 +3196,7 @@ MonoBehaviour:
   fixTransforms: 1
   solver:
     executedInEditor: 0
-    IKPosition: {x: 3.5615978, y: 2.2046556, z: 2.4368544}
+    IKPosition: {x: 1.8693702, y: 3.983225, z: -0.111610055}
     IKPositionWeight: 0.2
     root: {fileID: 3087775997737003409}
     target: {fileID: 120645504150387490}
@@ -3213,10 +3214,10 @@ MonoBehaviour:
       length: 0
       sqrMag: 0
       axis: {x: 0, y: 0, z: 0}
-    transform: {fileID: 0}
+    transform: {fileID: 3758079357125725470}
     axis: {x: 0, y: 0, z: 1}
     poleAxis: {x: 0, y: 1, z: 0}
-    polePosition: {x: 0.34816635, y: -0.54572344, z: 2.7674546}
+    polePosition: {x: 4.9087763, y: 1.1227707, z: 0.649846}
     poleWeight: 0
     poleTarget: {fileID: 0}
     clampWeight: 0.1
@@ -3588,6 +3589,27 @@ MonoBehaviour:
   skillAnimationTriggerName: None
   buffMultiplier: 0.2
   effectTransform: {fileID: 8251619625560785866}
+--- !u!114 &2983696980712738351
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2419043527781987115}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2c71e41e0d9544e47bf951c87f2d106c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  animator: {fileID: 8951422393623688171}
+  win1TriggerName: Win1
+  win2TriggerName: Win2
+  win3TriggerName: Win3
+  win1StateName: Win1
+  win2StateName: Win2
+  win3StateName: Win3
+  animationDuration: 3
+  upperBodyLayerIndex: 1
 --- !u!1 &2439646248035847138
 GameObject:
   m_ObjectHideFlags: 0
@@ -13983,6 +14005,12 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 65fbd8cec117d484d9a53268cca3d333, type: 3}
+--- !u!4 &3758079357125725470 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2627357050918911800, guid: 65fbd8cec117d484d9a53268cca3d333,
+    type: 3}
+  m_PrefabInstance: {fileID: 1175824412764975654}
+  m_PrefabAsset: {fileID: 0}
 --- !u!4 &7291052978329789357 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 8466301239719629195, guid: 65fbd8cec117d484d9a53268cca3d333,

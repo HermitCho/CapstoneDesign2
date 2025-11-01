@@ -17,6 +17,12 @@ public class LobbyAnimationController : MonoBehaviour
     [Header("애니메이션 트리거 이름")]
     [SerializeField] private string[] triggerNames = { "LookingAround", "Waving", "Shrugging" };
 
+    [Header("선택 애니메이션 설정")]
+    [Tooltip("Select 애니메이션의 트리거 이름")]
+    [SerializeField] private string selectedTriggerNames = "Select";
+    [Tooltip("Select 애니메이션의 상태 이름 (트리거 이름과 같으면 동일하게 설정)")]
+    [SerializeField] private string selectedStateName = "Select";
+    
     //내부 상태 변수
     private float lastAnimationTime;
     private bool isAnimationPlaying = false;
@@ -84,7 +90,41 @@ public class LobbyAnimationController : MonoBehaviour
         isAnimationPlaying = false;
     }
 
-
+    /// <summary>
+    /// Select 애니메이션을 재생합니다 (캐릭터 선택 시 호출)
+    /// 이 스크립트가 붙어있는 GameObject의 Animator를 사용합니다.
+    /// 기존 애니메이션을 중단하고 즉시 Select 애니메이션으로 전환합니다.
+    /// </summary>
+    public void PlaySelectAnimation()
+    {
+        if (animator == null || string.IsNullOrEmpty(selectedTriggerNames) || string.IsNullOrEmpty(selectedStateName))
+        {
+            return;
+        }
+        
+        // ✅ 기존 트리거들을 리셋하여 다른 애니메이션 중단
+        if (triggerNames != null && triggerNames.Length > 0)
+        {
+            foreach (string triggerName in triggerNames)
+            {
+                animator.ResetTrigger(triggerName);
+            }
+        }
+        
+        // ✅ CrossFade를 사용하여 즉시 전환 (0초 = 즉시)
+        // 현재 애니메이션 상태에 상관없이 바로 Select 애니메이션으로 전환
+        animator.CrossFadeInFixedTime(selectedStateName, 0f, 0, 0f);
+        
+        // ✅ 트리거도 함께 설정 (애니메이션 컨트롤러가 트리거를 사용한다면)
+        animator.SetTrigger(selectedTriggerNames);
+        
+        // 애니메이션 재생 상태로 설정
+        isAnimationPlaying = true;
+        lastAnimationTime = Time.time;
+        
+        // 애니메이션 완료 후 상태를 리셋하기 위한 코루틴 시작
+        StartCoroutine(ResetAnimationState(selectedTriggerNames));
+    }
 
     // 디버깅을 위한 메서드
     private void OnValidate()

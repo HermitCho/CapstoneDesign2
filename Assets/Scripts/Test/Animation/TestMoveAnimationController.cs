@@ -231,7 +231,7 @@ public class TestMoveAnimationController : MonoBehaviourPun, IPunObservable
     }
     
     /// <summary>
-    /// 게임 종료 시 모든 애니메이션 정지
+    /// 게임 종료 시 모든 애니메이션 정지 (일시적)
     /// </summary>
     public void StopAllAnimations()
     {
@@ -258,6 +258,34 @@ public class TestMoveAnimationController : MonoBehaviourPun, IPunObservable
         isReloading = false;
         isJumping = false;
         isShooting = false;
+        
+        // ✅ Animator는 활성화 상태 유지 (다른 씬에서 재사용 가능하도록)
+    }
+    
+    /// <summary>
+    /// 애니메이션 재개 (씬 전환 후 사용)
+    /// </summary>
+    public void ResumeAllAnimations()
+    {
+        if (animator == null) return;
+        
+        // Animator가 비활성화되어 있다면 다시 활성화
+        if (!animator.enabled)
+        {
+            animator.enabled = true;
+        }
+        
+        // 상태 초기화
+        isReloading = false;
+        isJumping = false;
+        isShooting = false;
+        
+        // Idle 상태로 복귀
+        animator.Play("Idle", 0, 0f);
+        if (upperBodyLayerIndex > 0)
+        {
+            animator.Play("Idle", upperBodyLayerIndex, 0f);
+        }
     }
 
     // --- 입력 처리 ---
