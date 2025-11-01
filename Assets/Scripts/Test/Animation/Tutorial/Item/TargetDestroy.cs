@@ -9,6 +9,8 @@ public class TargetDestroy : MonoBehaviour
     public GameObject destroyEffectPrefab;
     public float effectDuration = 2f;
 
+    public GameObject ParentTarget;
+
     private void OnTriggerEnter(Collider other)
     {
         // Fireball 태그를 가진 오브젝트와 충돌 시 파괴
@@ -21,9 +23,8 @@ public class TargetDestroy : MonoBehaviour
                 GameObject fx = Instantiate(destroyEffectPrefab, transform.position, Quaternion.identity);
                 Destroy(fx, effectDuration);
             }
-
             // 표적 파괴
-            Destroy(gameObject);
+            Destroy(ParentTarget,0.2f);
         }
     }
 }
