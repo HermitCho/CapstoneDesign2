@@ -3495,6 +3495,7 @@ GameObject:
   - component: {fileID: 8141524535633427995}
   - component: {fileID: -4948785751368921993}
   - component: {fileID: 3910657329309950451}
+  - component: {fileID: 8783701793390089521}
   m_Layer: 0
   m_Name: Char2 Bot 1
   m_TagString: Player
@@ -4593,6 +4594,22 @@ MonoBehaviour:
   targetMarkerPrefab: {fileID: 9032990641331341168, guid: 39d2f99a5bbd5a64dacfcba0afed92f4,
     type: 3}
   showMarkerOnNoHit: 1
+--- !u!114 &8783701793390089521
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3137786495578628170}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2c71e41e0d9544e47bf951c87f2d106c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  animator: {fileID: 8511895970222891146}
+  win1TriggerName: Win1
+  win2TriggerName: Win2
+  win3TriggerName: Win3
 --- !u!1 &3153326930071574659
 GameObject:
   m_ObjectHideFlags: 0

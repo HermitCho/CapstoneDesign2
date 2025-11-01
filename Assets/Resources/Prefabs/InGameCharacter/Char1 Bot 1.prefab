@@ -480,6 +480,7 @@ GameObject:
   - component: {fileID: 957030719109553756}
   - component: {fileID: -1296924589757523842}
   - component: {fileID: 7687607219422462183}
+  - component: {fileID: -6507664243176153547}
   m_Layer: 0
   m_Name: Char1 Bot 1
   m_TagString: Player
@@ -1455,6 +1456,26 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cbd005cc3ac573d44907f40d79ff5182, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &-6507664243176153547
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 329088207215989243}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2c71e41e0d9544e47bf951c87f2d106c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  animator: {fileID: 6429692773798809915}
+  win1TriggerName: Win1
+  win2TriggerName: Win2
+  win3TriggerName: Win3
+  win1StateName: Win1
+  win2StateName: Win2
+  win3StateName: Win3
+  animationDuration: 3
 --- !u!1 &349119031024593202
 GameObject:
   m_ObjectHideFlags: 0
