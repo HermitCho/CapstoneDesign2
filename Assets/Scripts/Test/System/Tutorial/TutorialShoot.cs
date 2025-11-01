@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Photon.Pun;
+using DG.Tweening;
 
 public class TutorialShoot : MonoBehaviour
 {
@@ -13,135 +14,101 @@ public class TutorialShoot : MonoBehaviour
     [SerializeField] private TutorialComplete tutorialComplete;
     [Space(10)]
 
-    [Header("총기 튜토리얼 설정")]
-    [SerializeField] private int requiredShots = 3; // 필요한 발사 횟수
-    [SerializeField] private int requiredReloads = 1; // 필요한 재장전 횟수
+    [Header("타겟 설정")]
+    [SerializeField] private int totalTargets = 4; // 총 과녁 개수
+    [SerializeField] private List<TargetMove> targetList = new List<TargetMove>(); // 과녁 목록
+    [SerializeField] private float targetActivateDelay = 1.5f; // UI 닫힌 후 등장 전 대기 시간
+    [SerializeField] private float fadeInDuration = 0.7f;      // 서서히 나타나는 시간
 
+    private int destroyedTargets = 0;
     private bool isCounting = false;
-    private Transform playerTransform;
-    private TestGun playerGun;
-    private TestShoot playerTestShoot;
-    private CameraController playerCameraController;
 
-    private int shotsFired = 0;
-    private int reloadsCompleted = 0;
-    private int lastMagAmmo = 0;
-    private bool hasZoomed = false;
+    public bool IsTutorialUIFinished { get; private set; } = false;
 
     void OnEnable()
     {
         if (tutorialUI != null)
-        {
             tutorialUI.OnTutorialClosed += BeginCounting;
-        }
     }
 
     void OnDisable()
     {
         if (tutorialUI != null)
-        {
             tutorialUI.OnTutorialClosed -= BeginCounting;
-        }
-        TestGun.OnLocalReloadStarted -= OnReloadStarted;
-        isCounting = false;
-    }
-
-    void Update()
-    {
-        if (!isCounting || playerGun == null) return;
-
-        // 줌 상태 확인
-        if (playerCameraController != null && playerCameraController.IsZoom())
-        {
-            hasZoomed = true;
-        }
-
-        // 발사 횟수 확인 (탄약이 줄어들면 발사한 것으로 간주)
-        int currentMagAmmo = playerGun.CurrentMagAmmo;
-        if (currentMagAmmo < lastMagAmmo)
-        {
-            shotsFired++;
-        }
-        lastMagAmmo = currentMagAmmo;
-
-        // 모든 조건 만족 시 완료
-        if (hasZoomed && shotsFired >= requiredShots && reloadsCompleted >= requiredReloads)
-        {
-            CompleteTutorial();
-        }
-    }
-    
-    private void OnReloadStarted()
-    {
-        if (!isCounting) return;
-        reloadsCompleted++;
     }
 
     private void BeginCounting()
     {
-        // 튜토리얼 패널 닫힘 이후 시작
-        LocateLocalPlayer();
-        if (playerGun == null) return;
-
-        // 초기화
-        shotsFired = 0;
-        reloadsCompleted = 0;
-        hasZoomed = false;
-        lastMagAmmo = playerGun.CurrentMagAmmo;
+        IsTutorialUIFinished = true;
+        destroyedTargets = 0;
         isCounting = true;
-        
-        // 재장전 이벤트 구독
-        TestGun.OnLocalReloadStarted += OnReloadStarted;
+
+        Debug.Log("🎯 타겟 카운팅 시작됨 (튜토리얼 UI 종료)");
+
+        StartCoroutine(ActivateTargetsAfterDelay());
     }
 
-    private void LocateLocalPlayer()
+    private IEnumerator ActivateTargetsAfterDelay()
     {
-        playerTransform = null;
-        playerGun = null;
-        playerTestShoot = null;
-        playerCameraController = null;
+        yield return new WaitForSeconds(targetActivateDelay);
 
-        // MoveController를 통해 로컬 플레이어 찾기
-        MoveController[] movers = FindObjectsOfType<MoveController>();
-        for (int i = 0; i < movers.Length; i++)
+        foreach (var target in targetList)
         {
-            var view = movers[i].GetComponent<PhotonView>();
-            if (view == null || view.IsMine)
+            if (target == null) continue;
+
+            target.gameObject.SetActive(true);
+            Transform t = target.transform;
+
+            // ✅ 0에서 시작해 원래 크기로 Tween
+            t.localScale = Vector3.zero;
+            t.DOScale(target.originalScale, fadeInDuration).SetEase(Ease.OutBack);
+
+            Renderer rend = target.GetComponentInChildren<Renderer>();
+            if (rend != null)
             {
-                playerTransform = movers[i].transform;
-                playerGun = playerTransform.GetComponentInChildren<TestGun>();
-                playerTestShoot = playerTransform.GetComponentInChildren<TestShoot>();
-                playerCameraController = playerTransform.GetComponentInChildren<CameraController>();
-                break;
+                foreach (var mat in rend.materials)
+                {
+                    if (mat.HasProperty("_Color"))
+                    {
+                        Color start = mat.color;
+                        Color end = new Color(start.r, start.g, start.b, 1f);
+                        mat.DOColor(end, fadeInDuration).SetEase(Ease.InOutSine);
+                    }
+                    else if (mat.HasProperty("_TintColor"))
+                    {
+                        Color start = mat.GetColor("_TintColor");
+                        Color end = new Color(start.r, start.g, start.b, 1f);
+                        mat.DOColor(end, "_TintColor", fadeInDuration).SetEase(Ease.InOutSine);
+                    }
+                }
             }
+
+            target.EnableMovementAfter(fadeInDuration);
         }
 
-        // 폴백: CameraController로 찾기
-        if (playerTransform == null)
-        {
-            var cameraController = FindObjectOfType<CameraController>();
-            if (cameraController != null)
-            {
-                playerTransform = cameraController.transform.root;
-                playerGun = playerTransform.GetComponentInChildren<TestGun>();
-                playerTestShoot = playerTransform.GetComponentInChildren<TestShoot>();
-                playerCameraController = cameraController;
-            }
-        }
+        Debug.Log("✨ 과녁 활성화 연출 완료!");
+    }
+
+    public void OnTargetDestroyed()
+    {
+        if (!isCounting) return;
+
+        destroyedTargets++;
+        Debug.Log($"🎯 타겟 파괴됨: {destroyedTargets}/{totalTargets}");
+
+        if (destroyedTargets >= totalTargets)
+            CompleteTutorial();
     }
 
     private void CompleteTutorial()
     {
         isCounting = false;
-        TestGun.OnLocalReloadStarted -= OnReloadStarted;
+        Debug.Log("✅ 모든 타겟 파괴됨 — 튜토리얼 완료!");
 
         if (tutorialUI != null)
-        {
             tutorialUI.ShowCompleteSticker();
-        }
+
         if (tutorialComplete != null)
-        {
             tutorialComplete.OpenDoor();
-        }
     }
 }
