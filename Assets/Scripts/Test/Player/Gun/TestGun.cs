@@ -250,6 +250,33 @@ public class TestGun : MonoBehaviourPun
         int layerMask = ~LayerMask.GetMask("PlayerPosition");
         if (Physics.Raycast(fireTransform.position, direction, out RaycastHit hit, gunData.range, layerMask, QueryTriggerInteraction.Ignore))
         {
+            // --- ✅ [튜토리얼 전용 감지 코드] ---
+            // 현재 씬 이름이 Tutorial을 포함하면, 네트워크 판정 대신 로컬 파괴 실행
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name.Contains("Tutorial"))
+            {
+                TargetMove targetMove = hit.collider.GetComponent<TargetMove>();
+                if (targetMove != null)
+                {
+                    // 튜토리얼용 목표 카운트 처리
+                    var tutorialShoot = FindObjectOfType<TutorialShoot>();
+                    if (tutorialShoot != null)
+                        tutorialShoot.OnTargetDestroyed();
+
+                    // 피격 이펙트
+                    GameObject effect = Resources.Load<GameObject>("HitEffect");
+                    if (effect != null)
+                    {
+                        GameObject fx = Instantiate(effect, hit.point, Quaternion.LookRotation(hit.normal));
+                        Destroy(fx, 2f);
+                    }
+
+                    // 과녁 오브젝트 파괴
+                    Destroy(targetMove.gameObject);
+                    Debug.Log($"[TestGun] 튜토리얼용 과녁 {targetMove.name} 파괴됨");
+                    return; // ✅ 튜토리얼에서는 여기서 종료 (Photon 로직 실행 안 함)
+                }
+            }
+            
             IDamageable target = hit.collider.GetComponent<IDamageable>();
             PhotonView targetView = hit.collider.GetComponent<PhotonView>();
 

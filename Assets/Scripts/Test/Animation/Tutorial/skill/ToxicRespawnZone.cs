@@ -11,8 +11,10 @@ public class ToxicRespawnZone : MonoBehaviour
     {
         if (other.CompareTag("Player"))
         {
+            AudioManager.Inst.PlayOneShot("SFX_Game_Tutorial_Death");
             StartCoroutine(RespawnAfterDelay(other.transform));
         }
+
     }
 
     private System.Collections.IEnumerator RespawnAfterDelay(Transform player)

@@ -5,20 +5,21 @@ using UnityEngine;
 public class TargetMove : MonoBehaviour
 {
     [Header("이동 설정")]
-    [SerializeField] private float moveRange = 3f;
-    [SerializeField] private float moveSpeed = 2f;
-    [SerializeField] private float patternChangeTime = 2f;
+    [SerializeField] private float moveRange = 5f;
+    [SerializeField] private float moveSpeed = 3f;
+    [SerializeField] private float patternChangeTime = 4f;
 
     private Vector3 startPos;
     private Vector3 moveDir;
     private float nextPatternTime;
     private bool canMove = false;
+
     [HideInInspector] public Vector3 originalScale;
 
     void Awake()
     {
         originalScale = transform.localScale;
-        gameObject.SetActive(false); // 처음엔 숨김
+        gameObject.SetActive(false); // 처음엔 비활성화로 시작 가능 (튜토리얼 단계별 등장용)
     }
 
     void Start()
