@@ -6,14 +6,9 @@ public class TutorialSkill : MonoBehaviour
 {
     [Header("튜토리얼 UI 참조")]
     [SerializeField] private TutorialUI tutorialUI;
-    [Space(10)]
 
     [Header("튜토리얼 완료 참조")]
     [SerializeField] private TutorialComplete tutorialComplete;
-    [Space(10)]
-
-    [Header("스킬 목표 트리거")]
-    [SerializeField] private Collider skillGoalTrigger; // ✅ 스킬 목표 구역
 
     private bool isActive = false;
     private bool isCompleted = false;
@@ -21,42 +16,35 @@ public class TutorialSkill : MonoBehaviour
     void OnEnable()
     {
         if (tutorialUI != null)
-            tutorialUI.OnTutorialClosed += ActivateTrigger;
+            tutorialUI.OnTutorialClosed += ActivateTutorial;
     }
 
     void OnDisable()
     {
         if (tutorialUI != null)
-            tutorialUI.OnTutorialClosed -= ActivateTrigger;
+            tutorialUI.OnTutorialClosed -= ActivateTutorial;
     }
 
-    private void ActivateTrigger()
+    private void ActivateTutorial()
     {
         isActive = true;
-        if (skillGoalTrigger != null)
-            skillGoalTrigger.enabled = true;
+        Debug.Log("✅ 튜토리얼 UI 닫힘 - 튜토리얼 활성화됨");
     }
 
-    private void OnTriggerEnter(Collider other)
+    // 외부(예: DoorSensor나 Trigger 등)에서 튜토리얼 완료를 알릴 때 호출
+    public void CompleteTutorial()
     {
         if (!isActive || isCompleted) return;
-        if (!other.CompareTag("Player")) return;
-
-        // ✅ 플레이어가 SkillGoal 트리거에 닿으면 미션 완료
-        CompleteTutorial();
-    }
-
-    private void CompleteTutorial()
-    {
         isCompleted = true;
-        isActive = false;
 
+        // ✅ 완료 스티커 표시
         if (tutorialUI != null)
             tutorialUI.ShowCompleteSticker();
 
+        // ✅ 문 열기 등 실제 완료 처리
         if (tutorialComplete != null)
             tutorialComplete.OpenDoor();
 
-        Debug.Log("✅ 스킬 튜토리얼 완료 (SkillGoal 트리거 도달)");
+        Debug.Log("✅ 튜토리얼 완료 - 스티커 표시 및 문 열림");
     }
 }
