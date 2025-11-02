@@ -269,7 +269,7 @@ public class TestGun : MonoBehaviourPun
                         GameObject fx = Instantiate(effect, hit.point, Quaternion.LookRotation(hit.normal));
                         Destroy(fx, 2f);
                     }
-
+                    AudioManager.Inst.PlayOneShot("SFX_Game_Tutorial_Target");
                     // 과녁 오브젝트 파괴
                     Destroy(targetMove.gameObject);
                     Debug.Log($"[TestGun] 튜토리얼용 과녁 {targetMove.name} 파괴됨");

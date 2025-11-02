@@ -91,14 +91,50 @@ public class GameOverController : MonoBehaviourPunCallbacks
         
         if (winnerPlayer != null && winnerPosition != null)
         {
+            // 1️⃣ 승리 캐릭터 이동 사운드 재생
+            if (AudioManager.Inst != null)
+            {
+                AudioManager.Inst.PlayOneShot("SFX_Game_GameOver_WinnerMove");
+            }
+            
+            // 2️⃣ 승리 플레이어 텔레포트
             SimpleTeleport(winnerPlayer, winnerPosition.position, winnerPosition.rotation);
             
-            // 승리 플레이어의 점프 활성화
-            EnableWinnerJump();
-            
-            // ✅ 승리 플레이어의 Victory 애니메이션 조작 활성화
-            EnableWinnerVictoryControl();
+            // 3️⃣ 텔레포트와 동시에 Win1 애니메이션 + 웃음 사운드 재생
+            yield return new WaitForSeconds(2f);
+            VictoryAnimationController victoryController = winnerPlayer.GetComponent<VictoryAnimationController>();
+            if (victoryController != null)
+            {
+                // Win1 애니메이션 자동 재생 (네트워크 동기화)
+                victoryController.PlayWin1AnimationAuto();
+                
+                // 웃음 사운드도 즉시 재생 (애니메이션과 동시에)
+                if (AudioManager.Inst != null)
+                {
+                    AudioManager.Inst.PlayOneShot("SFX_Game_GameOver_WinnerLaugh");
+                }
+                
+                // 4️⃣ Win1 애니메이션 완료 후 수동 조작 활성화
+                StartCoroutine(EnableVictoryControlAfterAnimation(victoryController));
+            }
+            else
+            {
+                // VictoryAnimationController가 없으면 바로 활성화
+                EnableWinnerVictoryControl();
+            }
         }
+    }
+    
+    /// <summary>
+    /// Win1 애니메이션 완료 후 Victory 조작 활성화
+    /// </summary>
+    private IEnumerator EnableVictoryControlAfterAnimation(VictoryAnimationController victoryController)
+    {
+        // Win1 애니메이션 지속 시간만큼 대기 (animationDuration)
+        yield return new WaitForSeconds(victoryController.AnimationDuration);
+        
+        // Victory 애니메이션 수동 조작 활성화
+        EnableWinnerVictoryControl();
     }
     
     /// <summary>

@@ -163,6 +163,13 @@ public class InGameUIManager : MonoBehaviour
             isGameOverPanelActive = true;
             
             SetMenuMouseCursor();
+            
+            // ✅ STOP 모달 창 열 때 START 사운드 재생
+            if (AudioManager.Inst != null)
+            {
+                AudioManager.Inst.PlayOneShot("SFX_UI_Ready_Start");
+            }
+            
             gameOverModalWindowManager.OpenWindow();
 
             StartCoroutine(ShowGameOverPanelCoroutine(3f));

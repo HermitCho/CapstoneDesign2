@@ -484,6 +484,7 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
         }
         
         UnityEngine.Debug.Log("ReadyPanel: START 애니메이션 시작");
+        yield return new WaitForSeconds(0.5f);
         yield return StartCoroutine(AnimateStartText());
         
         UnityEngine.Debug.Log("ReadyPanel: 게임 시작 호출");

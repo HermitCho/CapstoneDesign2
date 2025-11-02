@@ -5566,6 +5566,50 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 351387977}
   m_CullTransparentMesh: 1
+--- !u!1 &353732343
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 353732344}
+  - component: {fileID: 353732345}
+  m_Layer: 0
+  m_Name: LoginBGMController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &353732344
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 353732343}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1743145554}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &353732345
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 353732343}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8d0b4e16d28603a4f9719d4b059262f8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &355901978
 GameObject:
   m_ObjectHideFlags: 0
@@ -7070,7 +7114,14 @@ MonoBehaviour:
   - {fileID: 8300000, guid: ab98deeb785bc23469502ada843a5fed, type: 3}
   - {fileID: 8300000, guid: 17a3a65484d3bdd4e8bd2811f7f2261e, type: 3}
   - {fileID: 8300000, guid: 778c392df1d031d4faa37095de649de1, type: 3}
-  - {fileID: 8300000, guid: d1f8ea0b8753dd147b3228245da1d69f, type: 3}
+  - {fileID: 8300000, guid: edb119aa2d9a74141a8375d4ea35da8f, type: 3}
+  - {fileID: 8300000, guid: 8142a248ed9994243b1ba00c1a27a388, type: 3}
+  - {fileID: 8300000, guid: 14b8f37fd523016449fd2d0cb6c74d87, type: 3}
+  - {fileID: 8300000, guid: f55a2a5061dc43746a1476a485463d8b, type: 3}
+  - {fileID: 8300000, guid: a81e8194a71e5624eb0ab1128f4f0850, type: 3}
+  - {fileID: 8300000, guid: e0531b21c4de23a46acfc36a51b7ce5c, type: 3}
+  - {fileID: 8300000, guid: 9260525172f1bfa468f251a8c3f62380, type: 3}
+  - {fileID: 8300000, guid: 36187f3ef98eb45439fbf3fa0b724e70, type: 3}
 --- !u!4 &432699288
 Transform:
   m_ObjectHideFlags: 0
@@ -26479,6 +26530,7 @@ Transform:
   m_Children:
   - {fileID: 379130403}
   - {fileID: 364410216}
+  - {fileID: 353732344}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1749894441

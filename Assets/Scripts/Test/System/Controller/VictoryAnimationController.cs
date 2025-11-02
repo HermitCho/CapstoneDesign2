@@ -119,6 +119,23 @@ public class VictoryAnimationController : MonoBehaviourPun
     }
     
     /// <summary>
+    /// Win1 애니메이션 자동 재생 (GameOverController에서 호출)
+    /// </summary>
+    public void PlayWin1AnimationAuto()
+    {
+        // 조작 활성화 여부와 관계없이 Win1 애니메이션 재생
+        PlayVictoryAnimation(1);
+    }
+    
+    /// <summary>
+    /// 애니메이션 지속 시간 접근자
+    /// </summary>
+    public float AnimationDuration
+    {
+        get { return animationDuration; }
+    }
+    
+    /// <summary>
     /// Victory 애니메이션 재생 (로컬에서 호출 → 네트워크 동기화)
     /// </summary>
     private void PlayVictoryAnimation(int animationIndex)

@@ -155,6 +155,10 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     private bool hasScoreChanged = false;
     private float lastAmmoUpdate = 0f;
     
+    // ✅ 게임 종료 카운트다운 사운드 관련
+    private bool isCountdownSoundPlaying = false;
+    private int lastCountdownSecond = -1;
+    
     /// <summary>
     /// 플레이어 점수 Properties 초기화 (두 번째 게임 문제 해결)
     /// </summary>
@@ -289,7 +293,8 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         // 장탄수 UI 페이드 체크
         CheckAmmoUIFade();
         
-        
+        // ✅ 게임 종료 10초 전 카운트다운 사운드 체크
+        CheckGameEndingCountdownSound();
     }
     
     /// <summary>
@@ -1723,6 +1728,47 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         }
     }
 
+    #endregion
+    
+    #region 게임 종료 카운트다운 사운드
+    
+    /// <summary>
+    /// 게임 종료 10초 전 카운트다운 사운드 체크
+    /// </summary>
+    private void CheckGameEndingCountdownSound()
+    {
+        if (GameManager.Instance == null) return;
+        
+        // 남은 시간 가져오기
+        float remainingTime = GameManager.Instance.GetRemainingTime();
+        
+        // 10초 이하일 때만 사운드 재생
+        if (remainingTime <= 10f && remainingTime > 0f)
+        {
+            int currentSecond = Mathf.CeilToInt(remainingTime);
+            
+            // 새로운 초가 시작될 때만 사운드 재생 (중복 방지)
+            if (currentSecond != lastCountdownSecond)
+            {
+                lastCountdownSecond = currentSecond;
+                
+                // 카운트다운 사운드 재생
+                if (AudioManager.Inst != null)
+                {
+                    AudioManager.Inst.PlayOneShot("SFX_UI_GameOver_Count");
+                }
+                
+                isCountdownSoundPlaying = true;
+            }
+        }
+        else if (remainingTime <= 0f && isCountdownSoundPlaying)
+        {
+            // 게임 종료 시 카운트다운 사운드 플래그 리셋
+            isCountdownSoundPlaying = false;
+            lastCountdownSecond = -1;
+        }
+    }
+    
     #endregion
     
     #region 장탄수 UI 시스템
