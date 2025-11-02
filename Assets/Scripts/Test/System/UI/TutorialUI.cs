@@ -525,6 +525,7 @@ public class TutorialUI : MonoBehaviourPun
         for (int i = 0; i <= tutorialMessageText.Length; i++)
         {
             tutorialMessageTextUI.text = tutorialMessageText.Substring(0, i);
+            AudioManager.Inst.PlayOneShot("SFX_Game_Tutorial_Message");
             yield return new WaitForSeconds(textTypingSpeed);
         }
 
@@ -639,6 +640,7 @@ public class TutorialUI : MonoBehaviourPun
         for (int i = 0; i <= tutorialAlwaysPlayMessageText.Length; i++)
         {
             tutorialAlwaysPlayMessageTextUI.text = tutorialAlwaysPlayMessageText.Substring(0, i);
+            // AudioManager.Inst.PlayOneShot("SFX_Game_Tutorial_Message");
             yield return new WaitForSeconds(tutorialAlwaysPlayMessageTextTypingSpeed);
         }
     }
