@@ -723,6 +723,13 @@ public class GameManager : Singleton<GameManager>
         // 마스터 클라이언트이거나 방 속성이 없는 경우 로컬 시간 사용
         return (float)(PhotonNetwork.Time - gameStartTime);
     }
+    
+    // ✅ 남은 게임 시간 가져오기 (HUDPanel에서 사용)
+    public float GetRemainingTime()
+    {
+        float currentGameTime = GetGameTime();
+        return Mathf.Max(0f, cachedPlayTime - currentGameTime);
+    }
 
     // GetShopTime 제거 (Shop.cs에서 직접 관리)
     

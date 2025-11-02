@@ -84,6 +84,12 @@ public class AudioManager : MonoBehaviour {
     private static AudioManager inst;
     // 앱 켜졌는지 여부용
     private static bool alive = true;
+    
+    // ✅ BGM 자동 반복 재생 관련
+    private Coroutine bgmLoopCoroutine = null;
+    private string currentLoopingBGM = "";
+    private float fadeInDuration = 3f;
+    private float fadeOutDuration = 3f;
 
     /// <summary>
     /// 속성 싱글톤 패턴으로 구현
@@ -1542,6 +1548,101 @@ public class AudioManager : MonoBehaviour {
         get { return !_musicOn && !_soundFxOn; }
         set { ToggleMute (value); }
     }
+    
+    #region BGM 자동 반복 재생 (페이드 인/아웃 포함)
+    
+    /// <summary>
+    /// BGM을 페이드 인/아웃과 함께 무한 반복 재생
+    /// </summary>
+    /// <param name="clipName">재생할 BGM 클립 이름</param>
+    public void PlayBGMWithLoop(string clipName)
+    {
+        // 이미 같은 BGM이 반복 재생 중이면 무시
+        if (currentLoopingBGM == clipName && bgmLoopCoroutine != null)
+        {
+            return;
+        }
+        
+        // 기존 반복 재생 중지
+        StopBGMLoop();
+        
+        currentLoopingBGM = clipName;
+        bgmLoopCoroutine = StartCoroutine(BGMLoopCoroutine(clipName));
+    }
+    
+    /// <summary>
+    /// BGM 반복 재생 중지
+    /// </summary>
+    public void StopBGMLoop()
+    {
+        if (bgmLoopCoroutine != null)
+        {
+            StopCoroutine(bgmLoopCoroutine);
+            bgmLoopCoroutine = null;
+        }
+        currentLoopingBGM = "";
+        StopBGM();
+    }
+    
+    /// <summary>
+    /// BGM 반복 재생 코루틴 (페이드 인/아웃 포함)
+    /// </summary>
+    private IEnumerator BGMLoopCoroutine(string clipName)
+    {
+        AudioClip clip = GetClipFromPlaylist(clipName);
+        
+        if (clip == null)
+        {
+            Debug.LogWarning($"AudioManager: BGM '{clipName}'을 찾을 수 없습니다!");
+            yield break;
+        }
+        
+        while (true)
+        {
+            // 1. 페이드 인으로 BGM 시작
+            float targetVolume = _musicVolume;
+            musicSource.volume = 0f;
+            musicSource.clip = clip;
+            musicSource.Play();
+            
+            // 페이드 인 (3초)
+            float fadeInTime = 0f;
+            while (fadeInTime < fadeInDuration)
+            {
+                fadeInTime += Time.deltaTime;
+                musicSource.volume = Mathf.Lerp(0f, targetVolume, fadeInTime / fadeInDuration);
+                yield return null;
+            }
+            musicSource.volume = targetVolume;
+            
+            // 2. BGM 재생 (끝나기 3초 전까지)
+            float clipLength = clip.length;
+            float playDuration = clipLength - fadeOutDuration;
+            
+            if (playDuration > 0f)
+            {
+                yield return new WaitForSeconds(playDuration);
+            }
+            
+            // 3. 페이드 아웃 (3초)
+            float fadeOutTime = 0f;
+            while (fadeOutTime < fadeOutDuration)
+            {
+                fadeOutTime += Time.deltaTime;
+                musicSource.volume = Mathf.Lerp(targetVolume, 0f, fadeOutTime / fadeOutDuration);
+                yield return null;
+            }
+            musicSource.volume = 0f;
+            
+            // 4. 다음 반복 준비 (BGM 정지)
+            musicSource.Stop();
+            
+            // 짧은 대기 후 다시 반복
+            yield return new WaitForSeconds(0.1f);
+        }
+    }
+    
+    #endregion
 
 }
 
