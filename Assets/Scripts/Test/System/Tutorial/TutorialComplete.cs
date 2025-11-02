@@ -10,9 +10,11 @@ public class TutorialComplete : MonoBehaviour
 
     [Header("회전 열림 설정")]
     [SerializeField] private float rotateAngle = 90f;
-    [SerializeField] private float openDuration = 0.8f;
+    [SerializeField] private float openDuration = 15f; // 🔹 천천히 열리도록 시간 늘림 (기존 0.8 → 1.5)
     [SerializeField] private bool invertLeftRotation = false;
     [SerializeField] private bool invertRightRotation = false;
+
+    
 
     private bool isOpened = false;
 
@@ -21,6 +23,9 @@ public class TutorialComplete : MonoBehaviour
     {
         if (isOpened) return;
         isOpened = true;
+
+        // 🔹 사운드 재생
+        AudioManager.Inst.PlayOneShot("SFX_Game_Tutorial_Door");
 
         if (leftDoor != null)
         {
