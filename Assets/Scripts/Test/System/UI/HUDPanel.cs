@@ -385,7 +385,14 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         if (localCoinController != null)
         {
             currentCoin = localCoinController.GetCurrentCoin();
+            currentScore = localCoinController.GetCurrentScore(); // ✅ 점수 초기화
             UpdateCoinDisplay();
+        }
+        else
+        {
+            // ✅ CoinController가 없으면 0으로 초기화
+            currentCoin = 0;
+            currentScore = 0f;
         }
         
         if (localCharacterSkill != null)
@@ -393,7 +400,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks
             UpdateSkillDisplay();
         }
         
-        // 초기 점수 표시
+        // 초기 점수 표시 (강제 업데이트)
         UpdateScoreDisplay();
 
         // 초기 아이템 UI 표시
@@ -1743,7 +1750,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         float remainingTime = GameManager.Instance.GetRemainingTime();
         
         // 10초 이하일 때만 사운드 재생
-        if (remainingTime <= 10f && remainingTime > 0f)
+        if (remainingTime <= 10f && remainingTime > 1f)
         {
             int currentSecond = Mathf.CeilToInt(remainingTime);
             
