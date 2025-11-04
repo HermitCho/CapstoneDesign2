@@ -18,12 +18,14 @@ public class VictoryAnimationController : MonoBehaviourPun
     [SerializeField] private string win1TriggerName = "Win1";
     [SerializeField] private string win2TriggerName = "Win2";
     [SerializeField] private string win3TriggerName = "Win3";
+    [SerializeField] private string flipTriggerName = "Flip";
     
     [Header("Victory 애니메이션 상태 이름")]
     [Tooltip("Animator Controller에서 실제 State 이름 (트리거 이름과 다를 수 있음)")]
     [SerializeField] private string win1StateName = "Win1";
     [SerializeField] private string win2StateName = "Win2";
     [SerializeField] private string win3StateName = "Win3";
+    [SerializeField] private string flipStateName = "Flip";
     
     [Header("애니메이션 지속 시간")]
     [Tooltip("Victory 애니메이션이 재생되는 동안 IK를 비활성화할 시간")]
@@ -126,6 +128,11 @@ public class VictoryAnimationController : MonoBehaviourPun
         // 조작 활성화 여부와 관계없이 Win1 애니메이션 재생
         PlayVictoryAnimation(1);
     }
+
+    public void PlayFlipAnimationAuto()
+    {
+        PlayVictoryAnimation(4);
+    }
     
     /// <summary>
     /// 애니메이션 지속 시간 접근자
@@ -170,6 +177,10 @@ public class VictoryAnimationController : MonoBehaviourPun
             case 3:
                 triggerName = win3TriggerName;
                 stateName = win3StateName;
+                break;
+            case 4:
+                triggerName = flipTriggerName;
+                stateName = flipStateName;
                 break;
             default:
                 return;

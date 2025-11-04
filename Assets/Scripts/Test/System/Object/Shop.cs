@@ -316,7 +316,7 @@ public class Shop : MonoBehaviourPun
             // 네트워크 오브젝트로 안전하게 생성
             Vector3 spawnPos = shopStand.GetItemSpawnPoint().position;
             Quaternion spawnRot = shopStand.GetItemSpawnPoint().rotation;
-            spawnRot = Quaternion.Euler(0, 0, 90);
+            spawnRot = Quaternion.Euler(90, 0, 90);
 
             GameObject spawnedItem = null;
 

@@ -547,6 +547,7 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
         if (AudioManager.Inst != null)
         {
             AudioManager.Inst.PlayOneShot("SFX_UI_Ready_Start");
+            AudioManager.Inst.PlayOneShot("SFX_UI_Ready_StartVoice");
         }
         
         countdownTween?.Kill();

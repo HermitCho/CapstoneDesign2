@@ -109,7 +109,7 @@ public class ShopStand : MonoBehaviour
         // 아이템을 스폰 포인트에 배치
         item.transform.SetParent(itemSpawnPoint);
         item.transform.localPosition = Vector3.zero;
-        item.transform.localRotation = Quaternion.Euler(0, 0, 90f); // z축으로 90도 회전
+        item.transform.localRotation = Quaternion.Euler(90f, 0, 90f); // z축으로 90도 회전
 
         // 아이템에 회전 애니메이션 컴포넌트 추가
         ItemRotator rotator = item.GetComponent<ItemRotator>();

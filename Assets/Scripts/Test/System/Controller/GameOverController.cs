@@ -91,18 +91,25 @@ public class GameOverController : MonoBehaviourPunCallbacks
         
         if (winnerPlayer != null && winnerPosition != null)
         {
+            VictoryAnimationController victoryController = winnerPlayer.GetComponent<VictoryAnimationController>();
             // 1️⃣ 승리 캐릭터 이동 사운드 재생
             if (AudioManager.Inst != null)
             {
                 AudioManager.Inst.PlayOneShot("SFX_Game_GameOver_WinnerMove");
             }
             
-            // 2️⃣ 승리 플레이어 텔레포트
-            SimpleTeleport(winnerPlayer, winnerPosition.position, winnerPosition.rotation);
-            
             // 3️⃣ 텔레포트와 동시에 Win1 애니메이션 + 웃음 사운드 재생
-            yield return new WaitForSeconds(2f);
-            VictoryAnimationController victoryController = winnerPlayer.GetComponent<VictoryAnimationController>();
+            yield return new WaitForSeconds(1f);
+
+            SimpleTeleport(winnerPlayer, winnerPosition.position, winnerPosition.rotation);
+
+            if (victoryController != null)
+            {
+                // Win1 애니메이션 자동 재생 (네트워크 동기화)
+                victoryController.PlayFlipAnimationAuto();
+            }
+            
+            yield return new WaitForSeconds(1f);
             if (victoryController != null)
             {
                 // Win1 애니메이션 자동 재생 (네트워크 동기화)
