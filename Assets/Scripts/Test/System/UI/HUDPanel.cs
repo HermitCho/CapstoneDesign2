@@ -58,6 +58,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks
 
     [Header("조준점 UI")]
     [SerializeField] private Animator zoomAnimator;
+    [SerializeField] private Image zoomImage;
 
     [Header("장탄수 UI")]
     [SerializeField] private TextMeshProUGUI currentAmmoCountText;
@@ -144,11 +145,13 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     private Tween reloadIconFadeTween;
     private Tween reloadIconRotateTween;
     private Tween reloadIconBlinkTween;
+    private Tween zoomImageFadeTween; // ✅ zoomImage 페이드 애니메이션
     private Color originalAmmoBarColor = Color.white;
     private Color originalAmmoTextColor = Color.white;
     private Color lowAmmoColor = Color.red;
     private float lowAmmoThreshold = 0.2f; // 20%
     private float ammoUIFadeDelay = 3f; // 3초
+    private float originalZoomImageAlpha = 1f; // ✅ zoomImage 원래 투명도
     
     // 성능 최적화 관련
     private List<PlayerScoreData> previousPlayerDataList = new List<PlayerScoreData>();
@@ -1830,6 +1833,12 @@ public class HUDPanel : MonoBehaviourPunCallbacks
                 reloadIcon.color = iconColor;
             }
             
+            // ✅ zoomImage 원래 투명도 저장
+            if (zoomImage != null)
+            {
+                originalZoomImageAlpha = zoomImage.color.a;
+            }
+            
             Debug.Log($"HUD: 장탄수 UI 초기화 완료 - Current: {currentAmmo}, Max: {maxAmmo}");
         }
     }
@@ -2007,6 +2016,13 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         reloadIconFadeTween?.Kill();
         reloadIconRotateTween?.Kill();
         reloadIconBlinkTween?.Kill();
+        zoomImageFadeTween?.Kill();
+        
+        // ✅ zoomImage 투명도를 0으로 변경 (안보이게)
+        if (zoomImage != null)
+        {
+            zoomImageFadeTween = zoomImage.DOFade(0f, 0.2f).SetEase(Ease.OutCubic);
+        }
         
         // 투명도를 100으로 변경 (255에서 100은 약 0.39)
         Color targetColor = reloadIcon.color;
@@ -2065,12 +2081,19 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         reloadIconFadeTween?.Kill();
         reloadIconRotateTween?.Kill();
         reloadIconBlinkTween?.Kill();
+        zoomImageFadeTween?.Kill();
         
         // 회전 초기화
         reloadIcon.transform.rotation = Quaternion.identity;
         
         // 투명도를 0으로 변경
         reloadIcon.DOFade(0f, 0.3f).SetEase(Ease.OutCubic);
+        
+        // ✅ zoomImage 투명도를 원래대로 복원
+        if (zoomImage != null)
+        {
+            zoomImageFadeTween = zoomImage.DOFade(originalZoomImageAlpha, 0.3f).SetEase(Ease.OutCubic);
+        }
     }
     
     /// <summary>
@@ -2185,6 +2208,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         reloadIconFadeTween?.Kill();
         reloadIconRotateTween?.Kill();
         reloadIconBlinkTween?.Kill();
+        zoomImageFadeTween?.Kill(); // ✅ zoomImage 애니메이션도 정리
         
         ammoBarTween = null;
         ammoBarBlinkTween = null;
@@ -2196,6 +2220,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         reloadIconFadeTween = null;
         reloadIconRotateTween = null;
         reloadIconBlinkTween = null;
+        zoomImageFadeTween = null; // ✅ null로 초기화
     }
     
     #endregion
