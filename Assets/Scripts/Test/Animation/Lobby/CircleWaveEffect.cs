@@ -4,66 +4,118 @@ using UnityEngine;
 
 public class CircleWaveEffect : MonoBehaviour
 {
-    [Header("원형 머티리얼 인덱스 (0=배경, 1=첫 원)")]
+    [Header("🎨 머티리얼 설정")]
     [SerializeField] private int circleMaterialIndex = 1;
-    [SerializeField] private int waveCount = 15;
-    [SerializeField] private float waveSpeed = 0.3f;
-    [SerializeField] private float minTiling = 0.5f;
-    [SerializeField] private float maxTiling = 2.5f;
-    [SerializeField] private float waveInterval = 0.8f;
 
-    [Header("투명도 조절")]
-    [SerializeField] private float alphaMin = 0.0f;
-    [SerializeField] private float alphaMax = 0.6f;
+    [Header("🌊 애니메이션 설정")]
+    [SerializeField] private float waveSpeed = 0.1f;   // 전체 속도 (느릴수록 차분함)
+    [SerializeField] private float minTiling = 0.6f;     // 원 시작 크기
+    [SerializeField] private float maxTiling = 3.0f;     // 원 끝 크기
+
+    [Header("⚙️ 자동 루프 설정")]
+    [SerializeField] private int waveCount = 9;         
+    [SerializeField] private float fullCycleDuration = 12f; 
+    [SerializeField] private float scaleStep = 0.02f;    
+    [SerializeField] private float basePhaseOffset = 0.5f;
+
+    [Header("🕶️ 페이드 설정")]
+    [SerializeField, Range(0f, 1f)] private float fadeInRatio = 0.15f;   // 나타나는 구간 비율
+    [SerializeField, Range(0f, 1f)] private float fadeOutRatio = 0.15f;  // 사라지는 구간 비율
+    [SerializeField] private float baseAlpha = 0.45f;    // 최대 투명도
+
+    [Header("🖼️ 텍스처 연결")]
+    [SerializeField] private Texture2D thinTexture;
+    [SerializeField] private Texture2D thickTexture;
 
     private List<Material> waveMats = new List<Material>();
-    private List<float> waveTimers = new List<float>();
 
-    void Start()
+    void Awake()
+    {
+        if (Application.isPlaying)
+            SetupRuntimeMaterials();
+    }
+
+    void SetupRuntimeMaterials()
     {
         Renderer rend = GetComponent<Renderer>();
-        Material baseMat = rend.materials[circleMaterialIndex];
+        if (!rend) return;
 
-        // 🟣 원본 머티리얼 복사
+        Material[] mats = rend.materials;
+        if (circleMaterialIndex < 0 || circleMaterialIndex >= mats.Length)
+        {
+            Debug.LogError("CircleWaveEffect: circleMaterialIndex 잘못됨");
+            return;
+        }
+
+        Material baseMat = mats[circleMaterialIndex];
         waveMats.Clear();
-        waveTimers.Clear();
+        var matList = new List<Material>(mats);
+        matList.RemoveAt(circleMaterialIndex);
+
         for (int i = 0; i < waveCount; i++)
         {
             Material newMat = new Material(baseMat);
+
+            if (i % 2 == 0 && thinTexture)
+                newMat.mainTexture = thinTexture;
+            else if (thickTexture)
+                newMat.mainTexture = thickTexture;
+
+            Color c = newMat.color;
+            c.a = 0f; // 시작 시 완전 투명
+            newMat.color = c;
+
             waveMats.Add(newMat);
-            waveTimers.Add(i * waveInterval);
         }
 
-        // MeshRenderer에 머티리얼 배열로 추가
-        Material[] mats = rend.materials;
-        List<Material> matList = new List<Material>(mats);
-        matList.RemoveAt(circleMaterialIndex);
         matList.InsertRange(circleMaterialIndex, waveMats);
         rend.materials = matList.ToArray();
     }
 
     void Update()
     {
-        for (int i = 0; i < waveCount; i++)
+        if (!Application.isPlaying || waveMats.Count == 0) return;
+
+        // 각 원의 간격 자동 계산
+        float delayBetween = fullCycleDuration / waveCount;
+
+        for (int i = 0; i < waveMats.Count; i++)
         {
             Material mat = waveMats[i];
-            if (mat == null) continue;
+            if (!mat) continue;
 
-            waveTimers[i] += Time.deltaTime * waveSpeed;
-            if (waveTimers[i] > 1f) waveTimers[i] -= 1f;
+            float localTime = (Time.time - (i * delayBetween)) * waveSpeed;
+            localTime %= 1f;
+            if (localTime < 0f) localTime += 1f;
 
-            float t = waveTimers[i];
-
-            // 🌀 안쪽에서 바깥으로 퍼지는 형태
+            // 부드럽게 확장
+            float t = Mathf.SmoothStep(0f, 1f, localTime);
             float tiling = Mathf.Lerp(maxTiling, minTiling, t);
-            mat.mainTextureScale = new Vector2(tiling, tiling);
 
-            float offset = (1f - tiling) / 2f;
+            // 원 크기 단계
+            float scaleFactor = 1f + (i - waveCount / 2f) * scaleStep;
+            tiling *= scaleFactor;
+
+            mat.mainTextureScale = new Vector2(tiling, tiling);
+            float offset = (1f - tiling) * 0.5f;
             mat.mainTextureOffset = new Vector2(offset, offset);
 
-            // ✨ 투명도 부드럽게 Fade Out
+            // ✨ 페이드인 / 페이드아웃
             Color c = mat.color;
-            c.a = Mathf.Lerp(alphaMax, alphaMin, t);
+            float alpha = baseAlpha;
+
+            if (localTime < fadeInRatio)
+            {
+                float fadeT = localTime / fadeInRatio;
+                alpha = Mathf.Lerp(0f, baseAlpha, fadeT);
+            }
+            else if (localTime > 1f - fadeOutRatio)
+            {
+                float fadeT = (localTime - (1f - fadeOutRatio)) / fadeOutRatio;
+                alpha = Mathf.Lerp(baseAlpha, 0f, fadeT);
+            }
+
+            c.a = alpha;
             mat.color = c;
         }
     }
