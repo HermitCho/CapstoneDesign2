@@ -129,15 +129,31 @@ public class FootstepSoundPlayer : MonoBehaviour
     /// </summary>
     public void StopFootstepSound()
     {
+        if (AudioManager.Inst == null) return;
+        
         // SoundFxPool에서 발소리 클립만 찾아서 정지
         var pool = AudioManager.Inst.SoundFxPool;
         for (int i = pool.Count - 1; i >= 0; i--)
         {
+            // ✅ null 체크 추가
+            if (pool[i] == null || pool[i].Source == null)
+            {
+                continue;
+            }
+            
             // footstep 이름과 일치하는 클립만 멈춤
             if (pool[i].Name == "SFX_Game_FootStep")
             {
-                pool[i].Source.Stop();
-                Destroy(pool[i].gameObject);
+                if (pool[i].Source != null)
+                {
+                    pool[i].Source.Stop();
+                }
+                
+                if (pool[i].gameObject != null)
+                {
+                    Destroy(pool[i].gameObject);
+                }
+                
                 pool.RemoveAt(i);
             }
         }

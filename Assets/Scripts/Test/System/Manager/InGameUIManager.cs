@@ -168,6 +168,7 @@ public class InGameUIManager : MonoBehaviour
             if (AudioManager.Inst != null)
             {
                 AudioManager.Inst.PlayOneShot("SFX_UI_Ready_Start");
+                AudioManager.Inst.PlayOneShot("SFX_UI_GameOver_FinishVoice");
             }
             
             gameOverModalWindowManager.OpenWindow();
