@@ -101,6 +101,7 @@ public class LobbyModalController : MonoBehaviour
             tmp.UpdateVertexData(TMP_VertexDataUpdateFlags.Colors32);
 
             prev = i;
+            AudioManager.Inst.PlayOneShot("SFX_Game_Tutorial_Message");
             yield return new WaitForSeconds(interval);
         }
 

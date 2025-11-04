@@ -9200,24 +9200,20 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 269412974}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c64da89219209544d9383df23a991fa6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   circleMaterialIndex: 1
-  waveSpeed: 0.3
-  minTiling: 0.5
-  maxTiling: 2.5
-  waveCount: 6
-  fullCycleDuration: 12
-  scaleStep: 0.03
-  basePhaseOffset: 0.5
-  fadeInRatio: 0.15
-  fadeOutRatio: 0.15
-  baseAlpha: 0.45
-  thinTexture: {fileID: 0}
-  thickTexture: {fileID: 0}
+  maxWaveCount: 10
+  spawnDelay: 0.8
+  fadeDuration: 6.5
+  minTiling: 0.6
+  maxTiling: 7
+  maxAlpha: 0.45
+  minWaveSpeed: 0.8
+  maxWaveSpeed: 1.2
 --- !u!1 &272901929
 GameObject:
   m_ObjectHideFlags: 0
@@ -18740,24 +18736,20 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 551405677}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c64da89219209544d9383df23a991fa6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   circleMaterialIndex: 1
-  waveSpeed: 0.3
-  minTiling: 0.5
-  maxTiling: 2.5
-  waveCount: 6
-  fullCycleDuration: 12
-  scaleStep: 0.03
-  basePhaseOffset: 0.5
-  fadeInRatio: 0.15
-  fadeOutRatio: 0.15
-  baseAlpha: 0.45
-  thinTexture: {fileID: 0}
-  thickTexture: {fileID: 0}
+  maxWaveCount: 10
+  spawnDelay: 0.8
+  fadeDuration: 6.5
+  minTiling: 0.6
+  maxTiling: 7
+  maxAlpha: 0.45
+  minWaveSpeed: 0.8
+  maxWaveSpeed: 1.2
 --- !u!1 &553047442
 GameObject:
   m_ObjectHideFlags: 0
@@ -20373,7 +20365,7 @@ MonoBehaviour:
     disableNavigation: 0
     latestSelected: {fileID: 0}
     hotkeys: []
-  currentPanelIndex: 2
+  currentPanelIndex: 0
   cullPanels: 1
   initializeButtons: 1
   useCooldownForHotkeys: 0
@@ -21774,7 +21766,7 @@ PrefabInstance:
     - target: {fileID: 1391812935100434718, guid: 7ffa31debceb23a4c9b46fdd0a9e270f,
         type: 3}
       propertyPath: m_SizeDelta.x
-      value: 116.399994
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1391812935100434718, guid: 7ffa31debceb23a4c9b46fdd0a9e270f,
         type: 3}
@@ -21831,7 +21823,7 @@ PrefabInstance:
     - target: {fileID: 1391812935307566999, guid: 7ffa31debceb23a4c9b46fdd0a9e270f,
         type: 3}
       propertyPath: m_SizeDelta.x
-      value: 50.4
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1391812935307566999, guid: 7ffa31debceb23a4c9b46fdd0a9e270f,
         type: 3}
@@ -21861,7 +21853,7 @@ PrefabInstance:
     - target: {fileID: 1391812936553102025, guid: 7ffa31debceb23a4c9b46fdd0a9e270f,
         type: 3}
       propertyPath: m_SizeDelta.x
-      value: 50.4
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1391812936553102025, guid: 7ffa31debceb23a4c9b46fdd0a9e270f,
         type: 3}
@@ -21918,7 +21910,7 @@ PrefabInstance:
     - target: {fileID: 1391812936916270177, guid: 7ffa31debceb23a4c9b46fdd0a9e270f,
         type: 3}
       propertyPath: m_SizeDelta.x
-      value: 50.4
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1391812936916270177, guid: 7ffa31debceb23a4c9b46fdd0a9e270f,
         type: 3}
@@ -22046,7 +22038,7 @@ PrefabInstance:
     - target: {fileID: 1391812937009547308, guid: 7ffa31debceb23a4c9b46fdd0a9e270f,
         type: 3}
       propertyPath: m_SizeDelta.x
-      value: 116.399994
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1391812937009547308, guid: 7ffa31debceb23a4c9b46fdd0a9e270f,
         type: 3}
@@ -22199,7 +22191,7 @@ PrefabInstance:
     - target: {fileID: 3786928831527646447, guid: 7ffa31debceb23a4c9b46fdd0a9e270f,
         type: 3}
       propertyPath: m_SizeDelta.x
-      value: 50.4
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3786928831527646447, guid: 7ffa31debceb23a4c9b46fdd0a9e270f,
         type: 3}
@@ -28629,18 +28621,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   circleMaterialIndex: 1
-  waveSpeed: 0.1
-  minTiling: 0.6
-  maxTiling: 3
-  waveCount: 9
-  fullCycleDuration: 12
-  scaleStep: 0.3
-  basePhaseOffset: 0.5
-  fadeInRatio: 0.15
-  fadeOutRatio: 0.15
-  baseAlpha: 0.45
-  thinTexture: {fileID: 2800000, guid: ec89cd1a7e9df4a49b5a1e8dd460e7de, type: 3}
-  thickTexture: {fileID: 2800000, guid: aeff8024b5026d74f8de958f86ffd8c5, type: 3}
+  maxWaveCount: 10
+  spawnDelay: 0.8
+  fadeDuration: 5
+  minTiling: 0.3
+  maxTiling: 2
+  maxAlpha: 0.45
+  minWaveSpeed: 0.8
+  maxWaveSpeed: 1.2
 --- !u!1 &848164086
 GameObject:
   m_ObjectHideFlags: 0
@@ -33366,7 +33354,7 @@ CanvasGroup:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 974079625}
   m_Enabled: 1
-  m_Alpha: 1
+  m_Alpha: 0
   m_Interactable: 1
   m_BlocksRaycasts: 1
   m_IgnoreParentGroups: 0
@@ -34132,7 +34120,7 @@ CanvasGroup:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1003216660}
   m_Enabled: 1
-  m_Alpha: 1
+  m_Alpha: 0
   m_Interactable: 1
   m_BlocksRaycasts: 1
   m_IgnoreParentGroups: 0
@@ -41111,7 +41099,7 @@ PrefabInstance:
     - target: {fileID: 2393741488666459665, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
       propertyPath: m_SizeDelta.x
-      value: 96.14
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2393741488666459665, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
@@ -41219,7 +41207,7 @@ PrefabInstance:
     - target: {fileID: 2393741490227731185, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
       propertyPath: m_SizeDelta.x
-      value: 136.5
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2393741490227731185, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
@@ -41440,7 +41428,7 @@ PrefabInstance:
     - target: {fileID: 6044724140025765848, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
       propertyPath: m_SizeDelta.x
-      value: 30.36
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6044724140025765848, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
@@ -41475,7 +41463,7 @@ PrefabInstance:
     - target: {fileID: 7477022311405558977, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
       propertyPath: m_SizeDelta.x
-      value: 14.36
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7477022311405558977, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
@@ -44157,7 +44145,7 @@ CanvasGroup:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1274305950}
   m_Enabled: 1
-  m_Alpha: 0
+  m_Alpha: 1
   m_Interactable: 1
   m_BlocksRaycasts: 1
   m_IgnoreParentGroups: 0
@@ -45984,24 +45972,20 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1301230337}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c64da89219209544d9383df23a991fa6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   circleMaterialIndex: 1
-  waveSpeed: 0.3
-  minTiling: 0.5
-  maxTiling: 2.5
-  waveCount: 6
-  fullCycleDuration: 12
-  scaleStep: 0.03
-  basePhaseOffset: 0.5
-  fadeInRatio: 0.15
-  fadeOutRatio: 0.15
-  baseAlpha: 0.45
-  thinTexture: {fileID: 0}
-  thickTexture: {fileID: 0}
+  maxWaveCount: 10
+  spawnDelay: 0.8
+  fadeDuration: 6.5
+  minTiling: 0.6
+  maxTiling: 7
+  maxAlpha: 0.45
+  minWaveSpeed: 0.8
+  maxWaveSpeed: 1.2
 --- !u!1 &1302339103
 GameObject:
   m_ObjectHideFlags: 0
@@ -54247,7 +54231,7 @@ CanvasGroup:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1488903620}
   m_Enabled: 1
-  m_Alpha: 1
+  m_Alpha: 0
   m_Interactable: 1
   m_BlocksRaycasts: 1
   m_IgnoreParentGroups: 0
@@ -54329,7 +54313,7 @@ PrefabInstance:
     - target: {fileID: 1391812935100434718, guid: 7ffa31debceb23a4c9b46fdd0a9e270f,
         type: 3}
       propertyPath: m_SizeDelta.x
-      value: 116.399994
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1391812935100434718, guid: 7ffa31debceb23a4c9b46fdd0a9e270f,
         type: 3}
@@ -54386,7 +54370,7 @@ PrefabInstance:
     - target: {fileID: 1391812935307566999, guid: 7ffa31debceb23a4c9b46fdd0a9e270f,
         type: 3}
       propertyPath: m_SizeDelta.x
-      value: 50.4
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1391812935307566999, guid: 7ffa31debceb23a4c9b46fdd0a9e270f,
         type: 3}
@@ -54416,7 +54400,7 @@ PrefabInstance:
     - target: {fileID: 1391812936553102025, guid: 7ffa31debceb23a4c9b46fdd0a9e270f,
         type: 3}
       propertyPath: m_SizeDelta.x
-      value: 50.4
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1391812936553102025, guid: 7ffa31debceb23a4c9b46fdd0a9e270f,
         type: 3}
@@ -54473,7 +54457,7 @@ PrefabInstance:
     - target: {fileID: 1391812936916270177, guid: 7ffa31debceb23a4c9b46fdd0a9e270f,
         type: 3}
       propertyPath: m_SizeDelta.x
-      value: 50.4
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1391812936916270177, guid: 7ffa31debceb23a4c9b46fdd0a9e270f,
         type: 3}
@@ -54601,7 +54585,7 @@ PrefabInstance:
     - target: {fileID: 1391812937009547308, guid: 7ffa31debceb23a4c9b46fdd0a9e270f,
         type: 3}
       propertyPath: m_SizeDelta.x
-      value: 116.399994
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1391812937009547308, guid: 7ffa31debceb23a4c9b46fdd0a9e270f,
         type: 3}
@@ -54754,7 +54738,7 @@ PrefabInstance:
     - target: {fileID: 3786928831527646447, guid: 7ffa31debceb23a4c9b46fdd0a9e270f,
         type: 3}
       propertyPath: m_SizeDelta.x
-      value: 50.4
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3786928831527646447, guid: 7ffa31debceb23a4c9b46fdd0a9e270f,
         type: 3}
@@ -63451,24 +63435,20 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1755094485}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c64da89219209544d9383df23a991fa6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   circleMaterialIndex: 1
-  waveSpeed: 0.3
-  minTiling: 0.5
-  maxTiling: 2.5
-  waveCount: 6
-  fullCycleDuration: 12
-  scaleStep: 0.03
-  basePhaseOffset: 0.5
-  fadeInRatio: 0.15
-  fadeOutRatio: 0.15
-  baseAlpha: 0.45
-  thinTexture: {fileID: 0}
-  thickTexture: {fileID: 0}
+  maxWaveCount: 10
+  spawnDelay: 0.8
+  fadeDuration: 6.5
+  minTiling: 0.6
+  maxTiling: 7
+  maxAlpha: 0.45
+  minWaveSpeed: 0.8
+  maxWaveSpeed: 1.2
 --- !u!1 &1755316735
 GameObject:
   m_ObjectHideFlags: 0
@@ -65457,7 +65437,7 @@ PrefabInstance:
     - target: {fileID: 2393741488666459665, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
       propertyPath: m_SizeDelta.x
-      value: 96.14
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2393741488666459665, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
@@ -65565,7 +65545,7 @@ PrefabInstance:
     - target: {fileID: 2393741490227731185, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
       propertyPath: m_SizeDelta.x
-      value: 139.44
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2393741490227731185, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
@@ -65786,7 +65766,7 @@ PrefabInstance:
     - target: {fileID: 6044724140025765848, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
       propertyPath: m_SizeDelta.x
-      value: 33.3
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6044724140025765848, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
@@ -65821,7 +65801,7 @@ PrefabInstance:
     - target: {fileID: 7477022311405558977, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
       propertyPath: m_SizeDelta.x
-      value: 17.3
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7477022311405558977, guid: a58adb5252f8b5447ace87508e27b7d3,
         type: 3}
@@ -69345,24 +69325,20 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1926009241}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c64da89219209544d9383df23a991fa6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   circleMaterialIndex: 1
-  waveSpeed: 0.3
-  minTiling: 0.5
-  maxTiling: 2.5
-  waveCount: 6
-  fullCycleDuration: 12
-  scaleStep: 0.03
-  basePhaseOffset: 0.5
-  fadeInRatio: 0.15
-  fadeOutRatio: 0.15
-  baseAlpha: 0.45
-  thinTexture: {fileID: 0}
-  thickTexture: {fileID: 0}
+  maxWaveCount: 10
+  spawnDelay: 0.8
+  fadeDuration: 6.5
+  minTiling: 0.6
+  maxTiling: 7
+  maxAlpha: 0.45
+  minWaveSpeed: 0.8
+  maxWaveSpeed: 1.2
 --- !u!1 &1926421579
 GameObject:
   m_ObjectHideFlags: 0
@@ -74201,24 +74177,20 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2055235147}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c64da89219209544d9383df23a991fa6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   circleMaterialIndex: 1
-  waveSpeed: 0.3
-  minTiling: 0.5
-  maxTiling: 2.5
-  waveCount: 6
-  fullCycleDuration: 12
-  scaleStep: 0.03
-  basePhaseOffset: 0.5
-  fadeInRatio: 0.15
-  fadeOutRatio: 0.15
-  baseAlpha: 0.45
-  thinTexture: {fileID: 0}
-  thickTexture: {fileID: 0}
+  maxWaveCount: 10
+  spawnDelay: 0.8
+  fadeDuration: 6.5
+  minTiling: 0.6
+  maxTiling: 7
+  maxAlpha: 0.45
+  minWaveSpeed: 0.8
+  maxWaveSpeed: 1.2
 --- !u!1 &2061684713
 GameObject:
   m_ObjectHideFlags: 0
