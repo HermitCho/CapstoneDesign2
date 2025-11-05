@@ -8,7 +8,6 @@ public class Trap_Fan : MonoBehaviourPun
 {
     private float fanOnTime = 5f;
     private float fanOffTime = 5f;
-    private AudioSource aS;
     [SerializeField] private GameObject fan;
     [SerializeField] private GameObject wind;
     [SerializeField] private AudioClip fanSound;
@@ -20,7 +19,6 @@ public class Trap_Fan : MonoBehaviourPun
 
     void Start()
     {
-        aS = GetComponent<AudioSource>();
         // ⭐ Photon 환경: 마스터 클라이언트만 주기적인 켜짐/꺼짐 로직을 실행
         if (PhotonNetwork.IsMasterClient)
         {
@@ -58,7 +56,7 @@ public class Trap_Fan : MonoBehaviourPun
             // 1. 선풍기 켜기 (ON)
             // 모든 클라이언트에서 SetFanState RPC를 호출하여 상태 동기화
             photonView.RPC("SetFanState", RpcTarget.All, true);
-            aS.PlayOneShot(fanSound);
+            AudioManager.Inst?.PlayClipAtPoint(fanSound, transform.position, 1f, 1f, null, transform);
 
             // Task.Delay(밀리초)로 대기
             await Task.Delay((int)(fanOnTime * 1000), token);

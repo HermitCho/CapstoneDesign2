@@ -9,13 +9,11 @@ public class Trap_Arrow : MonoBehaviourPun
     [SerializeField] private float damage = 10f;
     [SerializeField] private AudioClip arrowOnSound;
     [SerializeField] private AudioClip arrowOffSound;
-    private AudioSource aS;
     private PhotonView pv;
     private bool needleOnAlready = false;
 
     void Awake()
     {
-        aS = GetComponent<AudioSource>();
         pv = GetComponent<PhotonView>();
     }
 
@@ -33,6 +31,7 @@ public class Trap_Arrow : MonoBehaviourPun
         {
             // 서버 경유 단일 브로드캐스트 권장
             targetPV.RPC("OnDamage", RpcTarget.AllViaServer, damage, collision.transform.position, Vector3.down, photonView.OwnerActorNr);
+            AudioManager.Inst?.PlayClipAtPoint(arrowOnSound, transform.position, 1f, 1f, null, transform);
         }
 
         // 2) 바늘 On도 서버에서 한 번만 호출
@@ -51,6 +50,6 @@ public class Trap_Arrow : MonoBehaviourPun
     public void RPC_arrowOff()
     {
         needleOnAlready = false;
-        aS.PlayOneShot(arrowOffSound);
+        AudioManager.Inst?.PlayClipAtPoint(arrowOffSound, transform.position, 1f, 1f, null, transform);
     }
 }
