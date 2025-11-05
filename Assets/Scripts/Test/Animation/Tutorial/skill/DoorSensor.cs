@@ -9,6 +9,7 @@ public class DoorSensor : MonoBehaviour
 
     [Header("튜토리얼 스킬(UI) 참조")]
     [SerializeField] private TutorialSkill tutorialSkill;
+    [SerializeField] private TutorialMove tutorialMove;
 
     [Header("감지 반경")]
     [SerializeField] private float detectRadius = 2f;
@@ -34,6 +35,9 @@ public class DoorSensor : MonoBehaviour
                 // ✅ 튜토리얼 완료 (UI 스티커 표시)
                 if (tutorialSkill != null)
                     tutorialSkill.CompleteTutorial();
+
+                if (tutorialMove != null)
+                    tutorialMove.CompleteTutorial();
 
                 Debug.Log("✅ Player 접근 감지 → 문 열림 & 튜토리얼 완료 처리");
                 break;
