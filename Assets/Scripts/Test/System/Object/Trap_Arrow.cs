@@ -9,13 +9,11 @@ public class Trap_Arrow : MonoBehaviourPun
     [SerializeField] private float damage = 10f;
     [SerializeField] private AudioClip arrowOnSound;
     [SerializeField] private AudioClip arrowOffSound;
-    private AudioSource aS;
     private PhotonView pv;
     private bool needleOnAlready = false;
 
     void Awake()
     {
-        aS = GetComponent<AudioSource>();
         pv = GetComponent<PhotonView>();
     }
 

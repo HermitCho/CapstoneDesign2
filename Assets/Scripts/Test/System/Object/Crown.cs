@@ -214,7 +214,6 @@ public class Crown : MonoBehaviourPun
         #warning Static으로 선언되어 있음. 최적화를 위해 수정 필요
         if(playerView.IsMine)
         {
-            TestShoot.SetIsShooting(false);
             isAttached = true;
             
             // 로컬 왕관 부착 이벤트 발행
@@ -406,7 +405,6 @@ public class Crown : MonoBehaviourPun
 
         if(currentPlayerPhotonView.IsMine)
         {
-            TestShoot.SetIsShooting(true);
             isAttached = false;
         }
         currentPlayerPhotonView = null;

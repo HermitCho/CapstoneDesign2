@@ -11,6 +11,7 @@ public class Trap : MonoBehaviourPun
     private bool isActivated = false;
 
     [SerializeField] private GameObject explosionEffect;
+    [SerializeField] private float damage = 20f;
 
     private const byte EXPLOSION_EVENT = 9;
 
@@ -83,7 +84,7 @@ public class Trap : MonoBehaviourPun
         );
 
         // 데미지 처리
-        enemy.photonView.RPC("OnDamage", RpcTarget.All, 20f, enemy.transform.position, Vector3.down, ownerActorNumber);
+        enemy.photonView.RPC("OnDamage", RpcTarget.All, damage, enemy.transform.position, Vector3.down, ownerActorNumber);
 
         // 소유자 파괴 처리
         if (photonView.Owner != null)

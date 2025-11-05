@@ -542,14 +542,35 @@ public class ShopController : MonoBehaviourPun
     /// </summary>
     public bool ProcessPurchaseLocal(int price, int itemIndex, string itemObjectName)
     {
-        // ... (코인, 슬롯, 보유 여부 확인 로직은 그대로 유지) ...
-        // ⭐ 이 로직은 로컬에서만 실행됩니다. (ProcessPurchase RPC는 RpcTarget.All)
+        Debug.Log($"ShopController: ProcessPurchaseLocal 시작 - Price: {price}, ItemIndex: {itemIndex}");
+        
+        // ✅ 필수 컴포넌트 확인
+        if (playerCoinController == null || playerItemController == null)
+        {
+            Debug.LogError("ShopController: 필수 컴포넌트 없음!");
+            return false;
+        }
+        
+        // ✅ 코인 확인 (이미 ShopStand에서 확인했지만 한번 더 안전하게)
+        int currentCoin = playerCoinController.GetCurrentCoin();
+        if (currentCoin < price)
+        {
+            Debug.LogWarning($"ShopController: 코인 부족! 현재: {currentCoin}, 필요: {price}");
+            return false;
+        }
+        
+        // ✅ 슬롯 확인
+        if (playerItemController.GetItemSlotIndex() >= playerItemController.GetMaxItemSlot())
+        {
+            Debug.LogWarning("ShopController: 슬롯 가득 찼음!");
+            return false;
+        }
+        
 
-        // ... (구매 조건 재확인 및 코인 차감 로직은 그대로 유지) ...
-
-        // 구매 처리
+        
+        // ✅ 코인 차감
         playerCoinController.SubtractCoin(price);
-        Debug.Log($"ShopController: 코인 차감 완료 - {price}코인");
+        Debug.Log($"ShopController: 코인 차감 완료 - {price}코인 (남은 코인: {playerCoinController.GetCurrentCoin()})");
 
         // ⚡️ 아이템 생성 및 부착 로직 변경: PhotonNetwork.Instantiate 사용
         GameObject itemPrefabToInstantiate = FindItemPrefabInResources(itemObjectName);
