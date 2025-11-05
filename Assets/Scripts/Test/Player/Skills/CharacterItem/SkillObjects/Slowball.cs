@@ -57,13 +57,15 @@ public class Slowball : MonoBehaviourPun
         if (hasExploded) return;
         hasExploded = true;
 
-        // 자신이 생성한 Slowball만 폭발 처리
         if (photonView.IsMine)
         {
             Vector3 impactPosition = transform.position;
 
+            // Player 레이어를 제외한 모든 레이어를 대상으로 레이캐스트
+            int layerMask = ~LayerMask.GetMask("Player");
+
             RaycastHit hit;
-            if (Physics.Raycast(impactPosition, Vector3.down, out hit, 100f))
+            if (Physics.Raycast(impactPosition, Vector3.down, out hit, 100f, layerMask))
             {
                 photonView.RPC("SpawnSlowFieldRPC", RpcTarget.All, hit.point);
             }
@@ -73,7 +75,6 @@ public class Slowball : MonoBehaviourPun
             }
         }
     }
-
     [PunRPC]
     private void SpawnSlowFieldRPC(Vector3 position)
     {
