@@ -359,7 +359,6 @@ public class ShopStand : MonoBehaviour
         currentPurchaser = purchaser;
         purchaseHoldTime = holdTime;
 
-
         // 프로그레스 초기화
         ResetPurchaseProgress();
 
@@ -410,20 +409,32 @@ public class ShopStand : MonoBehaviour
     {
         if (!isPurchaseInProgress || currentPurchaser == null) return;
 
-        Debug.Log("ShopStand: 구매 완료!");
+        Debug.Log("ShopStand: 구매 프로그레스 완료!");
 
         isPurchaseInProgress = false;
         isPlayingPurchaseAnimation = true;
-
-        // 구매 애니메이션 시작
-        StartCoroutine(PlayPurchaseAnimation());
-
-        // 실제 구매 처리
-        isPurchased = TryPurchaseItem(currentPurchaser);
-        if (!isPurchased)
+        
+        // ✅ 코인 확인 (간단하게)
+        int buyerCoin = currentPurchaser.GetPlayerCoins();
+        int itemPrice = currentItemSkill != null ? currentItemSkill.Price : 0;
+        
+        if (buyerCoin < itemPrice)
         {
-            // 구매 실패 시 애니메이션 중단
-            StopPurchaseAnimation();
+            // 코인 부족 - 흔들림 애니메이션만 재생하고 구매 실패
+            Debug.LogWarning($"ShopStand: 코인 부족으로 구매 실패! 현재: {buyerCoin}, 필요: {itemPrice}");
+            isPurchased = false;
+            
+            // 실패 애니메이션 시작 (흔들림만)
+            StartCoroutine(PlayPurchaseAnimation());
+        }
+        else
+        {
+            // 코인 충분 - 실제 구매 처리
+            Debug.Log($"ShopStand: 코인 확인 완료 - 구매 진행! 코인: {buyerCoin}/{itemPrice}");
+            isPurchased = TryPurchaseItem(currentPurchaser);
+            
+            // 구매 애니메이션 시작
+            StartCoroutine(PlayPurchaseAnimation());
         }
     }
 
@@ -432,17 +443,29 @@ public class ShopStand : MonoBehaviour
     /// </summary>
     private IEnumerator PlayPurchaseAnimation()
     {
-        Debug.Log("ShopStand: 구매 애니메이션 시작");
+        Debug.Log($"ShopStand: 구매 애니메이션 시작 - 구매 {(isPurchased ? "성공" : "실패")}");
 
         // 프로그레스 완료 표시 
         if (purchaseProgressFill != null)
         {
             Color originalColor = purchaseProgressFill.color;
-            if (isPurchased)
+            
+            // ✅ 구매 실패 시 빨간색으로 표시
+            if (!isPurchased)
             {
                 purchaseProgressFill.color = Color.red;
+                
+                // 실패 사운드 재생
+                if (AudioManager.Inst != null)
+                {
+                    AudioManager.Inst.PlayOneShot("SFX_UI_Error");
+                }
             }
-
+            else
+            {
+                // 구매 성공 시 초록색으로 표시
+                purchaseProgressFill.color = Color.green;
+            }
 
             // 흔들림 효과 (DOTween 사용)
             if (purchaseProgressPanel != null)
