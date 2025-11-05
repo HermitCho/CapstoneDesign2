@@ -57,8 +57,12 @@ public class Trap_Fan : MonoBehaviourPun
         {
             // 1. 선풍기 켜기 (ON)
             // 모든 클라이언트에서 SetFanState RPC를 호출하여 상태 동기화
-            photonView.RPC("SetFanState", RpcTarget.All, true);
-            aS.PlayOneShot(fanSound);
+            bool gameOverCheck = GameManager.Instance.GetIsGameOver();
+            if (!gameOverCheck)
+            {
+                photonView.RPC("SetFanState", RpcTarget.All, true);
+                AudioManager.Inst?.PlayClipAtPoint(fanSound, transform.position, 1f, 1f, null, transform);
+            }
 
             // Task.Delay(밀리초)로 대기
             await Task.Delay((int)(fanOnTime * 1000), token);

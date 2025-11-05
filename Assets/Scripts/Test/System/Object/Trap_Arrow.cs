@@ -23,7 +23,10 @@ public class Trap_Arrow : MonoBehaviourPun
     {
         if (!PhotonNetwork.IsMasterClient) return; // 단 한 곳에서만 판정
         if (!collision.gameObject.CompareTag("Player")) return;
-        if (needleOnAlready) return;
+
+        bool gameOverCheck = GameManager.Instance.GetIsGameOver();
+
+        if (needleOnAlready || gameOverCheck) return;
 
         needleOnAlready = true;
 
@@ -33,6 +36,7 @@ public class Trap_Arrow : MonoBehaviourPun
         {
             // 서버 경유 단일 브로드캐스트 권장
             targetPV.RPC("OnDamage", RpcTarget.AllViaServer, damage, collision.transform.position, Vector3.down, photonView.OwnerActorNr);
+            AudioManager.Inst?.PlayClipAtPoint(arrowOnSound, transform.position, 1f, 1f, null, transform);
         }
 
         // 2) 바늘 On도 서버에서 한 번만 호출
@@ -51,6 +55,6 @@ public class Trap_Arrow : MonoBehaviourPun
     public void RPC_arrowOff()
     {
         needleOnAlready = false;
-        aS.PlayOneShot(arrowOffSound);
+        AudioManager.Inst?.PlayClipAtPoint(arrowOffSound, transform.position, 1f, 1f, null, transform);
     }
 }

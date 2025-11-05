@@ -79,8 +79,8 @@ public abstract class Skill : MonoBehaviourPun
     public string SkillAnimationTriggerName => skillAnimationTriggerName;
     public float RemainingCooldown => Mathf.Max(0f, cooldown - (Time.time - lastUseTime));
     public int RemainingUses => usableCountComponent != null ? usableCountComponent.Remaining : int.MaxValue;
-
-
+    
+    
     protected IUsableCount _usableCount;
     protected IProjectilePreview _projPreview;
     protected IPlacementPreview _placementPreview;
@@ -88,6 +88,8 @@ public abstract class Skill : MonoBehaviourPun
     protected PlacementPreviewComponent placementPreviewComponent;
     protected UsableCountComponent usableCountComponent;
     public bool HasPreview => projectilePreviewComponent != null || placementPreviewComponent != null;
+    public bool UsesProjectilePreview => projectilePreviewComponent != null;
+    public bool UsePlacementPreview => placementPreviewComponent != null;
 
     #endregion
 
@@ -453,5 +455,12 @@ public abstract class Skill : MonoBehaviourPun
         }
     }
     #endregion
+
+    // --- Animation helpers ---
+    public void PlayExecuteAnimation(SkillController executor)
+    {
+        if (executor == null || string.IsNullOrEmpty(skillAnimationTriggerName) || skillAnimationTriggerName == "None") return;
+        executor.photonView.RPC("RpcPlaySkillAnimation", Photon.Pun.RpcTarget.All, skillAnimationTriggerName);
+    }
 
 }

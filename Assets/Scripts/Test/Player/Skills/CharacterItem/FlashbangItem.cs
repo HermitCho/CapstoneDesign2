@@ -48,6 +48,8 @@ public class FlashbangItem : Skill
                 FlashbangScript.GetFlashbangSpeed()
             );
             SetSpeed(FlashbangScript.GetFlashbangSpeed());
+            // 실제 발사 시점에 애니메이션 재생 (E 입력 시에는 재생하지 않음)
+            PlayExecuteAnimation(executor);
             executor.EndSkillInProgress();
             Debug.Log("[FlashbangItem - CastExcute] - FlashItem 역할 끝");
         }

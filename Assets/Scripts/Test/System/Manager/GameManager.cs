@@ -971,6 +971,11 @@ public class GameManager : Singleton<GameManager>
     /// 게임 오버 상태 확인
     /// </summary>
     public bool IsGameOver() => isGameOver;
+
+    public bool GetIsGameOver()
+    {
+        return isGameOver;
+    }
     
     /// <summary>
     /// EventSystem 중복 제거 (씬에 하나만 존재하도록)
