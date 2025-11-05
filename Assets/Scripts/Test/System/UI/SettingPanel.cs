@@ -24,6 +24,10 @@ public class SettingPanel : MonoBehaviour
     [SerializeField] private SliderManager musicVolumeSlider;
     [SerializeField] private SliderManager sfxVolumeSlider;
     [SerializeField] private SliderManager uiVolumeSlider;
+    [Space(10)]
+    
+    [Header("해상도 설정")]
+    [SerializeField] private HorizontalSelector resolutionSelector;
     [Space(10)] 
 
     [Header("키 바인딩 설정")]
@@ -74,10 +78,12 @@ public class SettingPanel : MonoBehaviour
     private const string PREF_MUSIC_VOLUME = "MusicVolume";
     private const string PREF_SFX_VOLUME = "SFXVolume";
     private const string PREF_UI_VOLUME = "UIVolume";
+    private const string PREF_RESOLUTION_INDEX = "ResolutionIndex";
     
     // 기본값
     private const float DEFAULT_SENSITIVITY = 1f;
     private const float DEFAULT_VOLUME = 0.8f;
+    private const int DEFAULT_RESOLUTION_INDEX = 0; // 0: FHD
     
     #endregion
     
@@ -105,12 +111,18 @@ public class SettingPanel : MonoBehaviour
         
         // 슬라이더 이벤트 등록
         RegisterSliderEvents();
+        
+        // 해상도 셀렉터 이벤트 등록
+        RegisterResolutionSelectorEvent();
     }
     
     void OnDisable()
     {
         // 슬라이더 이벤트 해제
         UnregisterSliderEvents();
+        
+        // 해상도 셀렉터 이벤트 해제
+        UnregisterResolutionSelectorEvent();
         
         // 키 입력 대기 중이라면 취소
         if (isWaitingForKeyInput)
@@ -171,6 +183,7 @@ public class SettingPanel : MonoBehaviour
     {
         LoadSensitivitySettings();
         LoadVolumeSettings();
+        LoadResolutionSettings();
         LoadKeyBindings();
     }
     
@@ -228,6 +241,29 @@ public class SettingPanel : MonoBehaviour
         
         // AudioManager에 적용 (마스터 볼륨 비율 적용)
         ApplyVolumeToAudioManager();
+    }
+    
+    /// <summary>
+    /// 해상도 설정 로드
+    /// </summary>
+    private void LoadResolutionSettings()
+    {
+        int savedResolutionIndex = PlayerPrefs.GetInt(PREF_RESOLUTION_INDEX, DEFAULT_RESOLUTION_INDEX);
+        
+        if (resolutionSelector != null)
+        {
+            // 이벤트 리스너를 잠시 제거 (초기 로드 시 중복 호출 방지)
+            resolutionSelector.onValueChanged.RemoveListener(OnResolutionChanged);
+            
+            // HorizontalSelector의 인덱스 설정
+            resolutionSelector.index = savedResolutionIndex;
+            resolutionSelector.UpdateUI();
+            
+            // 이벤트 리스너 다시 등록
+            resolutionSelector.onValueChanged.AddListener(OnResolutionChanged);
+        }
+        
+        Debug.Log($"SettingPanel: 해상도 설정 로드 완료 - Index: {savedResolutionIndex}");
     }
     
     /// <summary>
@@ -293,6 +329,7 @@ public class SettingPanel : MonoBehaviour
     {
         SaveSensitivitySettings();
         SaveVolumeSettings();
+        SaveResolutionSettings();
         SaveKeyBindings();
         
         PlayerPrefs.Save();
@@ -338,6 +375,18 @@ public class SettingPanel : MonoBehaviour
         if (uiVolumeSlider != null)
         {
             PlayerPrefs.SetFloat(PREF_UI_VOLUME, uiVolumeSlider.mainSlider.value);
+        }
+    }
+    
+    /// <summary>
+    /// 해상도 설정 저장
+    /// </summary>
+    private void SaveResolutionSettings()
+    {
+        if (resolutionSelector != null)
+        {
+            PlayerPrefs.SetInt(PREF_RESOLUTION_INDEX, resolutionSelector.index);
+            Debug.Log($"SettingPanel: 해상도 설정 저장 - Index: {resolutionSelector.index}");
         }
     }
     
@@ -645,6 +694,51 @@ public class SettingPanel : MonoBehaviour
         AudioManager.Inst.SoundVolume = finalSFXVolume;
         
         Debug.Log($"SettingPanel: 최종 볼륨 적용 - Music: {finalMusicVolume}, SFX: {finalSFXVolume}");
+    }
+    
+    #endregion
+    
+    #region 해상도 설정
+    
+    /// <summary>
+    /// 해상도 셀렉터 이벤트 등록
+    /// </summary>
+    private void RegisterResolutionSelectorEvent()
+    {
+        if (resolutionSelector != null)
+        {
+            resolutionSelector.onValueChanged.AddListener(OnResolutionChanged);
+            Debug.Log("SettingPanel: 해상도 셀렉터 이벤트 등록 완료");
+        }
+    }
+    
+    /// <summary>
+    /// 해상도 셀렉터 이벤트 해제
+    /// </summary>
+    private void UnregisterResolutionSelectorEvent()
+    {
+        if (resolutionSelector != null)
+        {
+            resolutionSelector.onValueChanged.RemoveListener(OnResolutionChanged);
+        }
+    }
+    
+    /// <summary>
+    /// 해상도 변경 이벤트 핸들러
+    /// </summary>
+    /// <param name="resolutionIndex">선택된 해상도 인덱스 (0: FHD, 1: QHD)</param>
+    private void OnResolutionChanged(int resolutionIndex)
+    {
+        Debug.Log($"SettingPanel: OnResolutionChanged 호출됨 - Index: {resolutionIndex}");
+        
+        // 해상도 즉시 적용
+        DisplaySettingController.ApplyResolution(resolutionIndex);
+        
+        // PlayerPrefs에 즉시 저장
+        PlayerPrefs.SetInt(PREF_RESOLUTION_INDEX, resolutionIndex);
+        PlayerPrefs.Save();
+        
+        Debug.Log($"SettingPanel: 해상도 변경 완료 - {DisplaySettingController.GetResolutionName(resolutionIndex)}");
     }
     
     #endregion
@@ -1169,6 +1263,14 @@ public class SettingPanel : MonoBehaviour
         if (uiVolumeSlider != null)
         {
             uiVolumeSlider.mainSlider.value = DEFAULT_VOLUME;
+        }
+        
+        // 해상도 초기화 (FHD)
+        if (resolutionSelector != null)
+        {
+            resolutionSelector.index = DEFAULT_RESOLUTION_INDEX;
+            resolutionSelector.UpdateUI();
+            DisplaySettingController.ApplyResolution(DEFAULT_RESOLUTION_INDEX);
         }
         
         // 키 바인딩 초기화
