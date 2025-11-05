@@ -282,10 +282,16 @@ public class TestGun : MonoBehaviourPun
 
             if (target != null && targetView != null)
             {
-                int attackerViewId = targetView.ViewID;
+                // 자기 자신 피격 방지: 동일한 소유자면 무시
+                if (targetView.OwnerActorNr == photonViewCached.OwnerActorNr)
+                {
+                    return;
+                }
+
+                int attackerActorNumber = photonViewCached.OwnerActorNr;
 
                 // 마스터 클라이언트로 데미지 RPC 전송
-                targetView.RPC("OnDamage", RpcTarget.All, damage, hit.point, hit.normal, attackerViewId);
+                targetView.RPC("OnDamage", RpcTarget.All, damage, hit.point, hit.normal, attackerActorNumber);
             }
         }
     }
