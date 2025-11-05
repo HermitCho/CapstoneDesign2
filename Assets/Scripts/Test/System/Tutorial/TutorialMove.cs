@@ -7,116 +7,45 @@ public class TutorialMove : MonoBehaviour
 {
     [Header("튜토리얼 UI 참조")]
     [SerializeField] private TutorialUI tutorialUI;
-    [Space(10)]
 
     [Header("튜토리얼 완료 참조")]
     [SerializeField] private TutorialComplete tutorialComplete;
-    [Space(10)]
 
-    [Header("이동 요구 시간 (각 방향)")]
-    [SerializeField] private float minMoveTime = 0.5f; // 각 방향 최소 입력 시간
-    [SerializeField] private float inputThreshold = 0.2f; // 입력 임계값 (|x|/|y|)
-
-    private bool isCounting = false;
-    private Transform playerTransform;
-    private Vector2 lastMoveInput;
-
-    private float forwardTime;
-    private float backTime;
-    private float leftTime;
-    private float rightTime;
+    private bool isActive = false;
+    private bool isCompleted = false;
 
     void OnEnable()
     {
         if (tutorialUI != null)
-        {
-            tutorialUI.OnTutorialClosed += BeginCounting;
-        }
+            tutorialUI.OnTutorialClosed += ActivateTutorial;
     }
 
     void OnDisable()
     {
         if (tutorialUI != null)
-        {
-            tutorialUI.OnTutorialClosed -= BeginCounting;
-        }
-        isCounting = false;
-        InputManager.OnMoveInput -= OnMoveInput;
+            tutorialUI.OnTutorialClosed -= ActivateTutorial;
     }
 
-    void Update()
+    private void ActivateTutorial()
     {
-        if (!isCounting || playerTransform == null) return;
-
-        float dt = Time.deltaTime;
-
-        // 입력 기반 누적 (플레이어 기준 축)
-        if (lastMoveInput.y > inputThreshold) forwardTime += dt;
-        else if (lastMoveInput.y < -inputThreshold) backTime += dt;
-
-        if (lastMoveInput.x > inputThreshold) rightTime += dt;
-        else if (lastMoveInput.x < -inputThreshold) leftTime += dt;
-
-        if (forwardTime >= minMoveTime && backTime >= minMoveTime &&
-            leftTime >= minMoveTime && rightTime >= minMoveTime)
-        {
-            CompleteTutorial();
-        }
+        isActive = true;
+        Debug.Log("✅ 이동 튜토리얼 UI 닫힘 - 튜토리얼 활성화됨");
     }
 
-    private void BeginCounting()
+    // 외부(DoorSensor 등)에서 호출
+    public void CompleteTutorial()
     {
-        // 튜토리얼 패널 닫힘 이후 시작
-        LocateLocalPlayer();
-        if (playerTransform == null) return;
+        if (!isActive || isCompleted) return;
+        isCompleted = true;
 
-        forwardTime = backTime = leftTime = rightTime = 0f;
-        lastMoveInput = Vector2.zero;
-        isCounting = true;
-        InputManager.OnMoveInput += OnMoveInput;
-    }
-
-    private void LocateLocalPlayer()
-    {
-        playerTransform = null;
-        MoveController[] movers = FindObjectsOfType<MoveController>();
-        for (int i = 0; i < movers.Length; i++)
-        {
-            var view = movers[i].GetComponent<PhotonView>();
-            if (view == null || view.IsMine)
-            {
-                playerTransform = movers[i].transform;
-                break;
-            }
-        }
-        if (playerTransform == null)
-        {
-            var any = FindObjectOfType<CameraController>();
-            if (any != null)
-            {
-                playerTransform = any.transform.root;
-            }
-        }
-    }
-
-    private void OnMoveInput(Vector2 input)
-    {
-        if (!isCounting) return;
-        lastMoveInput = input;
-    }
-
-    private void CompleteTutorial()
-    {
-        isCounting = false;
-        InputManager.OnMoveInput -= OnMoveInput;
-
+        // ✅ 완료 스티커 표시
         if (tutorialUI != null)
-        {
             tutorialUI.ShowCompleteSticker();
-        }
+
+        // ✅ 문 열기 등 완료 처리
         if (tutorialComplete != null)
-        {
             tutorialComplete.OpenDoor();
-        }
+
+        Debug.Log("✅ 이동 튜토리얼 완료 - 스티커 표시 및 문 열림");
     }
 }
