@@ -4077,7 +4077,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
-        m_Texture: {fileID: 2800000, guid: a534158598f8377418cb6ed696092e1c, type: 3}
+        m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MetallicGlossMap:
@@ -16494,6 +16494,8 @@ GameObject:
   - component: {fileID: 464366586}
   - component: {fileID: 464366588}
   - component: {fileID: 464366587}
+  - component: {fileID: 464366593}
+  - component: {fileID: 464366592}
   m_Layer: 5
   m_Name: Description
   m_TagString: Untagged
@@ -16678,6 +16680,84 @@ RectTransform:
   m_AnchoredPosition: {x: 249.5, y: -39.505}
   m_SizeDelta: {x: 449, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &464366592
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 464366585}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 57a6945b90dcd0c4b81619c0d8b5c283, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  useTypeWriter: 1
+  startTypewriterMode: 3
+  hideAppearancesOnSkip: 0
+  hideDisappearancesOnSkip: 0
+  triggerEventsOnSkip: 0
+  resetTypingSpeedAtStartup: 1
+  disappearanceOrientation: 0
+  triggerShowedAfterEffectsEnd: 0
+  triggerDisappearedAfterEffectsEnd: 0
+  onTextShowed:
+    m_PersistentCalls:
+      m_Calls: []
+  onTypewriterStart:
+    m_PersistentCalls:
+      m_Calls: []
+  onTextDisappeared:
+    m_PersistentCalls:
+      m_Calls: []
+  onCharacterVisible:
+    m_PersistentCalls:
+      m_Calls: []
+  onMessage:
+    m_PersistentCalls:
+      m_Calls: []
+  waitForNormalChars: 0.03
+  waitLong: 0.6
+  waitMiddle: 0.2
+  avoidMultiplePunctuationWait: 0
+  waitForNewLines: 1
+  waitForLastCharacter: 1
+  useTypewriterWaitForDisappearances: 1
+  disappearanceWaitTime: 0.015
+  disappearanceSpeedMultiplier: 1
+--- !u!114 &464366593
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 464366585}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e8ace8ced0e81c847968cdca0aeda757, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  typewriterStartsAutomatically: 1
+  animationLoop: 0
+  timeScale: 0
+  _text: "\uC124\uBA85 \uC801\uAE30"
+  useDynamicScaling: 1
+  referenceFontSize: 10
+  isResettingTimeOnNewText: 1
+  useDefaultDatabases: 1
+  databaseBehaviors: {fileID: 11400000, guid: 1428a9a0a71b0e74b9aa16948a92620c, type: 2}
+  databaseAppearances: {fileID: 11400000, guid: 557e24472fce3bd47b084a2ed7c95879,
+    type: 2}
+  useDefaultStyleSheet: 1
+  styleSheet: {fileID: 0}
+  databaseActions: {fileID: 11400000, guid: bad0d1d556dc71a49a68a8d324046296, type: 2}
+  defaultAppearancesTags:
+  - size
+  defaultDisappearancesTags:
+  - fade
+  defaultBehaviorsTags:
+  - bounce
+  defaultTagsMode: 0
 --- !u!21 &464400776
 Material:
   serializedVersion: 8
@@ -35109,7 +35189,6 @@ GameObject:
   - component: {fileID: 1003216665}
   - component: {fileID: 1003216664}
   - component: {fileID: 1003216662}
-  - component: {fileID: 1003216666}
   m_Layer: 5
   m_Name: Ability Modal Window
   m_TagString: Untagged
@@ -35160,7 +35239,7 @@ MonoBehaviour:
   onOpen:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1003216666}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: 
         m_MethodName: 
         m_Mode: 1
@@ -35257,34 +35336,6 @@ CanvasGroup:
   m_Interactable: 1
   m_BlocksRaycasts: 1
   m_IgnoreParentGroups: 0
---- !u!114 &1003216666
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1003216660}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ef53e62106984b24ebc8785c813a2f39, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  modalWindow: {fileID: 0}
-  titleText: {fileID: 314535136}
-  descriptionText: {fileID: 464366586}
-  useManagerContent: 1
-  titleContent: "\uD2B9\uC131"
-  descriptionContent: "\uC774\uAC83\uC740 \uC124\uBA85 \uD14D\uC2A4\uD2B8\uC785\uB2C8\uB2E4."
-  typingDuration: 2
-  scaleDuration: 0.5
-  scaleAmount: 1.2
-  emphasizeTitleAtOpen: 1
-  delayDescriptionUntilTitleEmphasis: 1
-  replayOnEnable: 1
-  perCharDescriptionEmphasis: 1
-  descriptionCharInterval: 0
-  descriptionNormalColor: {r: 1, g: 1, b: 1, a: 1}
-  descriptionEmphasisColor: {r: 1, g: 1, b: 1, a: 1}
 --- !u!1 &1010413944
 GameObject:
   m_ObjectHideFlags: 0
@@ -48248,7 +48299,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
-        m_Texture: {fileID: 2800000, guid: a534158598f8377418cb6ed696092e1c, type: 3}
+        m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MetallicGlossMap:
@@ -56297,7 +56348,6 @@ GameObject:
   - component: {fileID: 1488903624}
   - component: {fileID: 1488903623}
   - component: {fileID: 1488903622}
-  - component: {fileID: 1488903626}
   m_Layer: 5
   m_Name: Gun Modal Window
   m_TagString: Untagged
@@ -56430,7 +56480,7 @@ MonoBehaviour:
   onOpen:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1488903626}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: 
         m_MethodName: 
         m_Mode: 1
@@ -56445,34 +56495,6 @@ MonoBehaviour:
   onClose:
     m_PersistentCalls:
       m_Calls: []
---- !u!114 &1488903626
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1488903620}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ef53e62106984b24ebc8785c813a2f39, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  modalWindow: {fileID: 0}
-  titleText: {fileID: 1425078480}
-  descriptionText: {fileID: 1436494913}
-  useManagerContent: 1
-  titleContent: "\uCD1D\uAE30"
-  descriptionContent: "\uC774\uAC83\uC740 \uC124\uBA85 \uD14D\uC2A4\uD2B8\uC785\uB2C8\uB2E4."
-  typingDuration: 2
-  scaleDuration: 0.5
-  scaleAmount: 1.2
-  emphasizeTitleAtOpen: 1
-  delayDescriptionUntilTitleEmphasis: 1
-  replayOnEnable: 1
-  perCharDescriptionEmphasis: 1
-  descriptionCharInterval: 0
-  descriptionNormalColor: {r: 1, g: 1, b: 1, a: 1}
-  descriptionEmphasisColor: {r: 1, g: 1, b: 1, a: 1}
 --- !u!1001 &1489540417
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -68090,7 +68112,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
-        m_Texture: {fileID: 2800000, guid: a534158598f8377418cb6ed696092e1c, type: 3}
+        m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MetallicGlossMap:
@@ -77163,7 +77185,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
-        m_Texture: {fileID: 2800000, guid: a534158598f8377418cb6ed696092e1c, type: 3}
+        m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MetallicGlossMap:
