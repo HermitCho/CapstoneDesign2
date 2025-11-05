@@ -4,78 +4,94 @@ using UnityEngine;
 
 public class CircleAnimation : MonoBehaviour
 {
-    [SerializeField] private Renderer rend;
-    [SerializeField] private float speed = 0.3f;
-    [SerializeField] private float startSize1 = 0.08f;
-    [SerializeField] private float endSize1 = 0.8f;
-    [SerializeField] private float startSize2 = 0.1f;
-    [SerializeField] private float endSize2 = 1f;
-    [SerializeField] private float fadeOutDuration = 1.0f; // 사라지는 속도
+    [Header("원 오브젝트 개수 (자식 수와 일치시킬 것)")]
+    [SerializeField] private int circleCount = 10;
 
-    private Material mat;
-    private float current1;
-    private float current2;
-    private float alpha = 1f;
-    private bool fadingOut = false;
+    [Header("크기 설정 (배열 길이는 자식 수와 동일해야 함)")]
+    [SerializeField] private float[] startSize1;
+    [SerializeField] private float[] startSize2;
+    [SerializeField] private float[] endSize1;
+    [SerializeField] private float[] endSize2;
+
+    [Header("속도 설정")]
+    [SerializeField] private float growSpeed = 0.08f;  // 커지는 속도
+    [SerializeField] private float fadeSpeed = 1.0f;  // 사라지는 속도
+    [SerializeField] private float restartDelay = 0.2f; // 반복 전 대기시간
+
+    [SerializeField] private float startDelayBetween = 1f;
+
+    private List<Material> mats = new List<Material>();
 
     void Start()
     {
-        if (rend == null)
-            rend = GetComponent<Renderer>();
+        // 자식 오브젝트의 머티리얼 가져오기
+        for (int i = 0; i < circleCount; i++)
+        {
+            Renderer rend = transform.GetChild(i).GetComponent<Renderer>();
+            if (rend != null)
+                mats.Add(rend.material); // 인스턴스화
+        }
 
-        mat = rend.material;
-        ResetCircle();
+        StartCoroutine(StartSequentially());
     }
 
-    void Update()
+    IEnumerator StartSequentially()
     {
-        // 페이드 중이 아니면 크기 증가
-        if (!fadingOut)
+        for (int i = 0; i < mats.Count; i++)
         {
-            current1 = Mathf.MoveTowards(current1, endSize1, Time.deltaTime * speed);
-            current2 = Mathf.MoveTowards(current2, endSize2, Time.deltaTime * speed);
+            // 🔸 index 순서대로 시작
+            StartCoroutine(CircleRoutine(i));
 
+            // 다음 원까지 딜레이
+            yield return new WaitForSeconds(startDelayBetween);
+        }
+    }
+
+    IEnumerator CircleRoutine(int index)
+    {
+        Material mat = mats[index];
+
+        while (true)
+        {
+            // 1️⃣ startSize로 리셋
+            float current1 = startSize1[index];
+            float current2 = startSize2[index];
             mat.SetFloat("_Circle_size", current1);
             mat.SetFloat("_Circle_size2", current2);
 
-            // 끝까지 커지면 페이드 시작
-            if (Mathf.Approximately(current1, endSize1))
-                StartCoroutine(FadeOut());
+            // 2️⃣ 페이드인 (투명 → 보이게)
+            float alpha = 0f;
+            while (alpha < 1f)
+            {
+                alpha += Time.deltaTime * 2.5f; // 빠른 페이드인
+                mat.SetFloat("_Alpha", alpha);
+                yield return null;
+            }
+
+            // 3️⃣ MoveTowards로 커지기
+            while (!Mathf.Approximately(current1, endSize1[index]) ||
+                   !Mathf.Approximately(current2, endSize2[index]))
+            {
+                current1 = Mathf.MoveTowards(current1, endSize1[index], Time.deltaTime * growSpeed);
+                current2 = Mathf.MoveTowards(current2, endSize2[index], Time.deltaTime * growSpeed);
+
+                mat.SetFloat("_Circle_size", current1);
+                mat.SetFloat("_Circle_size2", current2);
+
+                yield return null;
+            }
+
+            // 4️⃣ FadeOut
+            alpha = 1f;
+            while (alpha > 0f)
+            {
+                alpha -= Time.deltaTime * fadeSpeed;
+                mat.SetFloat("_Alpha", alpha);
+                yield return null;
+            }
+
+            // 5️⃣ 반복 전 대기
+            yield return new WaitForSeconds(restartDelay);
         }
-    }
-
-    private System.Collections.IEnumerator FadeOut()
-    {
-        fadingOut = true;
-        float t = 0f;
-        Color c = mat.GetColor("_Color");
-
-        while (t < fadeOutDuration)
-        {
-            t += Time.deltaTime;
-            alpha = Mathf.Lerp(1f, 0f, t / fadeOutDuration);
-            c.a = alpha;
-            mat.SetColor("_Color", c);
-            yield return null;
-        }
-
-        // 끝나면 다시 초기화해서 루프 재시작
-        ResetCircle();
-    }
-
-    private void ResetCircle()
-    {
-        fadingOut = false;
-        alpha = 1f;
-
-        current1 = startSize1;
-        current2 = startSize2;
-
-        Color c = mat.GetColor("_Color");
-        c.a = alpha;
-        mat.SetColor("_Color", c);
-
-        mat.SetFloat("_Circle_size", current1);
-        mat.SetFloat("_Circle_size2", current2);
     }
 }
