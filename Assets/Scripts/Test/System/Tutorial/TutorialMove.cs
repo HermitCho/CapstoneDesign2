@@ -11,6 +11,9 @@ public class TutorialMove : MonoBehaviour
     [Header("튜토리얼 완료 참조")]
     [SerializeField] private TutorialComplete tutorialComplete;
 
+    [Header("트랩 팬 참조")]
+    [SerializeField] private Trap_Fan trap_Fan;
+
     private bool isActive = false;
     private bool isCompleted = false;
 
@@ -30,6 +33,7 @@ public class TutorialMove : MonoBehaviour
     {
         isActive = true;
         Debug.Log("✅ 이동 튜토리얼 UI 닫힘 - 튜토리얼 활성화됨");
+
     }
 
     // 외부(DoorSensor 등)에서 호출
@@ -45,7 +49,7 @@ public class TutorialMove : MonoBehaviour
         // ✅ 문 열기 등 완료 처리
         if (tutorialComplete != null)
             tutorialComplete.OpenDoor();
-
+            
         Debug.Log("✅ 이동 튜토리얼 완료 - 스티커 표시 및 문 열림");
     }
 }
