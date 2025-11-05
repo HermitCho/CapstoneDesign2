@@ -1,3 +1,4 @@
+using System.Collections;
 using Photon.Pun;
 using UnityEngine;
 
@@ -50,9 +51,30 @@ public class SightTrap : MonoBehaviourPun
             if (aS != null && TrapActivateSound != null)
                 aS.PlayOneShot(TrapActivateSound);
 
-            // 발동 후 제거
-            PhotonNetwork.Destroy(gameObject);
+            // 소유자 파괴 처리
+            if (photonView.Owner != null)
+                photonView.RPC(nameof(RequestDestroyByOwner), photonView.Owner);
+            else if (PhotonNetwork.IsMasterClient)
+            {
+                photonView.TransferOwnership(PhotonNetwork.LocalPlayer);
+                PhotonNetwork.Destroy(photonView.gameObject);
+            }
         }
+    }
+    
+    [PunRPC]
+    private void RequestDestroyByOwner()
+    {
+        if (photonView.IsMine)
+        {
+            StartCoroutine(DestroyAfterDelay());
+        }
+    }
+
+    private IEnumerator DestroyAfterDelay()
+    {
+        yield return new WaitForSeconds(1f);
+        PhotonNetwork.Destroy(gameObject);
     }
 
     [PunRPC]

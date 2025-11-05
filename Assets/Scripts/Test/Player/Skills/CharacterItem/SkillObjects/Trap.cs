@@ -23,8 +23,20 @@ public class Trap : MonoBehaviourPun
 
         if (explosionEffect == null)
         {
-            explosionEffect = transform.GetChild(0).gameObject;
+            if (transform.childCount > 0)
+            {
+                explosionEffect = transform.GetChild(0).gameObject;
+            }
+        }
+
+        if (explosionEffect != null)
+        {
             explosionEffect.SetActive(false);
+            var systems = explosionEffect.GetComponentsInChildren<ParticleSystem>(true);
+            foreach (var s in systems)
+            {
+                s.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            }
         }
 
         Destroy(gameObject, lifetime);
@@ -51,11 +63,16 @@ public class Trap : MonoBehaviourPun
 
         isActivated = true;
 
-        // ✅ 폭발 이벤트 전송 (ViewID 대신 Owner, 위치 사용)
+        // Prevent re-triggering
+        var col = GetComponent<Collider>();
+        if (col != null) col.enabled = false;
+
+        // ✅ 폭발 이벤트 전송
         object[] content = new object[]
         {
             ownerActorNumber,
-            transform.position
+            transform.position,
+            photonView.ViewID
         };
 
         PhotonNetwork.RaiseEvent(
@@ -83,20 +100,31 @@ public class Trap : MonoBehaviourPun
         if (photonEvent.Code != EXPLOSION_EVENT) return;
 
         object[] data = (object[])photonEvent.CustomData;
-        int senderId = (int)data[0];
-        Vector3 trapPosition = (Vector3)data[1];
+        // int senderId = (int)data[0]; // 설치자 ID
+        // Vector3 trapPosition = (Vector3)data[1]; // 트랩 위치
+        int trapViewID = (int)data[2]; // ⭐ ViewID 추출
 
-        Debug.Log($"[Trap] 💥 Event 수신됨 - 설치자: {senderId}, 위치: {trapPosition}");
+        Debug.Log($"[Trap] 💥 Event 수신됨 - ViewID: {trapViewID}");
 
-        // ✅ 해당 위치 근처의 Trap을 찾아 이펙트 실행
-        foreach (var trap in FindObjectsOfType<Trap>())
+        // ✅ PhotonView.Find(ViewID)를 사용하여 트랩 인스턴스 직접 찾기
+        PhotonView targetPV = PhotonView.Find(trapViewID);
+
+        if (targetPV != null)
         {
-            if (trap.ownerActorNumber == senderId &&
-                Vector3.Distance(trap.transform.position, trapPosition) < 0.1f)
+            Trap targetTrap = targetPV.GetComponent<Trap>();
+            if (targetTrap != null)
             {
-                trap.ShowExplosionEffect();
-                break;
+                // 해당 트랩 인스턴스에 이펙트 실행
+                targetPV.RPC("ShowExplosionEffect", RpcTarget.All);
             }
+            else
+            {
+                Debug.LogError($"[Trap] ViewID {trapViewID}에서 Trap 컴포넌트를 찾을 수 없습니다.");
+            }
+        }
+        else
+        {
+            Debug.LogError($"[Trap] ViewID {trapViewID}를 가진 PhotonView를 찾을 수 없습니다.");
         }
     }
 
@@ -115,21 +143,41 @@ public class Trap : MonoBehaviourPun
         PhotonNetwork.Destroy(gameObject);
     }
 
+    [PunRPC]
     public void ShowExplosionEffect()
     {
-        Debug.Log($"[Trap] ShowExplosionEffect 호출됨 - {gameObject.name}, activeSelf={gameObject.activeSelf}, explosionEffect={(explosionEffect != null ? explosionEffect.name : "null")}");
+        Debug.Log($"[Trap] ShowExplosionEffect 호출됨 - {gameObject.name}, activeSelf={gameObject.activeSelf}, explosionEffect={(explosionEffect != null ? explosionEffect.name : "null")}" );
 
         if (explosionEffect == null)
         {
-            Debug.LogWarning($"[Trap] explosionEffect가 null입니다! 자식 오브젝트를 탐색합니다.");
-            explosionEffect = transform.GetChild(0).gameObject;
+            if (transform.childCount > 0)
+            {
+                explosionEffect = transform.GetChild(0).gameObject;
+            }
+        }
+        if (explosionEffect == null) return;
+
+        // 트랩 파괴와 무관하게 이펙트가 보이도록 분리
+        explosionEffect.transform.SetParent(null, true);
+        explosionEffect.transform.position = transform.position;
+        explosionEffect.SetActive(true);
+
+        var systems = explosionEffect.GetComponentsInChildren<ParticleSystem>(true);
+        foreach (var s in systems)
+        {
+            s.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            s.Clear(true);
+            s.Play(true);
         }
 
-        explosionEffect.SetActive(true);
-        var ps = explosionEffect.GetComponent<ParticleSystem>();
-        ps?.Play();
-
-        Debug.Log($"[Trap] 💥 폭발 이펙트 재생 완료 - 클라이언트 {PhotonNetwork.LocalPlayer.ActorNumber}");
+        // 파티클 총 수명 후 정리
+        float maxLifetime = 0f;
+        foreach (var s in systems)
+        {
+            var m = s.main;
+            float duration = m.duration + m.startLifetime.constantMax;
+            if (duration > maxLifetime) maxLifetime = duration;
+        }
+        if (maxLifetime <= 0f) maxLifetime = 2f;
     }
-
 }
