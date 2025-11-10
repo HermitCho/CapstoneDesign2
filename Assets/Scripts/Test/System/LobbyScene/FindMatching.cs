@@ -31,6 +31,7 @@ public class FindMatching : MonoBehaviourPunCallbacks
     private const float RETRY_DELAY = 2f; // 재시도 대기 시간
 
     private const string ROOM_STATE_KEY = "GameState";
+    private const string ROOM_BOT_COUNT_KEY = "botFillCount";
     private const string ROOM_STATE_WAITING = "Waiting";
     private const string ROOM_STATE_STARTING = "Starting";
     private const string ROOM_STATE_IN_GAME = "InGame";
@@ -400,6 +401,7 @@ public class FindMatching : MonoBehaviourPunCallbacks
         roomProperties["gamePhase"] = "MATCHING"; // 매칭 중 상태 (Ready 아님)
         roomProperties["countdownStarted"] = false; // 카운트다운 초기화
         roomProperties["countdownStartTime"] = null;
+        roomProperties[ROOM_BOT_COUNT_KEY] = 0;
         roomOptions.CustomRoomProperties = roomProperties;
         roomOptions.CustomRoomPropertiesForLobby = new string[] { ROOM_STATE_KEY, "masterReady", "gamePhase" };
 
@@ -449,10 +451,14 @@ public class FindMatching : MonoBehaviourPunCallbacks
         if (PhotonNetwork.IsMasterClient)
         {
             int playerCount = PhotonNetwork.InRoom ? PhotonNetwork.CurrentRoom.PlayerCount : 1;
+            //수정
+            int requiredBots = Mathf.Max(0, targetPlayerCount - playerCount);
 
             ExitGames.Client.Photon.Hashtable roomProperties = new ExitGames.Client.Photon.Hashtable();
             roomProperties[ROOM_STATE_KEY] = ROOM_STATE_STARTING;
             roomProperties["gamePhase"] = "READY"; // Ready 단계로 설정
+            //수정
+            roomProperties[ROOM_BOT_COUNT_KEY] = requiredBots;
             PhotonNetwork.CurrentRoom.SetCustomProperties(roomProperties);
 
             photonView.RPC("OnGameStarting", RpcTarget.All, playerCount);

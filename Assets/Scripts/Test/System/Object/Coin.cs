@@ -28,6 +28,9 @@ public class Coin : MonoBehaviour
     
     // 각 Renderer의 원본 머티리얼 배열 저장
     private List<Material[]> originalMaterials = new List<Material[]>();
+    
+    // AI가 코인 상태를 확인할 수 있도록 public 프로퍼티 제공
+    public bool IsCollected => isCollected;
 
     void Start()
     {

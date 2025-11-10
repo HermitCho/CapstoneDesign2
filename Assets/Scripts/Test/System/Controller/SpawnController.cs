@@ -1,7 +1,11 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Photon.Pun;
+using Photon.Realtime;
+using ExitGames.Client.Photon;
+
 
 public class SpawnController : MonoBehaviourPunCallbacks
 {
@@ -17,6 +21,10 @@ public class SpawnController : MonoBehaviourPunCallbacks
     [SerializeField] private float spawnDelay = 0.1f;
     [SerializeField] private GameObject crownPrefab;
 
+    [Header(" AI 스폰 설정")]
+    [SerializeField] private bool spawnAI = false;
+    [SerializeField] private GameObject[] aiPrefabs;
+
     // UI 프리팹 제거 - HeatUI PanelManager 사용
 
     private DataBase.PlayerData playerData;
@@ -29,7 +37,19 @@ public class SpawnController : MonoBehaviourPunCallbacks
     private bool isSpawning = false;
     private int currentSpawnedCharacterIndex = -1;
     private bool hasSpawnedPlayer = false;
+    //수정 시작
+    private bool botsSpawned = false;
 
+    private readonly List<GameObject> spawnedBots = new List<GameObject>();
+    private readonly HashSet<int> reservedHumanSpawnIndices = new HashSet<int>();
+    private readonly HashSet<int> reservedBotSpawnIndices = new HashSet<int>();
+
+    private const string RoomBotCountKey = "botFillCount";
+    private const float BotSpawnClearRadius = 1.5f;
+    private int pendingBotCount = 0;
+    private string currentGamePhase = string.Empty;
+    private Coroutine botSpawnCoroutine = null;
+    //수정 끝
     void Awake()
     {
         ValidateSpawnPositions();
@@ -44,6 +64,8 @@ public class SpawnController : MonoBehaviourPunCallbacks
         if(PhotonNetwork.IsMasterClient && PhotonNetwork.IsConnectedAndReady)
         {
             StartCoroutine(SpawnCrownCoroutine());
+            //수정
+            InitializeBotSpawnState();
         }
         
         // OnJoinedRoom 콜백이 호출되지 않는 경우를 대비한 백업 로직
@@ -124,6 +146,12 @@ public class SpawnController : MonoBehaviourPunCallbacks
         }
         
         CheckSpawnTrigger();
+        //수정 시작
+        if (PhotonNetwork.IsMasterClient)
+        {
+            InitializeBotSpawnState();
+        }
+        //수정 끝
     }
 
     void CacheDataBaseInfo()
@@ -249,6 +277,8 @@ public class SpawnController : MonoBehaviourPunCallbacks
         NotifyGameManagerOfSpawnedCharacter();
         hasSpawnedPlayer = true;
         isSpawning = false;
+        //수정
+        MarkHumanSpawnReserved(spawnIndex);
     }
     
     /// <summary>
@@ -359,7 +389,8 @@ public class SpawnController : MonoBehaviourPunCallbacks
 
         do
         {
-            randomIndex = Random.Range(0, spawnPositions.Length);
+            //수정
+            randomIndex = UnityEngine.Random.Range(0, spawnPositions.Length);
             attempts++;
 
             if (attempts > 10)
@@ -381,7 +412,8 @@ public class SpawnController : MonoBehaviourPunCallbacks
     {
         if (randomizeRotation)
         {
-            return Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+            //수정
+            return Quaternion.Euler(0f, UnityEngine.Random.Range(0f, 360f), 0f);
         }
         else
         {
@@ -462,6 +494,326 @@ public class SpawnController : MonoBehaviourPunCallbacks
         return currentSpawnedCharacterIndex;
     }
 
+    //수정 시작
+    private void InitializeBotSpawnState()
+    {
+        botsSpawned = false;
+        pendingBotCount = 0;
+        currentGamePhase = string.Empty;
+
+        if (!PhotonNetwork.InRoom || PhotonNetwork.CurrentRoom == null)
+        {
+            return;
+        }
+
+        ExitGames.Client.Photon.Hashtable properties = PhotonNetwork.CurrentRoom.CustomProperties;
+        if (properties != null)
+        {
+            if (properties.TryGetValue(RoomBotCountKey, out object botCountObj))
+            {
+                pendingBotCount = ConvertBotCount(botCountObj);
+            }
+
+            if (properties.TryGetValue("gamePhase", out object phaseObj))
+            {
+                currentGamePhase = phaseObj as string ?? string.Empty;
+            }
+        }
+
+        TryScheduleBotSpawn();
+    }
+
+    private void TryScheduleBotSpawn()
+    {
+        if (!PhotonNetwork.IsMasterClient)
+        {
+            return;
+        }
+
+        if (!spawnAI || aiPrefabs == null || aiPrefabs.Length == 0)
+        {
+            return;
+        }
+
+        if (pendingBotCount <= 0)
+        {
+            botsSpawned = true;
+            return;
+        }
+
+        if (!string.Equals(currentGamePhase, "PLAYING", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        if (spawnPositions == null || spawnPositions.Length == 0)
+        {
+            return;
+        }
+
+        if (botSpawnCoroutine != null)
+        {
+            return;
+        }
+
+        botSpawnCoroutine = StartCoroutine(SpawnBotsAfterDelay(0.5f));
+    }
+
+    private IEnumerator SpawnBotsAfterDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        botSpawnCoroutine = null;
+        SpawnBotsInternal();
+    }
+
+    private void SpawnBotsInternal()
+    {
+        if (!PhotonNetwork.IsMasterClient)
+        {
+            return;
+        }
+
+        if (pendingBotCount <= 0)
+        {
+            botsSpawned = true;
+            return;
+        }
+
+        ReserveHumanSpawnIndices();
+
+        int spawnedCount = 0;
+
+        for (int i = 0; i < pendingBotCount; i++)
+        {
+            GameObject prefab = aiPrefabs[UnityEngine.Random.Range(0, aiPrefabs.Length)];
+            if (prefab == null)
+            {
+                continue;
+            }
+
+            if (!TryGetBotSpawnPoint(out Vector3 spawnPosition, out Quaternion spawnRotation, out int spawnIndex))
+            {
+                continue;
+            }
+
+            string resourcePath = GetAIPrefabResourcePath(prefab);
+            if (string.IsNullOrEmpty(resourcePath))
+            {
+                continue;
+            }
+
+            GameObject botInstance = PhotonNetwork.Instantiate(resourcePath, spawnPosition, spawnRotation);
+            if (botInstance != null)
+            {
+                spawnedBots.Add(botInstance);
+                if (spawnIndex >= 0)
+                {
+                    reservedBotSpawnIndices.Add(spawnIndex);
+                }
+                spawnedCount++;
+            }
+        }
+
+        pendingBotCount = Mathf.Max(0, pendingBotCount - spawnedCount);
+        botsSpawned = pendingBotCount <= 0;
+
+        if (PhotonNetwork.CurrentRoom != null)
+        {
+            ExitGames.Client.Photon.Hashtable props = new ExitGames.Client.Photon.Hashtable
+            {
+                { RoomBotCountKey, pendingBotCount }
+            };
+            PhotonNetwork.CurrentRoom.SetCustomProperties(props);
+        }
+
+        if (!botsSpawned)
+        {
+            TryScheduleBotSpawn();
+        }
+    }
+
+    private int ConvertBotCount(object value)
+    {
+        if (value == null)
+        {
+            return 0;
+        }
+
+        switch (value)
+        {
+            case int i:
+                return Mathf.Max(0, i);
+            case byte b:
+                return Mathf.Max(0, (int)b);
+            case short s:
+                return Mathf.Max(0, (int)s);
+            case long l:
+                return Mathf.Max(0, (int)l);
+            case string str when int.TryParse(str, out int parsed):
+                return Mathf.Max(0, parsed);
+            default:
+                return 0;
+        }
+    }
+
+    private bool TryGetBotSpawnPoint(out Vector3 position, out Quaternion rotation, out int index)
+    {
+        position = Vector3.zero;
+        rotation = Quaternion.identity;
+        index = -1;
+
+        if (spawnPositions == null || spawnPositions.Length == 0)
+        {
+            return false;
+        }
+
+        List<int> indices = new List<int>();
+        for (int i = 0; i < spawnPositions.Length; i++)
+        {
+            indices.Add(i);
+        }
+        ShuffleIndices(indices);
+
+        foreach (int candidate in indices)
+        {
+            if (reservedHumanSpawnIndices.Contains(candidate) || reservedBotSpawnIndices.Contains(candidate))
+            {
+                continue;
+            }
+
+            Vector3 candidatePosition = GetSpawnPosition(candidate);
+            if (!IsSpawnPointClear(candidatePosition))
+            {
+                continue;
+            }
+
+            position = candidatePosition;
+            rotation = GetSpawnRotation(candidate);
+            index = candidate;
+            return true;
+        }
+
+        return false;
+    }
+
+    private void ShuffleIndices(List<int> indices)
+    {
+        for (int i = 0; i < indices.Count - 1; i++)
+        {
+            int swapIndex = UnityEngine.Random.Range(i, indices.Count);
+            int temp = indices[i];
+            indices[i] = indices[swapIndex];
+            indices[swapIndex] = temp;
+        }
+    }
+
+    private bool IsSpawnPointClear(Vector3 position)
+    {
+        Collider[] hits = Physics.OverlapSphere(position, BotSpawnClearRadius, ~0, QueryTriggerInteraction.Ignore);
+        foreach (Collider hit in hits)
+        {
+            if (hit == null || hit.transform == null)
+            {
+                continue;
+            }
+
+            if (hit.CompareTag("Player") || hit.GetComponent<LivingEntity>() != null || hit.GetComponent<BotLivingEntity>() != null)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private string GetAIPrefabResourcePath(GameObject prefab)
+    {
+        if (prefab == null)
+        {
+            return null;
+        }
+
+        string prefabName = prefab.name;
+        string[] searchPaths = new[]
+        {
+            $"Prefabs/InGameBot/{prefabName}",
+            $"Prefabs/Bots/{prefabName}",
+            $"Prefabs/{prefabName}"
+        };
+
+        foreach (string path in searchPaths)
+        {
+            if (Resources.Load(path) != null)
+            {
+                return path;
+            }
+        }
+
+        return null;
+    }
+
+    private void ReserveHumanSpawnIndices()
+    {
+        reservedHumanSpawnIndices.Clear();
+        if (spawnPositions == null || spawnPositions.Length == 0)
+        {
+            return;
+        }
+
+        Player[] players = PhotonNetwork.PlayerList;
+        foreach (Player player in players)
+        {
+            if (player == null)
+            {
+                continue;
+            }
+
+            int actorNumber = player.ActorNumber;
+            int index = (actorNumber - 1) % spawnPositions.Length;
+            reservedHumanSpawnIndices.Add(index);
+        }
+    }
+
+    private void MarkHumanSpawnReserved(int spawnIndex)
+    {
+        if (spawnIndex >= 0)
+        {
+            reservedHumanSpawnIndices.Add(spawnIndex);
+        }
+    }
+
+    public override void OnRoomPropertiesUpdate(ExitGames.Client.Photon.Hashtable propertiesThatChanged)
+    {
+        base.OnRoomPropertiesUpdate(propertiesThatChanged);
+
+        if (!PhotonNetwork.IsMasterClient || propertiesThatChanged == null)
+        {
+            return;
+        }
+
+        bool shouldCheckSpawn = false;
+
+        if (propertiesThatChanged.ContainsKey(RoomBotCountKey))
+        {
+            pendingBotCount = ConvertBotCount(propertiesThatChanged[RoomBotCountKey]);
+            if (pendingBotCount > 0)
+            {
+                botsSpawned = false;
+            }
+            shouldCheckSpawn = true;
+        }
+
+        if (propertiesThatChanged.ContainsKey("gamePhase"))
+        {
+            currentGamePhase = propertiesThatChanged["gamePhase"] as string ?? string.Empty;
+            shouldCheckSpawn = true;
+        }
+
+        if (shouldCheckSpawn)
+        {
+            TryScheduleBotSpawn();
+        }
+    }
+    //수정 끝
     private void SpawnSelectedCharacterOnAwake()
     {
         if (hasSpawnedPlayer)
