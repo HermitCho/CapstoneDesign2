@@ -4,6 +4,9 @@ using UnityEngine;
 
 public class Coin : MonoBehaviour
 {
+    [Header("코인 가치 (1, 10, 50)")]
+    [SerializeField] private int coinValue = 1;
+    
     [Header("코인 회전 속도")]
     [SerializeField] private float rotationSpeed = 10f;
 
@@ -25,6 +28,7 @@ public class Coin : MonoBehaviour
     private float limitBobbingHeight;
 
     private CoinController coinController;
+    private SpawnCoin spawnCoin;
     
     // 각 Renderer의 원본 머티리얼 배열 저장
     private List<Material[]> originalMaterials = new List<Material[]>();
@@ -48,6 +52,7 @@ public class Coin : MonoBehaviour
         originalPosition = transform.position;
         coinRenderers = GetComponentsInChildren<Renderer>();
         coinController = FindObjectOfType<CoinController>();
+        spawnCoin = GetComponentInParent<SpawnCoin>();
         
         // 각 Renderer의 모든 머티리얼을 저장
         foreach (Renderer renderer in coinRenderers)
@@ -87,7 +92,7 @@ public class Coin : MonoBehaviour
             
             if (playerCoinController != null)
             {
-                playerCoinController.AddCoin(1);
+                playerCoinController.AddCoin(coinValue);
             }
 
 
@@ -95,6 +100,13 @@ public class Coin : MonoBehaviour
             {
                 Debug.LogWarning("⚠️ Coin - 플레이어에 CoinController를 찾을 수 없습니다.");
             }
+
+            if(spawnCoin != null)
+            {
+                spawnCoin.StartCoroutine(spawnCoin.RespawnAfterDelay(spawnTime));
+            }
+            // 코인 즉시 파괴
+            Destroy(gameObject);
         }
     }
 
@@ -102,60 +114,10 @@ public class Coin : MonoBehaviour
     {
         isCollected = true;
         
-        // 코인 투명도 0으로 설정 (모든 Renderer의 모든 머티리얼)
-        if (coinRenderers != null && originalMaterials.Count > 0)
-        {
-            for (int i = 0; i < coinRenderers.Length; i++)
-            {
-                Material[] materials = coinRenderers[i].materials;
-                
-                // 각 Renderer의 모든 머티리얼을 투명하게 설정
-                for (int j = 0; j < materials.Length; j++)
-                {
-                    Color color = materials[j].color;
-                    color.a = 0f;
-                    materials[j].color = color;
-                }
-                
-                // 변경된 머티리얼 배열을 다시 할당
-                coinRenderers[i].materials = materials;
-            }
-        }
-        
         // 파티클 효과 재생 (선택사항)
         if (coinEffect != null)
         {
             coinEffect.Play();
         }
-        
-        // spawnTime 후에 코인 다시 나타나기
-        StartCoroutine(RespawnCoin());
-    }
-
-    private IEnumerator RespawnCoin()
-    {
-        yield return new WaitForSeconds(spawnTime);
-        
-        // 코인 투명도를 원래대로 복원 (모든 Renderer의 모든 머티리얼)
-        if (coinRenderers != null && originalMaterials.Count > 0)
-        {
-            for (int i = 0; i < coinRenderers.Length; i++)
-            {
-                Material[] materials = coinRenderers[i].materials;
-                
-                // 각 Renderer의 모든 머티리얼을 불투명하게 복원
-                for (int j = 0; j < materials.Length; j++)
-                {
-                    Color color = materials[j].color;
-                    color.a = 1f;
-                    materials[j].color = color;
-                }
-                
-                // 변경된 머티리얼 배열을 다시 할당
-                coinRenderers[i].materials = materials;
-            }
-        }
-        
-        isCollected = false;
     }
 }
