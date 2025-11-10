@@ -265,6 +265,16 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
 
         Debug.Log($"[LivingEntity] {gameObject.name} 사망 처리 완료 - attacker: {currentAttacker?.name ?? "null"}, IsDead: {IsDead}");
 
+        //마스터 클라이언트에서 공격자에게 점수 부여
+        if (PhotonNetwork.IsMasterClient && attacker != null)
+        {
+            PhotonView attackerView = attacker.photonView;
+            float killScore = 100f;
+
+            attackerView.RPC("RPC_GrantKillScore", attackerView.Owner, killScore);
+            Debug.Log($"[LivingEntity:Master] {gameObject.name} 사망 -> {attacker.gameObject.name}에게 {killScore} 점수 부여 요청 RPC 전송");
+        }
+
         // 반짝임 코루틴 중지 및 색상 복원
         if (hitFlashCoroutine != null)
         {
@@ -280,7 +290,7 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
 
         OnDeath?.Invoke(); // 이벤트는 각 클라이언트에서 개별적으로 발생
 
-        // MoveController는 로컬에서만 제어해도 무방합니다. (stunned 상태가 물리적인 움직임에만 영향)
+        //스턴 작동
         if (moveController != null)
         {
             moveController.SetStunned(true);
@@ -541,7 +551,7 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
         // 피격 중이 아닐 때만 반짝임 시작
         hitFlashCoroutine = StartCoroutine(HitFlashOnceCoroutine());
     }
-    
+
     /// <summary>
     /// 피격 시 1회만 반짝거리는 코루틴 (짧고 즉시 종료)
     /// </summary>
