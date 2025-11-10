@@ -112,7 +112,7 @@ public class Flashbang : MonoBehaviourPun
     [PunRPC]
     void PlayExplosionSound(Vector3 explosionPosition)
     {
-        aS.PlayOneShot(explosionSound, 1f);
+        AudioManager.Inst?.PlayClipAtPoint(explosionSound, transform.position, 1f, 1f, null, transform);
     }
 
     public float GetFlashbangSpeed()
