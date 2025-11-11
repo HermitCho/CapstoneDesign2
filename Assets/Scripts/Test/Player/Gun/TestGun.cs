@@ -37,7 +37,6 @@ public class TestGun : MonoBehaviourPun
     private MoveController moveController;
     private SkillController skillController;
     private TestShoot testShoot; // TestShoot 스크립트 참조 추가
-    private PhotonView parentPhotonview;
 
     #endregion
 
