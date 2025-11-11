@@ -33,6 +33,7 @@ public class Crown : MonoBehaviourPun
     
     //테디베어 재부착 방지 관련 변수
     private float lastDetachTime = -999f;
+    private bool isManualDetach = false; // 수동 분리 여부 (true: 수동, false: 사망)
     
     //테디베어 발광 상태 확인 변수
     private bool isGlowing = false;
@@ -136,18 +137,22 @@ public class Crown : MonoBehaviourPun
         {   
             PhotonView playerPhotonView = collision.transform.GetComponent<PhotonView>();
             if (!playerPhotonView.IsMine) return;
-            // 재부착 방지 시간 확인
-            float timeSinceDetach = Time.time - lastDetachTime;
-            if (timeSinceDetach >= cachedDetachReattachTime)
+            
+            // 재부착 방지 시간 확인 (수동 분리인 경우만)
+            if (isManualDetach)
             {
-                AttachToPlayer(playerPhotonView);
+                float timeSinceDetach = Time.time - lastDetachTime;
+                if (timeSinceDetach < cachedDetachReattachTime)
+                {
+                    // 재부착 방지 시간 동안은 부착하지 않음
+                    float remainingTime = cachedDetachReattachTime - timeSinceDetach;
+                    Debug.Log($"재부착 방지 중... 남은 시간: {remainingTime:F1}초");
+                    return;
+                }
             }
-            else
-            {
-                // 재부착 방지 시간 동안은 부착하지 않음
-                float remainingTime = cachedDetachReattachTime - timeSinceDetach;
-                Debug.Log($"재부착 방지 중... 남은 시간: {remainingTime:F1}초");
-            }
+            
+            // 왕관 부착
+            AttachToPlayer(playerPhotonView);
         }
     }
     
@@ -385,8 +390,14 @@ public class Crown : MonoBehaviourPun
 
     #region 외부 호출용 메서드 모음
     
-    // 기본 부착 해제 기능 - 현재 위치에 떨구기
+    // 기본 부착 해제 기능 - 현재 위치에 떨구기 (수동 분리)
     public void DetachFromPlayer()
+    {
+        DetachFromPlayer(true); // 수동 분리
+    }
+    
+    // 오버로드: 수동/자동 분리 구분
+    private void DetachFromPlayer(bool isManual)
     {     
         if (currentPlayerPhotonView == null || !currentPlayerPhotonView.IsMine) return;
         if (!isAttached) return;
@@ -394,12 +405,23 @@ public class Crown : MonoBehaviourPun
         // 현재 위치 저장 (떨굴 위치)
         Vector3 dropPosition = transform.position;
         
+        // 플레이어의 forward 방향 저장 (힘을 가하기 위해)
+        Vector3 playerForward = playerTransform != null ? playerTransform.forward : Vector3.forward;
 
         // 모든 클라이언트에서 떨구기 상태 적용
-        photonView.RPC("RpcDetachFromPlayer", RpcTarget.AllBuffered, transform.position);  
+        photonView.RPC("RpcDetachFromPlayer", RpcTarget.AllBuffered, dropPosition, playerForward);  
 
-        // 재부착 방지 시간 기록
-        lastDetachTime = Time.time;
+        // 수동 분리인 경우만 재부착 방지 시간 기록
+        if (isManual)
+        {
+            lastDetachTime = Time.time;
+            isManualDetach = true;
+        }
+        else
+        {
+            // 자동 분리(사망)인 경우 즉시 재부착 가능하도록 설정
+            isManualDetach = false;
+        }
         
         playerTransform = null;
 
@@ -411,10 +433,8 @@ public class Crown : MonoBehaviourPun
     }
 
     [PunRPC]
-    private void RpcDetachFromPlayer(Vector3 dropPosition)
+    private void RpcDetachFromPlayer(Vector3 dropPosition, Vector3 playerForward)
     {
-        playerTransform = null;
-        
         // 회전 애니메이션 중지
         StopCrownRotation();
 
@@ -430,19 +450,32 @@ public class Crown : MonoBehaviourPun
         {
             crownRigidbody.isKinematic = false;
             crownRigidbody.useGravity = true;
+            crownRigidbody.velocity = Vector3.zero;
+            crownRigidbody.angularVelocity = Vector3.zero;
 
-            // optional: 약간 힘을 가해 밀어내기
-            if (playerTransform != null)
-            {
-             Vector3 pushDirection = playerTransform.forward + Vector3.up * 0.5f;
-            float pushForce = 5f;
+            // 랜덤한 방향으로 힘을 가해 튀어나가게 하기
+            float randomAngle = UnityEngine.Random.Range(-45f, 45f);
+            Vector3 randomDirection = Quaternion.Euler(0, randomAngle, 0) * playerForward;
+            Vector3 pushDirection = (randomDirection + Vector3.up * 0.8f).normalized;
+            float pushForce = UnityEngine.Random.Range(4f, 7f);
             crownRigidbody.AddForce(pushDirection * pushForce, ForceMode.Impulse);
-            }
+            
+            // 회전도 랜덤하게 추가
+            Vector3 randomTorque = new Vector3(
+                UnityEngine.Random.Range(-5f, 5f),
+                UnityEngine.Random.Range(-5f, 5f),
+                UnityEngine.Random.Range(-5f, 5f)
+            );
+            crownRigidbody.AddTorque(randomTorque, ForceMode.Impulse);
         }
+        
         // 콜라이더 활성화
         if (crownCollider != null)
             crownCollider.enabled = true;
 
+        // 플레이어 참조 해제
+        playerTransform = null;
+        
         // 분리되면 다시 발광 시작
         StartGlowing();
     }
@@ -634,10 +667,33 @@ public class Crown : MonoBehaviourPun
             if (playerTransform == deadPlayer.transform)
             {
                 Debug.Log($"✅ TestTeddyBear - 플레이어 사망으로 인한 테디베어 자동 분리: {deadPlayer.name}");
-                DetachFromPlayer();
+                DetachFromPlayer(false); // 자동 분리 (재부착 방지 시간 무시)
             }
         }
     }
 
+    #endregion
+    
+    #region Public Helper Methods
+    
+    /// <summary>
+    /// 특정 Transform이 현재 왕관을 소유하고 있는지 확인
+    /// </summary>
+    public bool IsAttachedToPlayer(Transform targetTransform)
+    {
+        return isAttached && playerTransform == targetTransform;
+    }
+    
+    /// <summary>
+    /// 사망으로 인한 왕관 자동 분리 (재부착 방지 시간 무시)
+    /// </summary>
+    public void DetachFromPlayerOnDeath()
+    {
+        if (!isAttached) return;
+        if (currentPlayerPhotonView == null || !currentPlayerPhotonView.IsMine) return;
+        
+        DetachFromPlayer(false); // 자동 분리
+    }
+    
     #endregion
 }

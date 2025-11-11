@@ -605,6 +605,13 @@ public class SpawnController : MonoBehaviourPunCallbacks
             GameObject botInstance = PhotonNetwork.Instantiate(resourcePath, spawnPosition, spawnRotation);
             if (botInstance != null)
             {
+                // AI는 항상 MasterClient 소유로 설정
+                PhotonView pv = botInstance.GetComponent<PhotonView>();
+                if (pv != null && PhotonNetwork.IsMasterClient)
+                {
+                    pv.TransferOwnership(PhotonNetwork.MasterClient);
+                }
+                
                 spawnedBots.Add(botInstance);
                 if (spawnIndex >= 0)
                 {
@@ -630,6 +637,39 @@ public class SpawnController : MonoBehaviourPunCallbacks
         {
             TryScheduleBotSpawn();
         }
+    }
+    
+    /// <summary>
+    /// 게임 종료 시 모든 봇 제거
+    /// </summary>
+    private void DestroyAllBots()
+    {
+        if (!PhotonNetwork.IsMasterClient)
+        {
+            return;
+        }
+        
+        Debug.Log($"[SpawnController] 게임 종료 - {spawnedBots.Count}개의 봇 제거 시작");
+        
+        // 생성된 봇들 제거
+        foreach (GameObject bot in spawnedBots)
+        {
+            if (bot != null)
+            {
+                PhotonView pv = bot.GetComponent<PhotonView>();
+                if (pv != null)
+                {
+                    PhotonNetwork.Destroy(pv);
+                }
+            }
+        }
+        
+        spawnedBots.Clear();
+        reservedBotSpawnIndices.Clear();
+        botsSpawned = false;
+        pendingBotCount = 0;
+        
+        Debug.Log("[SpawnController] 모든 봇 제거 완료");
     }
 
     private int ConvertBotCount(object value)
@@ -805,6 +845,13 @@ public class SpawnController : MonoBehaviourPunCallbacks
         if (propertiesThatChanged.ContainsKey("gamePhase"))
         {
             currentGamePhase = propertiesThatChanged["gamePhase"] as string ?? string.Empty;
+            
+            // 게임 종료 시 봇 제거
+            if (currentGamePhase == "GAMEOVER")
+            {
+                DestroyAllBots();
+            }
+            
             shouldCheckSpawn = true;
         }
 

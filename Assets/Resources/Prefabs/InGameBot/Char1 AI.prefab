@@ -469,6 +469,7 @@ GameObject:
   - component: {fileID: 5612575122459696818}
   - component: {fileID: 3499160874516174629}
   - component: {fileID: 8022727184756938328}
+  - component: {fileID: -3992959561424755938}
   m_Layer: 15
   m_Name: Char1 AI
   m_TagString: Player
@@ -687,12 +688,13 @@ MonoBehaviour:
   ObservedComponentsFoldoutOpen: 1
   Group: 0
   prefixField: -1
-  Synchronization: 1
-  OwnershipTransfer: 0
-  observableSearch: 2
+  Synchronization: 3
+  OwnershipTransfer: 2
+  observableSearch: 0
   ObservedComponents:
   - {fileID: 3499160874516174629}
   - {fileID: 8022727184756938328}
+  - {fileID: -3992959561424755938}
   sceneViewId: 0
   InstantiationId: 0
   isRuntimeInstantiated: 0
@@ -750,6 +752,9 @@ MonoBehaviour:
   attackRange: 12
   stateUpdateRate: 0.4
   shootCooldown: 0.4
+  shopLayerMask:
+    serializedVersion: 2
+    m_Bits: 0
   firePoint: {fileID: 7352062860043537465}
   muzzleFlash: {fileID: 0}
   animator: {fileID: 6429692773798809915}
@@ -766,6 +771,22 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   characterData: {fileID: 11400000, guid: a8e60b57a7b61c2448612223759a885b, type: 2}
+--- !u!114 &-3992959561424755938
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 329088207215989243}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 627855c7f81362d41938ffe0b1475957, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_SynchronizePosition: 1
+  m_SynchronizeRotation: 1
+  m_SynchronizeScale: 0
+  m_UseLocal: 1
 --- !u!1 &349119031024593202
 GameObject:
   m_ObjectHideFlags: 0

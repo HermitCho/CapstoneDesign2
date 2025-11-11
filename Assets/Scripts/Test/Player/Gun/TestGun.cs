@@ -37,6 +37,7 @@ public class TestGun : MonoBehaviourPun
     private MoveController moveController;
     private SkillController skillController;
     private TestShoot testShoot; // TestShoot 스크립트 참조 추가
+    private PhotonView parentPhotonview;
 
     #endregion
 
@@ -59,6 +60,8 @@ public class TestGun : MonoBehaviourPun
         photonViewCached = GetComponent<PhotonView>();
         damage = gunData.damage;
         testShoot = GetComponentInParent<TestShoot>(); // TestShoot 스크립트 찾기
+
+         parentPhotonview = transform.root.GetComponent<PhotonView>();
 
         if (testShoot == null)
         {
@@ -282,16 +285,29 @@ public class TestGun : MonoBehaviourPun
 
             if (target != null && targetView != null)
             {
-                // 자기 자신 피격 방지: 동일한 소유자면 무시
-                if (targetView.OwnerActorNr == photonViewCached.OwnerActorNr)
+                // 자기 자신 피격 방지
+                if (targetView.ViewID == photonViewCached.ViewID)
                 {
                     return;
                 }
 
-                int attackerActorNumber = photonViewCached.OwnerActorNr;
+                // 같은 소유자인 경우 AI가 아니면 무시 (플레이어 자신의 총알은 막음)
+                if (targetView.OwnerActorNr == photonViewCached.OwnerActorNr)
+                {
+                    // 둘 다 AI가 아닌 경우만 무시
+                    bool attackerIsAI = photonViewCached.GetComponent<AIHealth>() != null;
+                    bool targetIsAI = targetView.GetComponent<AIHealth>() != null;
+                    
+                    if (!attackerIsAI && !targetIsAI)
+                    {
+                        return;
+                    }
+                }
 
-                // 마스터 클라이언트로 데미지 RPC 전송
-                targetView.RPC("OnDamage", RpcTarget.All, damage, hit.point, hit.normal, attackerActorNumber);
+                int attackerViewID = parentPhotonview.ViewID;
+
+                targetView.RPC("OnDamage", RpcTarget.All, damage, hit.point, hit.normal, attackerViewID );
+
             }
         }
     }

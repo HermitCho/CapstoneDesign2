@@ -3482,6 +3482,7 @@ GameObject:
   - component: {fileID: 8299370450524408511}
   - component: {fileID: 4535689691548696352}
   - component: {fileID: 447812415149544517}
+  - component: {fileID: 2224077389136790180}
   m_Layer: 15
   m_Name: Char2 AI
   m_TagString: Player
@@ -3701,11 +3702,12 @@ MonoBehaviour:
   Group: 0
   prefixField: -1
   Synchronization: 3
-  OwnershipTransfer: 0
-  observableSearch: 2
+  OwnershipTransfer: 2
+  observableSearch: 0
   ObservedComponents:
   - {fileID: 4535689691548696352}
   - {fileID: 447812415149544517}
+  - {fileID: 2224077389136790180}
   sceneViewId: 0
   InstantiationId: 0
   isRuntimeInstantiated: 0
@@ -3718,7 +3720,7 @@ NavMeshAgent:
   m_GameObject: {fileID: 3137786495578628170}
   m_Enabled: 1
   m_AgentTypeID: 0
-  m_Radius: 1.5
+  m_Radius: 0.5
   m_Speed: 3.5
   m_Acceleration: 8
   avoidancePriority: 50
@@ -3727,8 +3729,8 @@ NavMeshAgent:
   m_AutoTraverseOffMeshLink: 1
   m_AutoBraking: 1
   m_AutoRepath: 1
-  m_Height: 1
-  m_BaseOffset: 0.5
+  m_Height: 2
+  m_BaseOffset: 0
   m_WalkableMask: 4294967295
   m_ObstacleAvoidanceType: 4
 --- !u!114 &8299370450524408511
@@ -3763,6 +3765,9 @@ MonoBehaviour:
   attackRange: 12
   stateUpdateRate: 0.4
   shootCooldown: 0.4
+  shopLayerMask:
+    serializedVersion: 2
+    m_Bits: 0
   firePoint: {fileID: 1501594468688594338}
   muzzleFlash: {fileID: 0}
   animator: {fileID: 8511895970222891146}
@@ -3779,6 +3784,22 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   characterData: {fileID: 11400000, guid: 1f3b083b1137b7f4888a453fcfccf320, type: 2}
+--- !u!114 &2224077389136790180
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3137786495578628170}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 627855c7f81362d41938ffe0b1475957, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_SynchronizePosition: 1
+  m_SynchronizeRotation: 1
+  m_SynchronizeScale: 0
+  m_UseLocal: 1
 --- !u!1 &3153326930071574659
 GameObject:
   m_ObjectHideFlags: 0

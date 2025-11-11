@@ -26,6 +26,10 @@ public class AIHealth : MonoBehaviourPunCallbacks, IPunObservable, IDamageable
     public System.Action OnRevive;
     public System.Action<float, float> OnHealthChanged; // current, max
     
+    // AI 무적 상태
+    private bool isInvincible;
+    private float invincibilityEndTime;
+    
     // 컴포넌트 캐시
     private PhotonView pv;
     
@@ -83,7 +87,9 @@ public class AIHealth : MonoBehaviourPunCallbacks, IPunObservable, IDamageable
         if (currentHealth <= 0)
             return;
         
-        Debug.Log($"[AIHealth] {gameObject.name} 데미지 받음: {damage}, 현재 체력: {currentHealth} → {currentHealth - damage}");
+        // 무적 상태 체크
+        if (isInvincible && Time.time < invincibilityEndTime)
+            return;
         
         // 데미지 적용
         currentHealth = Mathf.Max(0, currentHealth - damage);
@@ -94,7 +100,6 @@ public class AIHealth : MonoBehaviourPunCallbacks, IPunObservable, IDamageable
         // 사망 체크
         if (currentHealth <= 0 && !isDead)
         {
-            Debug.Log($"[AIHealth] {gameObject.name} 사망!");
             pv.RPC("RPC_Die", RpcTarget.All);
         }
     }
@@ -127,6 +132,9 @@ public class AIHealth : MonoBehaviourPunCallbacks, IPunObservable, IDamageable
         isDead = true;
         OnDeath?.Invoke();
         
+        // AI 사망 시 왕관 떨어뜨리기
+        DropCrownIfAttached();
+        
         // 마스터 클라이언트만 부활 코루틴 시작
         if (PhotonNetwork.IsMasterClient && pv.IsMine)
         {
@@ -150,8 +158,32 @@ public class AIHealth : MonoBehaviourPunCallbacks, IPunObservable, IDamageable
         isDead = false;
         currentHealth = maxHealth;
         
+        // 부활 시 3초 무적 시작
+        StartInvincibility(5f);
+        
         OnRevive?.Invoke();
         OnHealthChanged?.Invoke(currentHealth, maxHealth);
+    }
+    
+    /// <summary>
+    /// 무적 상태 시작
+    /// </summary>
+    private void StartInvincibility(float duration)
+    {
+        isInvincible = true;
+        invincibilityEndTime = Time.time + duration;
+    }
+    
+    /// <summary>
+    /// AI가 왕관을 가지고 있으면 떨어뜨리기
+    /// </summary>
+    private void DropCrownIfAttached()
+    {
+        Crown crown = FindObjectOfType<Crown>();
+        if (crown != null && crown.IsAttachedToPlayer(transform))
+        {
+            crown.DetachFromPlayerOnDeath(); // 사망으로 인한 자동 분리
+        }
     }
     
     #endregion

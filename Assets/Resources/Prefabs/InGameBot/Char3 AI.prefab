@@ -7287,6 +7287,7 @@ GameObject:
   - component: {fileID: -2348298153813680200}
   - component: {fileID: 1018325412760335598}
   - component: {fileID: 3372810348652959687}
+  - component: {fileID: -8885691807101591236}
   m_Layer: 15
   m_Name: Char3 AI
   m_TagString: Player
@@ -7506,11 +7507,12 @@ MonoBehaviour:
   Group: 0
   prefixField: -1
   Synchronization: 3
-  OwnershipTransfer: 0
-  observableSearch: 2
+  OwnershipTransfer: 2
+  observableSearch: 0
   ObservedComponents:
   - {fileID: 1018325412760335598}
   - {fileID: 3372810348652959687}
+  - {fileID: -8885691807101591236}
   sceneViewId: 0
   InstantiationId: 0
   isRuntimeInstantiated: 0
@@ -7584,6 +7586,22 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   characterData: {fileID: 11400000, guid: c76b0bac50baf694685c79d5b035a154, type: 2}
+--- !u!114 &-8885691807101591236
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5025019268175795024}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 627855c7f81362d41938ffe0b1475957, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_SynchronizePosition: 1
+  m_SynchronizeRotation: 1
+  m_SynchronizeScale: 0
+  m_UseLocal: 1
 --- !u!1 &5040938060442839961
 GameObject:
   m_ObjectHideFlags: 0

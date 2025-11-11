@@ -2602,6 +2602,7 @@ GameObject:
   - component: {fileID: 249667502496578780}
   - component: {fileID: 6606867259231656207}
   - component: {fileID: 3624479475174546924}
+  - component: {fileID: -529159465219466204}
   m_Layer: 15
   m_Name: Char4 AI
   m_TagString: Player
@@ -2822,11 +2823,12 @@ MonoBehaviour:
   Group: 0
   prefixField: -1
   Synchronization: 3
-  OwnershipTransfer: 0
-  observableSearch: 2
+  OwnershipTransfer: 2
+  observableSearch: 0
   ObservedComponents:
   - {fileID: 6606867259231656207}
   - {fileID: 3624479475174546924}
+  - {fileID: -529159465219466204}
   sceneViewId: 0
   InstantiationId: 0
   isRuntimeInstantiated: 0
@@ -2884,6 +2886,9 @@ MonoBehaviour:
   attackRange: 12
   stateUpdateRate: 0.4
   shootCooldown: 0.4
+  shopLayerMask:
+    serializedVersion: 2
+    m_Bits: 0
   firePoint: {fileID: 3758079357125725470}
   muzzleFlash: {fileID: 0}
   animator: {fileID: 8951422393623688171}
@@ -2900,6 +2905,22 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   characterData: {fileID: 11400000, guid: 953e753609338714ebfaee060aa41207, type: 2}
+--- !u!114 &-529159465219466204
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2419043527781987115}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 627855c7f81362d41938ffe0b1475957, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_SynchronizePosition: 1
+  m_SynchronizeRotation: 1
+  m_SynchronizeScale: 0
+  m_UseLocal: 1
 --- !u!1 &2439646248035847138
 GameObject:
   m_ObjectHideFlags: 0
