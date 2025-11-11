@@ -48,6 +48,7 @@ public class TestGun : MonoBehaviourPun
 
     #region Private Fields
     private PhotonView photonViewCached;
+    private PhotonView parentPhotonview;
     private bool isFiring;
     private float lastFireTime;
     private float damage;
@@ -57,6 +58,7 @@ public class TestGun : MonoBehaviourPun
     protected virtual void Awake()
     {
         photonViewCached = GetComponent<PhotonView>();
+        parentPhotonview = transform.root.GetComponent<PhotonView>();
         damage = gunData.damage;
         testShoot = GetComponentInParent<TestShoot>(); // TestShoot 스크립트 찾기
 
@@ -276,7 +278,7 @@ public class TestGun : MonoBehaviourPun
                     return; // ✅ 튜토리얼에서는 여기서 종료 (Photon 로직 실행 안 함)
                 }
             }
-            
+
             IDamageable target = hit.collider.GetComponent<IDamageable>();
             PhotonView targetView = hit.collider.GetComponent<PhotonView>();
 
@@ -288,10 +290,12 @@ public class TestGun : MonoBehaviourPun
                     return;
                 }
 
-                int attackerActorNumber = photonViewCached.OwnerActorNr;
+                int attackerViewID = parentPhotonview.ViewID;
 
                 // 마스터 클라이언트로 데미지 RPC 전송
-                targetView.RPC("OnDamage", RpcTarget.All, damage, hit.point, hit.normal, attackerActorNumber);
+                targetView.RPC("OnDamage", RpcTarget.All, damage, hit.point, hit.normal, attackerViewID);
+                Debug.Log($"[Testgun - OnDamage] {parentPhotonview}");
+                Debug.Log($"[Testgun - OnDamage] {attackerViewID}");
             }
         }
     }

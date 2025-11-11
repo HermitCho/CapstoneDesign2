@@ -188,8 +188,7 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
         {
             currentAttacker = attacker;
             int attackerId = attacker != null ? attacker.photonView.ViewID : -1;
-            // RPC_Die는 이미 RPC_UpdateHealth에서 IsDead 상태를 설정했으므로,
-            // 추가적인 처리를 위해 RPC를 호출합니다.
+            Debug.Log($"[LivingEntity - OnDamage] {attackerId}");
             photonView.RPC("RPC_Die", RpcTarget.All, attackerId);
         }
 
@@ -257,13 +256,12 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
 
         // ViewID를 통해 attacker LivingEntity 찾기
         PhotonView attackerPV = PhotonView.Find(attackerViewId);
-        LivingEntity attacker = attackerPV?.GetComponent<LivingEntity>();
+        LivingEntity attacker = attackerPV?.gameObject.GetComponent<LivingEntity>();
 
         // 사망 상태 설정
         IsDead = true;
-        currentAttacker = attacker;
-
-        Debug.Log($"[LivingEntity] {gameObject.name} 사망 처리 완료 - attacker: {currentAttacker?.name ?? "null"}, IsDead: {IsDead}");
+        Debug.Log($"[LivingEntity] {attackerPV}");
+        Debug.Log($"[LivingEntity] {gameObject.name} 사망 처리 완료 - attacker: {attacker}, IsDead: {IsDead}");
 
         //마스터 클라이언트에서 공격자에게 점수 부여
         if (PhotonNetwork.IsMasterClient && attacker != null)
