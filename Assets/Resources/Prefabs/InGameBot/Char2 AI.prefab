@@ -3479,7 +3479,6 @@ GameObject:
   - component: {fileID: 6189260897976243045}
   - component: {fileID: -7496086453306966310}
   - component: {fileID: 2584981106946664644}
-  - component: {fileID: 8299370450524408511}
   - component: {fileID: 4535689691548696352}
   - component: {fileID: 447812415149544517}
   - component: {fileID: 2224077389136790180}
@@ -3733,20 +3732,6 @@ NavMeshAgent:
   m_BaseOffset: 0
   m_WalkableMask: 4294967295
   m_ObstacleAvoidanceType: 4
---- !u!114 &8299370450524408511
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3137786495578628170}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 31e796572399e5447b1ab09b751c7e4a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  footstepMinInterval: 0.15
-  footstepDelay: 0
 --- !u!114 &4535689691548696352
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3771,6 +3756,7 @@ MonoBehaviour:
   firePoint: {fileID: 1501594468688594338}
   muzzleFlash: {fileID: 0}
   animator: {fileID: 8511895970222891146}
+  footstepMinInterval: 0.15
 --- !u!114 &447812415149544517
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3784,6 +3770,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   characterData: {fileID: 11400000, guid: 1f3b083b1137b7f4888a453fcfccf320, type: 2}
+  hitSound: {fileID: 8300000, guid: 71777b9fe92d3e7468f55dc8b0c7058d, type: 3}
 --- !u!114 &2224077389136790180
 MonoBehaviour:
   m_ObjectHideFlags: 0
