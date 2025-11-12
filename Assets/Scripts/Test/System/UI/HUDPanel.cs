@@ -22,10 +22,12 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     [SerializeField] private ProgressBar healthProgressBGBar;
     
     [Header("점수 UI")]
+    [SerializeField] private Image scoreIcon;
     [SerializeField] private TextMeshProUGUI scoreText;
     [SerializeField] private TextMeshProUGUI scoreMultiplierText;
     
     [Header("코인 UI")]
+    [SerializeField] private Image coinIcon;
     [SerializeField] private TextMeshProUGUI coinText;
     
     [Header("시간 UI")]
@@ -103,6 +105,13 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     private Tween healthBGBarFadeTween;
     private float healthFadeDelay = 3f; // 3초
     private Color originalHealthBarColor = Color.white;
+    
+    // 점수 아이콘 애니메이션 관련
+    private Tween scoreIconShakeTween;
+    
+    // 코인 아이콘 애니메이션 관련
+    private Tween coinIconRotateTween;
+    private Tween coinIconScaleTween;
     
     // 시간 관련 (GameManager에서 받아옴)
     private float gameTime = 0f;
@@ -222,6 +231,9 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         
         // 장탄수 애니메이션 정리
         CleanupAmmoAnimations();
+        
+        // 아이콘 애니메이션 정리
+        CleanupIconAnimations();
     }
     
     /// <summary>
@@ -837,6 +849,9 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         {
             currentCoin = newCoin;
             UpdateCoinDisplay();
+            
+            // 코인 아이콘 회전 애니메이션 실행
+            PlayCoinIconRotateAnimation();
         }
     }
     
@@ -876,6 +891,9 @@ public class HUDPanel : MonoBehaviourPunCallbacks
             float previousScore = currentScore;
             currentScore = newScore;
             UpdateScoreDisplay();
+            
+            // 점수 아이콘 진동 애니메이션 실행
+            PlayScoreIconShakeAnimation();
             
             // 점수가 변경되었을 때 네트워크 동기화
             if (PhotonNetwork.IsConnected && PhotonNetwork.LocalPlayer != null)
@@ -2221,6 +2239,93 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         reloadIconRotateTween = null;
         reloadIconBlinkTween = null;
         zoomImageFadeTween = null; // ✅ null로 초기화
+    }
+    
+    #endregion
+    
+    #region 아이콘 애니메이션
+    
+    /// <summary>
+    /// 점수 아이콘 진동 애니메이션 (좌우로 기울어지며 흔들림)
+    /// </summary>
+    private void PlayScoreIconShakeAnimation()
+    {
+        if (scoreIcon == null) return;
+        
+        // 기존 애니메이션 중지
+        scoreIconShakeTween?.Kill();
+        
+        // 원래 회전값으로 초기화
+        scoreIcon.transform.rotation = Quaternion.identity;
+        
+        // 좌우 진동 애니메이션 (±15도 각도로 3번 왔다갔다)
+        scoreIconShakeTween = DOTween.Sequence()
+            .Append(scoreIcon.transform.DORotate(new Vector3(0f, 0f, 15f), 0.08f).SetEase(Ease.OutQuad))
+            .Append(scoreIcon.transform.DORotate(new Vector3(0f, 0f, -15f), 0.08f).SetEase(Ease.InOutQuad))
+            .Append(scoreIcon.transform.DORotate(new Vector3(0f, 0f, 10f), 0.08f).SetEase(Ease.InOutQuad))
+            .Append(scoreIcon.transform.DORotate(new Vector3(0f, 0f, -10f), 0.08f).SetEase(Ease.InOutQuad))
+            .Append(scoreIcon.transform.DORotate(new Vector3(0f, 0f, 5f), 0.08f).SetEase(Ease.InOutQuad))
+            .Append(scoreIcon.transform.DORotate(new Vector3(0f, 0f, 0f), 0.08f).SetEase(Ease.InQuad))
+            .OnComplete(() => {
+                // 애니메이션 완료 후 회전값 완전히 초기화
+                scoreIcon.transform.rotation = Quaternion.identity;
+            });
+    }
+    
+    /// <summary>
+    /// 코인 아이콘 회전 애니메이션 (마리오 스타일)
+    /// </summary>
+    private void PlayCoinIconRotateAnimation()
+    {
+        if (coinIcon == null) return;
+        
+        // 기존 애니메이션 중지
+        coinIconRotateTween?.Kill();
+        coinIconScaleTween?.Kill();
+        
+        // 원래 크기와 회전값으로 초기화
+        coinIcon.transform.localScale = Vector3.one;
+        coinIcon.transform.rotation = Quaternion.identity;
+        
+        // Y축 180도 회전 (뒤집히는 효과)
+        coinIconRotateTween = coinIcon.transform
+            .DORotate(new Vector3(0f, 180f, 0f), 0.4f, RotateMode.FastBeyond360)
+            .SetEase(Ease.OutQuad)
+            .OnComplete(() => {
+                // 회전 완료 후 원래대로 복원
+                coinIcon.transform.rotation = Quaternion.identity;
+            });
+        
+        // 크기 변화 애니메이션 (약간 커졌다가 작아짐)
+        coinIconScaleTween = DOTween.Sequence()
+            .Append(coinIcon.transform.DOScale(1.2f, 0.2f).SetEase(Ease.OutQuad))
+            .Append(coinIcon.transform.DOScale(1f, 0.2f).SetEase(Ease.InQuad));
+    }
+    
+    /// <summary>
+    /// 아이콘 애니메이션 정리
+    /// </summary>
+    private void CleanupIconAnimations()
+    {
+        scoreIconShakeTween?.Kill();
+        coinIconRotateTween?.Kill();
+        coinIconScaleTween?.Kill();
+        
+        scoreIconShakeTween = null;
+        coinIconRotateTween = null;
+        coinIconScaleTween = null;
+        
+        // 원래 상태로 복원
+        if (scoreIcon != null)
+        {
+            scoreIcon.transform.rotation = Quaternion.identity;
+        }
+        
+        if (coinIcon != null)
+        {
+            coinIcon.transform.rotation = Quaternion.identity;
+            coinIcon.transform.localScale = Vector3.one;
+        }
     }
     
     #endregion
