@@ -84,8 +84,8 @@ public class CoinController : MonoBehaviourPun
         // GameManager를 통해 테디베어 점수 증가
         if (GameManager.Instance != null)
         {
-            // 테디베어가 부착되어 있는지 확인
-            isTeddyBearAttached = GameManager.Instance.IsTeddyBearAttached();
+            // ✅ 중요: 왕관이 로컬 플레이어 자신에게 부착되어 있는지 확인
+            isTeddyBearAttached = IsLocalPlayerHoldingCrown();
 
             // 기본 점수 (코인 1개당 1점)
             float baseScore = coinAmount;
@@ -104,6 +104,22 @@ public class CoinController : MonoBehaviourPun
             // 점수 추가
             AddScore(baseScore);
         }
+    }
+    
+    /// <summary>
+    /// 로컬 플레이어가 왕관을 소유하고 있는지 확인
+    /// </summary>
+    /// <returns>로컬 플레이어가 왕관을 소유 중이면 true, 아니면 false</returns>
+    private bool IsLocalPlayerHoldingCrown()
+    {
+        if (!photonView.IsMine) return false;
+        
+        // 씬에서 왕관 찾기
+        Crown crown = FindObjectOfType<Crown>();
+        if (crown == null) return false;
+        
+        // 왕관이 현재 플레이어의 Transform에 부착되어 있는지 확인
+        return crown.IsAttachedToPlayer(transform);
     }
 
     /// <summary>

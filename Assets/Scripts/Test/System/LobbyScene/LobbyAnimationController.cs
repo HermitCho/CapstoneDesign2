@@ -6,16 +6,9 @@ public class LobbyAnimationController : MonoBehaviour
 {
     [Header("애니메이터 설정")]
     [SerializeField] private Animator animator;
-    [Header("시간당 애니메이션 출력 확률")]
-    [Range(0f, 1f)]
-    [SerializeField] private float animationPlayRate = 0.2f;
-
-    [Header("애니메이션 출력 대기 시간 - (초 단위)")]
-    [SerializeField] private float secWaitTime = 10f;
-
 
     [Header("애니메이션 트리거 이름")]
-    [SerializeField] private string[] triggerNames = { "LookingAround", "Waving", "Shrugging" };
+    [SerializeField] private string[] triggerNames = {"LookingAround", "Waving", "Shrugging" };
 
     [Header("선택 애니메이션 설정")]
     [Tooltip("Select 애니메이션의 트리거 이름")]
@@ -24,8 +17,9 @@ public class LobbyAnimationController : MonoBehaviour
     [SerializeField] private string selectedStateName = "Select";
     
     //내부 상태 변수
-    private float lastAnimationTime;
-    private bool isAnimationPlaying = false;
+    private int currentDanceIndex = 0;
+    private Coroutine danceCoroutine;
+    private bool isDancing = false;
 
     // Start is called before the first frame update
     void Start()
@@ -35,59 +29,45 @@ public class LobbyAnimationController : MonoBehaviour
             animator = GetComponent<Animator>();
         }
         
-        lastAnimationTime = Time.time;
+        if (triggerNames.Length > 0)
+            StartCoroutine(DanceLoop());
     }
 
-    // Update is called once per frame
-    void Update()
+    private IEnumerator DanceLoop()
     {
-        // secWaitTime이 지났고, 현재 애니메이션이 재생 중이 아닐 때
-        if (Time.time - lastAnimationTime >= secWaitTime && !isAnimationPlaying)
+        isDancing = true;
+
+        while (true)
         {
-            // animationPlayRate 확률로 애니메이션 재생
-            if (Random.Range(0f, 1f) <= animationPlayRate)
+            // 🔹 Animator가 파괴되거나 비활성화되면 루프 종료
+            if (animator == null || !animator.isActiveAndEnabled)
+                yield break;
+
+            string trigger = triggerNames[currentDanceIndex];
+
+            // 🔹 즉시 전환 (CrossFade 사용)
+            animator.CrossFadeInFixedTime(trigger, 0f, 0, 0f);
+
+            // 🔹 Animator 상태가 전환될 수 있도록 한 프레임 대기
+            yield return null;
+
+            // 🔹 상태 정보 가져오기 (안전하게)
+            AnimatorStateInfo info = animator.GetCurrentAnimatorStateInfo(0);
+            float duration = info.length > 0 ? info.length : 1f;
+
+            // 🔹 Idle 애니메이션일 때만 최대 1초로 제한
+            if (trigger.ToLower().Contains("Idle"))
             {
-                PlayRandomAnimation();
+                duration = Mathf.Min(duration, 1f);
             }
-            else
-            {
-                // 애니메이션을 재생하지 않았어도 시간을 리셋
-                lastAnimationTime = Time.time;
-            }
+
+            // 🔹 애니메이션 대기
+            yield return new WaitForSeconds(duration - 0.05f);
+
+            // 🔹 다음 애니메이션 인덱스 순환
+            currentDanceIndex = (currentDanceIndex + 1) % triggerNames.Length;
+
         }
-    }
-
-    private void PlayRandomAnimation()
-    {
-        if (animator == null || triggerNames.Length == 0) return;
-
-        // 랜덤한 트리거 선택
-        string randomTrigger = triggerNames[Random.Range(0, triggerNames.Length)];
-        
-        // 애니메이션 전환을 더 빠르게 하기 위해 SetTrigger 사용
-        animator.SetTrigger(randomTrigger);
-        
-        // 애니메이션 재생 상태로 설정
-        isAnimationPlaying = true;
-        lastAnimationTime = Time.time;
-        
-        // 애니메이션 완료 후 상태를 리셋하기 위한 코루틴 시작
-        StartCoroutine(ResetAnimationState(randomTrigger));
-    }
-
-    private IEnumerator ResetAnimationState(string triggerName)
-    {
-        // 애니메이션 완료까지 대기 (더 짧은 시간)
-        yield return new WaitForSeconds(0.1f);
-        
-        // 애니메이션이 실제로 재생 중인지 확인
-        while (animator.GetCurrentAnimatorStateInfo(0).IsName(triggerName))
-        {
-            yield return null; // 한 프레임 대기
-        }
-        
-        // 애니메이션 재생 상태 리셋
-        isAnimationPlaying = false;
     }
 
     /// <summary>
@@ -101,6 +81,10 @@ public class LobbyAnimationController : MonoBehaviour
         {
             return;
         }
+
+        // 🔹 댄스 루프 정지
+        StopAllCoroutines();
+        isDancing = false;
         
         // ✅ 기존 트리거들을 리셋하여 다른 애니메이션 중단
         if (triggerNames != null && triggerNames.Length > 0)
@@ -117,13 +101,6 @@ public class LobbyAnimationController : MonoBehaviour
         
         // ✅ 트리거도 함께 설정 (애니메이션 컨트롤러가 트리거를 사용한다면)
         animator.SetTrigger(selectedTriggerNames);
-        
-        // 애니메이션 재생 상태로 설정
-        isAnimationPlaying = true;
-        lastAnimationTime = Time.time;
-        
-        // 애니메이션 완료 후 상태를 리셋하기 위한 코루틴 시작
-        StartCoroutine(ResetAnimationState(selectedTriggerNames));
     }
 
     // 디버깅을 위한 메서드
@@ -134,4 +111,27 @@ public class LobbyAnimationController : MonoBehaviour
             animator = GetComponent<Animator>();
         }
     }
+
+    private void OnDisable()
+    {
+        // 🔹 씬 종료나 Play 중단 시 안전하게 코루틴 정리
+        if (danceCoroutine != null)
+        {
+            StopCoroutine(danceCoroutine);
+            danceCoroutine = null;
+        }
+        isDancing = false;
+    }
+
+    private void OnDestroy()
+    {
+        // 🔹 혹시라도 남아 있을 코루틴 완전 정리
+        if (danceCoroutine != null)
+        {
+            StopCoroutine(danceCoroutine);
+            danceCoroutine = null;
+        }
+        isDancing = false;
+    }
 }
+

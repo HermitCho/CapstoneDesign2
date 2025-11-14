@@ -31,9 +31,9 @@ public class Crown : MonoBehaviourPun
     //테디베어 점수 관련 변수
     private float currentScore;
     
-    //테디베어 재부착 방지 관련 변수
-    private float lastDetachTime = -999f;
-    private bool isManualDetach = false; // 수동 분리 여부 (true: 수동, false: 사망)
+    //테디베어 재부착 방지 관련 변수 (개별 캐릭터별로 관리)
+    private Dictionary<int, float> lastDetachTimePerPlayer = new Dictionary<int, float>(); // ViewID별 마지막 분리 시간
+    private int lastOwnerViewID = -1; // 마지막으로 왕관을 소유한 플레이어의 ViewID
     
     //테디베어 발광 상태 확인 변수
     private bool isGlowing = false;
@@ -138,16 +138,38 @@ public class Crown : MonoBehaviourPun
             PhotonView playerPhotonView = collision.transform.GetComponent<PhotonView>();
             if (!playerPhotonView.IsMine) return;
             
-            // 재부착 방지 시간 확인 (수동 분리인 경우만)
-            if (isManualDetach)
+            // ✅ 플레이어가 죽은 상태인지 확인 (LivingEntity 체크)
+            LivingEntity livingEntity = collision.transform.GetComponent<LivingEntity>();
+            if (livingEntity != null && livingEntity.IsDead)
             {
-                float timeSinceDetach = Time.time - lastDetachTime;
+                Debug.Log($"[Crown] 플레이어 {collision.transform.name}가 사망 상태이므로 왕관 부착 불가");
+                return;
+            }
+            
+            // ✅ 봇이 죽은 상태인지 확인 (AIHealth 체크)
+            AIHealth aiHealth = collision.transform.GetComponent<AIHealth>();
+            if (aiHealth != null && aiHealth.IsDead)
+            {
+                Debug.Log($"[Crown] 봇 {collision.transform.name}가 사망 상태이므로 왕관 부착 불가");
+                return;
+            }
+            
+            // ✅ 개별 캐릭터별 재부착 방지 시간 확인
+            int currentPlayerViewID = playerPhotonView.ViewID;
+            if (lastDetachTimePerPlayer.ContainsKey(currentPlayerViewID))
+            {
+                float timeSinceDetach = Time.time - lastDetachTimePerPlayer[currentPlayerViewID];
                 if (timeSinceDetach < cachedDetachReattachTime)
                 {
-                    // 재부착 방지 시간 동안은 부착하지 않음
+                    // 이 플레이어/봇만 재부착 방지 시간 동안 부착 불가
                     float remainingTime = cachedDetachReattachTime - timeSinceDetach;
-                    Debug.Log($"재부착 방지 중... 남은 시간: {remainingTime:F1}초");
+                    Debug.Log($"[Crown] {collision.transform.name} 재부착 방지 중... 남은 시간: {remainingTime:F1}초");
                     return;
+                }
+                else
+                {
+                    // 재부착 방지 시간이 지났으면 딕셔너리에서 제거
+                    lastDetachTimePerPlayer.Remove(currentPlayerViewID);
                 }
             }
             
@@ -376,7 +398,7 @@ public class Crown : MonoBehaviourPun
     {
         currentScore = 0f;
         cachedTeddyBearScore = 0f;
-        lastDetachTime = -999f; // 재부착 방지 시간도 리셋
+        lastDetachTimePerPlayer.Clear(); // 모든 재부착 방지 시간 리셋
     }
 
     
@@ -402,6 +424,13 @@ public class Crown : MonoBehaviourPun
         if (currentPlayerPhotonView == null || !currentPlayerPhotonView.IsMine) return;
         if (!isAttached) return;
         
+        // ✅ 현재 소유자의 ViewID를 기록하고 재부착 방지 시간 설정
+        int ownerViewID = currentPlayerPhotonView.ViewID;
+        lastDetachTimePerPlayer[ownerViewID] = Time.time;
+        lastOwnerViewID = ownerViewID;
+        
+        Debug.Log($"[Crown] {currentPlayerPhotonView.name} (ViewID: {ownerViewID})에게서 분리. 재부착 방지 시간 {cachedDetachReattachTime}초 시작 (수동: {isManual})");
+        
         // 현재 위치 저장 (떨굴 위치)
         Vector3 dropPosition = transform.position;
         
@@ -410,18 +439,6 @@ public class Crown : MonoBehaviourPun
 
         // 모든 클라이언트에서 떨구기 상태 적용
         photonView.RPC("RpcDetachFromPlayer", RpcTarget.AllBuffered, dropPosition, playerForward);  
-
-        // 수동 분리인 경우만 재부착 방지 시간 기록
-        if (isManual)
-        {
-            lastDetachTime = Time.time;
-            isManualDetach = true;
-        }
-        else
-        {
-            // 자동 분리(사망)인 경우 즉시 재부착 가능하도록 설정
-            isManualDetach = false;
-        }
         
         playerTransform = null;
 
@@ -507,8 +524,9 @@ public class Crown : MonoBehaviourPun
             crownCollider.enabled = true;
         }
         
-        // 재부착 방지 시간 기록
-        lastDetachTime = Time.time;
+        // ✅ 이 메서드(DetachAndReturnToOriginal)는 아이템 사용 시 호출되므로
+        // 재부착 방지 시간을 설정하지 않음 (즉시 재부착 가능)
+        // 필요시 현재 소유자의 ViewID를 기록할 수 있음
         
         playerTransform = null;
         
@@ -593,19 +611,49 @@ public class Crown : MonoBehaviourPun
         TeddyBearScoreReset();
     }
     
-    // 재부착까지 남은 시간 가져오기
-    public float GetTimeUntilReattach()
+    // 특정 플레이어/봇의 재부착까지 남은 시간 가져오기
+    public float GetTimeUntilReattach(int viewID)
     {
-        float timeSinceDetach = Time.time - lastDetachTime;
+        if (!lastDetachTimePerPlayer.ContainsKey(viewID))
+        {
+            return 0f; // 제한 없음
+        }
+        
+        float timeSinceDetach = Time.time - lastDetachTimePerPlayer[viewID];
         float remainingTime = cachedDetachReattachTime - timeSinceDetach;
         return Mathf.Max(0f, remainingTime);
     }
     
-    // 재부착 가능한 상태인지 확인
+    // 마지막 소유자의 재부착까지 남은 시간 (UI 표시용)
+    public float GetTimeUntilReattach()
+    {
+        if (lastOwnerViewID == -1)
+        {
+            return 0f;
+        }
+        return GetTimeUntilReattach(lastOwnerViewID);
+    }
+    
+    // 특정 플레이어/봇이 재부착 가능한 상태인지 확인
+    public bool CanReattach(int viewID)
+    {
+        if (!lastDetachTimePerPlayer.ContainsKey(viewID))
+        {
+            return true; // 제한 없음
+        }
+        
+        float timeSinceDetach = Time.time - lastDetachTimePerPlayer[viewID];
+        return timeSinceDetach >= cachedDetachReattachTime;
+    }
+    
+    // 마지막 소유자가 재부착 가능한지 확인 (UI 표시용)
     public bool CanReattach()
     {
-        float timeSinceDetach = Time.time - lastDetachTime;
-        return timeSinceDetach >= cachedDetachReattachTime;
+        if (lastOwnerViewID == -1)
+        {
+            return true;
+        }
+        return CanReattach(lastOwnerViewID);
     }
 
     #endregion

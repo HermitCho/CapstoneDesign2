@@ -46,6 +46,11 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
     [SerializeField] private ParticleSystem muzzleFlash;
     [SerializeField] private Animator animator;
     
+    [Header("Footstep Sound")]
+    [SerializeField] private float footstepMinInterval = 0.15f;
+    private float lastFootstepTime = -999f;
+    private int lastStepPhase = int.MinValue;
+    
     #endregion
     
     #region Private Fields
@@ -126,6 +131,12 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
         reviveHash = Animator.StringToHash("Revive");
         fireHash = Animator.StringToHash("fire");
         reloadHash = Animator.StringToHash("Reload");
+        
+        // SpeedMultiplier 초기값 설정 (TestMoveAnimationController와 동일)
+        if (animator != null)
+        {
+            animator.SetFloat("SpeedMultiplier", 1.2f);
+        }
         
         // CharacterData 적용
         if (characterData != null && aiHealth != null)
@@ -942,45 +953,37 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
         if (animator == null)
             return;
         
-        // 이동 애니메이션
+        // 이동 애니메이션 - TestMoveAnimationController와 동일한 방식 사용
         if (agent != null && agent.isOnNavMesh && aiHealth != null && !aiHealth.IsDead)
         {
             Vector3 velocity = agent.velocity;
             float speed = velocity.magnitude;
             
-            // 움직이고 있으면 블렌드 트리 중간값 사용 (0.2 ~ 0.6 범위)
             if (speed > 0.1f)
             {
+                // 로컬 좌표계로 변환
                 Vector3 localVelocity = transform.InverseTransformDirection(velocity);
                 
-                // 정규화: -1 ~ 1 범위로
+                // 속도 정규화 (-1 ~ 1 범위)
                 float moveSpeed = characterData != null ? characterData.moveSpeed : 5f;
-                float normX = localVelocity.x / moveSpeed;
-                float normZ = localVelocity.z / moveSpeed;
+                float normalizedX = Mathf.Clamp(localVelocity.x / moveSpeed, -1f, 1f);
+                float normalizedZ = Mathf.Clamp(localVelocity.z / moveSpeed, -1f, 1f);
                 
-                // 블렌드 트리 범위로 매핑: 0.2 ~ 0.6
-                float mappedX = Mathf.Lerp(0.2f, 0.6f, Mathf.Abs(normX)) * Mathf.Sign(normX);
-                float mappedY = Mathf.Lerp(0.2f, 0.6f, Mathf.Abs(normZ)) * Mathf.Sign(normZ);
-                
-                // 주로 전진하면 MoveY를 높게
-                if (Mathf.Abs(normZ) > Mathf.Abs(normX))
-                {
-                    mappedY = Mathf.Clamp(mappedY, 0.3f, 0.6f);
-                }
-                
-                animator.SetFloat(moveXHash, mappedX);
-                animator.SetFloat(moveYHash, mappedY);
+                // TestMoveAnimationController처럼 dampTime 0.1f 사용하여 부드럽게 보간
+                animator.SetFloat(moveXHash, normalizedX, 0.1f, Time.deltaTime);
+                animator.SetFloat(moveYHash, normalizedZ, 0.1f, Time.deltaTime);
             }
             else
             {
-                animator.SetFloat(moveXHash, 0f);
-                animator.SetFloat(moveYHash, 0f);
+                // 정지 상태
+                animator.SetFloat(moveXHash, 0f, 0.1f, Time.deltaTime);
+                animator.SetFloat(moveYHash, 0f, 0.1f, Time.deltaTime);
             }
         }
         else
         {
-            animator.SetFloat(moveXHash, 0f);
-            animator.SetFloat(moveYHash, 0f);
+            animator.SetFloat(moveXHash, 0f, 0.1f, Time.deltaTime);
+            animator.SetFloat(moveYHash, 0f, 0.1f, Time.deltaTime);
         }
     }
     
@@ -993,6 +996,49 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
     public void OnReloadEnd()
     {
         // 재장전 완료 이벤트
+    }
+    
+    /// <summary>
+    /// 발자국 소리 애니메이션 이벤트
+    /// </summary>
+    public void FootStepSound()
+    {
+        // 마스터 클라이언트만 발자국 소리 재생 (중복 방지)
+        if (!PhotonNetwork.IsMasterClient)
+            return;
+            
+        // 이동 중인지 체크
+        if (agent == null || !agent.isOnNavMesh || agent.velocity.magnitude < 0.1f)
+            return;
+        
+        // Animator 위상 체크 (같은 반 주기 내 중복 이벤트 차단)
+        if (animator != null)
+        {
+            var state = animator.GetCurrentAnimatorStateInfo(0);
+            float norm = state.normalizedTime % 1f;
+            int currentPhase = Mathf.FloorToInt(norm * 2f + 0.01f);
+            if (currentPhase == lastStepPhase)
+            {
+                return;
+            }
+            lastStepPhase = currentPhase;
+        }
+        
+        // 최소 간격 보호
+        if (Time.time - lastFootstepTime < footstepMinInterval)
+        {
+            return;
+        }
+        lastFootstepTime = Time.time;
+        
+        // RPC로 모든 클라이언트에 발자국 소리 재생
+        pv.RPC("RPC_AIFootStep", RpcTarget.All);
+    }
+    
+    [PunRPC]
+    private void RPC_AIFootStep()
+    {
+        AudioManager.Inst?.PlayClipAtPoint("SFX_Game_FootStep", transform.position, null, transform);
     }
     
     #endregion
@@ -1068,3 +1114,4 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
     
     #endregion
 }
+
