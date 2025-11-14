@@ -1591,78 +1591,125 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     {
         isAnimating = true;
         
-        // 현재 위치와 순서 정보 저장
-        Dictionary<GameObject, Vector3> originalPositions = new Dictionary<GameObject, Vector3>();
-        Dictionary<GameObject, int> originalIndices = new Dictionary<GameObject, int>();
+        // 이전 순위와 현재 순위를 비교하여 어떤 플레이어가 어디로 이동해야 하는지 파악
+        Dictionary<int, int> playerIdToOldRank = new Dictionary<int, int>();
+        Dictionary<int, int> playerIdToNewRank = new Dictionary<int, int>();
         
+        // 이전 순위 기록
+        for (int i = 0; i < previousPlayerDataList.Count; i++)
+        {
+            playerIdToOldRank[previousPlayerDataList[i].playerId] = i;
+        }
+        
+        // 현재 순위 기록
+        for (int i = 0; i < playerScoreDataList.Count; i++)
+        {
+            playerIdToNewRank[playerScoreDataList[i].playerId] = i;
+        }
+        
+        // 각 UI 요소의 현재 위치 저장
+        Dictionary<int, Vector3> oldPositions = new Dictionary<int, Vector3>();
         for (int i = 0; i < scoreBoardObjects.Count; i++)
         {
-            var scoreBoard = scoreBoardObjects[i];
-            if (scoreBoard != null)
+            if (scoreBoardObjects[i] != null && scoreBoardObjects[i].activeSelf)
             {
-                originalPositions[scoreBoard] = scoreBoard.transform.localPosition;
-                originalIndices[scoreBoard] = scoreBoard.transform.GetSiblingIndex();
+                oldPositions[i] = scoreBoardObjects[i].transform.localPosition;
             }
         }
         
-        // 먼저 새로운 순서로 정렬
+        // 새로운 순위에 맞게 UI 요소 재배치 (즉시)
         for (int i = 0; i < playerScoreDataList.Count && i < scoreBoardObjects.Count; i++)
         {
+            PlayerScoreData playerData = playerScoreDataList[i];
+            
+            // 해당 순위의 점수판 활성화
+            scoreBoardObjects[i].SetActive(true);
+            
+            // 순위와 함께 표시
+            string displayText = $"{playerData.nickname}   {playerData.score:F0}";
+            
+            // 로컬 플레이어인 경우 하이라이트
+            if (playerData.isLocalPlayer)
+            {
+                displayText = $"<color=yellow>{displayText}</color>";
+            }
+            
+            scoreBoardTexts[i].text = displayText;
+            
+            // 새로운 Sibling Index 설정
             scoreBoardObjects[i].transform.SetSiblingIndex(i);
         }
         
-        // Layout 업데이트를 위해 잠시 대기
-        yield return new WaitForEndOfFrame();
+        // 사용하지 않는 점수판 비활성화
+        for (int i = playerScoreDataList.Count; i < scoreBoardObjects.Count; i++)
+        {
+            if (scoreBoardObjects[i] != null)
+            {
+                scoreBoardObjects[i].SetActive(false);
+            }
+        }
         
-        // Layout Group 강제 업데이트
+        // Layout 강제 업데이트
+        yield return new WaitForEndOfFrame();
+        Canvas.ForceUpdateCanvases();
         LayoutRebuilder.ForceRebuildLayoutImmediate(scoreBoardParent.GetComponent<RectTransform>());
         
         // 새로운 목표 위치 저장
-        Dictionary<GameObject, Vector3> targetPositions = new Dictionary<GameObject, Vector3>();
-        foreach (var scoreBoard in scoreBoardObjects)
+        Dictionary<int, Vector3> newPositions = new Dictionary<int, Vector3>();
+        for (int i = 0; i < scoreBoardObjects.Count; i++)
         {
-            if (scoreBoard != null)
+            if (scoreBoardObjects[i] != null && scoreBoardObjects[i].activeSelf)
             {
-                targetPositions[scoreBoard] = scoreBoard.transform.localPosition;
+                newPositions[i] = scoreBoardObjects[i].transform.localPosition;
             }
         }
         
-        // 원래 순서와 위치로 되돌리기
-        foreach (var scoreBoard in scoreBoardObjects)
+        // 각 UI 요소를 이전 위치로 되돌림 (애니메이션 시작 위치)
+        for (int i = 0; i < playerScoreDataList.Count && i < scoreBoardObjects.Count; i++)
         {
-            if (scoreBoard != null && originalIndices.ContainsKey(scoreBoard))
+            PlayerScoreData currentPlayer = playerScoreDataList[i];
+            
+            // 이 플레이어의 이전 순위 찾기
+            if (playerIdToOldRank.TryGetValue(currentPlayer.playerId, out int oldRank))
             {
-                scoreBoard.transform.SetSiblingIndex(originalIndices[scoreBoard]);
-                scoreBoard.transform.localPosition = originalPositions[scoreBoard];
+                // 이전 순위의 위치로 되돌림
+                if (oldPositions.TryGetValue(oldRank, out Vector3 oldPos))
+                {
+                    scoreBoardObjects[i].transform.localPosition = oldPos;
+                }
             }
         }
         
-        // Layout 업데이트를 위해 다시 대기
+        // 잠시 대기 (위치 변경 반영)
         yield return new WaitForEndOfFrame();
         
-        // DOTween을 사용한 부드러운 이동 애니메이션
+        // 부드러운 이동 애니메이션 시작
         List<Tween> tweens = new List<Tween>();
         
-        foreach (var scoreBoard in scoreBoardObjects)
+        for (int i = 0; i < playerScoreDataList.Count && i < scoreBoardObjects.Count; i++)
         {
-            if (scoreBoard != null && targetPositions.ContainsKey(scoreBoard))
+            if (scoreBoardObjects[i] != null && scoreBoardObjects[i].activeSelf && newPositions.ContainsKey(i))
             {
-                // 먼저 올바른 순서로 설정
-                int targetIndex = scoreBoardObjects.IndexOf(scoreBoard);
-                scoreBoard.transform.SetSiblingIndex(targetIndex);
+                // 현재 위치에서 목표 위치로 이동
+                var tween = scoreBoardObjects[i].transform
+                    .DOLocalMove(newPositions[i], 0.6f)
+                    .SetEase(Ease.OutBack);
                 
-                // 그 다음 위치 애니메이션 실행
-                var tween = scoreBoard.transform
-                    .DOLocalMove(targetPositions[scoreBoard], 0.5f)
-                    .SetEase(Ease.OutCubic);
                 tweens.Add(tween);
+                
+                // 약간의 스케일 애니메이션 추가 (펄스 효과)
+                var scaleTween = DOTween.Sequence()
+                    .Append(scoreBoardObjects[i].transform.DOScale(1.1f, 0.15f).SetEase(Ease.OutQuad))
+                    .Append(scoreBoardObjects[i].transform.DOScale(1f, 0.15f).SetEase(Ease.InQuad));
+                
+                tweens.Add(scaleTween);
             }
         }
         
         // 모든 애니메이션이 완료될 때까지 대기
-        yield return new WaitForSeconds(0.5f);
+        yield return new WaitForSeconds(0.6f);
         
-        // 애니메이션 완료 후 정리
+        // 애니메이션 정리
         foreach (var tween in tweens)
         {
             if (tween != null && tween.IsActive())
