@@ -54,13 +54,7 @@ public class LobbyAnimationController : MonoBehaviour
             // 🔹 상태 정보 가져오기 (안전하게)
             AnimatorStateInfo info = animator.GetCurrentAnimatorStateInfo(0);
             float duration = info.length > 0 ? info.length : 1f;
-
-            // 🔹 Idle 애니메이션일 때만 최대 1초로 제한
-            if (trigger.ToLower().Contains("Idle"))
-            {
-                duration = Mathf.Min(duration, 1f);
-            }
-
+            
             // 🔹 애니메이션 대기
             yield return new WaitForSeconds(duration - 0.05f);
 
