@@ -221,7 +221,7 @@ public class AIHealth : MonoBehaviourPunCallbacks, IPunObservable, IDamageable
         // 마스터 클라이언트만 부활 코루틴 시작
         if (PhotonNetwork.IsMasterClient && pv.IsMine)
         {
-            StartCoroutine(ReviveCoroutine(10f));
+            StartCoroutine(ReviveCoroutine(5f));
         }
     }
 
@@ -275,7 +275,7 @@ public class AIHealth : MonoBehaviourPunCallbacks, IPunObservable, IDamageable
         RestoreOriginalColors();
 
         // 부활 시 5초 무적 시작
-        StartInvincibility(5f);
+        StartInvincibility(3f);
 
         OnRevive?.Invoke();
         OnHealthChanged?.Invoke(currentHealth, maxHealth);
