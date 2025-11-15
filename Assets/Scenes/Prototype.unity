@@ -1986,6 +1986,26 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 23800000, guid: f20123e4831f7284787cf6725a993798,
         type: 2}
+    - target: {fileID: 2818345750495230746, guid: ca3d7bce95071014e9335635b470762c,
+        type: 3}
+      propertyPath: m_Name
+      value: Point 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 3318357864290439843, guid: ca3d7bce95071014e9335635b470762c,
+        type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 20.41
+      objectReference: {fileID: 0}
+    - target: {fileID: 3636967379005167027, guid: ca3d7bce95071014e9335635b470762c,
+        type: 3}
+      propertyPath: m_Name
+      value: Point 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 3713503008244121189, guid: ca3d7bce95071014e9335635b470762c,
+        type: 3}
+      propertyPath: m_Name
+      value: Point 6
+      objectReference: {fileID: 0}
     - target: {fileID: 7694772645210512813, guid: ca3d7bce95071014e9335635b470762c,
         type: 3}
       propertyPath: m_LocalPosition.x
@@ -2036,8 +2056,15 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 8749673108392600568, guid: ca3d7bce95071014e9335635b470762c,
+        type: 3}
+      propertyPath: m_Name
+      value: Point 5
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
-    m_RemovedGameObjects: []
+    m_RemovedGameObjects:
+    - {fileID: 1717906059663146321, guid: ca3d7bce95071014e9335635b470762c, type: 3}
+    - {fileID: 2973433649348205043, guid: ca3d7bce95071014e9335635b470762c, type: 3}
     m_AddedGameObjects: []
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 6054210093301110338, guid: ca3d7bce95071014e9335635b470762c,
@@ -6173,7 +6200,7 @@ MonoBehaviour:
   readyText: {fileID: 1251677358}
   playerCountText: {fileID: 1947943195}
   minWaitingPlayerTime: 20
-  countdownDuration: 5
+  countdownDuration: 3
   countdownPopScale: 1.5
   countdownRotationAngle: 15
   countdownPopDuration: 1.5
@@ -9216,6 +9243,30 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1.0000015, y: 5.0000014, z: 5.0000014}
   m_Center: {x: -0.00000029802328, y: -0.00000029802328, z: 2.500001}
+--- !u!1 &1272077687 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 2818345750495230746, guid: ca3d7bce95071014e9335635b470762c,
+    type: 3}
+  m_PrefabInstance: {fileID: 671789331}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1272077688 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 3636967379005167027, guid: ca3d7bce95071014e9335635b470762c,
+    type: 3}
+  m_PrefabInstance: {fileID: 671789331}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1272077689 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 3713503008244121189, guid: ca3d7bce95071014e9335635b470762c,
+    type: 3}
+  m_PrefabInstance: {fileID: 671789331}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1272077690 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8749673108392600568, guid: ca3d7bce95071014e9335635b470762c,
+    type: 3}
+  m_PrefabInstance: {fileID: 671789331}
+  m_PrefabAsset: {fileID: 0}
 --- !u!65 &1272632096
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -10289,6 +10340,10 @@ MonoBehaviour:
   - {fileID: 671789335}
   - {fileID: 671789334}
   - {fileID: 671789333}
+  - {fileID: 1272077690}
+  - {fileID: 1272077689}
+  - {fileID: 1272077688}
+  - {fileID: 1272077687}
   spawnParent: {fileID: 0}
   crownSpawnPosition: {fileID: 930512321}
   destroyPreviousCharacter: 1

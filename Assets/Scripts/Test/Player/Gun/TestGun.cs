@@ -62,7 +62,7 @@ public class TestGun : MonoBehaviourPun
         damage = gunData.damage;
         testShoot = GetComponentInParent<TestShoot>(); // TestShoot 스크립트 찾기
 
-         parentPhotonview = transform.root.GetComponent<PhotonView>();
+        parentPhotonview = transform.root.GetComponent<PhotonView>();
 
         if (testShoot == null)
         {
@@ -298,7 +298,7 @@ public class TestGun : MonoBehaviourPun
                     // 둘 다 AI가 아닌 경우만 무시
                     bool attackerIsAI = photonViewCached.GetComponent<AIHealth>() != null;
                     bool targetIsAI = targetView.GetComponent<AIHealth>() != null;
-                    
+
                     if (!attackerIsAI && !targetIsAI)
                     {
                         return;
@@ -307,8 +307,8 @@ public class TestGun : MonoBehaviourPun
 
                 int attackerViewID = parentPhotonview.ViewID;
 
-                targetView.RPC("OnDamage", RpcTarget.All, damage, hit.point, hit.normal, attackerViewID );
-
+                targetView.RPC("OnDamage", RpcTarget.All, damage, hit.point, hit.normal, attackerViewID);
+                Debug.Log($"[TestGun - ProcessPelletHit] : {targetView}에 적용");
             }
         }
     }
