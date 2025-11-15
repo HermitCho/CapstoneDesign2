@@ -5,7 +5,7 @@ using UnityEngine;
 public class CircleWaveEffect : MonoBehaviour
 {
     [Header("🎨 기본 설정")]
-    [SerializeField] private int circleMaterialIndex = 1;
+    [SerializeField] private int circleMaterialIndex = 0;
 
     [Header("🌊 파동 설정")]
     [SerializeField] private int maxWaveCount = 10;
@@ -13,12 +13,14 @@ public class CircleWaveEffect : MonoBehaviour
     [SerializeField] private float growSpeed = 0.5f;
     [SerializeField] private float startTiling = 7f;   // 처음엔 작게 보이는 (바깥쪽)
     [SerializeField] private float endTiling = 0.2f;   // 작을수록 원이 커짐 (중앙으로 확산)
+    [SerializeField] private Renderer targetRenderer;
+    
     private Renderer rend;
     private Material baseMat;
 
     void Start()
     {
-        rend = GetComponent<Renderer>();
+        rend = rend = targetRenderer;
         if (rend == null || rend.materials.Length <= circleMaterialIndex)
         {
             Debug.LogError("❌ CircleWaveEffect: Renderer나 circleMaterialIndex 오류");
