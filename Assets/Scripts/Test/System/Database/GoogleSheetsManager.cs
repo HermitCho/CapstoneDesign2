@@ -63,8 +63,8 @@ public class GoogleSheetsManager : MonoBehaviour
     private bool isDataLoaded = false;
     private bool isConnected = false;
     
-    // 구글 시트 API URLs
-    private string ReadURL => $"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheetId}/values/{sheetName}!A1:F1000";
+    // 구글 시트 API URLs (Money 컬럼 추가: A1:G1000)
+    private string ReadURL => $"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheetId}/values/{sheetName}!A1:G1000";
     private string WriteURL => $"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheetId}/values/{sheetName}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS";
 
     void Awake()
@@ -570,7 +570,7 @@ public class GoogleSheetsManager : MonoBehaviour
             string testId = "test_" + System.DateTime.Now.Ticks;
             string jsonData = $@"{{
                 ""values"": [
-                    [""{testId}"", ""testpass"", ""테스트"", ""0"", ""0"", ""1000""]
+                    [""{testId}"", ""testpass"", ""테스트"", ""0"", ""0"", ""1000"", ""0""]
                 ]
             }}";
             
@@ -1065,7 +1065,7 @@ public class GoogleSheetsManager : MonoBehaviour
             var row = response.values[i];
             Debug.Log($"행 {i}: [{string.Join(", ", row)}] (길이: {row.Length})");
             
-            if (row.Length >= 6) // ID, Password, Nickname, Win, Lose, Rate
+            if (row.Length >= 6) // ID, Password, Nickname, Win, Lose, Rate (Money는 선택적)
             {
                 try
                 {
@@ -1077,7 +1077,8 @@ public class GoogleSheetsManager : MonoBehaviour
                         nickname = row[2],
                         win = int.Parse(row[3]),
                         lose = int.Parse(row[4]),
-                        rate = int.Parse(row[5])
+                        rate = int.Parse(row[5]),
+                        money = row.Length >= 7 ? int.Parse(row[6]) : 0 // Money 컬럼 (없으면 0)
                     };
                     userDataCache.Add(userData);
                 }
@@ -1181,10 +1182,10 @@ public class GoogleSheetsManager : MonoBehaviour
             yield break;
         }
 
-        // 새 행 데이터 준비 - JsonUtility 대신 수동으로 JSON 생성
+        // 새 행 데이터 준비 - JsonUtility 대신 수동으로 JSON 생성 (Money 컬럼 추가)
         string jsonData = $@"{{
             ""values"": [
-                [""{userId}"", ""{password}"", ""{nickname}"", ""0"", ""0"", ""1000""]
+                [""{userId}"", ""{password}"", ""{nickname}"", ""0"", ""0"", ""1000"", ""0""]
             ]
         }}";
         byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(jsonData);
@@ -1209,7 +1210,8 @@ public class GoogleSheetsManager : MonoBehaviour
                     nickname = nickname,
                     win = 0,
                     lose = 0,
-                    rate = 1000
+                    rate = 1000,
+                    money = 0
                 };
                 userDataCache.Add(newUser);
                 
@@ -1247,17 +1249,17 @@ public class GoogleSheetsManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 게임 결과 업데이트
+    /// 게임 결과 업데이트 (재화 포함)
     /// </summary>
-    public void UpdateGameResult(string userId, int rank, System.Action<bool, string> callback)
+    public void UpdateGameResult(string userId, int rank, int moneyReward, System.Action<bool, string> callback)
     {
-        StartCoroutine(UpdateGameResultCoroutine(userId, rank, callback));
+        StartCoroutine(UpdateGameResultCoroutine(userId, rank, moneyReward, callback));
     }
 
     /// <summary>
-    /// 게임 결과 업데이트 코루틴
+    /// 게임 결과 업데이트 코루틴 (재화 포함)
     /// </summary>
-    private IEnumerator UpdateGameResultCoroutine(string userId, int rank, System.Action<bool, string> callback)
+    private IEnumerator UpdateGameResultCoroutine(string userId, int rank, int moneyReward, System.Action<bool, string> callback)
     {
         var user = userDataCache.FirstOrDefault(u => u.userId == userId);
         if (user == null)
@@ -1265,6 +1267,8 @@ public class GoogleSheetsManager : MonoBehaviour
             callback?.Invoke(false, "사용자를 찾을 수 없습니다.");
             yield break;
         }
+
+        Debug.Log($"[GoogleSheetsManager] UpdateGameResultCoroutine 시작 - User: {userId}, 기존 Money: {user.money}, 보상: {moneyReward}");
 
         // 랭크에 따른 스탯 업데이트
         if (rank == 1)
@@ -1286,6 +1290,11 @@ public class GoogleSheetsManager : MonoBehaviour
         // Rate가 0 아래로 내려가지 않도록
         if (user.rate < 0) user.rate = 0;
 
+        // 재화 추가 (구글 시트 캐시용 - 직접 할당)
+        int oldMoney = user.money;
+        user.money += moneyReward;
+        Debug.Log($"[GoogleSheetsManager] 재화 업데이트 - {oldMoney} + {moneyReward} = {user.money}");
+
         // 시트 업데이트
         yield return StartCoroutine(UpdateUserInSheet(user, callback));
     }
@@ -1305,14 +1314,14 @@ public class GoogleSheetsManager : MonoBehaviour
             yield break;
         }
 
-        // 업데이트할 행 범위 설정 (A{row}:F{row})
-        string updateRange = $"{sheetName}!A{user.id + 1}:F{user.id + 1}";
+        // 업데이트할 행 범위 설정 (A{row}:G{row}) - Money 컬럼 추가
+        string updateRange = $"{sheetName}!A{user.id + 1}:G{user.id + 1}";
         string updateURL = $"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheetId}/values/{updateRange}?valueInputOption=RAW";
 
-        // 업데이트 데이터 준비 - JsonUtility 대신 수동으로 JSON 생성
+        // 업데이트 데이터 준비 - JsonUtility 대신 수동으로 JSON 생성 (Money 컬럼 추가)
         string jsonData = $@"{{
             ""values"": [
-                [""{user.userId}"", ""{user.password}"", ""{user.nickname}"", ""{user.win}"", ""{user.lose}"", ""{user.rate}""]
+                [""{user.userId}"", ""{user.password}"", ""{user.nickname}"", ""{user.win}"", ""{user.lose}"", ""{user.rate}"", ""{user.money}""]
             ]
         }}";
         byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(jsonData);

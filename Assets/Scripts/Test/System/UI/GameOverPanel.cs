@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -57,6 +58,12 @@ public class GameOverPanel : MonoBehaviour
     [Tooltip("Exit 이미지")]
     [SerializeField] private Image _exitImage;
 
+    [Space(10)]
+    [Tooltip("Money 이미지")]
+    [SerializeField] private Image _moneyImage;
+    [Tooltip("Money 텍스트")]
+    [SerializeField] private TextMeshProUGUI _moneyText;
+
     [Header("게임 오버 컨트롤러")]
     [SerializeField] private GameOverController gameOverController;
     
@@ -82,6 +89,10 @@ public class GameOverPanel : MonoBehaviour
     
     // 왕관 호흡 애니메이션 Tween
     private Tween crownBreatheTween;
+    
+    // Money 애니메이션 Tween
+    private Tween moneyImageBounceTween;
+    private Tween moneyTextCountTween;
 
 
 #region Unity 생명주기
@@ -135,6 +146,9 @@ public class GameOverPanel : MonoBehaviour
         
         // 왕관 호흡 애니메이션 정리
         CleanupCrownBreatheAnimation();
+        
+        // Money 애니메이션 정리
+        CleanupMoneyAnimations();
     }
     
     /// <summary>
@@ -147,6 +161,18 @@ public class GameOverPanel : MonoBehaviour
             crownBreatheTween.Kill();
             crownBreatheTween = null;
         }
+    }
+    
+    /// <summary>
+    /// Money 애니메이션 정리
+    /// </summary>
+    private void CleanupMoneyAnimations()
+    {
+        moneyImageBounceTween?.Kill();
+        moneyImageBounceTween = null;
+        
+        moneyTextCountTween?.Kill();
+        moneyTextCountTween = null;
     }
 
 #endregion
@@ -361,6 +387,19 @@ public class GameOverPanel : MonoBehaviour
             _1stCrownImage.color = crownColor;
         }
         
+        // ✅ Money UI 초기화 (비활성화)
+        if (_moneyImage != null)
+        {
+            _moneyImage.gameObject.SetActive(false);
+            _moneyImage.transform.localScale = Vector3.zero;
+        }
+        
+        if (_moneyText != null)
+        {
+            _moneyText.gameObject.SetActive(false);
+            _moneyText.text = "x0";
+        }
+        
         // 모든 랭킹 UI 초기화
         InitializeRankingUI(_1stRankingImage, _1stNameText, _1stScoreText);
         InitializeRankingUI(_2ndRankingImage, _2ndNameText, _2ndScoreText);
@@ -441,6 +480,9 @@ public class GameOverPanel : MonoBehaviour
         
         // ✅ Winner Background 애니메이션 완료 후 왕관 호흡 애니메이션 시작
         StartCrownBreatheAnimation();
+        
+        // Money UI 애니메이션 시작
+        yield return StartCoroutine(AnimateMoneyUI());
         
         // 모든 애니메이션 완료
         isAnimationComplete = true;
@@ -783,6 +825,169 @@ public class GameOverPanel : MonoBehaviour
     {
         exitStickerTween?.Kill();
         exitStickerTween = null;
+    }
+
+#endregion
+
+#region Money UI 애니메이션
+
+    /// <summary>
+    /// Money UI 애니메이션 (로컬 플레이어의 순위에 따른 재화 표시)
+    /// </summary>
+    private IEnumerator AnimateMoneyUI()
+    {
+        if (_moneyImage == null || _moneyText == null) yield break;
+        if (cachedRankings == null || cachedRankings.Count == 0) yield break;
+        
+        // 로컬 플레이어 찾기
+        var localPlayerData = cachedRankings.FirstOrDefault(p => p.isLocalPlayer);
+        if (localPlayerData == null) yield break;
+        
+        // 순위에 따른 재화 계산
+        int playerRank = cachedRankings.IndexOf(localPlayerData) + 1;
+        int moneyReward = GetMoneyRewardByRank(playerRank);
+        
+        // 초기 상태 설정 (비활성화)
+        _moneyImage.gameObject.SetActive(false);
+        _moneyText.gameObject.SetActive(false);
+        _moneyImage.transform.localScale = Vector3.zero;
+        _moneyText.text = "x0";
+        
+        // 1등 발표가 완료될 때까지 대기 (1등 왕관 애니메이션이 끝난 후)
+        yield return new WaitForSeconds(0.5f);
+        
+        // Money UI 활성화
+        _moneyImage.gameObject.SetActive(true);
+        _moneyText.gameObject.SetActive(true);
+        
+        // Money 이미지 초기 등장 애니메이션
+        moneyImageBounceTween = _moneyImage.transform.DOScale(1f, 0.3f).SetEase(Ease.OutBack);
+        
+        // 사운드 재생
+        if (AudioManager.Inst != null)
+        {
+            AudioManager.Inst.PlayOneShot("SFX_UI_GameOver_PopScore");
+        }
+        
+        yield return moneyImageBounceTween.WaitForCompletion();
+        
+        // Money 텍스트 카운트업과 동시에 이미지 통통 튀는 애니메이션 시작
+        StartCoroutine(ContinuousBounceAnimation(moneyReward));
+        
+        // Money 텍스트 카운트업 애니메이션 (x0 → x목표 재화)
+        yield return StartCoroutine(AnimateMoneyCountUp(moneyReward));
+    }
+    
+    /// <summary>
+    /// Money 이미지 연속 바운스 애니메이션 (공이 튀듯이)
+    /// </summary>
+    private IEnumerator ContinuousBounceAnimation(int targetMoney)
+    {
+        if (_moneyImage == null) yield break;
+        
+        // 재화량에 따라 바운스 지속 시간 계산 (최소 1초, 최대 3초)
+        float bounceDuration = Mathf.Clamp(targetMoney / 50f, 1f, 3f);
+        float elapsedTime = 0f;
+        float bounceInterval = 0.3f; // 각 바운스 간격
+        
+        while (elapsedTime < bounceDuration)
+        {
+            // 위로 튀어오르기
+            _moneyImage.transform.DOScale(1.15f, bounceInterval * 0.5f).SetEase(Ease.OutQuad);
+            yield return new WaitForSeconds(bounceInterval * 0.5f);
+            
+            // 아래로 내려오기
+            _moneyImage.transform.DOScale(1f, bounceInterval * 0.5f).SetEase(Ease.InQuad);
+            
+            // 바운스 사운드 재생
+            if (AudioManager.Inst != null)
+            {
+                AudioManager.Inst.PlayOneShot("SFX_UI_GameOver_Money");
+            }
+            
+            yield return new WaitForSeconds(bounceInterval * 0.5f);
+            
+            elapsedTime += bounceInterval;
+        }
+        
+        // 최종 크기로 복원
+        _moneyImage.transform.DOScale(1f, 0.2f).SetEase(Ease.InOutQuad);
+    }
+    
+    /// <summary>
+    /// Money 텍스트 카운트업 애니메이션 (x0 → x목표)
+    /// </summary>
+    private IEnumerator AnimateMoneyCountUp(int targetMoney)
+    {
+        if (_moneyText == null) yield break;
+        
+        float currentMoney = 0f;
+        float duration = Mathf.Clamp(targetMoney / 50f, 1f, 3f); // 재화량에 따라 지속 시간 조절
+        float elapsedTime = 0f;
+        int lastDisplayedMoney = 0;
+        
+        while (elapsedTime < duration)
+        {
+            elapsedTime += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsedTime / duration);
+            
+            currentMoney = Mathf.Lerp(0f, targetMoney, t);
+            int displayMoney = Mathf.RoundToInt(currentMoney);
+            
+            // 재화가 변경될 때마다 UI 업데이트 (x 접두사 포함)
+            if (displayMoney > lastDisplayedMoney)
+            {
+                lastDisplayedMoney = displayMoney;
+                _moneyText.text = $"x{displayMoney}";
+            }
+            
+            yield return null;
+        }
+        
+        // 최종 값 설정
+        _moneyText.text = $"x{targetMoney}";
+    }
+    
+    /// <summary>
+    /// 순위에 따른 재화 지급량 반환
+    /// </summary>
+    private int GetMoneyRewardByRank(int rank)
+    {
+        if (GameResultManager.Instance != null)
+        {
+            // GameResultManager의 설정값 사용 (Reflection으로 접근)
+            var field = typeof(GameResultManager).GetField("firstPlaceMoney", 
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            
+            if (field != null)
+            {
+                switch (rank)
+                {
+                    case 1: 
+                        return (int)typeof(GameResultManager).GetField("firstPlaceMoney", 
+                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(GameResultManager.Instance);
+                    case 2: 
+                        return (int)typeof(GameResultManager).GetField("secondPlaceMoney", 
+                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(GameResultManager.Instance);
+                    case 3: 
+                        return (int)typeof(GameResultManager).GetField("thirdPlaceMoney", 
+                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(GameResultManager.Instance);
+                    case 4: 
+                        return (int)typeof(GameResultManager).GetField("fourthPlaceMoney", 
+                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(GameResultManager.Instance);
+                }
+            }
+        }
+        
+        // 기본값 (GameResultManager가 없을 경우)
+        switch (rank)
+        {
+            case 1: return 100;
+            case 2: return 50;
+            case 3: return 25;
+            case 4: return 10;
+            default: return 0;
+        }
     }
 
 #endregion
