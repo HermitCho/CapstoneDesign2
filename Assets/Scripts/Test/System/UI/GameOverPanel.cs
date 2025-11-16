@@ -397,7 +397,7 @@ public class GameOverPanel : MonoBehaviour
         if (_moneyText != null)
         {
             _moneyText.gameObject.SetActive(false);
-            _moneyText.text = "x0";
+            _moneyText.text = "x 0";
         }
         
         // 모든 랭킹 UI 초기화
@@ -851,7 +851,7 @@ public class GameOverPanel : MonoBehaviour
         _moneyImage.gameObject.SetActive(false);
         _moneyText.gameObject.SetActive(false);
         _moneyImage.transform.localScale = Vector3.zero;
-        _moneyText.text = "x0";
+        _moneyText.text = "x 0";
         
         // 1등 발표가 완료될 때까지 대기 (1등 왕관 애니메이션이 끝난 후)
         yield return new WaitForSeconds(0.5f);
@@ -938,14 +938,14 @@ public class GameOverPanel : MonoBehaviour
             if (displayMoney > lastDisplayedMoney)
             {
                 lastDisplayedMoney = displayMoney;
-                _moneyText.text = $"x{displayMoney}";
+                _moneyText.text = $"x {displayMoney}";
             }
             
             yield return null;
         }
         
         // 최종 값 설정
-        _moneyText.text = $"x{targetMoney}";
+        _moneyText.text = $"x {targetMoney}";
     }
     
     /// <summary>
