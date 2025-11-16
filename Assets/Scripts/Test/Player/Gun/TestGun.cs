@@ -362,7 +362,7 @@ public class TestGun : MonoBehaviourPun
     public bool Reload()
     {
         if (!photonViewCached.IsMine) return false;
-        if (CurrentState == GunState.Reloading || CurrentMagAmmo >= gunData.maxAmmo)
+        if (CurrentState == GunState.Reloading || CurrentMagAmmo >= gunData.maxAmmo || livingEntity.IsDead)
             return false;
 
         // 소유자만 재장전 시작 (상태 변경은 RPC로 동기화)
