@@ -297,7 +297,7 @@ public class TestMoveAnimationController : MonoBehaviourPun, IPunObservable
     private void OnReloadInput()
     {
         if (GameManager.Instance != null && GameManager.Instance.IsGameOver()) return;
-        if (isReloading || gun == null) return;
+        if (isReloading || gun == null || livingEntity.IsDead) return;
         // 총알이 꽉 찼으면 재장전 불가
         if (gun.CurrentMagAmmo >= gun.GetGunData().maxAmmo) return;
         if (reloadCooldown > 0f) return; // 쿨타임 중이면 무시

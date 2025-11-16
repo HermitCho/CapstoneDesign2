@@ -63,7 +63,7 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
     private Coroutine hitFlashCoroutine; // 피격 반짝임 코루틴
     private Coroutine invincibilityFlashCoroutine; // 무적 반짝임 코루틴
     private float lastHitSoundTime; // 마지막 피격 사운드 재생 시간
-    private const float HIT_SOUND_COOLDOWN = 1f; // 피격 사운드 쿨타임 (1초)
+    private const float HIT_SOUND_COOLDOWN = 0.1f; // 피격 사운드 쿨타임 (1초)
     private const float EMISSION_INTENSITY = 10f;
 
     #region Unity Lifecycle

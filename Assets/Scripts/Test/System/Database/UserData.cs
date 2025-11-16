@@ -52,6 +52,7 @@ public class UserGameData : UserData
     public int win;            // 승리 횟수 (1등)
     public int lose;           // 패배 횟수 (2,3,4등)
     public int rate;           // 레이팅 점수
+    public int money;          // 게임 재화
 
     public UserGameData() : base()
     {
@@ -59,15 +60,17 @@ public class UserGameData : UserData
         win = 0;
         lose = 0;
         rate = 1000; // 시작 레이팅
+        money = 0;   // 시작 재화
     }
 
-    public UserGameData(int id, string userId, string nickname, string password, int win, int lose, int rate) 
+    public UserGameData(int id, string userId, string nickname, string password, int win, int lose, int rate, int money) 
         : base(id, userId, nickname)
     {
         this.password = password;
         this.win = win;
         this.lose = lose;
         this.rate = rate;
+        this.money = money;
     }
 
     /// <summary>
@@ -105,11 +108,20 @@ public class UserGameData : UserData
     }
 
     /// <summary>
+    /// 재화 추가
+    /// </summary>
+    public void AddMoney(int amount)
+    {
+        money += amount;
+        if (money < 0) money = 0; // 음수 방지
+    }
+
+    /// <summary>
     /// 디버그용 문자열 반환 (확장 정보 포함)
     /// </summary>
     public override string ToString()
     {
-        return $"UserGameData[ID: {id}, UserId: {userId}, Nickname: {nickname}, Win: {win}, Lose: {lose}, Rate: {rate}, WinRate: {GetWinRatePercent():F1}%]";
+        return $"UserGameData[ID: {id}, UserId: {userId}, Nickname: {nickname}, Win: {win}, Lose: {lose}, Rate: {rate}, Money: {money}, WinRate: {GetWinRatePercent():F1}%]";
     }
 }
 
@@ -152,6 +164,7 @@ public class CurrentUser
             UnityEngine.PlayerPrefs.SetInt("UserRate", userData.rate);
             UnityEngine.PlayerPrefs.SetInt("UserWin", userData.win);
             UnityEngine.PlayerPrefs.SetInt("UserLose", userData.lose);
+            UnityEngine.PlayerPrefs.SetInt("UserMoney", userData.money);
             UnityEngine.PlayerPrefs.Save();
             
             UnityEngine.Debug.Log($"CurrentUser: 사용자 로그인 - {userData}");
@@ -177,7 +190,8 @@ public class CurrentUser
                 nickname = userData.nickname,
                 win = 0,
                 lose = 0,
-                rate = 1000
+                rate = 1000,
+                money = 0
             };
             SetUserGameData(gameUserData);
         }
@@ -197,6 +211,7 @@ public class CurrentUser
         UnityEngine.PlayerPrefs.DeleteKey("UserRate");
         UnityEngine.PlayerPrefs.DeleteKey("UserWin");
         UnityEngine.PlayerPrefs.DeleteKey("UserLose");
+        UnityEngine.PlayerPrefs.DeleteKey("UserMoney");
         UnityEngine.PlayerPrefs.Save();
         
         UnityEngine.Debug.Log("CurrentUser: 사용자 로그아웃 완료");
@@ -283,23 +298,52 @@ public class CurrentUser
     }
 
     /// <summary>
+    /// 현재 사용자 재화 가져오기
+    /// </summary>
+    public int GetMoney()
+    {
+        return _userGameData?.money ?? 0;
+    }
+
+    /// <summary>
     /// 게임 결과 업데이트 후 로컬 데이터 갱신
     /// </summary>
-    public void UpdateGameStats(int win, int lose, int rate)
+    public void UpdateGameStats(int win, int lose, int rate, int money)
     {
         if (_userGameData != null)
         {
+            int oldMoney = _userGameData.money;
+            
             _userGameData.win = win;
             _userGameData.lose = lose;
             _userGameData.rate = rate;
+            _userGameData.money = money;
+            
+            UnityEngine.Debug.Log($"[CurrentUser] UpdateGameStats 호출 - Money: {oldMoney} -> {money}, Win: {win}, Lose: {lose}, Rate: {rate}");
             
             // PlayerPrefs 업데이트
             UnityEngine.PlayerPrefs.SetInt("UserRate", rate);
             UnityEngine.PlayerPrefs.SetInt("UserWin", win);
             UnityEngine.PlayerPrefs.SetInt("UserLose", lose);
+            UnityEngine.PlayerPrefs.SetInt("UserMoney", money);
             UnityEngine.PlayerPrefs.Save();
             
-            UnityEngine.Debug.Log($"CurrentUser: 게임 통계 업데이트 - Win: {win}, Lose: {lose}, Rate: {rate}");
+            UnityEngine.Debug.Log($"CurrentUser: 게임 통계 업데이트 - Win: {win}, Lose: {lose}, Rate: {rate}, Money: {money}");
+        }
+    }
+
+    /// <summary>
+    /// 재화 추가 (로컬 데이터만)
+    /// </summary>
+    public void AddMoney(int amount)
+    {
+        if (_userGameData != null)
+        {
+            _userGameData.AddMoney(amount);
+            UnityEngine.PlayerPrefs.SetInt("UserMoney", _userGameData.money);
+            UnityEngine.PlayerPrefs.Save();
+            
+            UnityEngine.Debug.Log($"CurrentUser: 재화 추가 - {amount}, 현재 재화: {_userGameData.money}");
         }
     }
 }
