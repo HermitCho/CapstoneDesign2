@@ -2184,6 +2184,17 @@ PrefabInstance:
       propertyPath: m_Layer
       value: 3
       objectReference: {fileID: 0}
+    - target: {fileID: 2261357775245173908, guid: 447bd20256dd6874e926f6cd893cbf75,
+        type: 3}
+      propertyPath: m_NavMeshData
+      value: 
+      objectReference: {fileID: 23800000, guid: b1cd63ca539c0104ea0b3ae22ed33c49,
+        type: 2}
+    - target: {fileID: 2261357775245173908, guid: 447bd20256dd6874e926f6cd893cbf75,
+        type: 3}
+      propertyPath: m_UseGeometry
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 2265206691020609072, guid: 447bd20256dd6874e926f6cd893cbf75,
         type: 3}
       propertyPath: sceneViewId
@@ -5498,7 +5509,7 @@ MonoBehaviour:
   - {fileID: 741993598}
   - {fileID: 741993596}
   - {fileID: 741993594}
-  spawnParent: {fileID: 1727214531}
+  spawnParent: {fileID: 0}
   crownSpawnPosition: {fileID: 1727214532}
   destroyPreviousCharacter: 1
   randomizeRotation: 0
@@ -5965,12 +5976,6 @@ MonoBehaviour:
   useTypewriterWaitForDisappearances: 1
   disappearanceWaitTime: 0.015
   disappearanceSpeedMultiplier: 1
---- !u!4 &1727214531 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 3655072967711827204, guid: 447bd20256dd6874e926f6cd893cbf75,
-    type: 3}
-  m_PrefabInstance: {fileID: 741993593}
-  m_PrefabAsset: {fileID: 0}
 --- !u!4 &1727214532 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2297196113279520698, guid: 447bd20256dd6874e926f6cd893cbf75,
