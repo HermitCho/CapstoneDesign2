@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using Photon.Pun;
 
@@ -29,6 +30,12 @@ public class GameResultManager : MonoBehaviourPunCallbacks
     [SerializeField] private int secondPlaceRate = 6;   // 2등 레이팅 증가
     [SerializeField] private int thirdPlaceRate = 0;    // 3등 레이팅 변화 없음
     [SerializeField] private int fourthPlaceRate = -9;  // 4등 레이팅 감소
+    [Space(10)]
+    [Header("Money 변화량 설정")]
+    [SerializeField] private int firstPlaceMoney = 100;   // 1등 머니 증가
+    [SerializeField] private int secondPlaceMoney = 50;   // 2등 머니 증가
+    [SerializeField] private int thirdPlaceMoney = 25;   // 3등 머니 증가
+    [SerializeField] private int fourthPlaceMoney = 10;  // 4등 머니 감소
 
     void Awake()
     {
@@ -143,8 +150,11 @@ public class GameResultManager : MonoBehaviourPunCallbacks
 
             bool updateCompleted = false;
 
-            // 구글 스프레드시트에 게임 결과 업데이트
-            GoogleSheetsManager.Instance.UpdateGameResult(userId, playerRank, (success, message) =>
+            // 순위에 따른 재화 지급량 결정
+            int moneyReward = GetMoneyRewardByRank(playerRank);
+            
+            // 구글 스프레드시트에 게임 결과 업데이트 (재화 포함)
+            GoogleSheetsManager.Instance.UpdateGameResult(userId, playerRank, moneyReward, (success, message) =>
             {
                 updateSuccess = success;
                 updateMessage = message;
@@ -173,13 +183,14 @@ public class GameResultManager : MonoBehaviourPunCallbacks
 
         if (updateSuccess)
         {
-            // Debug.Log($"GameResultManager: 게임 결과 업데이트 성공 - {userId}: {playerRank}등 (시도: {currentRetry})");
+            Debug.Log($"GameResultManager: 게임 결과 업데이트 성공 - {userId}: {playerRank}등 (시도: {currentRetry})");
             
-            // // 현재 로그인된 사용자인 경우 로컬 데이터도 업데이트
-            // if (CurrentUser.Instance != null && CurrentUser.Instance.IsLoggedIn() && CurrentUser.Instance.GetUserId() == userId)
-            // {
-            //    // UpdateCurrentUserLocalData(playerRank);
-            // }
+            // 현재 로그인된 사용자인 경우 Google Sheets에서 최신 데이터를 가져와서 동기화
+            if (CurrentUser.Instance != null && CurrentUser.Instance.IsLoggedIn() && CurrentUser.Instance.GetUserId() == userId)
+            {
+                // Google Sheets 업데이트가 완료된 후 최신 데이터로 동기화
+                yield return StartCoroutine(SyncCurrentUserFromSheets(userId));
+            }
         }
         else
         {
@@ -188,25 +199,47 @@ public class GameResultManager : MonoBehaviourPunCallbacks
     }
 
     /// <summary>
-    /// 현재 사용자의 로컬 데이터 업데이트 (추정치)
+    /// Google Sheets에서 최신 사용자 데이터를 가져와서 CurrentUser 동기화
+    /// (LeaderboardPanel.cs와 동일한 방식)
     /// </summary>
-    private void UpdateCurrentUserLocalData(int playerRank)
+    private IEnumerator SyncCurrentUserFromSheets(string userId)
     {
-        var currentUserData = CurrentUser.Instance.GetUserGameData();
-        if (currentUserData == null) return;
-
-        // 순위에 따른 승/패 및 레이팅 변화 계산
-        int rateChange = GetRateChangeByRank(playerRank);
-        bool isWin = (playerRank == 1);
-
-        int newWin = currentUserData.win + (isWin ? 1 : 0);
-        int newLose = currentUserData.lose + (isWin ? 0 : 1);
-        int newRate = Mathf.Max(0, currentUserData.rate + rateChange);
-
-        // 로컬 데이터 업데이트
-        CurrentUser.Instance.UpdateGameStats(newWin, newLose, newRate);
-
-        Debug.Log($"GameResultManager: 로컬 통계 업데이트 - Win: {newWin}, Lose: {newLose}, Rate: {newRate} ({rateChange:+0;-0;0})");
+        Debug.Log($"[GameResultManager] Google Sheets에서 최신 데이터 동기화 시작 - UserId: {userId}");
+        
+        // Google Sheets 서버 반영 시간을 고려하여 대기
+        yield return new WaitForSeconds(1f);
+        
+        // GoogleSheetsManager에서 데이터 강제 재로드
+        if (GoogleSheetsManager.Instance != null)
+        {
+            GoogleSheetsManager.Instance.LoadUserData();
+            
+            // 데이터 로드 완료 대기 (최대 5초)
+            float timeout = 5f;
+            float elapsed = 0f;
+            
+            while (!GoogleSheetsManager.Instance.IsDataLoaded() && elapsed < timeout)
+            {
+                yield return new WaitForSeconds(0.1f);
+                elapsed += 0.1f;
+            }
+            
+            // 최신 데이터 가져오기
+            var allUserData = GoogleSheetsManager.Instance.GetAllUserData();
+            var userData = allUserData.FirstOrDefault(u => u.userId == userId);
+            
+            if (userData != null)
+            {
+                // CurrentUser를 Google Sheets의 최신 데이터로 동기화
+                CurrentUser.Instance.UpdateGameStats(userData.win, userData.lose, userData.rate, userData.money);
+                
+                Debug.Log($"[GameResultManager] CurrentUser 동기화 완료 - Win: {userData.win}, Lose: {userData.lose}, Rate: {userData.rate}, Money: {userData.money}");
+            }
+            else
+            {
+                Debug.LogWarning($"[GameResultManager] Google Sheets에서 사용자 데이터를 찾을 수 없음: {userId}");
+            }
+        }
     }
 
     /// <summary>
@@ -220,6 +253,21 @@ public class GameResultManager : MonoBehaviourPunCallbacks
             case 2: return secondPlaceRate;  // +6
             case 3: return thirdPlaceRate;   // 0
             case 4: return fourthPlaceRate;  // -9
+            default: return 0;
+        }
+    }
+
+    /// <summary>
+    /// 순위에 따른 재화 지급량 반환
+    /// </summary>
+    private int GetMoneyRewardByRank(int rank)
+    {
+        switch (rank)
+        {
+            case 1: return firstPlaceMoney;   // 100
+            case 2: return secondPlaceMoney;  // 50
+            case 3: return thirdPlaceMoney;   // 25
+            case 4: return fourthPlaceMoney;  // 10
             default: return 0;
         }
     }
