@@ -256,14 +256,16 @@ public class Crown : MonoBehaviourPun
 
         playerTransform = playerPV.transform;
 
-        // 플레이어 머리 위에 부착
-        Vector3 targetPosition = playerPV.transform.position + playerPV.transform.forward * cachedAttachOffset.z + playerPV.transform.up * cachedAttachOffset.y + playerPV.transform.right * cachedAttachOffset.x;
-        Quaternion targetRotation = playerPV.transform.rotation * Quaternion.Euler(cachedAttachRotation);
-
-        
-        transform.localPosition = targetPosition;
-        transform.localRotation = targetRotation;
+        // ✅ CRITICAL FIX: SetParent를 먼저 호출한 후 localPosition 설정!
+        // 기존 코드는 월드 좌표를 localPosition에 할당하여 텔레포트 발생
         transform.SetParent(playerTransform);
+        
+        // 플레이어 머리 위에 부착 (로컬 좌표로!)
+        Vector3 localOffset = new Vector3(cachedAttachOffset.x, cachedAttachOffset.y, cachedAttachOffset.z);
+        Quaternion localRotation = Quaternion.Euler(cachedAttachRotation);
+        
+        transform.localPosition = localOffset;
+        transform.localRotation = localRotation;
 
         if (crownRigidbody != null)
         {
@@ -274,6 +276,10 @@ public class Crown : MonoBehaviourPun
         {
             crownCollider.enabled = false;
         }
+        
+        // ✅ CRITICAL FIX: 왕관 GameObject를 "Ignore Raycast" Layer로 변경!
+        // 봇이 왕관을 쓰고 있을 때 레이캐스트가 왕관을 무시하도록 함
+        SetLayerRecursively(gameObject, LayerMask.NameToLayer("Ignore Raycast"));
         
         // 왕관 회전 애니메이션 시작
         StartCrownRotation();
@@ -510,6 +516,10 @@ public class Crown : MonoBehaviourPun
         // 콜라이더 활성화
         if (crownCollider != null)
             crownCollider.enabled = true;
+
+        // ✅ CRITICAL FIX: 왕관 GameObject를 원래 Layer로 복원!
+        // 분리되면 다시 레이캐스트에 감지되도록 Default Layer로 복원
+        SetLayerRecursively(gameObject, LayerMask.NameToLayer("Default"));
 
         // 플레이어 참조 해제
         playerTransform = null;
@@ -762,6 +772,24 @@ public class Crown : MonoBehaviourPun
         if (currentPlayerPhotonView == null || !currentPlayerPhotonView.IsMine) return;
         
         DetachFromPlayer(false); // 자동 분리
+    }
+    
+    /// <summary>
+    /// GameObject와 모든 자식의 Layer를 재귀적으로 변경
+    /// </summary>
+    private void SetLayerRecursively(GameObject obj, int newLayer)
+    {
+        if (obj == null) return;
+        
+        obj.layer = newLayer;
+        
+        foreach (Transform child in obj.transform)
+        {
+            if (child != null)
+            {
+                SetLayerRecursively(child.gameObject, newLayer);
+            }
+        }
     }
     
     #endregion

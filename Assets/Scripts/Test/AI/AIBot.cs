@@ -687,7 +687,6 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
                     {
                         // TakeDamage RPC 호출
                         targetPV.RPC("TakeDamage", RpcTarget.All, gunData.damage, hit.point, hit.normal, pv.ViewID);
-                        Debug.Log($"[AIBot] {gameObject.name} → AI {aiTarget.gameObject.name}에게 데미지 {gunData.damage} (거리: {hit.distance:F1}m)");
                         return;
                     }
                 }
@@ -700,7 +699,6 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
                     if (targetPV != null)
                     {
                         targetPV.RPC("OnDamage", RpcTarget.All, gunData.damage, hit.point, hit.normal, pv.ViewID);
-                        Debug.Log($"[AIBot] {gameObject.name} → 플레이어 {playerTarget.gameObject.name}에게 데미지 {gunData.damage} (거리: {hit.distance:F1}m)");
                         return;
                     }
                 }
@@ -1069,7 +1067,6 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
         {
             agent.enabled = true;
             agent.isStopped = false;
-            Debug.Log($"[AIBot] {gameObject.name} 부활 - NavMeshAgent 재활성화 (마스터)");
         }
         
         if (animator != null)
@@ -1114,17 +1111,10 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
                     // 거리 차이가 크면 즉시 이동 (워프), 작으면 보간
                     float distance = Vector3.Distance(transform.position, networkPosition);
                     
-                    // 🔍 디버그: 위치 동기화 확인
-                    if (Time.frameCount % 60 == 0) // 1초마다 (60fps 기준)
-                    {
-                        Debug.Log($"[AIBot] {gameObject.name} 위치 동기화 - 로컬: {transform.position}, 네트워크: {networkPosition}, 거리차: {distance:F2}m");
-                    }
-                    
                     if (distance > 5f) // 5m 이상 차이나면 즉시 이동 (텔레포트 방지)
                     {
                         transform.position = networkPosition;
                         transform.rotation = networkRotation;
-                        Debug.Log($"[AIBot] {gameObject.name} 워프 - 거리: {distance:F2}m");
                     }
                     else if (distance > 0.1f) // 작은 차이는 부드럽게 보간
                     {

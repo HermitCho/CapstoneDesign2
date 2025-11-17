@@ -245,8 +245,6 @@ public class ShopController : MonoBehaviourPun
             {
                 AudioManager.Inst.PlayOneShot("SFX_UI_CloseShop");
             }
-
-            Debug.Log("ShopController: 상점 퇴장");
         }
     }
 
