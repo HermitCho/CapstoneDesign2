@@ -149,6 +149,14 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             Debug.LogError($"[AIBot] {gameObject.name} CharacterData 없음! Data:{characterData!=null}, Health:{aiHealth!=null}");
         }
         
+        // ✅ CRITICAL DEBUG: Collider 상태 확인
+        Collider[] colliders = GetComponentsInChildren<Collider>();
+        Debug.Log($"[AIBot - Awake] {gameObject.name} Collider 개수: {colliders.Length}");
+        foreach (Collider col in colliders)
+        {
+            Debug.Log($"  - Collider: {col.gameObject.name}, Enabled: {col.enabled}, Layer: {LayerMask.LayerToName(col.gameObject.layer)} (ID: {col.gameObject.layer}), isTrigger: {col.isTrigger}");
+        }
+        
         // NavMeshAgent 설정
         if (agent != null && characterData != null)
         {
