@@ -356,15 +356,10 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
     [PunRPC]
     public void RPC_Revive()
     {
-        Debug.Log($"[LivingEntity] {gameObject.name} RPC_Revive 호출됨 - 현재 IsDead: {IsDead}");
-
         if (!IsDead)
         {
-            Debug.Log($"[LivingEntity] {gameObject.name} 이미 살아있는 상태 - 부활 처리 건너뜀");
             return;
         }
-
-        Debug.Log($"[LivingEntity] {gameObject.name} 부활 처리 시작");
 
         // 사망 상태 해제
         IsDead = false;
@@ -386,17 +381,16 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
             moveController.SetStunned(false); // 스턴 해제
         }
 
-        // 🌟 부활 직후 무적 상태 활성화 (모든 클라이언트 동기화)
+        //  부활 직후 무적 상태 활성화 (모든 클라이언트 동기화)
         photonView.RPC("RPC_SetInvincibility", RpcTarget.All, true);
-        Debug.Log($"[LivingEntity] {gameObject.name} 부활 후 무적 상태 진입");
+       
 
-        // 🌟 마스터 클라이언트만 무적 해제 타이머 실행
+        //  마스터 클라이언트만 무적 해제 타이머 실행
         if (PhotonNetwork.IsMasterClient)
         {
             StartCoroutine(DisableInvincibilityAfterDelay(3f));
         }
 
-        Debug.Log($"[LivingEntity] {gameObject.name} 부활 완료 - 현재 체력: {CurrentHealth}, IsDead: {IsDead}");
 
         // 모든 클라이언트에서 UI 업데이트
         OnAnyLivingEntityHealthChanged?.Invoke(CurrentHealth, StartingHealth, this);
@@ -411,8 +405,6 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
     public void RPC_SetInvincibility(bool active)
     {
         IsInvincivilityActive = active;
-        Debug.Log($"[LivingEntity] {gameObject.name} 무적 상태 변경: {active}");
-
         // 무적 상태가 활성화되면 하얀색 반짝임 코루틴 시작
         if (active)
         {
@@ -526,7 +518,6 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
         if (PhotonNetwork.IsMasterClient)
         {
             photonView.RPC("RPC_SetInvincibility", RpcTarget.All, false);
-            Debug.Log($"[LivingEntity] {gameObject.name} 무적 상태 해제 완료 (부활 후 {delay}초)");
         }
     }
 

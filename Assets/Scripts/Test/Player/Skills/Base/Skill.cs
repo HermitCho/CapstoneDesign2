@@ -155,14 +155,12 @@ public abstract class Skill : MonoBehaviourPun
 
     public void ActivateSkill(SkillController executor)
     {
-        Debug.Log("[Skill - ActiveSkill] 활성");
         if (!CanUse) return;
 
         // 사용 횟수 컴포넌트가 있으면 실제로 "Use()" 를 호출해서 감소시키자.
         // 횟수 제한이 있는 경우 -> Use() 실행
         if (_usableCount != null && !_usableCount.Use()) return;
 
-        Debug.Log($"[Skill] {skillName} ActivateSkill 호출됨, 쿨다운 갱신");
         lastUseTime = Time.time;
 
         if (castTime > 0f)
@@ -189,7 +187,7 @@ public abstract class Skill : MonoBehaviourPun
 
     public void ActivateItem(SkillController executor)
     {
-        Debug.Log("[Skill - ActiveItem] 활성");
+
         if (!CanUse) return;
 
         // 횟수 제한이 있는 경우 -> Use() 실행
@@ -199,7 +197,6 @@ public abstract class Skill : MonoBehaviourPun
 
         if (castTime > 0f)
         {
-            Debug.Log("[Skill] CastExecuteItem 활성");
             executor.photonView.RPC(
                 "CastExecuteItem",
                 RpcTarget.All,
@@ -210,7 +207,6 @@ public abstract class Skill : MonoBehaviourPun
         }
         else
         {
-            Debug.Log("[Skill] ExecuteItem 활성");
             executor.photonView.RPC(
                 "ExecuteItem",
                 RpcTarget.All,
@@ -320,12 +316,9 @@ public abstract class Skill : MonoBehaviourPun
 
     protected IEnumerator DestroyGameObjectDelayed(GameObject target, float delay)
     {
-        Debug.Log("[Skill - SpawnEffectFollow] 타겟 확인 " + target);
         yield return new WaitForSeconds(delay);
-        Debug.Log("[Skill - SpawnEffectFollow] 타겟 확인 2 및 루틴 뒤로 돌아가는거 확인 " + target);
         if (target != null)
         {
-            Debug.Log("[Skill - SpawnEffectFollow] 이펙트 파괴 시간 " + delay);
             Destroy(target);
         }
     }
