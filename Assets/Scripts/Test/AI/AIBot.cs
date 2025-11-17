@@ -156,7 +156,18 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             agent.speed = characterData.moveSpeed;
             agent.angularSpeed = 300f;
             agent.acceleration = 8f;
-            Debug.Log($"[AIBot] {gameObject.name} NavMeshAgent 설정됨 - Speed:{agent.speed}");
+            
+            // ✅ CRITICAL: 클라이언트에서는 NavMeshAgent 비활성화 (위치 동기화와 충돌 방지)
+            // MasterClient만 NavMesh로 AI 경로 계산
+            if (!PhotonNetwork.IsMasterClient)
+            {
+                agent.enabled = false;
+                Debug.Log($"[AIBot] {gameObject.name} NavMeshAgent 비활성화 (클라이언트)");
+            }
+            else
+            {
+                Debug.Log($"[AIBot] {gameObject.name} NavMeshAgent 설정됨 - Speed:{agent.speed} (마스터)");
+            }
         }
         else
         {
@@ -223,7 +234,6 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
         {
             UpdateState();
             lastStateUpdate = Time.time;
-            Debug.Log($"[AIBot] {gameObject.name} 상태: {currentState}");
         }
         
         // 현재 상태 실행
@@ -350,10 +360,6 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
         {
             targetCoin = FindNearestCoin();
             
-            if (targetCoin != null)
-            {
-                Debug.Log($"[AIBot] {gameObject.name} 새 코인 타겟: {targetCoin.name}");
-            }
         }
         
         if (targetCoin != null)
@@ -368,7 +374,6 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
                 Vector3 randomPos = transform.position + Random.insideUnitSphere * 10f;
                 randomPos.y = transform.position.y;
                 MoveTo(randomPos);
-                Debug.Log($"[AIBot] {gameObject.name} 코인 없음, 랜덤 이동");
             }
         }
     }
@@ -682,7 +687,6 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
                     {
                         // TakeDamage RPC 호출
                         targetPV.RPC("TakeDamage", RpcTarget.All, gunData.damage, hit.point, hit.normal, pv.ViewID);
-                        Debug.Log($"[AIBot] {gameObject.name} → AI {aiTarget.gameObject.name}에게 데미지 {gunData.damage} (거리: {hit.distance:F1}m)");
                         return;
                     }
                 }
@@ -695,18 +699,11 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
                     if (targetPV != null)
                     {
                         targetPV.RPC("OnDamage", RpcTarget.All, gunData.damage, hit.point, hit.normal, pv.ViewID);
-                        Debug.Log($"[AIBot] {gameObject.name} → 플레이어 {playerTarget.gameObject.name}에게 데미지 {gunData.damage} (거리: {hit.distance:F1}m)");
                         return;
                     }
                 }
-                
-                // 벽이나 다른 오브젝트에 맞음
-                Debug.Log($"[AIBot] {gameObject.name} 발사 → {hit.collider.name}에 적중 (타겟 아님, 거리: {hit.distance:F1}m)");
+
             }
-        }
-        else
-        {
-            Debug.Log($"[AIBot] {gameObject.name} 발사 빗나감 (사거리: {gunData.range}m)");
         }
     }
     
@@ -1065,8 +1062,8 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
         isReloading = false;
         currentTarget = null;
         
-        // NavMeshAgent 다시 활성화
-        if (agent != null)
+        // ✅ CRITICAL: NavMeshAgent는 MasterClient에서만 활성화
+        if (agent != null && PhotonNetwork.IsMasterClient)
         {
             agent.enabled = true;
             agent.isStopped = false;
@@ -1089,17 +1086,43 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
     {
         if (stream.IsWriting)
         {
-            // 마스터가 상태 전송
+            // ✅ 마스터가 상태 + 위치/회전 전송
             stream.SendNext((int)currentState);
             stream.SendNext(currentAmmo);
             stream.SendNext(isReloading);
+            stream.SendNext(transform.position);
+            stream.SendNext(transform.rotation);
         }
         else
         {
-            // 클라이언트가 상태 수신
+            // ✅ 클라이언트가 상태 + 위치/회전 수신
             currentState = (AIState)stream.ReceiveNext();
             currentAmmo = (int)stream.ReceiveNext();
             isReloading = (bool)stream.ReceiveNext();
+            Vector3 networkPosition = (Vector3)stream.ReceiveNext();
+            Quaternion networkRotation = (Quaternion)stream.ReceiveNext();
+            
+            // ✅ CRITICAL: 클라이언트에서는 NavMeshAgent를 사용하지 않고 직접 위치 동기화
+            if (!PhotonNetwork.IsMasterClient)
+            {
+                // 사망 상태가 아닐 때만 동기화
+                if (!aiHealth.IsDead)
+                {
+                    // 거리 차이가 크면 즉시 이동 (워프), 작으면 보간
+                    float distance = Vector3.Distance(transform.position, networkPosition);
+                    
+                    if (distance > 5f) // 5m 이상 차이나면 즉시 이동 (텔레포트 방지)
+                    {
+                        transform.position = networkPosition;
+                        transform.rotation = networkRotation;
+                    }
+                    else if (distance > 0.1f) // 작은 차이는 부드럽게 보간
+                    {
+                        transform.position = Vector3.Lerp(transform.position, networkPosition, Time.deltaTime * 10f);
+                        transform.rotation = Quaternion.Lerp(transform.rotation, networkRotation, Time.deltaTime * 10f);
+                    }
+                }
+            }
         }
     }
     

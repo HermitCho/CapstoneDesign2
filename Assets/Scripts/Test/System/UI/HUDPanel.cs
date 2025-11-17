@@ -1754,8 +1754,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         var props = new ExitGames.Client.Photon.Hashtable();
         props[$"score_{playerId}"] = score;
         PhotonNetwork.LocalPlayer.SetCustomProperties(props);
-        
-        Debug.Log($"HUDPanel: 점수 네트워크 동기화 - Player {playerId}: {score}점");
+
         
         // RPC 제거 - Custom Properties로만 동기화
     }

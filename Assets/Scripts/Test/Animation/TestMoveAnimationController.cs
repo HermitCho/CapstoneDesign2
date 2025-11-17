@@ -297,7 +297,7 @@ public class TestMoveAnimationController : MonoBehaviourPun, IPunObservable
     private void OnReloadInput()
     {
         if (GameManager.Instance != null && GameManager.Instance.IsGameOver()) return;
-        if (isReloading || gun == null) return;
+        if (isReloading || gun == null || livingEntity.IsDead) return;
         // 총알이 꽉 찼으면 재장전 불가
         if (gun.CurrentMagAmmo >= gun.GetGunData().maxAmmo) return;
         if (reloadCooldown > 0f) return; // 쿨타임 중이면 무시
@@ -340,8 +340,6 @@ public class TestMoveAnimationController : MonoBehaviourPun, IPunObservable
             // 투척 프리뷰를 사용하는 스킬은 E 입력에서 애니메이션을 재생하지 않음
             if (!skill.UsesProjectilePreview && !skill.UsePlacementPreview)
             {
-                Debug.Log("OnSkillInput " + !skill.UsesProjectilePreview + " " + !skill.UsePlacementPreview);
-                Debug.Log("OnSkillInput 모션 나감");
                 photonView.RPC("RpcPlaySkillAnimation", RpcTarget.All, skill.SkillAnimationTriggerName);
             }
 
@@ -361,8 +359,6 @@ public class TestMoveAnimationController : MonoBehaviourPun, IPunObservable
             // 투척 프리뷰를 사용하는 아이템은 E 입력에서 애니메이션을 재생하지 않음
             if (!itemSkill.UsesProjectilePreview && !itemSkill.UsePlacementPreview)
             {
-                Debug.Log("OnItemInput " + !itemSkill.UsesProjectilePreview + " " + !itemSkill.UsePlacementPreview);
-                Debug.Log("OnItemInput 모션 나감");
                 photonView.RPC("RpcPlaySkillAnimation", RpcTarget.All, triggerName);
             }
         }

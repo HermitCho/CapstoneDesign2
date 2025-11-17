@@ -62,7 +62,7 @@ public class TestGun : MonoBehaviourPun
         damage = gunData.damage;
         testShoot = GetComponentInParent<TestShoot>(); // TestShoot 스크립트 찾기
 
-         parentPhotonview = transform.root.GetComponent<PhotonView>();
+        parentPhotonview = transform.root.GetComponent<PhotonView>();
 
         if (testShoot == null)
         {
@@ -199,7 +199,6 @@ public class TestGun : MonoBehaviourPun
 
     protected virtual void Shot(Vector3 shootDirection)
     {
-        Debug.Log("[TestGun - Shot] - 샷");
         for (int i = 0; i < gunData.pelletCount; i++)
         {
             Vector3 pelletDirection = CalculatePelletDirection(shootDirection);
@@ -252,8 +251,14 @@ public class TestGun : MonoBehaviourPun
     private void ProcessPelletHit(Vector3 direction)
     {
         int layerMask = ~LayerMask.GetMask("PlayerPosition");
+        
+        // 디버그: 레이캐스트 발사
+        Debug.DrawRay(fireTransform.position, direction * gunData.range, Color.red, 1f);
+        
         if (Physics.Raycast(fireTransform.position, direction, out RaycastHit hit, gunData.range, layerMask, QueryTriggerInteraction.Ignore))
         {
+
+            Debug.DrawLine(fireTransform.position, hit.point, Color.green, 1f);
             // --- ✅ [튜토리얼 전용 감지 코드] ---
             // 현재 씬 이름이 Tutorial을 포함하면, 네트워크 판정 대신 로컬 파괴 실행
             if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name.Contains("Tutorial"))
@@ -281,14 +286,18 @@ public class TestGun : MonoBehaviourPun
                 }
             }
 
-            IDamageable target = hit.collider.GetComponent<IDamageable>();
-            PhotonView targetView = hit.collider.GetComponent<PhotonView>();
+            // ✅ CRITICAL FIX: GetComponentInParent 사용!
+            // AI 봇의 구조: 부모(AIHealth, PhotonView) -> 자식(Collider)
+            // GetComponent는 같은 GameObject에서만 찾음 → 절대 못 찾음!
+            IDamageable target = hit.collider.GetComponentInParent<IDamageable>();
+            PhotonView targetView = hit.collider.GetComponentInParent<PhotonView>();
 
             if (target != null && targetView != null)
             {
                 // 자기 자신 피격 방지
                 if (targetView.ViewID == photonViewCached.ViewID)
                 {
+                    Debug.Log($"[TestGun] 자기 자신 피격 차단 - ViewID: {targetView.ViewID}");
                     return;
                 }
 
@@ -298,18 +307,24 @@ public class TestGun : MonoBehaviourPun
                     // 둘 다 AI가 아닌 경우만 무시
                     bool attackerIsAI = photonViewCached.GetComponent<AIHealth>() != null;
                     bool targetIsAI = targetView.GetComponent<AIHealth>() != null;
-                    
+
                     if (!attackerIsAI && !targetIsAI)
                     {
+                        Debug.Log($"[TestGun] 같은 플레이어 피격 차단 - OwnerActorNr: {targetView.OwnerActorNr}");
                         return;
                     }
                 }
 
                 int attackerViewID = parentPhotonview.ViewID;
 
-                targetView.RPC("OnDamage", RpcTarget.All, damage, hit.point, hit.normal, attackerViewID );
-
+                targetView.RPC("OnDamage", RpcTarget.All, damage, hit.point, hit.normal, attackerViewID);
+                Debug.Log($"[TestGun - ProcessPelletHit] ✅ 데미지 RPC 호출 성공 → {targetView.name} (ViewID: {targetView.ViewID})");
             }
+        }
+        else
+        {
+            // 레이캐스트 빗나감
+            Debug.Log($"[TestGun] 레이캐스트 빗나감 - 사거리: {gunData.range}m");
         }
     }
 
@@ -362,7 +377,7 @@ public class TestGun : MonoBehaviourPun
     public bool Reload()
     {
         if (!photonViewCached.IsMine) return false;
-        if (CurrentState == GunState.Reloading || CurrentMagAmmo >= gunData.maxAmmo)
+        if (CurrentState == GunState.Reloading || CurrentMagAmmo >= gunData.maxAmmo || livingEntity.IsDead)
             return false;
 
         // 소유자만 재장전 시작 (상태 변경은 RPC로 동기화)

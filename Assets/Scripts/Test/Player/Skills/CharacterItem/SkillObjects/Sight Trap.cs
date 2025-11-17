@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using Photon.Pun;
 using UnityEngine;
 
@@ -10,22 +11,31 @@ public class SightTrap : MonoBehaviourPun
     private AudioSource aS;
     [SerializeField] AudioClip TrapActivateSound;
 
+    [Header("Wallhack Material")]
+    [SerializeField] private Material wallhackMaterial;
+
+    [Header("Reveal Settings")]
+    [SerializeField] private float revealDuration = 5f;
+    [SerializeField] private Color revealColor = Color.red;
+    [SerializeField] private float emissionIntensity = 5f;
+
+    private Dictionary<Renderer, Coroutine> activeCoroutines = new Dictionary<Renderer, Coroutine>();
+    private Dictionary<Renderer, Material[]> originalMaterials = new Dictionary<Renderer, Material[]>();
+
+
     [PunRPC]
     public void InitializeTrap(int ownerId, float life)
     {
         ownerActorNumber = ownerId;
         lifetime = life;
 
-        // 일정 시간 후 자동 제거
         Destroy(gameObject, lifetime);
         aS = GetComponent<AudioSource>();
     }
 
     private void OnTriggerEnter(Collider other)
     {
-        Debug.Log($"[SightTrap] OnTriggerEnter 호출됨 - other={other.name}");
-        if (isActivated) return; // 중복 발동 방지
-                                 //if (!PhotonNetwork.IsMasterClient) return; // 마스터만 판정
+        if (isActivated) return;
 
         if (other.CompareTag("Player"))
         {
@@ -33,25 +43,18 @@ public class SightTrap : MonoBehaviourPun
             if (enemy == null)
                 enemy = other.GetComponentInParent<MoveController>();
 
-            if (enemy == null)
-            {
-                Debug.Log("[SightTrap] MoveController를 찾을 수 없음");
-                return;
-            }
+            if (enemy == null) return;
 
             // 설치자 본인은 무시
             if (enemy.photonView.OwnerActorNr == ownerActorNumber) return;
 
             isActivated = true;
-            Debug.Log($"[SightTrap] 함정 발동! 피해자: {enemy.name}");
 
-            // 발동 효과 실행 (설치자에게만 보여주기)
             photonView.RPC(nameof(ProvidesVisibility), RpcTarget.All, enemy.photonView.ViewID);
 
             if (aS != null && TrapActivateSound != null)
                 aS.PlayOneShot(TrapActivateSound);
 
-            // 소유자 파괴 처리
             if (photonView.Owner != null)
                 photonView.RPC(nameof(RequestDestroyByOwner), photonView.Owner);
             else if (PhotonNetwork.IsMasterClient)
@@ -61,7 +64,7 @@ public class SightTrap : MonoBehaviourPun
             }
         }
     }
-    
+
     [PunRPC]
     private void RequestDestroyByOwner()
     {
@@ -80,38 +83,68 @@ public class SightTrap : MonoBehaviourPun
     [PunRPC]
     void ProvidesVisibility(int enemyViewId)
     {
-        // 설치자만 실행
+        // 설치자만
         if (PhotonNetwork.LocalPlayer.ActorNumber != ownerActorNumber) return;
 
         PhotonView targetView = PhotonView.Find(enemyViewId);
         if (targetView == null) return;
 
-        MoveController enemy = targetView.GetComponent<MoveController>();
-        if (enemy == null) return;
+        GameObject target = targetView.gameObject;
 
-        // Outline 효과 붙이기
-        var outline = enemy.GetComponent<Outline>();
-        if (outline == null)
+        Renderer[] renderers = target.GetComponentsInChildren<Renderer>();
+
+        foreach (Renderer renderer in renderers)
         {
-            // Renderer 단위로 Outline 붙이지 말고,
-            // "MainBody" 같은 특정 오브젝트만 찾아서 Outline 붙이는 것도 가능
-            var body = enemy.transform.Find("Bodies");
-            if (body != null)
-                outline = body.gameObject.AddComponent<Outline>();
+            if (renderer == null) continue;
+
+            if (activeCoroutines.TryGetValue(renderer, out Coroutine running))
+                StopCoroutine(running);
+
+            if (!originalMaterials.ContainsKey(renderer))
+                originalMaterials[renderer] = renderer.materials;
+
+            Coroutine newCoroutine = StartCoroutine(RevealRenderer(renderer, revealDuration));
+            activeCoroutines[renderer] = newCoroutine;
         }
-
-        outline.OutlineMode = Outline.Mode.SilhouetteOnly;
-        outline.OutlineColor = Color.red;
-        outline.OutlineWidth = 6f;
-        outline.enabled = true;
-
-        // 5초 후 자동 해제
-        enemy.StartCoroutine(DisableOutlineAfterDelay(outline, 5f));
     }
 
-    private System.Collections.IEnumerator DisableOutlineAfterDelay(Outline outline, float delay)
+
+    private IEnumerator RevealRenderer(Renderer renderer, float delay)
     {
+        if (renderer == null) yield break;
+
+        // Wallhack 적용
+        Material[] newMaterials = new Material[renderer.sharedMaterials.Length];
+
+        for (int i = 0; i < newMaterials.Length; i++)
+        {
+            Material mat = new Material(wallhackMaterial);
+
+            if (mat.HasProperty("_EmissionColor"))
+            {
+                mat.EnableKeyword("_EMISSION");
+                mat.SetColor("_EmissionColor", revealColor * emissionIntensity);
+            }
+
+            newMaterials[i] = mat;
+        }
+
+        renderer.materials = newMaterials;
+
         yield return new WaitForSeconds(delay);
-        if (outline != null) outline.enabled = false;
+
+        // 복원
+        if (originalMaterials.TryGetValue(renderer, out Material[] stored))
+        {
+            renderer.materials = stored;
+
+            foreach (Material temp in newMaterials)
+                if (temp != null) Destroy(temp);
+
+            originalMaterials.Remove(renderer);
+        }
+
+        if (activeCoroutines.ContainsKey(renderer))
+            activeCoroutines.Remove(renderer);
     }
 }

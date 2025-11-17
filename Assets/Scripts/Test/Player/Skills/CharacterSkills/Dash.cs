@@ -54,7 +54,6 @@ public class Dash : Skill
                 {
                     Vector3 currentVelocity = rb.velocity;
                     rb.velocity = new Vector3(0f, currentVelocity.y, 0f);
-                    Debug.Log("✅ Dash - 바닥 착지 감지, 수평 속도 정지");
                     yield break;
                 }
             }
@@ -64,6 +63,5 @@ public class Dash : Skill
         // 시간 초과 시 강제 정지
         Vector3 finalVelocity = rb.velocity;
         rb.velocity = new Vector3(0f, finalVelocity.y, 0f);
-        Debug.Log("⚠️ Dash - 최대 시간 초과, 강제 정지");
     }
 }
