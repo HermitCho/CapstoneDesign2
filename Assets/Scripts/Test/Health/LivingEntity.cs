@@ -213,7 +213,7 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
         photonView.RPC("RPC_UpdateHealth", RpcTarget.All, CurrentHealth, died, IsInvincivilityCount);
 
         // 피격 효과 RPC는 로컬에서만 실행되도록 Owner에게 전송
-        photonView.RPC("RPC_OnHitEffect", photonView.Owner, -(hitNormal.normalized));
+        photonView.RPC("RPC_OnHitEffect", photonView.Owner, (hitNormal.normalized));
 
         // 피격 반짝임 이펙트 시작 (모든 클라이언트에서)
         photonView.RPC("RPC_StartHitFlash", RpcTarget.All);
@@ -383,7 +383,7 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
 
         //  부활 직후 무적 상태 활성화 (모든 클라이언트 동기화)
         photonView.RPC("RPC_SetInvincibility", RpcTarget.All, true);
-       
+
 
         //  마스터 클라이언트만 무적 해제 타이머 실행
         if (PhotonNetwork.IsMasterClient)
@@ -547,8 +547,14 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
     /// 피격 이펙트 (빨간색 반짝임 + 사운드)
     /// </summary>
     [PunRPC]
-    private void RPC_OnHitEffect()
+    private void RPC_OnHitEffect(Vector3 hitDirection)
     {
+        // 해당 클라이언트에서만 실행되는 UI 이벤트
+        if (photonView.IsMine)
+        {
+            GameEvents.OnLocalPlayerHit?.Invoke(hitDirection);
+        }
+
         // 피격 반짝임
         if (hitFlashCoroutine != null)
         {
@@ -583,8 +589,8 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
     }
 
     /// <summary>
-        /// 피격 시 1회만 반짝거리는 코루틴 (짧고 즉시 종료)
-        /// </summary>
+    /// 피격 시 1회만 반짝거리는 코루틴 (짧고 즉시 종료)
+    /// </summary>
     private IEnumerator HitFlashOnceCoroutine()
     {
         if (renderers == null || renderers.Length == 0 || IsDead) yield break;

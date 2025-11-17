@@ -250,11 +250,12 @@ public class TestGun : MonoBehaviourPun
 
     private void ProcessPelletHit(Vector3 direction)
     {
+
         int layerMask = ~LayerMask.GetMask("PlayerPosition");
-        
+
         // 디버그: 레이캐스트 발사
         Debug.DrawRay(fireTransform.position, direction * gunData.range, Color.red, 1f);
-        
+
         if (Physics.Raycast(fireTransform.position, direction, out RaycastHit hit, gunData.range, layerMask, QueryTriggerInteraction.Ignore))
         {
 
@@ -286,6 +287,7 @@ public class TestGun : MonoBehaviourPun
                 }
             }
 
+            Debug.Log($"[TestGun - ProcessPelletHit] : 맞음{hit.transform.name}");
             // ✅ CRITICAL FIX: GetComponentInParent 사용!
             // AI 봇의 구조: 부모(AIHealth, PhotonView) -> 자식(Collider)
             // GetComponent는 같은 GameObject에서만 찾음 → 절대 못 찾음!
