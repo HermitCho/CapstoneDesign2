@@ -353,12 +353,8 @@ public class CoinController : MonoBehaviourPun
                 props[scoreKey] = expectedScore;
                 PhotonNetwork.LocalPlayer.SetCustomProperties(props);
 
-                Debug.Log($"CoinController: 점수 강제 재동기화 시도 - {expectedScore}");
             }
-            else
-            {
-                Debug.Log($"CoinController: 점수 동기화 확인 완료 - {expectedScore}");
-            }
+
         }
         else
         {
@@ -368,8 +364,6 @@ public class CoinController : MonoBehaviourPun
             var props = new ExitGames.Client.Photon.Hashtable();
             props[scoreKey] = expectedScore;
             PhotonNetwork.LocalPlayer.SetCustomProperties(props);
-
-            Debug.Log($"CoinController: 점수 강제 설정 - {expectedScore}");
         }
     }
 

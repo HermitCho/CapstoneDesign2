@@ -174,7 +174,6 @@ public class AIHealth : MonoBehaviourPunCallbacks, IPunObservable, IDamageable
     [PunRPC]
     public void OnDamage(float damage, Vector3 hitPoint, Vector3 hitNormal, int attackerActorNr)
     {
-        Debug.Log($"[AIHealth] {gameObject.name} OnDamage 호출됨! Damage: {damage}, Attacker: {attackerActorNr}");
         // TakeDamage로 리다이렉트
         TakeDamage(damage, hitPoint, hitNormal, attackerActorNr);
     }

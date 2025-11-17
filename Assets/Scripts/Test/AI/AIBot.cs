@@ -223,7 +223,6 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
         {
             UpdateState();
             lastStateUpdate = Time.time;
-            Debug.Log($"[AIBot] {gameObject.name} 상태: {currentState}");
         }
         
         // 현재 상태 실행
@@ -350,10 +349,6 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
         {
             targetCoin = FindNearestCoin();
             
-            if (targetCoin != null)
-            {
-                Debug.Log($"[AIBot] {gameObject.name} 새 코인 타겟: {targetCoin.name}");
-            }
         }
         
         if (targetCoin != null)
@@ -368,7 +363,6 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
                 Vector3 randomPos = transform.position + Random.insideUnitSphere * 10f;
                 randomPos.y = transform.position.y;
                 MoveTo(randomPos);
-                Debug.Log($"[AIBot] {gameObject.name} 코인 없음, 랜덤 이동");
             }
         }
     }
@@ -699,14 +693,8 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
                         return;
                     }
                 }
-                
-                // 벽이나 다른 오브젝트에 맞음
-                Debug.Log($"[AIBot] {gameObject.name} 발사 → {hit.collider.name}에 적중 (타겟 아님, 거리: {hit.distance:F1}m)");
+
             }
-        }
-        else
-        {
-            Debug.Log($"[AIBot] {gameObject.name} 발사 빗나감 (사거리: {gunData.range}m)");
         }
     }
     
