@@ -250,12 +250,11 @@ public class TestGun : MonoBehaviourPun
 
     private void ProcessPelletHit(Vector3 direction)
     {
-
         int layerMask = ~LayerMask.GetMask("PlayerPosition");
-
+        
         // 디버그: 레이캐스트 발사
         Debug.DrawRay(fireTransform.position, direction * gunData.range, Color.red, 1f);
-
+        
         if (Physics.Raycast(fireTransform.position, direction, out RaycastHit hit, gunData.range, layerMask, QueryTriggerInteraction.Ignore))
         {
 
@@ -287,12 +286,16 @@ public class TestGun : MonoBehaviourPun
                 }
             }
 
-            Debug.Log($"[TestGun - ProcessPelletHit] : 맞음{hit.transform.name}");
+            // ✅ CRITICAL DEBUG: 히트 정보 출력
+            Debug.Log($"[TestGun] 레이캐스트 히트! Object: {hit.collider.gameObject.name}, Layer: {LayerMask.LayerToName(hit.collider.gameObject.layer)}, Distance: {hit.distance:F2}m");
+            
             // ✅ CRITICAL FIX: GetComponentInParent 사용!
             // AI 봇의 구조: 부모(AIHealth, PhotonView) -> 자식(Collider)
             // GetComponent는 같은 GameObject에서만 찾음 → 절대 못 찾음!
             IDamageable target = hit.collider.GetComponentInParent<IDamageable>();
             PhotonView targetView = hit.collider.GetComponentInParent<PhotonView>();
+            
+            Debug.Log($"[TestGun] 컴포넌트 검색 결과 - IDamageable: {target != null}, PhotonView: {targetView != null}");
 
             if (target != null && targetView != null)
             {
