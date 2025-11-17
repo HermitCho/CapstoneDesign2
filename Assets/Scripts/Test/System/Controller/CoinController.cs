@@ -323,7 +323,7 @@ public class CoinController : MonoBehaviourPun
 
             PhotonNetwork.LocalPlayer.SetCustomProperties(props);
 
-            Debug.Log($"CoinController: 점수 네트워크 동기화 완료 - Player {PhotonNetwork.LocalPlayer.ActorNumber}: {currentScore}점");
+           
 
             // 추가 검증: 설정된 값 확인
             StartCoroutine(VerifyNetworkSync(scoreKey, currentScore));
