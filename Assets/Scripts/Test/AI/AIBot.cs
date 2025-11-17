@@ -14,7 +14,7 @@ using System.Collections;
 public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
 {
     #region Enums
-
+    
     private enum AIState
     {
         Idle,
@@ -25,47 +25,47 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
         SeekFreeCrown,
         Dead
     }
-
+    
     #endregion
-
+    
     #region Inspector Fields
-
+    
     [Header("Data Assets")]
     [SerializeField] private CharacterData characterData;
     [SerializeField] private GunData gunData;
-
+    
     [Header("AI 설정")]
     [SerializeField] private float visionRange = 25f;
     [SerializeField] private float attackRange = 12f;
     [SerializeField] private float stateUpdateRate = 0.4f;
     [SerializeField] private float shootCooldown = 0.4f;
     [SerializeField] private LayerMask shopLayerMask;
-
+    
     [Header("References")]
     [SerializeField] private Transform firePoint;
     [SerializeField] private ParticleSystem muzzleFlash;
     [SerializeField] private Animator animator;
-
+    
     [Header("Footstep Sound")]
     [SerializeField] private float footstepMinInterval = 0.15f;
     private float lastFootstepTime = -999f;
     private int lastStepPhase = int.MinValue;
-
+    
     #endregion
-
+    
     #region Private Fields
-
+    
     // 컴포넌트 캐시
     private PhotonView pv;
     private NavMeshAgent agent;
     private AIHealth aiHealth;
-
+    
     // AI 상태
     private AIState currentState = AIState.Idle;
     private Transform currentTarget;
     private Coin targetCoin;
     private Crown crownObject;
-
+    
     // 전투 상태
     private int currentAmmo;
     private bool isReloading;
@@ -73,7 +73,7 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
     private float lastStateUpdate;
     private float nextActionTime;
     private bool isInShop;
-
+    
     // 애니메이터 해시
     private int moveXHash;
     private int moveYHash;
@@ -81,25 +81,25 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
     private int reviveHash;
     private int fireHash;
     private int reloadHash;
-
+    
     #endregion
-
+    
     #region Unity Lifecycle
-
+    
     private void Awake()
     {
         Debug.Log($"[AIBot] {gameObject.name} Awake 시작");
-
+        
         // 컴포넌트 초기화
         pv = GetComponent<PhotonView>();
         agent = GetComponent<NavMeshAgent>();
         aiHealth = GetComponent<AIHealth>();
-
-        Debug.Log($"[AIBot] {gameObject.name} 컴포넌트 체크 - PV:{pv != null}, Agent:{agent != null}, Health:{aiHealth != null}");
-
+        
+        Debug.Log($"[AIBot] {gameObject.name} 컴포넌트 체크 - PV:{pv!=null}, Agent:{agent!=null}, Health:{aiHealth!=null}");
+        
         if (animator == null)
             animator = GetComponent<Animator>();
-
+        
         // firePoint 자동 검색
         if (firePoint == null)
         {
@@ -117,13 +117,13 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
                 firePoint = transform;
             }
         }
-
+        
         // muzzleFlash 자동 검색
         if (muzzleFlash == null)
         {
             muzzleFlash = GetComponentInChildren<ParticleSystem>();
         }
-
+        
         // 애니메이터 파라미터 해시
         moveXHash = Animator.StringToHash("MoveX");
         moveYHash = Animator.StringToHash("MoveY");
@@ -131,13 +131,13 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
         reviveHash = Animator.StringToHash("Revive");
         fireHash = Animator.StringToHash("fire");
         reloadHash = Animator.StringToHash("Reload");
-
+        
         // SpeedMultiplier 초기값 설정 (TestMoveAnimationController와 동일)
         if (animator != null)
         {
             animator.SetFloat("SpeedMultiplier", 1.2f);
         }
-
+        
         // CharacterData 적용
         if (characterData != null && aiHealth != null)
         {
@@ -146,9 +146,9 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
         }
         else
         {
-            Debug.LogError($"[AIBot] {gameObject.name} CharacterData 없음! Data:{characterData != null}, Health:{aiHealth != null}");
+            Debug.LogError($"[AIBot] {gameObject.name} CharacterData 없음! Data:{characterData!=null}, Health:{aiHealth!=null}");
         }
-
+        
         // NavMeshAgent 설정
         if (agent != null && characterData != null)
         {
@@ -156,7 +156,7 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             agent.speed = characterData.moveSpeed;
             agent.angularSpeed = 300f;
             agent.acceleration = 8f;
-
+            
             // ✅ CRITICAL: 클라이언트에서는 NavMeshAgent 비활성화 (위치 동기화와 충돌 방지)
             // MasterClient만 NavMesh로 AI 경로 계산
             if (!PhotonNetwork.IsMasterClient)
@@ -171,16 +171,16 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
         }
         else
         {
-            Debug.LogError($"[AIBot] {gameObject.name} NavMeshAgent 설정 실패! Agent:{agent != null}, Data:{characterData != null}");
+            Debug.LogError($"[AIBot] {gameObject.name} NavMeshAgent 설정 실패! Agent:{agent!=null}, Data:{characterData!=null}");
         }
-
+        
         // GunData 초기화
         if (gunData != null)
         {
             currentAmmo = gunData.maxAmmo;
         }
     }
-
+    
     private void OnEnable()
     {
         if (aiHealth != null)
@@ -188,10 +188,10 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             aiHealth.OnDeath += HandleDeath;
             aiHealth.OnRevive += HandleRevive;
         }
-
+        
         StartCoroutine(FindCrownCoroutine());
     }
-
+    
     private void OnDisable()
     {
         if (aiHealth != null)
@@ -200,26 +200,26 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             aiHealth.OnRevive -= HandleRevive;
         }
     }
-
+    
     private void Update()
     {
         // 마스터 클라이언트만 AI 실행
         if (!ShouldRunAI())
             return;
-
+        
         // NavMesh 체크
         if (agent == null)
         {
             Debug.LogError($"[AIBot] {gameObject.name} NavMeshAgent가 null!");
             return;
         }
-
+        
         if (!agent.isOnNavMesh)
         {
             Debug.LogWarning($"[AIBot] {gameObject.name} NavMesh 위에 없음! Position: {transform.position}");
             return;
         }
-
+            
         // 사망 상태면 정지
         if (aiHealth != null && aiHealth.IsDead)
         {
@@ -228,35 +228,36 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             UpdateAnimation();
             return;
         }
-
+        
+        // 주기적으로 상태 업데이트
         if (Time.time >= lastStateUpdate + stateUpdateRate)
         {
             UpdateState();
             lastStateUpdate = Time.time;
         }
-
+        
         // 현재 상태 실행
         ExecuteState();
-
+        
         // 애니메이션 업데이트
         UpdateAnimation();
     }
-
+    
     #endregion
-
+    
     #region AI Logic
-
+    
     private bool ShouldRunAI()
     {
         // AI는 항상 MasterClient가 제어
         return PhotonNetwork.IsMasterClient && pv != null;
     }
-
+    
     private void UpdateState()
     {
         // 상점 안에 있는지 확인
         CheckIfInShop();
-
+        
         // 우선순위 1: 왕관 소유자 추적 (랜덤 확률 80%)
         Transform crownHolder = GetCrownHolder();
         if (crownHolder != null && crownHolder != transform && Random.value > 0.2f)
@@ -265,7 +266,7 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             currentState = AIState.ChaseCrownHolder;
             return;
         }
-
+        
         // 우선순위 2: 내가 왕관을 가지고 있으면 도망
         if (HasCrown())
         {
@@ -283,7 +284,7 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
                 return;
             }
         }
-
+        
         // 우선순위 3: 시야 내 적 공격 (랜덤 확률 60%, 가끔 무시)
         Transform enemy = FindNearestEnemy();
         if (enemy != null && Vector3.Distance(transform.position, enemy.position) <= visionRange && Random.value > 0.4f)
@@ -292,7 +293,7 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             currentState = AIState.AttackEnemy;
             return;
         }
-
+        
         // 우선순위 4: 떨어진 왕관 획득 (랜덤 확률 70%)
         if (crownObject != null && !IsCrownAttached() && Random.value > 0.3f)
         {
@@ -303,7 +304,7 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
                 return;
             }
         }
-
+        
         // 우선순위 5: 코인 수집 또는 랜덤 배회
         if (Random.value > 0.1f)
         {
@@ -314,7 +315,7 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             currentState = AIState.Idle; // 가끔 잠깐 멈춤
         }
     }
-
+    
     private void ExecuteState()
     {
         switch (currentState)
@@ -322,45 +323,45 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             case AIState.Idle:
                 StopMovement();
                 break;
-
+                
             case AIState.CollectCoin:
                 CollectCoins();
                 break;
-
+                
             case AIState.AttackEnemy:
                 AttackTarget();
                 break;
-
+                
             case AIState.ChaseCrownHolder:
                 ChaseAndAttack();
                 break;
-
+                
             case AIState.FleeWithCrown:
                 FleeFromThreat();
                 break;
-
+                
             case AIState.SeekFreeCrown:
                 SeekCrown();
                 break;
-
+                
             case AIState.Dead:
                 StopMovement();
                 break;
         }
     }
-
+    
     #endregion
-
+    
     #region State Behaviors
-
+    
     private void CollectCoins()
     {
         if (targetCoin == null || targetCoin.IsCollected)
         {
             targetCoin = FindNearestCoin();
-
+            
         }
-
+        
         if (targetCoin != null)
         {
             MoveTo(targetCoin.transform.position);
@@ -376,7 +377,7 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             }
         }
     }
-
+    
     private void AttackTarget()
     {
         if (currentTarget == null)
@@ -384,7 +385,7 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             currentState = AIState.Idle;
             return;
         }
-
+        
         // AI인지 플레이어인지 확인하여 사망 체크
         bool targetDead = IsTargetDead(currentTarget);
         if (targetDead)
@@ -393,9 +394,9 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             currentState = AIState.Idle;
             return;
         }
-
+        
         float distance = Vector3.Distance(transform.position, currentTarget.position);
-
+        
         if (distance <= attackRange)
         {
             // 시야선 체크 (벽에 막혀있는지)
@@ -423,7 +424,7 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             currentState = AIState.Idle;
         }
     }
-
+    
     private void ChaseAndAttack()
     {
         if (currentTarget == null)
@@ -431,9 +432,9 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             currentState = AIState.Idle;
             return;
         }
-
+        
         float distance = Vector3.Distance(transform.position, currentTarget.position);
-
+        
         if (distance <= attackRange)
         {
             // 시야선 체크
@@ -454,7 +455,7 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             MoveTo(currentTarget.position);
         }
     }
-
+    
     private void FleeFromThreat()
     {
         if (currentTarget == null)
@@ -462,22 +463,22 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             currentState = AIState.CollectCoin;
             return;
         }
-
+        
         // 위협으로부터 반대 방향으로 도망
         Vector3 fleeDirection = (transform.position - currentTarget.position).normalized;
-
+        
         // 여러 각도로 도망칠 위치 시도
         Vector3 fleeTarget = Vector3.zero;
         bool foundValidPosition = false;
-
+        
         // 시도 각도: 정면, 좌측 45도, 우측 45도
         float[] angles = { 0f, 45f, -45f, 90f, -90f };
-
+        
         foreach (float angle in angles)
         {
             Vector3 direction = Quaternion.Euler(0, angle, 0) * fleeDirection;
             Vector3 testTarget = transform.position + direction * 15f;
-
+            
             // NavMesh에서 유효한 위치인지 확인
             NavMeshHit hit;
             if (NavMesh.SamplePosition(testTarget, out hit, 10f, NavMesh.AllAreas))
@@ -492,7 +493,7 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
                 }
             }
         }
-
+        
         if (foundValidPosition)
         {
             MoveTo(fleeTarget);
@@ -505,7 +506,7 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             MoveTo(randomFlee);
         }
     }
-
+    
     private void SeekCrown()
     {
         if (crownObject == null || IsCrownAttached())
@@ -513,14 +514,14 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             currentState = AIState.Idle;
             return;
         }
-
+        
         MoveTo(crownObject.transform.position);
     }
-
+    
     #endregion
-
+    
     #region Movement
-
+    
     private void MoveTo(Vector3 targetPosition)
     {
         if (agent == null || !agent.isOnNavMesh)
@@ -528,23 +529,23 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             Debug.LogWarning($"[AIBot] {gameObject.name} MoveTo 실패 - NavMesh 없음");
             return;
         }
-
+        
         // NavMesh 위의 가장 가까운 점 찾기
         NavMeshHit hit;
         if (NavMesh.SamplePosition(targetPosition, out hit, 10f, NavMesh.AllAreas))
         {
             targetPosition = hit.position;
         }
-
+            
         agent.isStopped = false;
         agent.SetDestination(targetPosition);
-
+        
         // 디버그: 경로 상태 확인
         if (agent.pathStatus == NavMeshPathStatus.PathInvalid)
         {
             Debug.LogWarning($"[AIBot] {gameObject.name} 경로 무효! Target: {targetPosition}");
         }
-
+        
         // 이동 방향으로 회전
         if (agent.velocity.sqrMagnitude > 0.1f)
         {
@@ -557,7 +558,7 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             }
         }
     }
-
+    
     private void StopMovement()
     {
         if (agent != null && agent.isOnNavMesh)
@@ -566,35 +567,35 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             agent.velocity = Vector3.zero;
         }
     }
-
+    
     private void RotateTowards(Vector3 targetPosition)
     {
         Vector3 direction = (targetPosition - transform.position).normalized;
         direction.y = 0;
-
+        
         if (direction != Vector3.zero)
         {
             Quaternion targetRotation = Quaternion.LookRotation(direction);
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 10f);
         }
     }
-
+    
     #endregion
-
+    
     #region Combat
-
+    
     private void TryShoot()
     {
         if (gunData == null)
             return;
-
+        
         // 상점 안에서는 총 못 쏨
         if (isInShop)
             return;
-
+            
         if (isReloading)
             return;
-
+            
         if (currentAmmo <= 0)
         {
             if (PhotonNetwork.IsMasterClient)
@@ -603,37 +604,37 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             }
             return;
         }
-
+        
         // 랜덤 쿨다운 (0.3 ~ 0.6초)
         float randomCooldown = shootCooldown + Random.Range(-0.1f, 0.2f);
         if (Time.time < lastShootTime + randomCooldown)
             return;
-
+            
         if (currentTarget == null)
             return;
-
+        
         // 가끔 조준 실수 (30% 확률)
         Vector3 targetPoint = currentTarget.position + Vector3.up * 1.4f;
         if (Random.value < 0.3f)
         {
             targetPoint += Random.insideUnitSphere * 0.5f;
         }
-
+        
         // RPC로 발사
         pv.RPC("RPC_Shoot", RpcTarget.All, targetPoint);
-
+        
         currentAmmo--;
         lastShootTime = Time.time;
     }
-
+    
     [PunRPC]
     private void RPC_Shoot(Vector3 targetPoint)
     {
         if (firePoint == null || gunData == null)
             return;
-
+            
         Vector3 direction = (targetPoint - firePoint.position).normalized;
-
+        
         // 샷건 펠릿 처리
         int pelletCount = Mathf.Max(1, gunData.pelletCount);
         for (int i = 0; i < pelletCount; i++)
@@ -641,35 +642,35 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             Vector3 pelletDirection = ApplySpread(direction);
             ShootPellet(pelletDirection);
         }
-
+        
         // 이펙트 재생 (모든 클라이언트)
         PlayShootEffects();
-
+        
         // 애니메이션 트리거
         if (animator != null)
         {
             animator.SetTrigger(fireHash);
         }
     }
-
+    
     private Vector3 ApplySpread(Vector3 baseDirection)
     {
         if (gunData == null || gunData.spreadAngle <= 0.001f)
             return baseDirection;
-
+            
         float spread = gunData.spreadAngle;
         float randomX = Random.Range(-spread, spread);
         float randomY = Random.Range(-spread, spread);
-
+        
         Quaternion spreadRotation = Quaternion.Euler(randomX, randomY, 0f);
         return spreadRotation * baseDirection;
     }
-
+    
     private void ShootPellet(Vector3 direction)
     {
         if (gunData == null)
             return;
-
+            
         // 레이캐스트로 히트 감지
         int layerMask = ~LayerMask.GetMask("PlayerPosition");
         if (Physics.Raycast(firePoint.position, direction, out RaycastHit hit, gunData.range, layerMask))
@@ -686,11 +687,10 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
                     {
                         // TakeDamage RPC 호출
                         targetPV.RPC("TakeDamage", RpcTarget.All, gunData.damage, hit.point, hit.normal, pv.ViewID);
-                        Debug.Log($"[AIBot] {gameObject.name} → AI {aiTarget.gameObject.name}에게 데미지 {gunData.damage} (거리: {hit.distance:F1}m)");
                         return;
                     }
                 }
-
+                
                 // 플레이어 타겟 체크
                 LivingEntity playerTarget = hit.collider.GetComponentInParent<LivingEntity>();
                 if (playerTarget != null && !playerTarget.IsDead)
@@ -699,7 +699,6 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
                     if (targetPV != null)
                     {
                         targetPV.RPC("OnDamage", RpcTarget.All, gunData.damage, hit.point, hit.normal, pv.ViewID);
-                        Debug.Log($"[AIBot] {gameObject.name} → 플레이어 {playerTarget.gameObject.name}에게 데미지 {gunData.damage} (거리: {hit.distance:F1}m)");
                         return;
                     }
                 }
@@ -707,85 +706,85 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             }
         }
     }
-
+    
     private void PlayShootEffects()
     {
         if (muzzleFlash != null)
         {
             muzzleFlash.Play();
         }
-
+        
         if (gunData != null && gunData.shotClip != null && firePoint != null)
         {
             AudioManager.Inst?.PlayClipAtPoint(gunData.shotClip, firePoint.position, 1f, 1f, null, firePoint);
         }
     }
-
+    
     private IEnumerator ReloadCoroutine()
     {
         if (gunData == null)
             yield break;
-
+            
         isReloading = true;
-
+        
         // 재장전 시작을 모든 클라이언트에 동기화
         pv.RPC("RPC_StartReload", RpcTarget.All);
-
+        
         yield return new WaitForSeconds(gunData.reloadTime);
-
+        
         // 재장전 완료를 모든 클라이언트에 동기화
         pv.RPC("RPC_CompleteReload", RpcTarget.All);
     }
-
+    
     [PunRPC]
     private void RPC_StartReload()
     {
         isReloading = true;
-
+        
         // 애니메이션 트리거
         if (animator != null)
         {
             animator.SetBool(reloadHash, true);
         }
-
+        
         // 사운드 재생
         if (gunData != null && gunData.reloadClip != null && firePoint != null)
         {
             AudioManager.Inst?.PlayClipAtPoint(gunData.reloadClip, firePoint.position, 0.8f, 1f, null, firePoint);
         }
     }
-
+    
     [PunRPC]
     private void RPC_CompleteReload()
     {
         if (gunData == null)
             return;
-
+            
         currentAmmo = gunData.maxAmmo;
         isReloading = false;
-
+        
         // 재장전 애니메이션 종료
         if (animator != null)
         {
             animator.SetBool(reloadHash, false);
         }
     }
-
+    
     #endregion
-
+    
     #region Helper Methods
-
+    
     private Transform FindNearestEnemy()
     {
         GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
         Transform nearest = null;
         float nearestDist = visionRange;
-
+        
         foreach (GameObject obj in players)
         {
             if (obj == gameObject)
                 continue;
-
+            
             // AI 체크
             AIHealth aiTarget = obj.GetComponent<AIHealth>();
             if (aiTarget != null)
@@ -801,7 +800,7 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
                 }
                 continue;
             }
-
+            
             // 플레이어 체크
             LivingEntity playerTarget = obj.GetComponent<LivingEntity>();
             if (playerTarget != null && !playerTarget.IsDead)
@@ -814,28 +813,28 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
                 }
             }
         }
-
+        
         return nearest;
     }
-
+    
     private bool IsTargetDead(Transform target)
     {
         if (target == null)
             return true;
-
+            
         // AI 체크
         AIHealth aiTarget = target.GetComponent<AIHealth>();
         if (aiTarget != null)
             return aiTarget.IsDead;
-
+            
         // 플레이어 체크
         LivingEntity playerTarget = target.GetComponent<LivingEntity>();
         if (playerTarget != null)
             return playerTarget.IsDead;
-
+            
         return true;
     }
-
+    
     /// <summary>
     /// 타겟까지 시야선이 확보되어 있는지 체크 (벽 등의 장애물 확인)
     /// </summary>
@@ -843,19 +842,19 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
     {
         if (target == null || firePoint == null)
             return false;
-
+            
         Vector3 direction = (target.position + Vector3.up * 1.4f) - firePoint.position;
         float distance = direction.magnitude;
-
+        
         // 레이캐스트로 시야선 확인
         RaycastHit hit;
         int layerMask = ~LayerMask.GetMask("PlayerPosition"); // PlayerPosition 레이어 제외
-
+        
         if (Physics.Raycast(firePoint.position, direction.normalized, out hit, distance, layerMask))
         {
             // 맞은 대상이 타겟인지 확인
             Transform hitTransform = hit.collider.transform;
-
+            
             // 타겟 자신이거나 타겟의 부모인지 확인
             while (hitTransform != null)
             {
@@ -863,26 +862,26 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
                     return true; // 시야 확보
                 hitTransform = hitTransform.parent;
             }
-
+            
             // 타겟이 아닌 다른 것(벽 등)에 막혔음
             return false;
         }
-
+        
         // 아무것도 안 맞았으면 시야 확보
         return true;
     }
-
+    
     private Coin FindNearestCoin()
     {
         Coin[] coins = FindObjectsOfType<Coin>();
         Coin nearest = null;
         float nearestDist = Mathf.Infinity;
-
+        
         foreach (Coin coin in coins)
         {
             if (coin.IsCollected)
                 continue;
-
+                
             float dist = Vector3.Distance(transform.position, coin.transform.position);
             if (dist < nearestDist)
             {
@@ -890,28 +889,28 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
                 nearestDist = dist;
             }
         }
-
+        
         return nearest;
     }
-
+    
     private bool HasCrown()
     {
         return crownObject != null && crownObject.transform.IsChildOf(transform);
     }
-
+    
     private bool IsCrownAttached()
     {
         return crownObject != null && crownObject.transform.parent != null;
     }
-
+    
     private Transform GetCrownHolder()
     {
         if (crownObject == null || !IsCrownAttached())
             return null;
-
+            
         return crownObject.transform.parent;
     }
-
+    
     private IEnumerator FindCrownCoroutine()
     {
         while (crownObject == null)
@@ -920,13 +919,13 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             yield return new WaitForSeconds(1f);
         }
     }
-
+    
     private void CheckIfInShop()
     {
         // Shop 레이어에 충돌 체크
         Collider[] hits = Physics.OverlapSphere(transform.position, 1f, shopLayerMask);
         isInShop = hits.Length > 0;
-
+        
         // 또는 Shop 태그 체크
         if (!isInShop)
         {
@@ -941,32 +940,32 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             }
         }
     }
-
+    
     #endregion
-
+    
     #region Animation
-
+    
     private void UpdateAnimation()
     {
         if (animator == null)
             return;
-
+        
         // 이동 애니메이션 - TestMoveAnimationController와 동일한 방식 사용
         if (agent != null && agent.isOnNavMesh && aiHealth != null && !aiHealth.IsDead)
         {
             Vector3 velocity = agent.velocity;
             float speed = velocity.magnitude;
-
+            
             if (speed > 0.1f)
             {
                 // 로컬 좌표계로 변환
                 Vector3 localVelocity = transform.InverseTransformDirection(velocity);
-
+                
                 // 속도 정규화 (-1 ~ 1 범위)
                 float moveSpeed = characterData != null ? characterData.moveSpeed : 5f;
                 float normalizedX = Mathf.Clamp(localVelocity.x / moveSpeed, -1f, 1f);
                 float normalizedZ = Mathf.Clamp(localVelocity.z / moveSpeed, -1f, 1f);
-
+                
                 // TestMoveAnimationController처럼 dampTime 0.1f 사용하여 부드럽게 보간
                 animator.SetFloat(moveXHash, normalizedX, 0.1f, Time.deltaTime);
                 animator.SetFloat(moveYHash, normalizedZ, 0.1f, Time.deltaTime);
@@ -984,18 +983,18 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             animator.SetFloat(moveYHash, 0f, 0.1f, Time.deltaTime);
         }
     }
-
+    
     // 애니메이션 이벤트 수신자
     public void OnReloadStart()
     {
         // 재장전 시작 이벤트
     }
-
+    
     public void OnReloadEnd()
     {
         // 재장전 완료 이벤트
     }
-
+    
     /// <summary>
     /// 발자국 소리 애니메이션 이벤트
     /// </summary>
@@ -1004,11 +1003,11 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
         // 마스터 클라이언트만 발자국 소리 재생 (중복 방지)
         if (!PhotonNetwork.IsMasterClient)
             return;
-
+            
         // 이동 중인지 체크
         if (agent == null || !agent.isOnNavMesh || agent.velocity.magnitude < 0.1f)
             return;
-
+        
         // Animator 위상 체크 (같은 반 주기 내 중복 이벤트 차단)
         if (animator != null)
         {
@@ -1021,56 +1020,55 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             }
             lastStepPhase = currentPhase;
         }
-
+        
         // 최소 간격 보호
         if (Time.time - lastFootstepTime < footstepMinInterval)
         {
             return;
         }
         lastFootstepTime = Time.time;
-
+        
         // RPC로 모든 클라이언트에 발자국 소리 재생
         pv.RPC("RPC_AIFootStep", RpcTarget.All);
     }
-
+    
     [PunRPC]
     private void RPC_AIFootStep()
     {
         AudioManager.Inst?.PlayClipAtPoint("SFX_Game_FootStep", transform.position, null, transform);
     }
-
+    
     #endregion
-
+    
     #region Event Handlers
-
+    
     private void HandleDeath()
     {
         currentState = AIState.Dead;
         StopMovement();
         currentTarget = null;
         targetCoin = null;
-
+        
         if (animator != null)
         {
             animator.SetTrigger(deathHash);
         }
     }
-
+    
     private void HandleRevive()
     {
         currentState = AIState.Idle;
         currentAmmo = gunData != null ? gunData.maxAmmo : 30;
         isReloading = false;
         currentTarget = null;
-
+        
         // ✅ CRITICAL: NavMeshAgent는 MasterClient에서만 활성화
         if (agent != null && PhotonNetwork.IsMasterClient)
         {
             agent.enabled = true;
             agent.isStopped = false;
-            Debug.Log($"[AIBot] {gameObject.name} 부활 - NavMeshAgent 재활성화 (마스터)");
         }
-
+        
         if (animator != null)
         {
             animator.SetTrigger(reviveHash);
@@ -1079,11 +1077,11 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             animator.SetFloat(moveYHash, 0f);
         }
     }
-
+    
     #endregion
-
+    
     #region Photon Callbacks
-
+    
     public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
     {
         if (stream.IsWriting)
@@ -1103,7 +1101,7 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             isReloading = (bool)stream.ReceiveNext();
             Vector3 networkPosition = (Vector3)stream.ReceiveNext();
             Quaternion networkRotation = (Quaternion)stream.ReceiveNext();
-
+            
             // ✅ CRITICAL: 클라이언트에서는 NavMeshAgent를 사용하지 않고 직접 위치 동기화
             if (!PhotonNetwork.IsMasterClient)
             {
@@ -1112,18 +1110,11 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
                 {
                     // 거리 차이가 크면 즉시 이동 (워프), 작으면 보간
                     float distance = Vector3.Distance(transform.position, networkPosition);
-
-                    // 🔍 디버그: 위치 동기화 확인
-                    if (Time.frameCount % 60 == 0) // 1초마다 (60fps 기준)
-                    {
-                        Debug.Log($"[AIBot] {gameObject.name} 위치 동기화 - 로컬: {transform.position}, 네트워크: {networkPosition}, 거리차: {distance:F2}m");
-                    }
-
+                    
                     if (distance > 5f) // 5m 이상 차이나면 즉시 이동 (텔레포트 방지)
                     {
                         transform.position = networkPosition;
                         transform.rotation = networkRotation;
-                        Debug.Log($"[AIBot] {gameObject.name} 워프 - 거리: {distance:F2}m");
                     }
                     else if (distance > 0.1f) // 작은 차이는 부드럽게 보간
                     {
@@ -1134,7 +1125,7 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             }
         }
     }
-
+    
     public override void OnMasterClientSwitched(Photon.Realtime.Player newMasterClient)
     {
         // 새로운 MasterClient가 AI 소유권을 가져감
@@ -1143,7 +1134,7 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             pv.TransferOwnership(PhotonNetwork.MasterClient);
         }
     }
-
+    
     #endregion
 }
 
