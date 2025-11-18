@@ -145,4 +145,10 @@ public class infraredPerspectiveSkill : Skill
             activeCoroutines.Remove(renderer);
         }
     }
+
+    [PunRPC]
+    private void EffctOn()
+    {
+
+    }
 }
