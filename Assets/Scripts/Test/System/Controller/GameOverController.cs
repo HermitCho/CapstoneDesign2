@@ -14,6 +14,7 @@ public class GameOverController : MonoBehaviourPunCallbacks
     private List<PlayerRankData> playerRankings = new List<PlayerRankData>();
     private bool isWinnerLocal = false; // 승리 플레이어가 로컬인지 추적
     private int winnerActorNumber = -1; // 승리 플레이어의 ActorNumber 추적
+    private PhotonView pv; // RPC 호출용 PhotonView
 
     // 플레이어 순위 데이터 구조체
     [System.Serializable]
@@ -32,6 +33,16 @@ public class GameOverController : MonoBehaviourPunCallbacks
             score = playerScore;
             isLocalPlayer = isLocal;
             actorNumber = actorNum;
+        }
+    }
+    
+    void Awake()
+    {
+        // PhotonView 컴포넌트 가져오기 (RPC 호출용)
+        pv = GetComponent<PhotonView>();
+        if (pv == null)
+        {
+            Debug.LogWarning("GameOverController: PhotonView 컴포넌트가 없습니다. RPC 호출을 위해 PhotonView를 추가해주세요.");
         }
     }
 
@@ -76,9 +87,36 @@ public class GameOverController : MonoBehaviourPunCallbacks
     public void OnPanelAnimationComplete()
     {
         // 승리 캐릭터를 winnerPosition으로 이동
+        // ✅ 승리 플레이어가 로컬이면 이동 및 애니메이션 실행
         if (isWinnerLocal && winnerPlayer != null)
         {
             StartCoroutine(MoveWinnerToPositionAfterAnimation());
+        }
+        else
+        {
+            // ✅ 승리 플레이어가 로컬이 아니어도 사운드는 모든 클라이언트에 재생
+            // 승리 플레이어 이동 사운드 재생 (모든 클라이언트에 동기화)
+            if (pv != null && pv.ViewID > 0)
+            {
+                pv.RPC("RPC_PlayWinnerMoveSound", RpcTarget.All);
+            }
+            
+            // 웃음 사운드는 애니메이션 타이밍에 맞춰 재생
+            StartCoroutine(PlayWinnerLaughSoundAfterDelay());
+        }
+    }
+    
+    /// <summary>
+    /// 승리 플레이어가 로컬이 아닐 때 웃음 사운드 재생 (타이밍 맞춤)
+    /// </summary>
+    private IEnumerator PlayWinnerLaughSoundAfterDelay()
+    {
+        // Win1 애니메이션 타이밍에 맞춰 재생 (약 2.3초 후)
+        yield return new WaitForSeconds(2.3f);
+        
+        if (pv != null && pv.ViewID > 0)
+        {
+            pv.RPC("RPC_PlayWinnerLaughSound", RpcTarget.All);
         }
     }
     
@@ -92,9 +130,15 @@ public class GameOverController : MonoBehaviourPunCallbacks
         if (winnerPlayer != null && winnerPosition != null)
         {
             VictoryAnimationController victoryController = winnerPlayer.GetComponent<VictoryAnimationController>();
-            // 1️⃣ 승리 캐릭터 이동 사운드 재생
-            if (AudioManager.Inst != null)
+            
+            // 1️⃣ 승리 캐릭터 이동 사운드 재생 (모든 클라이언트에 동기화)
+            if (pv != null && pv.ViewID > 0)
             {
+                pv.RPC("RPC_PlayWinnerMoveSound", RpcTarget.All);
+            }
+            else if (AudioManager.Inst != null)
+            {
+                // PhotonView가 없으면 로컬에서만 재생 (폴백)
                 AudioManager.Inst.PlayOneShot("SFX_Game_GameOver_WinnerMove");
             }
             
@@ -115,9 +159,14 @@ public class GameOverController : MonoBehaviourPunCallbacks
                 // Win1 애니메이션 자동 재생 (네트워크 동기화)
                 victoryController.PlayWin1AnimationAuto();
                 
-                // 웃음 사운드도 즉시 재생 (애니메이션과 동시에)
-                if (AudioManager.Inst != null)
+                // 웃음 사운드도 즉시 재생 (모든 클라이언트에 동기화)
+                if (pv != null && pv.ViewID > 0)
                 {
+                    pv.RPC("RPC_PlayWinnerLaughSound", RpcTarget.All);
+                }
+                else if (AudioManager.Inst != null)
+                {
+                    // PhotonView가 없으면 로컬에서만 재생 (폴백)
                     AudioManager.Inst.PlayOneShot("SFX_Game_GameOver_WinnerLaugh");
                 }
                 
@@ -542,4 +591,32 @@ public class GameOverController : MonoBehaviourPunCallbacks
     public List<PlayerRankData> GetPlayerRankings() => playerRankings;
     public GameObject GetWinnerPlayer() => winnerPlayer;
     public float GetWinnerScore() => winnerScore;
+    
+    #region Photon RPC - 승리 사운드 재생
+    
+    /// <summary>
+    /// 승리 캐릭터 이동 사운드 재생 (모든 클라이언트)
+    /// </summary>
+    [PunRPC]
+    private void RPC_PlayWinnerMoveSound()
+    {
+        if (AudioManager.Inst != null)
+        {
+            AudioManager.Inst.PlayOneShot("SFX_Game_GameOver_WinnerMove");
+        }
+    }
+    
+    /// <summary>
+    /// 승리 캐릭터 웃음 사운드 재생 (모든 클라이언트)
+    /// </summary>
+    [PunRPC]
+    private void RPC_PlayWinnerLaughSound()
+    {
+        if (AudioManager.Inst != null)
+        {
+            AudioManager.Inst.PlayOneShot("SFX_Game_GameOver_WinnerLaugh");
+        }
+    }
+    
+    #endregion
 }
