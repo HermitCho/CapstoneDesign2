@@ -14,7 +14,7 @@ public class CircleAnimation : MonoBehaviour
     [SerializeField] private float[] endSize2;
 
     [Header("속도 설정")]
-    [SerializeField] private float growSpeed = 0.08f;  // 커지는 속도
+    //[SerializeField] private float growSpeed = 0.08f;  // 커지는 속도
     [SerializeField] private float fadeSpeed = 1.0f;  // 사라지는 속도
     [SerializeField] private float restartDelay = 0.2f; // 반복 전 대기시간
 
@@ -22,14 +22,21 @@ public class CircleAnimation : MonoBehaviour
 
     private List<Material> mats = new List<Material>();
 
+    private float[] randomGrowSpeeds;
+
     void Start()
     {
+
+        randomGrowSpeeds = new float[circleCount];
+
         // 자식 오브젝트의 머티리얼 가져오기
         for (int i = 0; i < circleCount; i++)
         {
             Renderer rend = transform.GetChild(i).GetComponent<Renderer>();
             if (rend != null)
                 mats.Add(rend.material); // 인스턴스화
+
+                randomGrowSpeeds[i] = Random.Range(0.06f, 0.08f);
         }
 
         StartCoroutine(StartSequentially());
@@ -68,12 +75,14 @@ public class CircleAnimation : MonoBehaviour
                 yield return null;
             }
 
+            float thisGrowSpeed = randomGrowSpeeds[index];
+
             // 3️⃣ MoveTowards로 커지기
             while (!Mathf.Approximately(current1, endSize1[index]) ||
                    !Mathf.Approximately(current2, endSize2[index]))
             {
-                current1 = Mathf.MoveTowards(current1, endSize1[index], Time.deltaTime * growSpeed);
-                current2 = Mathf.MoveTowards(current2, endSize2[index], Time.deltaTime * growSpeed);
+                current1 = Mathf.MoveTowards(current1, endSize1[index], Time.deltaTime * thisGrowSpeed);
+                current2 = Mathf.MoveTowards(current2, endSize2[index], Time.deltaTime * thisGrowSpeed);
 
                 mat.SetFloat("_Circle_size", current1);
                 mat.SetFloat("_Circle_size2", current2);
