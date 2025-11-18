@@ -1197,7 +1197,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     {
         if (victim == null) return;
 
-        LivingEntity attacker = victim.GetAttacker();
+        LivingEntity attacker = victim.GetAttacker() as LivingEntity;
         if (attacker != null)
         {
             // 모든 클라이언트에서 킬로그 생성

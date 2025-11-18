@@ -105,7 +105,7 @@ public class CoinController : MonoBehaviourPun
             AddScore(baseScore);
         }
     }
-    
+
     /// <summary>
     /// 로컬 플레이어가 왕관을 소유하고 있는지 확인
     /// </summary>
@@ -113,11 +113,11 @@ public class CoinController : MonoBehaviourPun
     private bool IsLocalPlayerHoldingCrown()
     {
         if (!photonView.IsMine) return false;
-        
+
         // 씬에서 왕관 찾기
         Crown crown = FindObjectOfType<Crown>();
         if (crown == null) return false;
-        
+
         // 왕관이 현재 플레이어의 Transform에 부착되어 있는지 확인
         return crown.IsAttachedToPlayer(transform);
     }
@@ -323,7 +323,7 @@ public class CoinController : MonoBehaviourPun
 
             PhotonNetwork.LocalPlayer.SetCustomProperties(props);
 
-           
+
 
             // 추가 검증: 설정된 값 확인
             StartCoroutine(VerifyNetworkSync(scoreKey, currentScore));

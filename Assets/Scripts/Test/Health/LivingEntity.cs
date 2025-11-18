@@ -1,13 +1,8 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using Photon.Pun;
-using Photon.Realtime; // Player 클래스를 위해 추가
-using Febucci.UI;
-using Michsky.UI.Heat;
-using System.Threading;
-using Ricimi;
+
 
 /// <summary>
 /// 생명체의 기본 기능을 담당하는 클래스 (포톤 멀티플레이 고려)
@@ -21,7 +16,7 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
     [Header("Character Data")]
     [SerializeField] private CharacterData characterData;
 
-    private LivingEntity currentAttacker;
+    private IDamageable currentAttacker;
 
     // Health & Shield Properties
     // ✅ [PunRPC]를 통해 동기화될 public 변수이므로 set을 private으로 변경하지 않고,
@@ -32,19 +27,20 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
     public float CurrentHealth { get; private set; }
     public float CurrentShield { get; private set; }
     public bool IsDead { get; private set; }
+
     private bool IsInvincivilityActive;
     private int IsInvincivilityCount;
-    [SerializeField] AudioClip hitSound;
 
-    // ✅ LivingEntity의 체력 변화를 알리는 static 이벤트. GameManager가 구독합니다.
     public static event Action<float, float, LivingEntity> OnAnyLivingEntityHealthChanged;
-
-    // ✅ 플레이어 사망을 알리는 static 이벤트. TestTeddyBear 등이 구독할 수 있습니다.
     public static event Action<LivingEntity> OnPlayerDied;
-
     public event Action OnRevive;
 
 
+    public int photonViewID
+    {
+        get => base.photonView.ViewID;
+        set => Debug.Log("ViewID는 설정할 수 없습니다.");
+    }
 
 
     [Header("스턴 제어")]
@@ -70,8 +66,6 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
 
     protected virtual void Awake()
     {
-        // photonView = GetComponent<PhotonView>(); // this.photonView를 사용하면 됩니다.
-
         // Renderer 컴포넌트들 초기화
         InitializeRenderers();
     }
@@ -170,7 +164,6 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
         IsInvincivilityCount = newInvincibilityCount;
 
         OnAnyLivingEntityHealthChanged?.Invoke(CurrentHealth, StartingHealth, this);
-        // Debug.Log($"[LivingEntity] {gameObject.name} 체력/상태 동기화 - H:{CurrentHealth}, D:{IsDead}, IC:{IsInvincivilityCount}");
     }
 
     [PunRPC]
@@ -180,10 +173,8 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
         if (!PhotonNetwork.IsMasterClient) return;
         if (IsDead) return;
         if (CurrentHealth <= 0f) return;
-
         // 무적 검사 (무제한 무적)
         if (IsInvincivilityActive) return;
-
         // 무적 검사 (횟수 무적)
         if (IsInvincivilityCount > 0)
         {
@@ -194,7 +185,7 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
         }
 
         PhotonView attackerPV = PhotonView.Find(attackerViewId);
-        LivingEntity attacker = attackerPV?.GetComponent<LivingEntity>();
+        IDamageable attacker = attackerPV?.GetComponent<IDamageable>();
 
         // 데미지 적용
         CurrentHealth = Mathf.Max(0f, CurrentHealth - damage);
@@ -205,16 +196,13 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
         if (died && !IsDead)
         {
             currentAttacker = attacker;
-            int attackerId = attacker != null ? attacker.photonView.ViewID : -1;
-            Debug.Log($"[LivingEntity - OnDamage] {attackerId}");
+            int attackerId = attacker != null ? attacker.photonViewID : -1;
             photonView.RPC("RPC_Die", RpcTarget.All, attackerId);
         }
 
         photonView.RPC("RPC_UpdateHealth", RpcTarget.All, CurrentHealth, died, IsInvincivilityCount);
-
         // 피격 효과 RPC는 로컬에서만 실행되도록 Owner에게 전송
         photonView.RPC("RPC_OnHitEffect", photonView.Owner, (hitNormal.normalized));
-
         // 피격 반짝임 이펙트 시작 (모든 클라이언트에서)
         photonView.RPC("RPC_StartHitFlash", RpcTarget.All);
 
@@ -233,7 +221,7 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
     public void RestoreHealth(float healAmount)
     {
         if (!PhotonNetwork.IsMasterClient) return;
-        if (IsDead || healAmount <= 0f) return; // ✅ IsDead 변수 사용
+        if (IsDead || healAmount <= 0f) return;
 
         float prevHealth = CurrentHealth;
         CurrentHealth = Mathf.Min(StartingHealth, CurrentHealth + healAmount);
@@ -248,9 +236,8 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
     [PunRPC]
     public void RestoreShield(float shieldAmount)
     {
-        if (IsDead || shieldAmount <= 0f) return; // ✅ IsDead 변수 사용
+        if (IsDead || shieldAmount <= 0f) return;
         CurrentShield = Mathf.Min(StartingShield, CurrentShield + shieldAmount);
-        Debug.Log($"[LivingEntity:Master] {gameObject.name} 방어막 회복: {shieldAmount}, 현재 방어막: {CurrentShield}");
     }
 
     #endregion
@@ -264,22 +251,18 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
     [PunRPC]
     public bool RPC_Die(int attackerViewId)
     {
-        Debug.Log("[LivingEntity] - RPC_Die 실행");
         // 이미 사망한 상태라면 처리하지 않음
         if (IsDead)
         {
             Debug.Log($"[LivingEntity] {gameObject.name} 이미 사망한 상태 - 중복 사망 처리 방지");
             return false;
         }
+        // 사망 상태 설정
+        IsDead = true;
 
         // ViewID를 통해 attacker LivingEntity 찾기
         PhotonView attackerPV = PhotonView.Find(attackerViewId);
         LivingEntity attacker = attackerPV?.gameObject.GetComponent<LivingEntity>();
-
-        // 사망 상태 설정
-        IsDead = true;
-        Debug.Log($"[LivingEntity] {attackerPV}");
-        Debug.Log($"[LivingEntity] {gameObject.name} 사망 처리 완료 - attacker: {attacker}, IsDead: {IsDead}");
 
         //마스터 클라이언트에서 공격자에게 점수 부여
         if (PhotonNetwork.IsMasterClient && attacker != null)
@@ -288,7 +271,6 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
             float killScore = 100f;
 
             attackerView.RPC("RPC_GrantKillScore", attackerView.Owner, killScore);
-            Debug.Log($"[LivingEntity:Master] {gameObject.name} 사망 -> {attacker.gameObject.name}에게 {killScore} 점수 부여 요청 RPC 전송");
         }
 
         // 반짝임 코루틴 중지 및 색상 복원
@@ -350,7 +332,6 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
 
         // 부활 RPC 호출 (마스터 클라이언트에서만)
         photonView.RPC("RPC_Revive", RpcTarget.All);
-        Debug.Log($"[LivingEntity] {gameObject.name} 부활 RPC 호출 완료");
     }
 
     [PunRPC]
@@ -361,12 +342,13 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
             return;
         }
 
+        // 체력 및 상태 초기화
+        InitializeEntity();
+        // 모든 클라이언트에서 UI 업데이트
+        OnAnyLivingEntityHealthChanged?.Invoke(CurrentHealth, StartingHealth, this);
         // 사망 상태 해제
         IsDead = false;
         currentAttacker = null; // 공격자 정보 초기화
-
-        // 체력 및 상태 초기화
-        InitializeEntity();
 
         // 반짝임 코루틴 중지 및 색상 복원
         if (hitFlashCoroutine != null)
@@ -392,8 +374,7 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
         }
 
 
-        // 모든 클라이언트에서 UI 업데이트
-        OnAnyLivingEntityHealthChanged?.Invoke(CurrentHealth, StartingHealth, this);
+
 
         if (photonView.IsMine)
         {
@@ -525,13 +506,10 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
     [PunRPC]
     public void Set_Count_invincibility(int count)
     {
-        // 🚨 이 함수는 OneTimeDefense.InitializeShield에서 RPC로 호출되어야 합니다.
-        // 모든 클라이언트에서 동일하게 카운트를 설정합니다.
         if (IsInvincivilityCount <= 0)
         {
             IsInvincivilityCount = count;
         }
-        // Debug.Log($"[LivingEntity] Set_Count_invincibility called. Count: {IsInvincivilityCount}");
     }
 
     public bool HasInvincibilityCount()
@@ -539,7 +517,7 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
         return IsInvincivilityCount > 0;
     }
 
-    public LivingEntity GetAttacker()
+    public IDamageable GetAttacker()
     {
         return currentAttacker;
     }
@@ -566,12 +544,15 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
         // 피격 사운드 (쿨타임 체크)
         if (Time.time - lastHitSoundTime >= HIT_SOUND_COOLDOWN)
         {
-            if (hitSound != null)
-            {
-                AudioManager.Inst?.PlayClipAtPoint(hitSound, transform.position, 1f, 1f, null, transform);
-            }
+            SoundtoHitPerson();
             lastHitSoundTime = Time.time;
         }
+    }
+
+    private void SoundtoHitPerson()
+    {
+        Debug.Log("[LivingEntity - RPC_OnHitEffect] 사운드 출력!");
+        AudioManager.Inst.PlayOneShot("SFX_Game_Hit");
     }
 
     [PunRPC]

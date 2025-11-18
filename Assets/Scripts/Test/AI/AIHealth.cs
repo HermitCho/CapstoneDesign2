@@ -36,6 +36,13 @@ public class AIHealth : MonoBehaviourPunCallbacks, IPunObservable, IDamageable
     // 컴포넌트 캐시
     private PhotonView pv;
 
+    // IDamageable의 속성 구현
+    public int photonViewID
+    {
+        get => base.photonView.ViewID;
+        set => Debug.Log("ViewID는 설정할 수 없습니다.");
+    }
+
     // 반짝임 이펙트
     private Renderer[] renderers;
     private Color[] originalColors;
@@ -53,6 +60,7 @@ public class AIHealth : MonoBehaviourPunCallbacks, IPunObservable, IDamageable
     public bool IsDead => isDead;
     public CharacterData CharacterData => characterData;
 
+
     #endregion
 
     #region Unity Lifecycle
@@ -60,7 +68,6 @@ public class AIHealth : MonoBehaviourPunCallbacks, IPunObservable, IDamageable
     private void Awake()
     {
         pv = GetComponent<PhotonView>();
-
         if (characterData != null)
         {
             maxHealth = characterData.startingHealth;
@@ -351,22 +358,13 @@ public class AIHealth : MonoBehaviourPunCallbacks, IPunObservable, IDamageable
     [PunRPC]
     private void RPC_OnHitEffect()
     {
+        // 1. 빨간색 반짝임 이펙트 (기존 코드 유지)
         if (hitFlashCoroutine != null)
         {
             StopCoroutine(hitFlashCoroutine);
             hitFlashCoroutine = null;
         }
         hitFlashCoroutine = StartCoroutine(HitFlashOnceCoroutine());
-
-        // 피격 사운드 (쿨타임 체크)
-        if (Time.time - lastHitSoundTime >= HIT_SOUND_COOLDOWN)
-        {
-            if (hitSound != null)
-            {
-                AudioManager.Inst?.PlayClipAtPoint(hitSound, transform.position, 1f, 1f, null, transform);
-            }
-            lastHitSoundTime = Time.time;
-        }
     }
 
     /// <summary>
@@ -450,6 +448,7 @@ public class AIHealth : MonoBehaviourPunCallbacks, IPunObservable, IDamageable
 
         // 무적 해제
         isInvincible = false;
+        Debug.Log("InvincibilityFlashCoroutine 무적해제");
         RestoreOriginalColors();
         invincibilityFlashCoroutine = null;
     }
