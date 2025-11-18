@@ -781,6 +781,8 @@ public class DataBase : Singleton<DataBase>
         // 감도 설정 로드
         float xSens = PlayerPrefs.GetFloat("XSensitivity", -1f);
         float ySens = PlayerPrefs.GetFloat("YSensitivity", -1f);
+        float xZoomSens = PlayerPrefs.GetFloat("XZoomSensitivity", -1f);
+        float yZoomSens = PlayerPrefs.GetFloat("YZoomSensitivity", -1f);
         
         // 저장된 값이 있으면 적용 (기본값 1.0)
         if (xSens >= 0f && playerMoveData != null)
@@ -789,10 +791,22 @@ public class DataBase : Singleton<DataBase>
             Debug.Log($"DataBase: X축 감도 로드 - {xSens} (RotationSpeed: {xSens * 10f})");
         }
         
+        if (xZoomSens >= 0f && playerMoveData != null)
+        {
+            playerMoveData.ZoomRotationSpeed = xZoomSens * 10f; // 0-1 범위를 0-10으로 변환
+            Debug.Log($"DataBase: X축 줌 감도 로드 - {xZoomSens} (ZoomRotationSpeed: {xZoomSens * 10f})");
+        }
+        
         if (ySens >= 0f && cameraData != null)
         {
             cameraData.MouseSensitivityY = ySens * 10f; // 0-1 범위를 0-10으로 변환
             Debug.Log($"DataBase: Y축 감도 로드 - {ySens} (MouseSensitivityY: {ySens * 10f})");
+        }
+        
+        if (yZoomSens >= 0f && cameraData != null)
+        {
+            cameraData.ZoomMouseSensitivityY = yZoomSens * 10f; // 0-1 범위를 0-10으로 변환
+            Debug.Log($"DataBase: Y축 줌 감도 로드 - {yZoomSens} (ZoomMouseSensitivityY: {yZoomSens * 10f})");
         }
         
         // 볼륨 설정은 AudioManager가 자체적으로 로드하므로 여기서는 처리하지 않음

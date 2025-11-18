@@ -18,6 +18,11 @@ public class SettingPanel : MonoBehaviour
     [SerializeField] private SliderManager xSensivitySlider;
     [SerializeField] private SliderManager ySensivitySlider;
     [Space(10)]
+    
+    [Header("줌 감도 설정 슬라이더")]
+    [SerializeField] private SliderManager xZoomSensitivitySlider;
+    [SerializeField] private SliderManager yZoomSensitivitySlider;
+    [Space(10)]
 
     [Header("볼륨 설정 슬라이더")]
     [SerializeField] private SliderManager masterVolumeSlider;
@@ -74,6 +79,8 @@ public class SettingPanel : MonoBehaviour
     // PlayerPrefs 키
     private const string PREF_X_SENSITIVITY = "XSensitivity";
     private const string PREF_Y_SENSITIVITY = "YSensitivity";
+    private const string PREF_X_ZOOM_SENSITIVITY = "XZoomSensitivity";
+    private const string PREF_Y_ZOOM_SENSITIVITY = "YZoomSensitivity";
     private const string PREF_MASTER_VOLUME = "MasterVolume";
     private const string PREF_MUSIC_VOLUME = "MusicVolume";
     private const string PREF_SFX_VOLUME = "SFXVolume";
@@ -194,6 +201,8 @@ public class SettingPanel : MonoBehaviour
     {
         float xSens = PlayerPrefs.GetFloat(PREF_X_SENSITIVITY, DEFAULT_SENSITIVITY);
         float ySens = PlayerPrefs.GetFloat(PREF_Y_SENSITIVITY, DEFAULT_SENSITIVITY);
+        float xZoomSens = PlayerPrefs.GetFloat(PREF_X_ZOOM_SENSITIVITY, DEFAULT_SENSITIVITY);
+        float yZoomSens = PlayerPrefs.GetFloat(PREF_Y_ZOOM_SENSITIVITY, DEFAULT_SENSITIVITY);
         
         if (xSensivitySlider != null)
         {
@@ -205,8 +214,18 @@ public class SettingPanel : MonoBehaviour
             ySensivitySlider.mainSlider.value = ySens;
         }
         
+        if (xZoomSensitivitySlider != null)
+        {
+            xZoomSensitivitySlider.mainSlider.value = xZoomSens;
+        }
+        
+        if (yZoomSensitivitySlider != null)
+        {
+            yZoomSensitivitySlider.mainSlider.value = yZoomSens;
+        }
+        
         // DataBase에 적용
-        ApplySensitivityToDataBase(xSens, ySens);
+        ApplySensitivityToDataBase(xSens, ySens, xZoomSens, yZoomSens);
     }
     
     /// <summary>
@@ -439,6 +458,16 @@ public class SettingPanel : MonoBehaviour
         {
             ySensivitySlider.UpdateUI();
         }
+        
+        if (xZoomSensitivitySlider != null)
+        {
+            xZoomSensitivitySlider.UpdateUI();
+        }
+        
+        if (yZoomSensitivitySlider != null)
+        {
+            yZoomSensitivitySlider.UpdateUI();
+        }
     }
     
     /// <summary>
@@ -501,6 +530,16 @@ public class SettingPanel : MonoBehaviour
             ySensivitySlider.mainSlider.onValueChanged.AddListener(OnYSensitivityChanged);
         }
         
+        if (xZoomSensitivitySlider != null)
+        {
+            xZoomSensitivitySlider.mainSlider.onValueChanged.AddListener(OnXZoomSensitivityChanged);
+        }
+        
+        if (yZoomSensitivitySlider != null)
+        {
+            yZoomSensitivitySlider.mainSlider.onValueChanged.AddListener(OnYZoomSensitivityChanged);
+        }
+        
         if (masterVolumeSlider != null)
         {
             masterVolumeSlider.mainSlider.onValueChanged.AddListener(OnMasterVolumeChanged);
@@ -535,6 +574,16 @@ public class SettingPanel : MonoBehaviour
         if (ySensivitySlider != null)
         {
             ySensivitySlider.mainSlider.onValueChanged.RemoveListener(OnYSensitivityChanged);
+        }
+        
+        if (xZoomSensitivitySlider != null)
+        {
+            xZoomSensitivitySlider.mainSlider.onValueChanged.RemoveListener(OnXZoomSensitivityChanged);
+        }
+        
+        if (yZoomSensitivitySlider != null)
+        {
+            yZoomSensitivitySlider.mainSlider.onValueChanged.RemoveListener(OnYZoomSensitivityChanged);
         }
         
         if (masterVolumeSlider != null)
@@ -599,19 +648,55 @@ public class SettingPanel : MonoBehaviour
     /// <summary>
     /// 감도를 DataBase에 적용
     /// </summary>
-    private void ApplySensitivityToDataBase(float xSens, float ySens)
+    private void ApplySensitivityToDataBase(float xSens, float ySens, float xZoomSens, float yZoomSens)
     {
         if (DataBase.Instance == null) return;
         
         if (DataBase.Instance.playerMoveData != null)
         {
             DataBase.Instance.playerMoveData.RotationSpeed = xSens * 10f;
+            DataBase.Instance.playerMoveData.ZoomRotationSpeed = xZoomSens * 10f;
         }
         
         if (DataBase.Instance.cameraData != null)
         {
             DataBase.Instance.cameraData.MouseSensitivityY = ySens * 10f;
+            DataBase.Instance.cameraData.ZoomMouseSensitivityY = yZoomSens * 10f;
         }
+    }
+    
+    /// <summary>
+    /// X축 줌 감도 변경
+    /// </summary>
+    private void OnXZoomSensitivityChanged(float value)
+    {
+        // DataBase에 적용
+        if (DataBase.Instance != null && DataBase.Instance.playerMoveData != null)
+        {
+            DataBase.Instance.playerMoveData.ZoomRotationSpeed = value * 10f; // 0-1 범위를 0-10으로 변환
+        }
+        
+        // 즉시 저장
+        PlayerPrefs.SetFloat(PREF_X_ZOOM_SENSITIVITY, value);
+        
+        Debug.Log($"SettingPanel: X축 줌 감도 변경 - {value}");
+    }
+    
+    /// <summary>
+    /// Y축 줌 감도 변경
+    /// </summary>
+    private void OnYZoomSensitivityChanged(float value)
+    {
+        // DataBase에 적용
+        if (DataBase.Instance != null && DataBase.Instance.cameraData != null)
+        {
+            DataBase.Instance.cameraData.ZoomMouseSensitivityY = value * 10f; // 0-1 범위를 0-10으로 변환
+        }
+        
+        // 즉시 저장
+        PlayerPrefs.SetFloat(PREF_Y_ZOOM_SENSITIVITY, value);
+        
+        Debug.Log($"SettingPanel: Y축 줌 감도 변경 - {value}");
     }
     
     #endregion
@@ -1242,6 +1327,16 @@ public class SettingPanel : MonoBehaviour
         if (ySensivitySlider != null)
         {
             ySensivitySlider.mainSlider.value = DEFAULT_SENSITIVITY;
+        }
+        
+        if (xZoomSensitivitySlider != null)
+        {
+            xZoomSensitivitySlider.mainSlider.value = DEFAULT_SENSITIVITY;
+        }
+        
+        if (yZoomSensitivitySlider != null)
+        {
+            yZoomSensitivitySlider.mainSlider.value = DEFAULT_SENSITIVITY;
         }
         
         // 볼륨 초기화
