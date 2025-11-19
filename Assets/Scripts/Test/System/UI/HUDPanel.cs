@@ -61,6 +61,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     [Header("조준점 UI")]
     [SerializeField] private Animator zoomAnimator;
     [SerializeField] private Image zoomImage;
+    [SerializeField] private Image HitImage;
 
     [Header("장탄수 UI")]
     [SerializeField] private TextMeshProUGUI currentAmmoCountText;
@@ -167,12 +168,18 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     private bool hasScoreChanged = false;
     private float lastAmmoUpdate = 0f;
     
-    // ✅ 게임 종료 카운트다운 사운드 관련
+    // 게임 종료 카운트다운 사운드 관련
     private bool isCountdownSoundPlaying = false;
     private int lastCountdownSecond = -1;
     
+    // HitImage 애니메이션 관련
+    private Tween hitImageFadeTween;
+    private Tween hitImageScaleTween;
+    private Vector3 originalHitImageScale = Vector3.one;
+    private Color originalHitImageColor = Color.white;
+    
     /// <summary>
-    /// 플레이어 점수 Properties 초기화 (두 번째 게임 문제 해결)
+    /// 플레이어 점수 Properties 초기화
     /// </summary>
     private void ClearPlayerScoreProperties()
     {
@@ -190,13 +197,13 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     
     void Start()
     {
-        // 게임 재시작 시 점수 Properties 초기화 (핵심 수정)
+        // 게임 재시작 시 점수 Properties 초기화 
         ClearPlayerScoreProperties();
         
         // 로컬 플레이어 찾기 시작
         StartCoroutine(FindLocalPlayerRoutine());
         
-        // GameManager 이벤트 구독 (시간 정보만)
+        // GameManager 이벤트 구독 
         if (GameManager.Instance != null)
         {
             GameManager.OnGameTimeUpdated += UpdateGameTime;
@@ -207,9 +214,13 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         LivingEntity.OnPlayerDied += HandlePlayerDeath;
         Debug.Log("HUD: LivingEntity.OnPlayerDied 이벤트 구독 완료");
         
-        // ✅ AIHealth 사망 이벤트 구독 (봇 사망 감지)
+        //AIHealth 사망 이벤트 구독 (봇 사망 감지)
         AIHealth.OnAIDied += HandleAIDeath;
         Debug.Log("HUD: AIHealth.OnAIDied 이벤트 구독 완료");
+        
+        // TestGun 히트 이벤트 구독 (HitImage 애니메이션용)
+        TestGun.OnHitTarget += PlayHitImageAnimation;
+        Debug.Log("HUD: TestGun.OnHitTarget 이벤트 구독 완료");
         
         // 점수판 초기화
         InitializeScoreBoard();
@@ -229,9 +240,13 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         LivingEntity.OnPlayerDied -= HandlePlayerDeath;
         Debug.Log("HUD: LivingEntity.OnPlayerDied 이벤트 구독 해제 완료");
         
-        // ✅ AIHealth 사망 이벤트 구독 해제
+        // AIHealth 사망 이벤트 구독 해제
         AIHealth.OnAIDied -= HandleAIDeath;
         Debug.Log("HUD: AIHealth.OnAIDied 이벤트 구독 해제 완료");
+        
+        // TestGun 히트 이벤트 구독 해제
+        TestGun.OnHitTarget -= PlayHitImageAnimation;
+        Debug.Log("HUD: TestGun.OnHitTarget 이벤트 구독 해제 완료");
         
         // 체력 애니메이션 정리
         CleanupHealthAnimations();
@@ -242,6 +257,9 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         
         // 아이콘 애니메이션 정리
         CleanupIconAnimations();
+        
+        // HitImage 애니메이션 정리
+        CleanupHitImageAnimations();
     }
     
     /// <summary>
@@ -316,7 +334,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         // 장탄수 UI 페이드 체크
         CheckAmmoUIFade();
         
-        // ✅ 게임 종료 10초 전 카운트다운 사운드 체크
+        // 게임 종료 10초 전 카운트다운 사운드 체크
         CheckGameEndingCountdownSound();
     }
     
@@ -413,7 +431,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         }
         else
         {
-            // ✅ CoinController가 없으면 0으로 초기화
+            //CoinController가 없으면 0으로 초기화
             currentCoin = 0;
             currentScore = 0f;
         }
@@ -434,7 +452,29 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         {
             InitializeAmmoUI();
         }
+        
+        // HitImage 초기화
+        InitializeHitImage();
        
+    }
+    
+    /// <summary>
+    /// HitImage 초기화
+    /// </summary>
+    private void InitializeHitImage()
+    {
+        if (HitImage != null)
+        {
+            // 원래 크기와 색상 저장
+            originalHitImageScale = HitImage.transform.localScale;
+            originalHitImageColor = HitImage.color;
+            
+            // 초기 상태: 투명하고 원래 크기
+            Color transparentColor = originalHitImageColor;
+            transparentColor.a = 0f;
+            HitImage.color = transparentColor;
+            HitImage.transform.localScale = originalHitImageScale;
+        }
     }
     
     /// <summary>
@@ -541,7 +581,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks
             healthProgressBGBar.UpdateUI();
         }
         
-        // 빨간색 깜박임 시작 (강한 깜박임)
+        // 빨간색 깜박임 시작 
         StartHealthBlink(damageColor, 0.3f);
         
         // 체력 바 부드럽게 감소
@@ -1205,7 +1245,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     {
         if (victim == null) return;
 
-        // ✅ 공격자 찾기 (LivingEntity 또는 AIHealth)
+        // 공격자 찾기 (LivingEntity 또는 AIHealth)
         IDamageable attackerDamageable = victim.GetAttacker();
         if (attackerDamageable == null) return;
         
@@ -1236,12 +1276,12 @@ public class HUDPanel : MonoBehaviourPunCallbacks
             attackerNickname = "Unknown";
         }
         
-        // ✅ 모든 클라이언트에서 킬로그 생성
+        // 모든 클라이언트에서 킬로그 생성
         CreateKillLog(attackerNickname, victimNickname);
     }
     
     /// <summary>
-    /// ✅ AI 사망 이벤트 핸들러 (봇이 죽었을 때)
+    /// AI 사망 이벤트 핸들러 (봇이 죽었을 때)
     /// </summary>
     private void HandleAIDeath(AIHealth victimAI, int attackerID)
     {
@@ -1250,7 +1290,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         // 피해자 닉네임 (봇)
         string victimNickname = "봇";
         
-        // ✅ 공격자 찾기 (ViewID로 찾기)
+        // 공격자 찾기 (ViewID로 찾기)
         PhotonView attackerPV = PhotonView.Find(attackerID);
         string attackerNickname = "Unknown";
         
@@ -2166,7 +2206,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         reloadIconBlinkTween?.Kill();
         zoomImageFadeTween?.Kill();
         
-        // ✅ zoomImage 투명도를 0으로 변경 (안보이게)
+        // zoomImage 투명도를 0으로 변경 (안보이게)
         if (zoomImage != null)
         {
             zoomImageFadeTween = zoomImage.DOFade(0f, 0.2f).SetEase(Ease.OutCubic);
@@ -2237,7 +2277,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         // 투명도를 0으로 변경
         reloadIcon.DOFade(0f, 0.3f).SetEase(Ease.OutCubic);
         
-        // ✅ zoomImage 투명도를 원래대로 복원
+        //zoomImage 투명도를 원래대로 복원
         if (zoomImage != null)
         {
             zoomImageFadeTween = zoomImage.DOFade(originalZoomImageAlpha, 0.3f).SetEase(Ease.OutCubic);
@@ -2356,7 +2396,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         reloadIconFadeTween?.Kill();
         reloadIconRotateTween?.Kill();
         reloadIconBlinkTween?.Kill();
-        zoomImageFadeTween?.Kill(); // ✅ zoomImage 애니메이션도 정리
+        zoomImageFadeTween?.Kill(); 
         
         ammoBarTween = null;
         ammoBarBlinkTween = null;
@@ -2368,7 +2408,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         reloadIconFadeTween = null;
         reloadIconRotateTween = null;
         reloadIconBlinkTween = null;
-        zoomImageFadeTween = null; // ✅ null로 초기화
+        zoomImageFadeTween = null; 
     }
     
     #endregion
@@ -2456,6 +2496,62 @@ public class HUDPanel : MonoBehaviourPunCallbacks
             coinIcon.transform.rotation = Quaternion.identity;
             coinIcon.transform.localScale = Vector3.one;
         }
+    }
+    
+    #endregion
+    
+    #region HitImage 애니메이션
+    
+    /// <summary>
+    /// HitImage 애니메이션 재생 (외부 호출용)
+    /// </summary>
+    public void PlayHitImageAnimation()
+    {
+        if (HitImage == null) return;
+        
+        // 기존 애니메이션 정리
+        CleanupHitImageAnimations();
+        
+        // 초기 상태 설정
+        Color transparentColor = originalHitImageColor;
+        transparentColor.a = 0f;
+        HitImage.color = transparentColor;
+        HitImage.transform.localScale = originalHitImageScale;
+        
+        // 1. 빠르게 페이드인 (0.1초)
+        hitImageFadeTween = HitImage.DOFade(originalHitImageColor.a, 0.1f)
+            .SetEase(Ease.OutQuad)
+            .OnComplete(() => {
+                // 2. 약간 커지기 (0.15초)
+                hitImageScaleTween = HitImage.transform.DOScale(originalHitImageScale * 1.2f, 0.15f)
+                    .SetEase(Ease.OutQuad)
+                    .OnComplete(() => {
+                        // 3. 빠르게 원래 크기로 돌아오기 (0.15초)
+                        hitImageScaleTween = HitImage.transform.DOScale(originalHitImageScale, 0.15f)
+                            .SetEase(Ease.InQuad)
+                            .OnComplete(() => {
+                                // 4. 페이드 아웃 (0.2초)
+                                hitImageFadeTween = HitImage.DOFade(0f, 0.2f)
+                                    .SetEase(Ease.InQuad)
+                                    .OnComplete(() => {
+                                        // 애니메이션 완료 후 정리
+                                        CleanupHitImageAnimations();
+                                    });
+                            });
+                    });
+            });
+    }
+    
+    /// <summary>
+    /// HitImage 애니메이션 정리
+    /// </summary>
+    private void CleanupHitImageAnimations()
+    {
+        hitImageFadeTween?.Kill();
+        hitImageScaleTween?.Kill();
+        
+        hitImageFadeTween = null;
+        hitImageScaleTween = null;
     }
     
     #endregion
