@@ -65,7 +65,7 @@ public class AdrenalinSkill : Skill
             cancellationTokenSource.Token // ✅ 취소 토큰 전달
         ).Forget();
 
-        PlayFollowCastEffectOnHeartAtRemote(executor, effectTransform);
+        PlayFollowEffectOnHeartAtRemote(executor, effectTransform);
         photonView.RPC("EffectOn", RpcTarget.All);
     }
 
