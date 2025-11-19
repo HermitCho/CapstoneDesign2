@@ -95,11 +95,8 @@ public class GameOverController : MonoBehaviourPunCallbacks
         else
         {
             // ✅ 승리 플레이어가 로컬이 아니어도 사운드는 모든 클라이언트에 재생
-            // 승리 플레이어 이동 사운드 재생 (모든 클라이언트에 동기화)
-            if (pv != null && pv.ViewID > 0)
-            {
-                pv.RPC("RPC_PlayWinnerMoveSound", RpcTarget.All);
-            }
+            // 승리 플레이어 이동 사운드 재생 (모든 클라이언트에서 직접 재생)
+            PlayWinnerMoveSound();
             
             // 웃음 사운드는 애니메이션 타이밍에 맞춰 재생
             StartCoroutine(PlayWinnerLaughSoundAfterDelay());
@@ -114,10 +111,8 @@ public class GameOverController : MonoBehaviourPunCallbacks
         // Win1 애니메이션 타이밍에 맞춰 재생 (약 2.3초 후)
         yield return new WaitForSeconds(2.3f);
         
-        if (pv != null && pv.ViewID > 0)
-        {
-            pv.RPC("RPC_PlayWinnerLaughSound", RpcTarget.All);
-        }
+        // 모든 클라이언트에서 직접 재생
+        PlayWinnerLaughSound();
     }
     
     /// <summary>
@@ -131,16 +126,8 @@ public class GameOverController : MonoBehaviourPunCallbacks
         {
             VictoryAnimationController victoryController = winnerPlayer.GetComponent<VictoryAnimationController>();
             
-            // 1️⃣ 승리 캐릭터 이동 사운드 재생 (모든 클라이언트에 동기화)
-            if (pv != null && pv.ViewID > 0)
-            {
-                pv.RPC("RPC_PlayWinnerMoveSound", RpcTarget.All);
-            }
-            else if (AudioManager.Inst != null)
-            {
-                // PhotonView가 없으면 로컬에서만 재생 (폴백)
-                AudioManager.Inst.PlayOneShot("SFX_Game_GameOver_WinnerMove");
-            }
+            // 1️⃣ 승리 캐릭터 이동 사운드 재생 (모든 클라이언트에서 직접 재생)
+            PlayWinnerMoveSound();
             
             // 3️⃣ 텔레포트와 동시에 Win1 애니메이션 + 웃음 사운드 재생
             yield return new WaitForSeconds(1f);
@@ -159,16 +146,8 @@ public class GameOverController : MonoBehaviourPunCallbacks
                 // Win1 애니메이션 자동 재생 (네트워크 동기화)
                 victoryController.PlayWin1AnimationAuto();
                 
-                // 웃음 사운드도 즉시 재생 (모든 클라이언트에 동기화)
-                if (pv != null && pv.ViewID > 0)
-                {
-                    pv.RPC("RPC_PlayWinnerLaughSound", RpcTarget.All);
-                }
-                else if (AudioManager.Inst != null)
-                {
-                    // PhotonView가 없으면 로컬에서만 재생 (폴백)
-                    AudioManager.Inst.PlayOneShot("SFX_Game_GameOver_WinnerLaugh");
-                }
+                // 웃음 사운드도 즉시 재생 (모든 클라이언트에서 직접 재생)
+                PlayWinnerLaughSound();
                 
                 // 4️⃣ Win1 애니메이션 완료 후 수동 조작 활성화
                 StartCoroutine(EnableVictoryControlAfterAnimation(victoryController));
@@ -592,29 +571,29 @@ public class GameOverController : MonoBehaviourPunCallbacks
     public GameObject GetWinnerPlayer() => winnerPlayer;
     public float GetWinnerScore() => winnerScore;
     
-    #region Photon RPC - 승리 사운드 재생
+    #region 승리 사운드 재생
     
     /// <summary>
-    /// 승리 캐릭터 이동 사운드 재생 (모든 클라이언트)
+    /// 승리 캐릭터 이동 사운드 재생 (모든 클라이언트에서 직접 재생)
     /// </summary>
-    [PunRPC]
-    private void RPC_PlayWinnerMoveSound()
+    private void PlayWinnerMoveSound()
     {
         if (AudioManager.Inst != null)
         {
             AudioManager.Inst.PlayOneShot("SFX_Game_GameOver_WinnerMove");
+            Debug.Log("[GameOverController] 승리 이동 사운드 재생");
         }
     }
     
     /// <summary>
-    /// 승리 캐릭터 웃음 사운드 재생 (모든 클라이언트)
+    /// 승리 캐릭터 웃음 사운드 재생 (모든 클라이언트에서 직접 재생)
     /// </summary>
-    [PunRPC]
-    private void RPC_PlayWinnerLaughSound()
+    private void PlayWinnerLaughSound()
     {
         if (AudioManager.Inst != null)
         {
             AudioManager.Inst.PlayOneShot("SFX_Game_GameOver_WinnerLaugh");
+            Debug.Log("[GameOverController] 승리 웃음 사운드 재생");
         }
     }
     
