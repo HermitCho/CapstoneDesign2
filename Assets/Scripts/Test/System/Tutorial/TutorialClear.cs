@@ -57,6 +57,8 @@ public class TutorialClear : MonoBehaviour
         // 플레이어 조작 비활성화
         DisablePlayerControls();
 
+        AudioManager.Inst.PlayOneShot("SFX_Game_Tutorial_Clear");
+
         // 커서 표시
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;

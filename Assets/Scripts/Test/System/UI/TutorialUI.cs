@@ -640,7 +640,7 @@ public class TutorialUI : MonoBehaviourPun
         for (int i = 0; i <= tutorialAlwaysPlayMessageText.Length; i++)
         {
             tutorialAlwaysPlayMessageTextUI.text = tutorialAlwaysPlayMessageText.Substring(0, i);
-            // AudioManager.Inst.PlayOneShot("SFX_Game_Tutorial_Message");
+            AudioManager.Inst.PlayOneShot("SFX_Game_Tutorial_Message");
             yield return new WaitForSeconds(tutorialAlwaysPlayMessageTextTypingSpeed);
         }
     }
@@ -679,6 +679,8 @@ public class TutorialUI : MonoBehaviourPun
         
         isCompleteStickerShown = true;
         tutorialCompleteStickerImage.gameObject.SetActive(true);
+
+        AudioManager.Inst.PlayOneShot("SFX_Game_Tutorial_TriggerClear");
         
         // 초기 상태 설정
         RectTransform completeStickerRect = tutorialCompleteStickerImage.GetComponent<RectTransform>();
