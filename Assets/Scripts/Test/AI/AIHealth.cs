@@ -28,6 +28,10 @@ public class AIHealth : MonoBehaviourPunCallbacks, IPunObservable, IDamageable
     public System.Action OnDeath;
     public System.Action OnRevive;
     public System.Action<float, float> OnHealthChanged; // current, max
+    
+    // ✅ 킬로그를 위한 static 사망 이벤트 (LivingEntity와 동일한 패턴)
+    // 매개변수: victimAI, attackerID
+    public static System.Action<AIHealth, int> OnAIDied;
 
     // AI 무적 상태
     private bool isInvincible;
@@ -214,6 +218,10 @@ public class AIHealth : MonoBehaviourPunCallbacks, IPunObservable, IDamageable
         RestoreOriginalColors();
 
         OnDeath?.Invoke();
+        
+        // ✅ 킬로그를 위한 static 이벤트 발생 (모든 클라이언트에서 호출됨)
+        // attackerID를 함께 전달하여 공격자 정보를 알 수 있도록 함
+        OnAIDied?.Invoke(this, attackerID);
 
         // AI 사망 시 왕관 떨어뜨리기
         DropCrownIfAttached();
@@ -248,7 +256,7 @@ public class AIHealth : MonoBehaviourPunCallbacks, IPunObservable, IDamageable
                 CoinController coinController = attackerPV.GetComponent<CoinController>();
                 if (coinController != null)
                 {
-                    float killScore = 100f;
+                    float killScore = 20f;
                     attackerPV.RPC("RPC_GrantKillScore", attackerPV.Owner, killScore);
                     Debug.Log($"[AIHealth] AI {gameObject.name} 사망 → 플레이어 {attackerPV.name}에게 {killScore} 킬 점수 부여");
                 }
