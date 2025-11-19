@@ -165,6 +165,11 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             agent.angularSpeed = 300f;
             agent.acceleration = 8f;
             
+            // ✅ CRITICAL FIX: NavMeshAgent가 Physics Collider와 충돌하지 않도록 설정
+            // obstacleAvoidanceType을 NoObstacleAvoidance로 설정하여 NavMeshAgent가
+            // Physics Collider를 무시하고 NavMesh만 사용하도록 함
+            agent.obstacleAvoidanceType = ObstacleAvoidanceType.NoObstacleAvoidance;
+            
             // ✅ CRITICAL: 클라이언트에서는 NavMeshAgent 비활성화 (위치 동기화와 충돌 방지)
             // MasterClient만 NavMesh로 AI 경로 계산
             if (!PhotonNetwork.IsMasterClient)
@@ -174,7 +179,7 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             }
             else
             {
-                Debug.Log($"[AIBot] {gameObject.name} NavMeshAgent 설정됨 - Speed:{agent.speed} (마스터)");
+                Debug.Log($"[AIBot] {gameObject.name} NavMeshAgent 설정됨 - Speed:{agent.speed}, ObstacleAvoidance: NoObstacleAvoidance (마스터)");
             }
         }
         else
@@ -681,8 +686,17 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             
         // 레이캐스트로 히트 감지
         int layerMask = ~LayerMask.GetMask("PlayerPosition");
-        if (Physics.Raycast(firePoint.position, direction, out RaycastHit hit, gunData.range, layerMask))
+        
+        // ✅ CRITICAL FIX: QueryTriggerInteraction.Ignore 추가
+        // 트리거 콜라이더(Shop 등)가 레이캐스트를 방해하지 않도록 함
+        
+        // 디버그: 레이캐스트 시각화
+        Debug.DrawRay(firePoint.position, direction * gunData.range, Color.cyan, 1f);
+        
+        if (Physics.Raycast(firePoint.position, direction, out RaycastHit hit, gunData.range, layerMask, QueryTriggerInteraction.Ignore))
         {
+            Debug.Log($"[AIBot - ShootPellet] 레이캐스트 히트! Object: {hit.collider.gameObject.name}, Layer: {LayerMask.LayerToName(hit.collider.gameObject.layer)}, isTrigger: {hit.collider.isTrigger}, Distance: {hit.distance:F2}m");
+            
             // 마스터 클라이언트만 데미지 처리
             if (PhotonNetwork.IsMasterClient)
             {
@@ -693,9 +707,14 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
                     PhotonView targetPV = aiTarget.GetComponent<PhotonView>();
                     if (targetPV != null)
                     {
+                        Debug.Log($"[AIBot - ShootPellet] ✅ AI 타겟 발견! {aiTarget.name}, TakeDamage RPC 호출");
                         // TakeDamage RPC 호출
                         targetPV.RPC("TakeDamage", RpcTarget.All, gunData.damage, hit.point, hit.normal, pv.ViewID);
                         return;
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"[AIBot - ShootPellet] ⚠️ AI 타겟의 PhotonView를 찾을 수 없음: {aiTarget.name}");
                     }
                 }
                 
@@ -706,12 +725,31 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
                     PhotonView targetPV = playerTarget.GetComponent<PhotonView>();
                     if (targetPV != null)
                     {
+                        Debug.Log($"[AIBot - ShootPellet] ✅ 플레이어 타겟 발견! {playerTarget.name}, OnDamage RPC 호출");
                         targetPV.RPC("OnDamage", RpcTarget.All, gunData.damage, hit.point, hit.normal, pv.ViewID);
                         return;
                     }
+                    else
+                    {
+                        Debug.LogWarning($"[AIBot - ShootPellet] ⚠️ 플레이어 타겟의 PhotonView를 찾을 수 없음: {playerTarget.name}");
+                    }
                 }
-
+                else
+                {
+                    if (playerTarget == null)
+                        Debug.Log($"[AIBot - ShootPellet] 플레이어 타겟 없음 (GetComponentInParent 실패)");
+                    else if (playerTarget.IsDead)
+                        Debug.Log($"[AIBot - ShootPellet] 이미 죽은 플레이어 타겟");
+                }
             }
+            else
+            {
+                Debug.Log($"[AIBot - ShootPellet] 마스터 클라이언트가 아님 (IsMasterClient: {PhotonNetwork.IsMasterClient})");
+            }
+        }
+        else
+        {
+            Debug.Log($"[AIBot - ShootPellet] 레이캐스트 빗나감 - 사거리: {gunData.range}m");
         }
     }
     
@@ -858,7 +896,9 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
         RaycastHit hit;
         int layerMask = ~LayerMask.GetMask("PlayerPosition"); // PlayerPosition 레이어 제외
         
-        if (Physics.Raycast(firePoint.position, direction.normalized, out hit, distance, layerMask))
+        // ✅ CRITICAL FIX: QueryTriggerInteraction.Ignore 추가
+        // 트리거 콜라이더(Shop 등)가 레이캐스트를 방해하지 않도록 함
+        if (Physics.Raycast(firePoint.position, direction.normalized, out hit, distance, layerMask, QueryTriggerInteraction.Ignore))
         {
             // 맞은 대상이 타겟인지 확인
             Transform hitTransform = hit.collider.transform;
