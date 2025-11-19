@@ -260,15 +260,27 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
         // 사망 상태 설정
         IsDead = true;
 
-        // ViewID를 통해 attacker LivingEntity 찾기
+        // ✅ CRITICAL FIX: 모든 클라이언트에서 공격자 정보 설정
+        // ViewID를 통해 attacker 찾기 (LivingEntity 또는 AIHealth)
         PhotonView attackerPV = PhotonView.Find(attackerViewId);
-        LivingEntity attacker = attackerPV?.gameObject.GetComponent<LivingEntity>();
+        IDamageable attackerDamageable = null;
+        LivingEntity attacker = null;
+        
+        if (attackerPV != null)
+        {
+            // LivingEntity 또는 AIHealth 모두 IDamageable을 구현하므로
+            attackerDamageable = attackerPV.GetComponent<IDamageable>();
+            attacker = attackerPV.GetComponent<LivingEntity>();
+        }
+        
+        // ✅ 모든 클라이언트에서 currentAttacker 설정 (킬로그를 위해 필요)
+        currentAttacker = attackerDamageable;
 
         //마스터 클라이언트에서 공격자에게 점수 부여
         if (PhotonNetwork.IsMasterClient && attacker != null)
         {
             PhotonView attackerView = attacker.photonView;
-            float killScore = 100f;
+            float killScore = 20f;
 
             attackerView.RPC("RPC_GrantKillScore", attackerView.Owner, killScore);
         }

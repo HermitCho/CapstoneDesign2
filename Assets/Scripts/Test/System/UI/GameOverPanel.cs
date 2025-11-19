@@ -569,6 +569,8 @@ public class GameOverPanel : MonoBehaviour
         float currentScore = 0f;
         float elapsedTime = 0f;
         int lastDisplayedScore = 0; // 마지막으로 표시된 점수 (정수)
+        float lastSoundTime = -1f; // 마지막 사운드 재생 시간
+        float soundInterval = 0.2f; // 사운드 재생 간격 (0.2초)
         
         while (elapsedTime < scoreAnimationDuration)
         {
@@ -578,13 +580,17 @@ public class GameOverPanel : MonoBehaviour
             currentScore = Mathf.Lerp(0f, targetScore, t);
             int displayScore = Mathf.RoundToInt(currentScore);
             
-            // 점수가 1씩 증가할 때마다 사운드 재생
+            // 점수가 증가할 때마다 UI 업데이트
             if (displayScore > lastDisplayedScore)
             {
                 lastDisplayedScore = displayScore;
                 scoreText.text = $"{displayScore}";
-                
-                // 매 점수 증가마다 사운드 재생
+            }
+            
+            // ✅ 0.2초마다 사운드 재생
+            if (elapsedTime - lastSoundTime >= soundInterval)
+            {
+                lastSoundTime = elapsedTime;
                 if (AudioManager.Inst != null)
                 {
                     AudioManager.Inst.PlayOneShot("SFX_UI_LeaderboardRatingText");

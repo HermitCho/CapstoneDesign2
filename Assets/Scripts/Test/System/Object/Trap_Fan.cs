@@ -53,27 +53,40 @@ public class Trap_Fan : MonoBehaviourPun
         // 유니티 환경에서는 Task.Delay를 사용할 때 프레임 드롭을 방지하기 위해 
         // 외부 라이브러리(UniTask)를 사용하는 것이 권장되나, 
         // 표준 라이브러리만 사용하여 구현했습니다.
-        while (!token.IsCancellationRequested)
+        try
         {
-            // 1. 선풍기 켜기 (ON)
-            // 모든 클라이언트에서 SetFanState RPC를 호출하여 상태 동기화
-            bool gameOverCheck = GameManager.Instance.GetIsGameOver();
-            if (!gameOverCheck)
+            while (!token.IsCancellationRequested)
             {
-                photonView.RPC("SetFanState", RpcTarget.All, true);
-                AudioManager.Inst?.PlayClipAtPoint(fanSound, transform.position, 1f, 1f, null, transform);
+                // 1. 선풍기 켜기 (ON)
+                // 모든 클라이언트에서 SetFanState RPC를 호출하여 상태 동기화
+                bool gameOverCheck = GameManager.Instance.GetIsGameOver();
+                if (!gameOverCheck)
+                {
+                    photonView.RPC("SetFanState", RpcTarget.All, true);
+                    AudioManager.Inst?.PlayClipAtPoint(fanSound, transform.position, 1f, 1f, null, transform);
+                }
+
+                // Task.Delay(밀리초)로 대기
+                await Task.Delay((int)(fanOnTime * 1000), token);
+
+                if (token.IsCancellationRequested) break; // 취소 확인
+
+                // 2. 선풍기 끄기 (OFF)
+                // 모든 클라이언트에서 SetFanState RPC를 호출하여 상태 동기화
+                photonView.RPC("SetFanState", RpcTarget.All, false);
+
+                await Task.Delay((int)(fanOffTime * 1000), token);
             }
-
-            // Task.Delay(밀리초)로 대기
-            await Task.Delay((int)(fanOnTime * 1000), token);
-
-            if (token.IsCancellationRequested) break; // 취소 확인
-
-            // 2. 선풍기 끄기 (OFF)
-            // 모든 클라이언트에서 SetFanState RPC를 호출하여 상태 동기화
-            photonView.RPC("SetFanState", RpcTarget.All, false);
-
-            await Task.Delay((int)(fanOffTime * 1000), token);
+        }
+        catch (System.Threading.Tasks.TaskCanceledException)
+        {
+            // ✅ 정상적인 취소 동작이므로 예외를 무시 (에러 로그 출력 안 함)
+            // GameObject가 비활성화되거나 파괴될 때 발생하는 정상적인 동작
+        }
+        catch (System.Exception ex)
+        {
+            // ✅ 다른 예외는 로그 출력
+            Debug.LogError($"Trap_Fan: 예상치 못한 오류 발생 - {ex.Message}");
         }
     }
 
@@ -94,6 +107,17 @@ public class Trap_Fan : MonoBehaviourPun
         if (cts != null)
         {
             cts.Cancel();
+        }
+    }
+    
+    // 오브젝트가 파괴될 때 리소스 정리
+    private void OnDestroy()
+    {
+        if (cts != null)
+        {
+            cts.Cancel();
+            cts.Dispose();
+            cts = null;
         }
     }
 }

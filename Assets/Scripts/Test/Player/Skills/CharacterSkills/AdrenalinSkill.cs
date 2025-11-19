@@ -11,6 +11,7 @@ public class AdrenalinSkill : Skill
 {
     [Header("강화 효과 배율")]
     [SerializeField, Range(0.01f, 1f)] private float buffMultiplier = 0.2f; // +10%
+    [SerializeField] private ParticleSystem effectObject;
     [SerializeField] private Transform effectTransform;
     private LivingEntity living;
     private TestGun gun;
@@ -64,7 +65,8 @@ public class AdrenalinSkill : Skill
             cancellationTokenSource.Token // ✅ 취소 토큰 전달
         ).Forget();
 
-        PlayFollowEffectOnHeartAtRemote(executor, effectTransform);
+        PlayFollowCastEffectOnHeartAtRemote(executor, effectTransform);
+        photonView.RPC("EffectOn", RpcTarget.All);
     }
 
     // ✅ LivingEntity 사망 시 호출되는 메서드
@@ -113,6 +115,7 @@ public class AdrenalinSkill : Skill
             await UniTask.Delay(TimeSpan.FromSeconds(duration), ignoreTimeScale: false, cancellationToken: token);
             Debug.Log($"[StrengthEffect] 강화 효과 종료 대기 완료");
 
+            photonView.RPC("EffectOff", RpcTarget.All);
             // 정상 종료이고, 버프가 "사망" 때문에 끝난 것이 아니며 아직 살아있을 때만 체력을 원상 복구
             if (living != null && !cancelledByDeath && !living.IsDead)
             {
@@ -161,5 +164,17 @@ public class AdrenalinSkill : Skill
             // 다음 사용을 위해 플래그 초기화
             cancelledByDeath = false;
         }
+    }
+
+    [PunRPC]
+    void EffectOn()
+    {
+        effectObject.Play();
+    }
+
+    [PunRPC]
+    void EffectOff()
+    {
+        effectObject.Play();
     }
 }
