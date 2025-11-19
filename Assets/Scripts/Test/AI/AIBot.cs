@@ -707,14 +707,14 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
                     PhotonView targetPV = aiTarget.GetComponent<PhotonView>();
                     if (targetPV != null)
                     {
-                        Debug.Log($"[AIBot - ShootPellet] ✅ AI 타겟 발견! {aiTarget.name}, TakeDamage RPC 호출");
+                        Debug.Log($"[AIBot - ShootPellet] AI 타겟 발견! {aiTarget.name}, TakeDamage RPC 호출");
                         // TakeDamage RPC 호출
                         targetPV.RPC("TakeDamage", RpcTarget.All, gunData.damage, hit.point, hit.normal, pv.ViewID);
                         return;
                     }
                     else
                     {
-                        Debug.LogWarning($"[AIBot - ShootPellet] ⚠️ AI 타겟의 PhotonView를 찾을 수 없음: {aiTarget.name}");
+                        Debug.LogWarning($"[AIBot - ShootPellet]  AI 타겟의 PhotonView를 찾을 수 없음: {aiTarget.name}");
                     }
                 }
                 
@@ -725,13 +725,13 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
                     PhotonView targetPV = playerTarget.GetComponent<PhotonView>();
                     if (targetPV != null)
                     {
-                        Debug.Log($"[AIBot - ShootPellet] ✅ 플레이어 타겟 발견! {playerTarget.name}, OnDamage RPC 호출");
+                        Debug.Log($"[AIBot - ShootPellet]  플레이어 타겟 발견! {playerTarget.name}, OnDamage RPC 호출");
                         targetPV.RPC("OnDamage", RpcTarget.All, gunData.damage, hit.point, hit.normal, pv.ViewID);
                         return;
                     }
                     else
                     {
-                        Debug.LogWarning($"[AIBot - ShootPellet] ⚠️ 플레이어 타겟의 PhotonView를 찾을 수 없음: {playerTarget.name}");
+                        Debug.LogWarning($"[AIBot - ShootPellet]  플레이어 타겟의 PhotonView를 찾을 수 없음: {playerTarget.name}");
                     }
                 }
                 else

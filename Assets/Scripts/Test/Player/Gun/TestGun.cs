@@ -10,6 +10,7 @@ using Photon.Pun;
 public class TestGun : MonoBehaviourPun
 {
     public static System.Action OnLocalReloadStarted; // 로컬 플레이어가 재장전을 실제로 시작했을 때
+    public static System.Action OnHitTarget; // 로컬 플레이어가 쏜 총알이 타겟을 맞췄을 때
 
     #region Enums
     public enum GunState
@@ -325,8 +326,15 @@ public class TestGun : MonoBehaviourPun
                 if (!isSoundPlayed)
                 {
                     AudioManager.Inst.PlayOneShot("SFX_Game_Hit");
-                    isSoundPlayed = true; // ✅ 사운드 재생 후 플래그를 True로 설정
+                    isSoundPlayed = true; // 사운드 재생 후 플래그를 True로 설정
                 }
+                
+                // HitImage 애니메이션 이벤트 발생 (로컬 플레이어가 쏜 총알이 히트했을 때만)
+                if (photonViewCached.IsMine)
+                {
+                    OnHitTarget?.Invoke();
+                }
+                
                 targetView.RPC("OnDamage", RpcTarget.All, damage, hit.point, hit.normal, attackerViewID);
                 Debug.Log($"[TestGun - ProcessPelletHit] ✅ 데미지 RPC 호출 성공 → {targetView.name} (ViewID: {targetView.ViewID})");
             }
