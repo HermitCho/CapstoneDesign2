@@ -207,6 +207,10 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         LivingEntity.OnPlayerDied += HandlePlayerDeath;
         Debug.Log("HUD: LivingEntity.OnPlayerDied 이벤트 구독 완료");
         
+        // ✅ AIHealth 사망 이벤트 구독 (봇 사망 감지)
+        AIHealth.OnAIDied += HandleAIDeath;
+        Debug.Log("HUD: AIHealth.OnAIDied 이벤트 구독 완료");
+        
         // 점수판 초기화
         InitializeScoreBoard();
 
@@ -224,6 +228,10 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         // LivingEntity 사망 이벤트 구독 해제
         LivingEntity.OnPlayerDied -= HandlePlayerDeath;
         Debug.Log("HUD: LivingEntity.OnPlayerDied 이벤트 구독 해제 완료");
+        
+        // ✅ AIHealth 사망 이벤트 구독 해제
+        AIHealth.OnAIDied -= HandleAIDeath;
+        Debug.Log("HUD: AIHealth.OnAIDied 이벤트 구독 해제 완료");
         
         // 체력 애니메이션 정리
         CleanupHealthAnimations();
@@ -1197,31 +1205,107 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     {
         if (victim == null) return;
 
-        LivingEntity attacker = victim.GetAttacker() as LivingEntity;
-        if (attacker != null)
+        // ✅ 공격자 찾기 (LivingEntity 또는 AIHealth)
+        IDamageable attackerDamageable = victim.GetAttacker();
+        if (attackerDamageable == null) return;
+        
+        // 공격자가 봇인지 플레이어인지 확인
+        AIHealth attackerAI = attackerDamageable as AIHealth;
+        LivingEntity attackerPlayer = attackerDamageable as LivingEntity;
+        
+        // 피해자 닉네임 (항상 플레이어)
+        Photon.Realtime.Player victimPlayer = victim.photonView.Owner;
+        string victimNickname = GetPlayerNickname(victimPlayer);
+        
+        // 공격자 닉네임 결정
+        string attackerNickname;
+        if (attackerAI != null)
         {
-            // 모든 클라이언트에서 킬로그 생성
-        GameObject killLog = Instantiate(killLogPrefab, killLogParent.transform);
-            Debug.Log($"HUD: 킬로그 생성 - {killLog.name}");
-            
-     
-        QuestItem questItem = killLog.GetComponent<QuestItem>();
-
-            Photon.Realtime.Player attackerPlayer = attacker.photonView.Owner;
-            Photon.Realtime.Player victimPlayer = victim.photonView.Owner;
-
-            string attackerNickname = GetPlayerNickname(attackerPlayer);
-            string victimNickname = GetPlayerNickname(victimPlayer);
-            
-            // 킬로그 텍스트 설정
-            questItem.questText = $"{attackerNickname}       {victimNickname}";
-            questItem.UpdateUI();
-
-            // Animate quest
-            questItem.AnimateQuest();
-
-
+            // 공격자가 봇인 경우
+            attackerNickname = "봇";
         }
+        else if (attackerPlayer != null)
+        {
+            // 공격자가 플레이어인 경우
+            Photon.Realtime.Player attackerPhotonPlayer = attackerPlayer.photonView.Owner;
+            attackerNickname = GetPlayerNickname(attackerPhotonPlayer);
+        }
+        else
+        {
+            // 공격자를 찾을 수 없는 경우
+            attackerNickname = "Unknown";
+        }
+        
+        // ✅ 모든 클라이언트에서 킬로그 생성
+        CreateKillLog(attackerNickname, victimNickname);
+    }
+    
+    /// <summary>
+    /// ✅ AI 사망 이벤트 핸들러 (봇이 죽었을 때)
+    /// </summary>
+    private void HandleAIDeath(AIHealth victimAI, int attackerID)
+    {
+        if (victimAI == null) return;
+        
+        // 피해자 닉네임 (봇)
+        string victimNickname = "봇";
+        
+        // ✅ 공격자 찾기 (ViewID로 찾기)
+        PhotonView attackerPV = PhotonView.Find(attackerID);
+        string attackerNickname = "Unknown";
+        
+        if (attackerPV != null)
+        {
+            // 공격자가 봇인지 플레이어인지 확인
+            AIHealth attackerAI = attackerPV.GetComponent<AIHealth>();
+            LivingEntity attackerPlayer = attackerPV.GetComponent<LivingEntity>();
+            
+            if (attackerAI != null)
+            {
+                // 공격자가 봇인 경우
+                attackerNickname = "봇";
+            }
+            else if (attackerPlayer != null)
+            {
+                // 공격자가 플레이어인 경우
+                Photon.Realtime.Player attackerPhotonPlayer = attackerPlayer.photonView.Owner;
+                if (attackerPhotonPlayer != null)
+                {
+                    attackerNickname = GetPlayerNickname(attackerPhotonPlayer);
+                }
+            }
+        }
+        
+        // 모든 클라이언트에서 킬로그 생성
+        CreateKillLog(attackerNickname, victimNickname);
+    }
+    
+    /// <summary>
+    /// 킬로그 생성 헬퍼 메서드 (모든 클라이언트에서 호출)
+    /// </summary>
+    private void CreateKillLog(string attackerNickname, string victimNickname)
+    {
+        if (killLogPrefab == null || killLogParent == null)
+        {
+            Debug.LogWarning("HUD: 킬로그 프리팹 또는 부모가 설정되지 않음");
+            return;
+        }
+        
+        GameObject killLog = Instantiate(killLogPrefab, killLogParent.transform);
+        
+        QuestItem questItem = killLog.GetComponent<QuestItem>();
+        if (questItem == null)
+        {
+            Debug.LogWarning("HUD: QuestItem 컴포넌트를 찾을 수 없음");
+            return;
+        }
+        
+        // 킬로그 텍스트 설정 (KILL!을 빨간색으로 표시)
+        questItem.questText = $"{attackerNickname}   <color=red>KILL!</color>   {victimNickname}";
+        questItem.UpdateUI();
+        
+        // Animate quest
+        questItem.AnimateQuest();
     }
     
     private IEnumerator DestroyKillLogAfterDelay(GameObject killLog, float delay)
