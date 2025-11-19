@@ -197,6 +197,19 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
         {
             currentAttacker = attacker;
             int attackerId = attacker != null ? attacker.photonViewID : -1;
+            
+            // 킬 사운드 재생 (공격자가 플레이어인 경우에만)
+            if (attackerPV != null && attackerPV.Owner != null)
+            {
+                // 공격자가 플레이어(LivingEntity)인지 확인
+                LivingEntity attackerLivingEntity = attackerPV.GetComponent<LivingEntity>();
+                if (attackerLivingEntity != null)
+                {
+                    // 공격자의 LivingEntity에 RPC 전송 (공격자에게만)
+                    attackerPV.RPC("RPC_PlayKillSound", attackerPV.Owner);
+                }
+            }
+            
             photonView.RPC("RPC_Die", RpcTarget.All, attackerId);
         }
 
@@ -308,6 +321,13 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
 
         // 플레이어 사망 이벤트 발생
         OnPlayerDied?.Invoke(this);
+
+        // 사망 사운드 재생 (모든 클라이언트에서 캐릭터 위치에서)
+        if (AudioManager.Inst != null)
+        {
+            AudioManager.Inst.PlayClipAtPoint("SFX_Game_Death", transform.position);
+            Debug.Log($"[LivingEntity] 사망 사운드 재생 - 위치: {transform.position}");
+        }
 
         // 부활 코루틴 시작 (마스터 클라이언트에서만)
         if (PhotonNetwork.IsMasterClient)
@@ -532,6 +552,19 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
     public IDamageable GetAttacker()
     {
         return currentAttacker;
+    }
+
+    /// <summary>
+    /// 킬 사운드 재생 (공격자에게만 호출됨)
+    /// </summary>
+    [PunRPC]
+    private void RPC_PlayKillSound()
+    {
+        if (AudioManager.Inst != null)
+        {
+            AudioManager.Inst.PlayOneShot("SFX_Game_Kill");
+            Debug.Log("[LivingEntity] 킬 사운드 재생");
+        }
     }
 
     /// 피격 이펙트 (빨간색 반짝임 + 사운드)

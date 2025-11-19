@@ -174,6 +174,19 @@ public class AIHealth : MonoBehaviourPunCallbacks, IPunObservable, IDamageable
         // 사망 체크
         if (currentHealth <= 0 && !isDead)
         {
+            // 킬 사운드 재생 (공격자가 플레이어인 경우에만)
+            PhotonView attackerPV = PhotonView.Find(attackerID);
+            if (attackerPV != null && attackerPV.Owner != null)
+            {
+                // 공격자가 플레이어(LivingEntity)인지 확인
+                LivingEntity attackerLivingEntity = attackerPV.GetComponent<LivingEntity>();
+                if (attackerLivingEntity != null)
+                {
+                    // 공격자의 LivingEntity에 RPC 전송 (공격자에게만)
+                    attackerPV.RPC("RPC_PlayKillSound", attackerPV.Owner);
+                }
+            }
+            
             pv.RPC("RPC_Die", RpcTarget.All, attackerID);
         }
     }
@@ -222,6 +235,13 @@ public class AIHealth : MonoBehaviourPunCallbacks, IPunObservable, IDamageable
         // ✅ 킬로그를 위한 static 이벤트 발생 (모든 클라이언트에서 호출됨)
         // attackerID를 함께 전달하여 공격자 정보를 알 수 있도록 함
         OnAIDied?.Invoke(this, attackerID);
+
+        // 사망 사운드 재생 (모든 클라이언트에서 캐릭터 위치에서)
+        if (AudioManager.Inst != null)
+        {
+            AudioManager.Inst.PlayClipAtPoint("SFX_Game_Death", transform.position);
+            Debug.Log($"[AIHealth] 사망 사운드 재생 - 위치: {transform.position}");
+        }
 
         // AI 사망 시 왕관 떨어뜨리기
         DropCrownIfAttached();
@@ -360,6 +380,20 @@ public class AIHealth : MonoBehaviourPunCallbacks, IPunObservable, IDamageable
     #endregion
 
     #region Visual Effects
+    
+    /// <summary>
+    /// 킬 사운드 재생 (공격자에게만 호출됨)
+    /// </summary>
+    [PunRPC]
+    private void RPC_PlayKillSound()
+    {
+        if (AudioManager.Inst != null)
+        {
+            AudioManager.Inst.PlayOneShot("SFX_Game_Kill");
+            Debug.Log("[AIHealth] 킬 사운드 재생");
+        }
+    }
+    
     /// <summary>
     /// 피격 이펙트 (빨간색 반짝임 + 사운드)
     /// </summary>
