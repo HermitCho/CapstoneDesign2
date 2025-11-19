@@ -22,7 +22,9 @@ public class TrapItem : Skill
     {
         // 설치 위치 (예: 발 밑 조금 앞쪽)
         Vector3 spawnPos = placementPreviewComponent.GetPlacementPosition();
+        Debug.Log("[TrapItem CastExecute] " + spawnPos);
         Quaternion spawnRot = placementPreviewComponent.GetPlacementRotation();
+        Debug.Log("[TrapItem CastExecute] " + spawnRot);
 
         // 네트워크 상에 설치
         GameObject trapObj = PhotonNetwork.Instantiate(
