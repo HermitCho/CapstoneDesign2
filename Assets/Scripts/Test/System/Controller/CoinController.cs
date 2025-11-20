@@ -88,7 +88,7 @@ public class CoinController : MonoBehaviourPun
             isTeddyBearAttached = IsLocalPlayerHoldingCrown();
 
             // 기본 점수 (코인 1개당 1점)
-            float baseScore = coinAmount;
+            float baseScore = coinAmount/2;
 
             // 테디베어가 부착되어 있다면 배율 적용
             if (isTeddyBearAttached)
