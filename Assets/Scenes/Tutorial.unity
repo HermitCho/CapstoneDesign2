@@ -804,6 +804,11 @@ PrefabInstance:
       propertyPath: m_PixelsPerUnitMultiplier
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 1195657750860115841, guid: 33c705a7be24a774d992bf444cf34370,
+        type: 3}
+      propertyPath: m_text
+      value: "\uC810\uC218"
+      objectReference: {fileID: 0}
     - target: {fileID: 1342106884310567981, guid: 33c705a7be24a774d992bf444cf34370,
         type: 3}
       propertyPath: m_IsActive
@@ -832,7 +837,7 @@ PrefabInstance:
     - target: {fileID: 1660472095505775200, guid: 33c705a7be24a774d992bf444cf34370,
         type: 3}
       propertyPath: m_text
-      value: 
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1868780009527308646, guid: 33c705a7be24a774d992bf444cf34370,
         type: 3}
@@ -2620,7 +2625,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ef615526872fb494ca772820e18c3a7d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  tutorialSpawnPosition: {fileID: 8469134292979030712}
+  tutorialSpawnPosition: {fileID: 3123266802386691735}
   spawnParent: {fileID: 0}
   spawnOffset: {x: 0, y: 0, z: 0}
   spawnDelay: 0.5
@@ -4039,8 +4044,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4278190080
-  m_fontColor: {r: 0, g: 0, b: 0, a: 1}
+    rgba: 4294967295
+  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 2
   m_fontColorGradient:
@@ -4141,8 +4146,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 1000, y: 500}
-  m_SizeDelta: {x: 200, y: 150}
+  m_AnchoredPosition: {x: 830, y: 500}
+  m_SizeDelta: {x: 400, y: 300}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1028453501
 MonoBehaviour:
@@ -4164,7 +4169,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 8c227102f1a28c54b9daca37919d74bd, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 9580cf8c57702c54caff5c9d1d9d5cc5, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -4388,14 +4393,14 @@ RectTransform:
   m_GameObject: {fileID: 1066282037}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0.7, y: 0.7, z: 0.7}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1201468711}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 70}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 1000, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1066282039
@@ -4790,7 +4795,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 0, g: 0.3529412, b: 0.48235297, a: 1}
+  m_Color: {r: 0.882353, g: 0.56078434, b: 0.07450981, a: 1}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -4806,7 +4811,7 @@ MonoBehaviour:
   m_FillClockwise: 1
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 10
+  m_PixelsPerUnitMultiplier: 2
 --- !u!222 &1115952522
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -5065,8 +5070,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 800, y: 400}
+  m_AnchoredPosition: {x: 0, y: 70}
+  m_SizeDelta: {x: 800, y: 800}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1201468712
 MonoBehaviour:
@@ -5088,7 +5093,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: cec049a6fb292d741b11d2284444d84e, type: 3}
+  m_Sprite: {fileID: 21300000, guid: bd1e0d98d7be59942a5dc1def5582b6d, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -5879,7 +5884,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 0.36862746, g: 0.78431374, b: 1, a: 1}
+  m_Color: {r: 0.9960785, g: 0.82745105, b: 0.21960786, a: 1}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -6896,7 +6901,7 @@ RectTransform:
   m_GameObject: {fileID: 1964220243}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0.7, y: 0.7, z: 0.7}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 2108446379}
@@ -6907,8 +6912,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -80}
-  m_SizeDelta: {x: 400, y: 100}
+  m_AnchoredPosition: {x: 0, y: -190}
+  m_SizeDelta: {x: 300, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1964220245
 MonoBehaviour:
@@ -8344,7 +8349,7 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2132414391}
   m_CullTransparentMesh: 1
---- !u!1001 &1315410565102334016
+--- !u!1001 &965726607840896478
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -8352,696 +8357,696 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 20828950193478558, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: tutorialPanel
-      value: 
-      objectReference: {fileID: 1062969700}
-    - target: {fileID: 20828950193478558, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: tutorialArrowImage
-      value: 
-      objectReference: {fileID: 949437803}
-    - target: {fileID: 20828950193478558, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: tutorialWindowImage
-      value: 
-      objectReference: {fileID: 392543115}
-    - target: {fileID: 20828950193478558, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: tutorialMessageTextUI
-      value: 
-      objectReference: {fileID: 1049421051}
-    - target: {fileID: 20828950193478558, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: tutorialSkipMessageTextUI
-      value: 
-      objectReference: {fileID: 463894033}
-    - target: {fileID: 20828950193478558, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: tutorialAlwaysPlayPanelImage
-      value: 
-      objectReference: {fileID: 490917596}
-    - target: {fileID: 20828950193478558, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: tutorialCompleteStickerImage
-      value: 
-      objectReference: {fileID: 1028453501}
-    - target: {fileID: 20828950193478558, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: tutorialAlwaysPlayMessageTextUI
-      value: 
-      objectReference: {fileID: 2002515682}
-    - target: {fileID: 243594111799538653, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 4
-      objectReference: {fileID: 0}
-    - target: {fileID: 304749802062681587, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 25
-      objectReference: {fileID: 0}
-    - target: {fileID: 375014427670634381, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 59
-      objectReference: {fileID: 0}
-    - target: {fileID: 412866179241167221, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 11
-      objectReference: {fileID: 0}
-    - target: {fileID: 667503467113173933, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 38
-      objectReference: {fileID: 0}
-    - target: {fileID: 707637241338504116, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 31
-      objectReference: {fileID: 0}
-    - target: {fileID: 869556462201527506, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 3
-      objectReference: {fileID: 0}
-    - target: {fileID: 912737940918362472, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 44
-      objectReference: {fileID: 0}
-    - target: {fileID: 1196678452194938107, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 66
-      objectReference: {fileID: 0}
-    - target: {fileID: 1376956592394698320, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 6
-      objectReference: {fileID: 0}
-    - target: {fileID: 1557697061727254371, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 63
-      objectReference: {fileID: 0}
-    - target: {fileID: 1592705735421376014, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 50
-      objectReference: {fileID: 0}
-    - target: {fileID: 1636399009349636781, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 35
-      objectReference: {fileID: 0}
-    - target: {fileID: 1641667819363778296, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 52
-      objectReference: {fileID: 0}
-    - target: {fileID: 1703689936805868645, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 27
-      objectReference: {fileID: 0}
-    - target: {fileID: 1737173682301176377, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: tutorialPanel
-      value: 
-      objectReference: {fileID: 1062969700}
-    - target: {fileID: 1737173682301176377, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: tutorialArrowImage
-      value: 
-      objectReference: {fileID: 949437803}
-    - target: {fileID: 1737173682301176377, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: tutorialWindowImage
-      value: 
-      objectReference: {fileID: 392543115}
-    - target: {fileID: 1737173682301176377, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: tutorialMessageTextUI
-      value: 
-      objectReference: {fileID: 1049421051}
-    - target: {fileID: 1737173682301176377, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: tutorialSkipMessageTextUI
-      value: 
-      objectReference: {fileID: 463894033}
-    - target: {fileID: 1737173682301176377, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: tutorialAlwaysPlayPanelImage
-      value: 
-      objectReference: {fileID: 490917596}
-    - target: {fileID: 1737173682301176377, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: tutorialCompleteStickerImage
-      value: 
-      objectReference: {fileID: 1028453501}
-    - target: {fileID: 1737173682301176377, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: tutorialAlwaysPlayMessageTextUI
-      value: 
-      objectReference: {fileID: 2002515682}
-    - target: {fileID: 1935822104141690988, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 15
-      objectReference: {fileID: 0}
-    - target: {fileID: 1971750063111054570, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 21
-      objectReference: {fileID: 0}
-    - target: {fileID: 2457178955888587896, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 30
-      objectReference: {fileID: 0}
-    - target: {fileID: 2501294853810245851, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 55
-      objectReference: {fileID: 0}
-    - target: {fileID: 2507285081418595470, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 32
-      objectReference: {fileID: 0}
-    - target: {fileID: 2627049769207928565, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 39
-      objectReference: {fileID: 0}
-    - target: {fileID: 2640039619984186820, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: tutorialPanel
-      value: 
-      objectReference: {fileID: 1062969700}
-    - target: {fileID: 2640039619984186820, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: tutorialArrowImage
-      value: 
-      objectReference: {fileID: 949437803}
-    - target: {fileID: 2640039619984186820, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: tutorialWindowImage
-      value: 
-      objectReference: {fileID: 392543115}
-    - target: {fileID: 2640039619984186820, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: tutorialMessageTextUI
-      value: 
-      objectReference: {fileID: 1049421051}
-    - target: {fileID: 2640039619984186820, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: tutorialSkipMessageTextUI
-      value: 
-      objectReference: {fileID: 463894033}
-    - target: {fileID: 2640039619984186820, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: tutorialAlwaysPlayPanelImage
-      value: 
-      objectReference: {fileID: 490917596}
-    - target: {fileID: 2640039619984186820, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: tutorialCompleteStickerImage
-      value: 
-      objectReference: {fileID: 1028453501}
-    - target: {fileID: 2640039619984186820, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: tutorialAlwaysPlayMessageTextUI
-      value: 
-      objectReference: {fileID: 2002515682}
-    - target: {fileID: 2749651615431235776, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 67
-      objectReference: {fileID: 0}
-    - target: {fileID: 2882871830492879573, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 58
-      objectReference: {fileID: 0}
-    - target: {fileID: 3308954029381953552, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 64
-      objectReference: {fileID: 0}
-    - target: {fileID: 3346567004796296889, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 10
-      objectReference: {fileID: 0}
-    - target: {fileID: 3360645982893610575, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 12
-      objectReference: {fileID: 0}
-    - target: {fileID: 3478100599844666320, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 22
-      objectReference: {fileID: 0}
-    - target: {fileID: 3501196127037485862, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 20
-      objectReference: {fileID: 0}
-    - target: {fileID: 3592186730048701827, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 46
-      objectReference: {fileID: 0}
-    - target: {fileID: 3746160473324885806, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: crownObject
-      value: 
-      objectReference: {fileID: 459261119}
-    - target: {fileID: 3792731846315195626, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 17
-      objectReference: {fileID: 0}
-    - target: {fileID: 3809899338578099739, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 43
-      objectReference: {fileID: 0}
-    - target: {fileID: 4454554820410925506, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 51
-      objectReference: {fileID: 0}
-    - target: {fileID: 4695329708243896438, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 37
-      objectReference: {fileID: 0}
-    - target: {fileID: 4757950618442215222, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 40
-      objectReference: {fileID: 0}
-    - target: {fileID: 4815948488955373504, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 42
-      objectReference: {fileID: 0}
-    - target: {fileID: 4849004055684389267, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 26
-      objectReference: {fileID: 0}
-    - target: {fileID: 4930071624184352187, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 29
-      objectReference: {fileID: 0}
-    - target: {fileID: 5058515509959408602, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 2
-      objectReference: {fileID: 0}
-    - target: {fileID: 5066099813559476747, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 23
-      objectReference: {fileID: 0}
-    - target: {fileID: 5189239468831090554, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 9
-      objectReference: {fileID: 0}
-    - target: {fileID: 5227971035878928770, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 61
-      objectReference: {fileID: 0}
-    - target: {fileID: 5525761705544756735, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: modalWindowManager
-      value: 
-      objectReference: {fileID: 823793459}
-    - target: {fileID: 5891841983499476685, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 36
-      objectReference: {fileID: 0}
-    - target: {fileID: 6107301788533499221, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 33
-      objectReference: {fileID: 0}
-    - target: {fileID: 6261193615519435493, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 90910397009953547, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       propertyPath: sceneViewId
       value: 19
       objectReference: {fileID: 0}
-    - target: {fileID: 6335117295511109787, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 106183620813983512, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       propertyPath: sceneViewId
-      value: 65
+      value: 36
       objectReference: {fileID: 0}
-    - target: {fileID: 6388845725463433108, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 323209139516388480, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       propertyPath: sceneViewId
-      value: 13
+      value: 33
       objectReference: {fileID: 0}
-    - target: {fileID: 6392716593711315024, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 462966923006349370, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       propertyPath: sceneViewId
-      value: 54
+      value: 37
       objectReference: {fileID: 0}
-    - target: {fileID: 6708274109059703131, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 47
-      objectReference: {fileID: 0}
-    - target: {fileID: 6728023047099566741, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 48
-      objectReference: {fileID: 0}
-    - target: {fileID: 6749986379110347788, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 16
-      objectReference: {fileID: 0}
-    - target: {fileID: 6972333970808432419, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 53
-      objectReference: {fileID: 0}
-    - target: {fileID: 6979581372746813671, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 14
-      objectReference: {fileID: 0}
-    - target: {fileID: 7118272122110379789, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: tutorialPanel
-      value: 
-      objectReference: {fileID: 1062969700}
-    - target: {fileID: 7118272122110379789, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: tutorialArrowImage
-      value: 
-      objectReference: {fileID: 949437803}
-    - target: {fileID: 7118272122110379789, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: tutorialWindowImage
-      value: 
-      objectReference: {fileID: 392543115}
-    - target: {fileID: 7118272122110379789, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: tutorialMessageTextUI
-      value: 
-      objectReference: {fileID: 1049421051}
-    - target: {fileID: 7118272122110379789, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: tutorialSkipMessageTextUI
-      value: 
-      objectReference: {fileID: 463894033}
-    - target: {fileID: 7118272122110379789, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: tutorialAlwaysPlayPanelImage
-      value: 
-      objectReference: {fileID: 490917596}
-    - target: {fileID: 7118272122110379789, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: tutorialCompleteStickerImage
-      value: 
-      objectReference: {fileID: 1028453501}
-    - target: {fileID: 7118272122110379789, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: tutorialAlwaysPlayMessageTextUI
-      value: 
-      objectReference: {fileID: 2002515682}
-    - target: {fileID: 7153638819387172430, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 60
-      objectReference: {fileID: 0}
-    - target: {fileID: 7175599629166112440, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 62
-      objectReference: {fileID: 0}
-    - target: {fileID: 7292933946263429666, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: sceneViewId
-      value: 8
-      objectReference: {fileID: 0}
-    - target: {fileID: 7334056197453077691, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 605107266069141997, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       propertyPath: sceneViewId
       value: 56
       objectReference: {fileID: 0}
-    - target: {fileID: 7463925395659106822, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 607628429891529564, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: modalWindowManager
+      value: 
+      objectReference: {fileID: 823793459}
+    - target: {fileID: 883853985413705294, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       propertyPath: sceneViewId
-      value: 57
+      value: 42
       objectReference: {fileID: 0}
-    - target: {fileID: 7550932610828662752, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: m_Name
-      value: Tutorial Map
-      objectReference: {fileID: 0}
-    - target: {fileID: 7592355392119343331, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 906940716817524408, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       propertyPath: sceneViewId
-      value: 28
+      value: 40
       objectReference: {fileID: 0}
-    - target: {fileID: 7609193084003861321, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 963977393642578549, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       propertyPath: sceneViewId
-      value: 5
+      value: 53
       objectReference: {fileID: 0}
-    - target: {fileID: 7623483179068127482, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 993100893005169195, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       propertyPath: sceneViewId
-      value: 41
+      value: 47
       objectReference: {fileID: 0}
-    - target: {fileID: 7692827035801382418, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 1260487300619093522, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       propertyPath: tutorialPanel
       value: 
       objectReference: {fileID: 1062969700}
-    - target: {fileID: 7692827035801382418, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 1260487300619093522, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       propertyPath: tutorialArrowImage
       value: 
       objectReference: {fileID: 949437803}
-    - target: {fileID: 7692827035801382418, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 1260487300619093522, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       propertyPath: tutorialWindowImage
       value: 
       objectReference: {fileID: 392543115}
-    - target: {fileID: 7692827035801382418, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 1260487300619093522, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       propertyPath: tutorialMessageTextUI
       value: 
       objectReference: {fileID: 1049421051}
-    - target: {fileID: 7692827035801382418, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 1260487300619093522, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       propertyPath: tutorialSkipMessageTextUI
       value: 
       objectReference: {fileID: 463894033}
-    - target: {fileID: 7692827035801382418, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 1260487300619093522, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       propertyPath: tutorialAlwaysPlayPanelImage
       value: 
       objectReference: {fileID: 490917596}
-    - target: {fileID: 7692827035801382418, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 1260487300619093522, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       propertyPath: tutorialCompleteStickerImage
       value: 
       objectReference: {fileID: 1028453501}
-    - target: {fileID: 7692827035801382418, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 1260487300619093522, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       propertyPath: tutorialAlwaysPlayMessageTextUI
       value: 
       objectReference: {fileID: 2002515682}
-    - target: {fileID: 7833087478543235622, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 1290463939631737829, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       propertyPath: sceneViewId
-      value: 34
+      value: 23
       objectReference: {fileID: 0}
-    - target: {fileID: 8049156553196379899, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 1430729201955686412, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 0
+      propertyPath: sceneViewId
+      value: 14
       objectReference: {fileID: 0}
-    - target: {fileID: 8049156553196379899, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 1501414343819975790, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 1
+      propertyPath: sceneViewId
+      value: 29
       objectReference: {fileID: 0}
-    - target: {fileID: 8049156553196379899, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 1508107270942019709, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 0
+      propertyPath: sceneViewId
+      value: 26
       objectReference: {fileID: 0}
-    - target: {fileID: 8049156553196379899, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 1599684068682922697, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
+      propertyPath: sceneViewId
+      value: 8
       objectReference: {fileID: 0}
-    - target: {fileID: 8049156553196379899, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 2011819750697127248, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
+      propertyPath: sceneViewId
+      value: 58
       objectReference: {fileID: 0}
-    - target: {fileID: 8049156553196379899, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8049156553196379899, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8049156553196379899, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8049156553196379899, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8049156553196379899, guid: 2c4a7451cf6be6046895e3067298834c,
-        type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8099979385294327757, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 2146775351698311835, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       propertyPath: sceneViewId
       value: 49
       objectReference: {fileID: 0}
-    - target: {fileID: 8399941724705148314, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 2162479787744984981, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       propertyPath: sceneViewId
-      value: 68
+      value: 64
       objectReference: {fileID: 0}
-    - target: {fileID: 8551119528216676835, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 2554134136060730238, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       propertyPath: sceneViewId
-      value: 45
+      value: 66
       objectReference: {fileID: 0}
-    - target: {fileID: 8838666656607085075, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 2669127016810995720, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: crownObject
+      value: 
+      objectReference: {fileID: 459261119}
+    - target: {fileID: 2771792920913961190, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       propertyPath: sceneViewId
-      value: 7
+      value: 63
       objectReference: {fileID: 0}
-    - target: {fileID: 8922316333325782973, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 2836624178799669620, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 41
+      objectReference: {fileID: 0}
+    - target: {fileID: 2998675027076314262, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 24
+      objectReference: {fileID: 0}
+    - target: {fileID: 3147789305009428351, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 13
+      objectReference: {fileID: 0}
+    - target: {fileID: 3203378212400612947, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       propertyPath: sceneViewId
       value: 18
       objectReference: {fileID: 0}
-    - target: {fileID: 9020888932955019356, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 3362579506169769191, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 16
+      objectReference: {fileID: 0}
+    - target: {fileID: 3529896094219407299, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 48
+      objectReference: {fileID: 0}
+    - target: {fileID: 3825092393491119366, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 54
+      objectReference: {fileID: 0}
+    - target: {fileID: 3953384639453497352, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 59
+      objectReference: {fileID: 0}
+    - target: {fileID: 4051575835547975789, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 45
+      objectReference: {fileID: 0}
+    - target: {fileID: 4170418335552805174, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 28
+      objectReference: {fileID: 0}
+    - target: {fileID: 4190597009365237502, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: m_Name
+      value: Tutorial Map
+      objectReference: {fileID: 0}
+    - target: {fileID: 4252925450642538385, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 9
+      objectReference: {fileID: 0}
+    - target: {fileID: 4319482602579134896, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       propertyPath: tutorialPanel
       value: 
       objectReference: {fileID: 1062969700}
-    - target: {fileID: 9020888932955019356, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 4319482602579134896, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       propertyPath: tutorialArrowImage
       value: 
       objectReference: {fileID: 949437803}
-    - target: {fileID: 9020888932955019356, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 4319482602579134896, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       propertyPath: tutorialWindowImage
       value: 
       objectReference: {fileID: 392543115}
-    - target: {fileID: 9020888932955019356, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 4319482602579134896, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       propertyPath: tutorialMessageTextUI
       value: 
       objectReference: {fileID: 1049421051}
-    - target: {fileID: 9020888932955019356, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 4319482602579134896, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       propertyPath: tutorialSkipMessageTextUI
       value: 
       objectReference: {fileID: 463894033}
-    - target: {fileID: 9020888932955019356, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 4319482602579134896, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       propertyPath: tutorialAlwaysPlayPanelImage
       value: 
       objectReference: {fileID: 490917596}
-    - target: {fileID: 9020888932955019356, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 4319482602579134896, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       propertyPath: tutorialCompleteStickerImage
       value: 
       objectReference: {fileID: 1028453501}
-    - target: {fileID: 9020888932955019356, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 4319482602579134896, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       propertyPath: tutorialAlwaysPlayMessageTextUI
       value: 
       objectReference: {fileID: 2002515682}
-    - target: {fileID: 9096057254974995832, guid: 2c4a7451cf6be6046895e3067298834c,
+    - target: {fileID: 4326144974594518003, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       propertyPath: sceneViewId
-      value: 24
+      value: 34
+      objectReference: {fileID: 0}
+    - target: {fileID: 4772418625700358374, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 44
+      objectReference: {fileID: 0}
+    - target: {fileID: 5046444302205125496, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 35
+      objectReference: {fileID: 0}
+    - target: {fileID: 5062808415359662445, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5062808415359662445, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5062808415359662445, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5062808415359662445, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5062808415359662445, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5062808415359662445, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5062808415359662445, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5062808415359662445, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5062808415359662445, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5062808415359662445, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5175421005144349219, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 38
+      objectReference: {fileID: 0}
+    - target: {fileID: 5343842202742256784, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 5506436257972715311, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 67
+      objectReference: {fileID: 0}
+    - target: {fileID: 5514356325161836590, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 5547256964708789508, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 21
+      objectReference: {fileID: 0}
+    - target: {fileID: 5698297015895659917, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 55
+      objectReference: {fileID: 0}
+    - target: {fileID: 5797199904671966356, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 51
+      objectReference: {fileID: 0}
+    - target: {fileID: 5799992113197627709, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 62
+      objectReference: {fileID: 0}
+    - target: {fileID: 5814071641007501771, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 60
+      objectReference: {fileID: 0}
+    - target: {fileID: 5977879068891896028, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: tutorialPanel
+      value: 
+      objectReference: {fileID: 1062969700}
+    - target: {fileID: 5977879068891896028, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: tutorialArrowImage
+      value: 
+      objectReference: {fileID: 949437803}
+    - target: {fileID: 5977879068891896028, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: tutorialWindowImage
+      value: 
+      objectReference: {fileID: 392543115}
+    - target: {fileID: 5977879068891896028, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: tutorialMessageTextUI
+      value: 
+      objectReference: {fileID: 1049421051}
+    - target: {fileID: 5977879068891896028, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: tutorialSkipMessageTextUI
+      value: 
+      objectReference: {fileID: 463894033}
+    - target: {fileID: 5977879068891896028, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: tutorialAlwaysPlayPanelImage
+      value: 
+      objectReference: {fileID: 490917596}
+    - target: {fileID: 5977879068891896028, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: tutorialCompleteStickerImage
+      value: 
+      objectReference: {fileID: 1028453501}
+    - target: {fileID: 5977879068891896028, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: tutorialAlwaysPlayMessageTextUI
+      value: 
+      objectReference: {fileID: 2002515682}
+    - target: {fileID: 6024814342921313309, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 25
+      objectReference: {fileID: 0}
+    - target: {fileID: 6115764688127457956, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 68
+      objectReference: {fileID: 0}
+    - target: {fileID: 6220247395953061349, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 6444424789829136993, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 31
+      objectReference: {fileID: 0}
+    - target: {fileID: 6735106933074953810, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 6748051751765446308, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 12
+      objectReference: {fileID: 0}
+    - target: {fileID: 6836444756823600008, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: tutorialPanel
+      value: 
+      objectReference: {fileID: 1062969700}
+    - target: {fileID: 6836444756823600008, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: tutorialArrowImage
+      value: 
+      objectReference: {fileID: 949437803}
+    - target: {fileID: 6836444756823600008, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: tutorialWindowImage
+      value: 
+      objectReference: {fileID: 392543115}
+    - target: {fileID: 6836444756823600008, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: tutorialMessageTextUI
+      value: 
+      objectReference: {fileID: 1049421051}
+    - target: {fileID: 6836444756823600008, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: tutorialSkipMessageTextUI
+      value: 
+      objectReference: {fileID: 463894033}
+    - target: {fileID: 6836444756823600008, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: tutorialAlwaysPlayPanelImage
+      value: 
+      objectReference: {fileID: 490917596}
+    - target: {fileID: 6836444756823600008, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: tutorialCompleteStickerImage
+      value: 
+      objectReference: {fileID: 1028453501}
+    - target: {fileID: 6836444756823600008, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: tutorialAlwaysPlayMessageTextUI
+      value: 
+      objectReference: {fileID: 2002515682}
+    - target: {fileID: 6890679676439973363, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: tutorialPanel
+      value: 
+      objectReference: {fileID: 1062969700}
+    - target: {fileID: 6890679676439973363, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: tutorialArrowImage
+      value: 
+      objectReference: {fileID: 949437803}
+    - target: {fileID: 6890679676439973363, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: tutorialWindowImage
+      value: 
+      objectReference: {fileID: 392543115}
+    - target: {fileID: 6890679676439973363, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: tutorialMessageTextUI
+      value: 
+      objectReference: {fileID: 1049421051}
+    - target: {fileID: 6890679676439973363, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: tutorialSkipMessageTextUI
+      value: 
+      objectReference: {fileID: 463894033}
+    - target: {fileID: 6890679676439973363, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: tutorialAlwaysPlayPanelImage
+      value: 
+      objectReference: {fileID: 490917596}
+    - target: {fileID: 6890679676439973363, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: tutorialCompleteStickerImage
+      value: 
+      objectReference: {fileID: 1028453501}
+    - target: {fileID: 6890679676439973363, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: tutorialAlwaysPlayMessageTextUI
+      value: 
+      objectReference: {fileID: 2002515682}
+    - target: {fileID: 7156898211454367585, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 7206802140998096670, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 65
+      objectReference: {fileID: 0}
+    - target: {fileID: 7265885076566689969, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: tutorialPanel
+      value: 
+      objectReference: {fileID: 1062969700}
+    - target: {fileID: 7265885076566689969, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: tutorialArrowImage
+      value: 
+      objectReference: {fileID: 949437803}
+    - target: {fileID: 7265885076566689969, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: tutorialWindowImage
+      value: 
+      objectReference: {fileID: 392543115}
+    - target: {fileID: 7265885076566689969, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: tutorialMessageTextUI
+      value: 
+      objectReference: {fileID: 1049421051}
+    - target: {fileID: 7265885076566689969, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: tutorialSkipMessageTextUI
+      value: 
+      objectReference: {fileID: 463894033}
+    - target: {fileID: 7265885076566689969, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: tutorialAlwaysPlayPanelImage
+      value: 
+      objectReference: {fileID: 490917596}
+    - target: {fileID: 7265885076566689969, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: tutorialCompleteStickerImage
+      value: 
+      objectReference: {fileID: 1028453501}
+    - target: {fileID: 7265885076566689969, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: tutorialAlwaysPlayMessageTextUI
+      value: 
+      objectReference: {fileID: 2002515682}
+    - target: {fileID: 7435583439276554952, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 20
+      objectReference: {fileID: 0}
+    - target: {fileID: 7485671959716540990, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 22
+      objectReference: {fileID: 0}
+    - target: {fileID: 7554569576817571310, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 27
+      objectReference: {fileID: 0}
+    - target: {fileID: 7627944471504609415, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 15
+      objectReference: {fileID: 0}
+    - target: {fileID: 7702453879623851899, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 39
+      objectReference: {fileID: 0}
+    - target: {fileID: 8247938229324115291, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 32
+      objectReference: {fileID: 0}
+    - target: {fileID: 8259480384445372389, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 57
+      objectReference: {fileID: 0}
+    - target: {fileID: 8260900636239914413, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 30
+      objectReference: {fileID: 0}
+    - target: {fileID: 8555791997760721310, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 11
+      objectReference: {fileID: 0}
+    - target: {fileID: 8562168535937204980, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 8752907313415983997, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 8813193062660929429, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 43
+      objectReference: {fileID: 0}
+    - target: {fileID: 8891253786168845831, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 61
+      objectReference: {fileID: 0}
+    - target: {fileID: 8893035537483463598, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 52
+      objectReference: {fileID: 0}
+    - target: {fileID: 8899482197372109645, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 17
+      objectReference: {fileID: 0}
+    - target: {fileID: 8914987572593881944, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 50
+      objectReference: {fileID: 0}
+    - target: {fileID: 9172629482191375373, guid: cf343fbc82b7ad44ea3818bf200ac884,
+        type: 3}
+      propertyPath: sceneViewId
+      value: 46
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 7103654177561423856, guid: 2c4a7451cf6be6046895e3067298834c,
+    - targetCorrespondingSourceObject: {fileID: 4816641844278073550, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       insertIndex: -1
       addedObject: {fileID: 0}
-    - targetCorrespondingSourceObject: {fileID: 8213047193775091012, guid: 2c4a7451cf6be6046895e3067298834c,
+    - targetCorrespondingSourceObject: {fileID: 5888319085959518842, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       insertIndex: -1
       addedObject: {fileID: 0}
-    - targetCorrespondingSourceObject: {fileID: 2393254221771904606, guid: 2c4a7451cf6be6046895e3067298834c,
+    - targetCorrespondingSourceObject: {fileID: 106843815399498080, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       insertIndex: -1
       addedObject: {fileID: 0}
-    - targetCorrespondingSourceObject: {fileID: 8974253782617006076, guid: 2c4a7451cf6be6046895e3067298834c,
+    - targetCorrespondingSourceObject: {fileID: 6685573504167389378, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       insertIndex: -1
       addedObject: {fileID: 0}
-    - targetCorrespondingSourceObject: {fileID: 2296805536350754631, guid: 2c4a7451cf6be6046895e3067298834c,
+    - targetCorrespondingSourceObject: {fileID: 4581002625212276857, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       insertIndex: -1
       addedObject: {fileID: 0}
-    - targetCorrespondingSourceObject: {fileID: 1707120933880020698, guid: 2c4a7451cf6be6046895e3067298834c,
+    - targetCorrespondingSourceObject: {fileID: 4034645391754627556, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       insertIndex: -1
       addedObject: {fileID: 0}
-    - targetCorrespondingSourceObject: {fileID: 3196243445465635879, guid: 2c4a7451cf6be6046895e3067298834c,
+    - targetCorrespondingSourceObject: {fileID: 870971057838287641, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       insertIndex: -1
       addedObject: {fileID: 0}
-    - targetCorrespondingSourceObject: {fileID: 4554723712034780641, guid: 2c4a7451cf6be6046895e3067298834c,
+    - targetCorrespondingSourceObject: {fileID: 2267765818397754079, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       insertIndex: -1
       addedObject: {fileID: 0}
-    - targetCorrespondingSourceObject: {fileID: 1383139662768710729, guid: 2c4a7451cf6be6046895e3067298834c,
+    - targetCorrespondingSourceObject: {fileID: 3710121510664115063, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       insertIndex: -1
       addedObject: {fileID: 0}
-    - targetCorrespondingSourceObject: {fileID: 4851443559712874372, guid: 2c4a7451cf6be6046895e3067298834c,
+    - targetCorrespondingSourceObject: {fileID: 7142379001006549178, guid: cf343fbc82b7ad44ea3818bf200ac884,
         type: 3}
       insertIndex: -1
       addedObject: {fileID: 0}
-  m_SourcePrefab: {fileID: 100100000, guid: 2c4a7451cf6be6046895e3067298834c, type: 3}
---- !u!4 &8469134292979030712 stripped
+  m_SourcePrefab: {fileID: 100100000, guid: cf343fbc82b7ad44ea3818bf200ac884, type: 3}
+--- !u!4 &3123266802386691735 stripped
 Transform:
-  m_CorrespondingSourceObject: {fileID: 5704257823816715796, guid: 2c4a7451cf6be6046895e3067298834c,
+  m_CorrespondingSourceObject: {fileID: 2902853674641285492, guid: cf343fbc82b7ad44ea3818bf200ac884,
     type: 3}
-  m_PrefabInstance: {fileID: 1315410565102334016}
+  m_PrefabInstance: {fileID: 965726607840896478}
   m_PrefabAsset: {fileID: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
@@ -9052,4 +9057,4 @@ SceneRoots:
   - {fileID: 723964938}
   - {fileID: 2033424403}
   - {fileID: 459261117}
-  - {fileID: 1315410565102334016}
+  - {fileID: 965726607840896478}
