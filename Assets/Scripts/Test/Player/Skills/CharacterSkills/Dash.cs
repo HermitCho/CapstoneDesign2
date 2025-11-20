@@ -87,7 +87,7 @@ public class Dash : Skill
 
         // 물리 안정화 (터널링 방지, 중력 끄기)
         rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic; 
-        rb.useGravity = false; 
+        //rb.useGravity = false; 
     }
 
     private void EndDashLogic()
@@ -95,7 +95,7 @@ public class Dash : Skill
         if (currentRb != null)
         {
             currentRb.velocity = new Vector3(0f, currentRb.velocity.y, 0f);
-            currentRb.useGravity = true;
+            //currentRb.useGravity = true;
             currentRb.collisionDetectionMode = CollisionDetectionMode.Discrete;
         }
 
@@ -123,7 +123,7 @@ public class Dash : Skill
             {
                 if (rb.velocity.y <= 0.1f)
                 {
-                    break; // 착지 성공 -> EndDashLogic 호출
+                    break;
                 }
             }
             yield return null;

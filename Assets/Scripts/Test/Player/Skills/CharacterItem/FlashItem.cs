@@ -106,7 +106,6 @@ public class FlashItem : Skill
 
         // 터널링 방지 및 중력 무시
         rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
-        rb.useGravity = false;
     }
 
     private void EndDashLogic()
@@ -118,7 +117,6 @@ public class FlashItem : Skill
             Vector3 finalVel = currentRb.velocity;
             currentRb.velocity = new Vector3(0f, finalVel.y, 0f);
 
-            currentRb.useGravity = true;
             currentRb.collisionDetectionMode = CollisionDetectionMode.Discrete;
         }
 
@@ -147,8 +145,6 @@ public class FlashItem : Skill
         // 1. 최소 대시 시간만큼 대기 (이 동안은 중력 없이 날아감)
         yield return new WaitForSeconds(minDashDuration);
 
-        // ✅ [핵심 수정] 최소 시간이 지났으면 중력을 즉시 복구!
-        // 이렇게 해야 공중에서 2초 동안 둥둥 떠있지 않고 아래로 떨어집니다.
         if (rb != null) rb.useGravity = true;
 
         while (Time.time - startTime < maxDashTime)
