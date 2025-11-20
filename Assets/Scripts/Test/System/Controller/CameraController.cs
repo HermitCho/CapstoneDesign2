@@ -40,6 +40,10 @@ public class CameraController : MonoBehaviourPun
     private Tween zoomTween;
     private Animator zoomAnimator;
 
+    // 흔들림 관련 변수
+    private Vector3 originalLocalPosition;
+    private Coroutine shakeCoroutine;
+
     // 카메라 제어용
     private Camera mainCamera;
     private PhotonView photonView;
@@ -258,6 +262,65 @@ public class CameraController : MonoBehaviourPun
         ApplyCameraZoomCanceled();
     }
 
+    public void TriggerCameraShake(float duration, float intensity)
+    {
+        // ✅ 이 CameraController가 붙어있는 GameObject가 로컬 플레이어의 것인지 확인
+        if (!photonView.IsMine) return;
+
+        // mainCamera가 Null일 가능성에 대비하여 한 번 더 체크 (Start() 로직이 통과했더라도 안전하게)
+        if (mainCamera == null)
+        {
+            Debug.LogError("❌ CameraController - mainCamera가 Null입니다! Start() 초기화 로직 확인 필요.");
+            return;
+        }
+        originalLocalPosition = mainCamera.transform.localPosition;
+
+        if (shakeCoroutine != null)
+        {
+            StopCoroutine(shakeCoroutine);
+            mainCamera.transform.localPosition = originalLocalPosition;
+        }
+
+        shakeCoroutine = StartCoroutine(CameraShakeRoutine(duration, intensity));
+    }
+
+    private IEnumerator CameraShakeRoutine(float duration, float intensity)
+    {
+        if (mainCamera == null) yield break;
+
+        float elapsed = 0f;
+        originalLocalPosition = mainCamera.transform.localPosition;
+
+        while (elapsed < duration)
+        {
+            float x = Random.Range(-1f, 1f) * intensity;
+            float y = Random.Range(-1f, 1f) * intensity;
+
+            mainCamera.transform.localPosition = originalLocalPosition + new Vector3(x, y, 0);
+
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        mainCamera.transform.localPosition = originalLocalPosition;
+        shakeCoroutine = null;
+    }
+
+    // ==========================================================
+    // ✅ 카메라 흔들림 강제 종료 (필요 시)
+    // ==========================================================
+    public void StopCameraShake()
+    {
+        if (shakeCoroutine != null)
+        {
+            StopCoroutine(shakeCoroutine);
+            shakeCoroutine = null;
+        }
+
+        if (mainCamera != null)
+            mainCamera.transform.localPosition = originalLocalPosition;
+    }
+
     // 플레이어를 주기적으로 찾는 코루틴
     IEnumerator FindPlayerRoutine()
     {
@@ -472,16 +535,16 @@ public class CameraController : MonoBehaviourPun
     public void DisableCameraControl()
     {
         cameraControlEnabled = false;
-        
+
         // ✅ 줌 상태라면 강제로 해제
         if (isZoomed)
         {
             ForceResetZoom();
         }
-        
+
         Debug.Log("❌ CameraController: 카메라 조작 비활성화");
     }
-    
+
     /// <summary>
     /// 줌 상태 강제 해제 (게임 종료 시 사용)
     /// </summary>
@@ -489,24 +552,24 @@ public class CameraController : MonoBehaviourPun
     {
         if (!photonView.IsMine) return;
         if (mainCamera == null || !isZoomed) return;
-        
+
         isZoomed = false;
-        
+
         // 기존 애니메이션 중지
         zoomTween?.Kill();
-        
+
         // 즉시 원본 FOV로 복원 (애니메이션 없이)
         if (originalFOV > 0f)
         {
             mainCamera.fieldOfView = originalFOV;
         }
-        
+
         // 회전 부드러움을 원본 값으로 복원
         if (rotationSmoothTimeStored)
         {
             cachedRotationSmoothTime = originalRotationSmoothTime;
         }
-        
+
         Debug.Log("✅ CameraController: 줌 상태 강제 해제 완료");
     }
 

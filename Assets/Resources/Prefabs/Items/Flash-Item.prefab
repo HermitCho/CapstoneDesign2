@@ -57,18 +57,23 @@ MonoBehaviour:
   isFollowing: 1
   isCastingFollowing: 0
   index: 0
-  skillIcon: {fileID: 21300000, guid: a033cea4a39ce430ea12f95b9b9edb9e, type: 3}
+  skillIcon: {fileID: 21300000, guid: 71ab030cc64ec464390f8f5f1134879a, type: 3}
   skillColor: {r: 1, g: 1, b: 1, a: 1}
   skillEffect: {fileID: 34545940018427765, guid: 8ff992d01a5c0c44bae6fe6d48faed12,
     type: 3}
   castTimeSkillEffect: {fileID: 0}
   skillSound: {fileID: 8300000, guid: ddaff993cd19b9045aa2d507ebd7fbe6, type: 3}
   castTimeSkillSound: {fileID: 8300000, guid: 68858e8b2de8ca9408dd5ca934425766, type: 3}
-  price: 1
+  price: 20
   skillAnimationTriggerName: Item01
   dashForce: 100
   groundCheckDistance: 0.1
   maxDashTime: 2
+  minDashDuration: 0.2
+  dashLayerName: PlayerDash
+  groundLayerMask:
+    serializedVersion: 2
+    m_Bits: 0
 --- !u!114 &6983521555461215589
 MonoBehaviour:
   m_ObjectHideFlags: 0

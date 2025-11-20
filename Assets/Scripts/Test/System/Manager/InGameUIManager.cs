@@ -28,12 +28,34 @@ public class InGameUIManager : MonoBehaviour
     private string currentPanel = "";
     private bool isGameOverPanelActive = false; // GameOverPanel 활성화 상태 추적
     
+    // BGMController 캐싱 (성능 최적화)
+    private InGameBGMController cachedBGMController;
+    
     #region Unity 생명주기
     
     void Start()
     {
+        // BGMController 캐싱 (씬 시작 시 한 번만)
+        CacheBGMController();
+        
         // 게임 단계에 따라 적절한 패널 표시
         CheckGamePhaseAndShowPanel();
+    }
+    
+    /// <summary>
+    /// BGMController 캐싱 (성능 최적화 + 안전성)
+    /// </summary>
+    private void CacheBGMController()
+    {
+        if (cachedBGMController == null)
+        {
+            cachedBGMController = FindObjectOfType<InGameBGMController>();
+            
+            if (cachedBGMController == null)
+            {
+                Debug.LogWarning("InGameUIManager: InGameBGMController를 찾을 수 없습니다. BGM이 재생되지 않을 수 있습니다.");
+            }
+        }
     }
     
     void Update()
@@ -163,6 +185,34 @@ public class InGameUIManager : MonoBehaviour
             isGameOverPanelActive = true;
             
             SetMenuMouseCursor();
+            
+            // ✅ 인게임 BGM 중지 (캐싱된 참조 사용 - 성능 최적화)
+            if (cachedBGMController == null)
+            {
+                // 캐싱 안되어 있으면 찾기 시도
+                CacheBGMController();
+            }
+            
+            if (cachedBGMController != null)
+            {
+                cachedBGMController.StopInGameBGM();
+            }
+            else
+            {
+                // BGMController가 없어도 AudioManager로 직접 중지 (백업)
+                if (AudioManager.Inst != null)
+                {
+                    AudioManager.Inst.StopBGMLoop();
+                }
+            }
+            
+            // ✅ STOP 모달 창 열 때 START 사운드 재생
+            if (AudioManager.Inst != null)
+            {
+                AudioManager.Inst.PlayOneShot("SFX_UI_Ready_Start");
+                AudioManager.Inst.PlayOneShot("SFX_UI_GameOver_FinishVoice");
+            }
+            
             gameOverModalWindowManager.OpenWindow();
 
             StartCoroutine(ShowGameOverPanelCoroutine(3f));
@@ -226,6 +276,7 @@ public class InGameUIManager : MonoBehaviour
     {
         isGameOverPanelActive = false;
         currentPanel = "";
+        cachedBGMController = null; // 캐시 초기화 (새 씬에서 다시 찾기)
         Debug.Log("InGameUIManager: 게임 상태 리셋 - 자동 전환 재활성화");
     }
 

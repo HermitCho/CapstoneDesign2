@@ -10,6 +10,7 @@ using Photon.Pun;
 public class TestGun : MonoBehaviourPun
 {
     public static System.Action OnLocalReloadStarted; // 로컬 플레이어가 재장전을 실제로 시작했을 때
+    public static System.Action OnHitTarget; // 로컬 플레이어가 쏜 총알이 타겟을 맞췄을 때
 
     #region Enums
     public enum GunState
@@ -48,6 +49,7 @@ public class TestGun : MonoBehaviourPun
 
     #region Private Fields
     private PhotonView photonViewCached;
+    private PhotonView parentPhotonview;
     private bool isFiring;
     private float lastFireTime;
     private float damage;
@@ -57,8 +59,11 @@ public class TestGun : MonoBehaviourPun
     protected virtual void Awake()
     {
         photonViewCached = GetComponent<PhotonView>();
+        parentPhotonview = transform.root.GetComponent<PhotonView>();
         damage = gunData.damage;
         testShoot = GetComponentInParent<TestShoot>(); // TestShoot 스크립트 찾기
+
+        parentPhotonview = transform.root.GetComponent<PhotonView>();
 
         if (testShoot == null)
         {
@@ -195,19 +200,18 @@ public class TestGun : MonoBehaviourPun
 
     protected virtual void Shot(Vector3 shootDirection)
     {
-        Debug.Log("[TestGun - Shot] - 샷");
+        bool hasHitTarget = false;
+
         for (int i = 0; i < gunData.pelletCount; i++)
         {
             Vector3 pelletDirection = CalculatePelletDirection(shootDirection);
             Vector3 pelletHitPosition = CalculatePelletHitPosition(pelletDirection);
 
-            // ✅ 데미지 판정은 발사자만 처리
             if (photonViewCached.IsMine)
             {
-                ProcessPelletHit(pelletDirection);
+                hasHitTarget = ProcessPelletHit(pelletDirection, hasHitTarget);
             }
 
-            // ✅ 이펙트는 모든 클라이언트가 실행 (하지만 Shot이 이미 RPC로 호출되므로 추가 RPC 불필요)
             StartCoroutine(ShotEffect(fireTransform.position, pelletHitPosition));
         }
     }
@@ -245,22 +249,102 @@ public class TestGun : MonoBehaviourPun
         return fireTransform.position + direction * gunData.range;
     }
 
-    private void ProcessPelletHit(Vector3 direction)
+    private bool ProcessPelletHit(Vector3 direction, bool isSoundPlayed)
     {
         int layerMask = ~LayerMask.GetMask("PlayerPosition");
+
+        // 디버그: 레이캐스트 발사
+        Debug.DrawRay(fireTransform.position, direction * gunData.range, Color.red, 1f);
+
         if (Physics.Raycast(fireTransform.position, direction, out RaycastHit hit, gunData.range, layerMask, QueryTriggerInteraction.Ignore))
         {
-            IDamageable target = hit.collider.GetComponent<IDamageable>();
-            PhotonView targetView = hit.collider.GetComponent<PhotonView>();
+
+            Debug.DrawLine(fireTransform.position, hit.point, Color.green, 1f);
+            // --- ✅ [튜토리얼 전용 감지 코드] ---
+            // 현재 씬 이름이 Tutorial을 포함하면, 네트워크 판정 대신 로컬 파괴 실행
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name.Contains("Tutorial"))
+            {
+                TargetMove targetMove = hit.collider.GetComponent<TargetMove>();
+                if (targetMove != null)
+                {
+                    // 튜토리얼용 목표 카운트 처리
+                    var tutorialShoot = FindObjectOfType<TutorialShoot>();
+                    if (tutorialShoot != null)
+                        tutorialShoot.OnTargetDestroyed();
+
+                    // 피격 이펙트
+                    GameObject effect = Resources.Load<GameObject>("HitEffect");
+                    if (effect != null)
+                    {
+                        GameObject fx = Instantiate(effect, hit.point, Quaternion.LookRotation(hit.normal));
+                        Destroy(fx, 2f);
+                    }
+                    AudioManager.Inst.PlayOneShot("SFX_Game_Tutorial_Target");
+                    // 과녁 오브젝트 파괴
+                    Destroy(targetMove.gameObject);
+                    Debug.Log($"[TestGun] 튜토리얼용 과녁 {targetMove.name} 파괴됨");
+                    return isSoundPlayed; // ✅ 튜토리얼에서는 여기서 종료 (Photon 로직 실행 안 함)
+                }
+            }
+
+            // ✅ CRITICAL DEBUG: 히트 정보 출력
+            Debug.Log($"[TestGun] 레이캐스트 히트! Object: {hit.collider.gameObject.name}, Layer: {LayerMask.LayerToName(hit.collider.gameObject.layer)}, Distance: {hit.distance:F2}m");
+
+            // ✅ CRITICAL FIX: GetComponentInParent 사용!
+            // AI 봇의 구조: 부모(AIHealth, PhotonView) -> 자식(Collider)
+            // GetComponent는 같은 GameObject에서만 찾음 → 절대 못 찾음!
+            IDamageable target = hit.collider.GetComponentInParent<IDamageable>();
+            PhotonView targetView = hit.collider.GetComponentInParent<PhotonView>();
+
+            Debug.Log($"[TestGun] 컴포넌트 검색 결과 - IDamageable: {target != null}, PhotonView: {targetView != null}");
 
             if (target != null && targetView != null)
             {
-                int attackerViewId = targetView.ViewID;
+                // 자기 자신 피격 방지
+                if (targetView.ViewID == photonViewCached.ViewID)
+                {
+                    Debug.Log($"[TestGun] 자기 자신 피격 차단 - ViewID: {targetView.ViewID}");
+                    return isSoundPlayed;
+                }
 
-                // 마스터 클라이언트로 데미지 RPC 전송
-                targetView.RPC("OnDamage", RpcTarget.All, damage, hit.point, hit.normal, attackerViewId);
+                // 같은 소유자인 경우 AI가 아니면 무시 (플레이어 자신의 총알은 막음)
+                if (targetView.OwnerActorNr == photonViewCached.OwnerActorNr)
+                {
+                    // 둘 다 AI가 아닌 경우만 무시
+                    bool attackerIsAI = photonViewCached.GetComponent<AIHealth>() != null;
+                    bool targetIsAI = targetView.GetComponent<AIHealth>() != null;
+
+                    if (!attackerIsAI && !targetIsAI)
+                    {
+                        Debug.Log($"[TestGun] 같은 플레이어 피격 차단 - OwnerActorNr: {targetView.OwnerActorNr}");
+                        return isSoundPlayed;
+                    }
+                }
+
+                int attackerViewID = parentPhotonview.ViewID;
+
+                if (!isSoundPlayed)
+                {
+                    AudioManager.Inst.PlayOneShot("SFX_Game_Hit");
+                    isSoundPlayed = true; // 사운드 재생 후 플래그를 True로 설정
+                }
+                
+                // HitImage 애니메이션 이벤트 발생 (로컬 플레이어가 쏜 총알이 히트했을 때만)
+                if (photonViewCached.IsMine)
+                {
+                    OnHitTarget?.Invoke();
+                }
+                
+                targetView.RPC("OnDamage", RpcTarget.All, damage, hit.point, hit.normal, attackerViewID);
+                Debug.Log($"[TestGun - ProcessPelletHit] ✅ 데미지 RPC 호출 성공 → {targetView.name} (ViewID: {targetView.ViewID})");
             }
         }
+        else
+        {
+            // 레이캐스트 빗나감
+            Debug.Log($"[TestGun] 레이캐스트 빗나감 - 사거리: {gunData.range}m");
+        }
+        return isSoundPlayed;
     }
 
     #endregion
@@ -312,7 +396,7 @@ public class TestGun : MonoBehaviourPun
     public bool Reload()
     {
         if (!photonViewCached.IsMine) return false;
-        if (CurrentState == GunState.Reloading || CurrentMagAmmo >= gunData.maxAmmo)
+        if (CurrentState == GunState.Reloading || CurrentMagAmmo >= gunData.maxAmmo || livingEntity.IsDead)
             return false;
 
         // 소유자만 재장전 시작 (상태 변경은 RPC로 동기화)

@@ -82,24 +82,16 @@ public class HitEffectUI : MonoBehaviour
         else
             screenDir = Vector2.up; // 기본값
 
-        Debug.Log($"HitEffectUI - hitWorldDir: {hitWorldDir}");
-        Debug.Log($"Camera - Right: {camRight}, Up: {camUp}, Forward: {camForward}");
-        Debug.Log($"Components - Right: {rightComponent:F2}, Up: {upComponent:F2}");
-        Debug.Log($"Final screenDir: {screenDir}");
-
         // 셰이더 프로퍼티 설정
         mat.SetVector("_HitDir", new Vector4(screenDir.x, screenDir.y, 0, 0));
         mat.SetFloat("_Intensity", 1f);
         mat.SetColor("_Color", new Color(1f, 0f, 0f, 0.8f)); // 빨간색, 약간 투명
 
-        // 디버깅: Inspector에서 Material 속성 확인용
-        Debug.Log($"셰이더 속성 설정됨 - HitDir: {screenDir}, Intensity: 1.0, Spread: 0.3, EdgeFade: 0.5");
 
         StopAllCoroutines();
         StartCoroutine(FadeOutCoroutine());
 
         Debug.Log("HitEffectUI 이펙트 시작!");
-
     }
 
     IEnumerator FadeOutCoroutine()

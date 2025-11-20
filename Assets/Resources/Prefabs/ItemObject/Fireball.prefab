@@ -17,9 +17,9 @@ GameObject:
   - component: {fileID: -2387321371320279124}
   - component: {fileID: 1669528487230216616}
   - component: {fileID: 4711774167355132665}
-  m_Layer: 0
+  m_Layer: 16
   m_Name: Fireball
-  m_TagString: Untagged
+  m_TagString: Fireball
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -97,7 +97,7 @@ SphereCollider:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5979458828756114265}
-  m_Material: {fileID: 0}
+  m_Material: {fileID: 13400000, guid: 47ee73b9685bebc4ab3c88d7fecd3e86, type: 2}
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -137,7 +137,7 @@ Rigidbody:
   m_IsKinematic: 0
   m_Interpolate: 0
   m_Constraints: 0
-  m_CollisionDetection: 0
+  m_CollisionDetection: 1
 --- !u!82 &2814056050529530523
 AudioSource:
   m_ObjectHideFlags: 0
@@ -246,7 +246,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 92f04e0568847d64f8a8d16274ac2aef, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  damage: 30
+  damage: 70
   speed: 50
   lifetime: 5
   explosionRadius: 5
@@ -274,6 +274,7 @@ MonoBehaviour:
   OwnershipTransfer: 0
   observableSearch: 2
   ObservedComponents:
+  - {fileID: -2387321371320279124}
   - {fileID: 4711774167355132665}
   sceneViewId: 0
   InstantiationId: 0
@@ -302,9 +303,33 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 2113778475862908899}
     m_Modifications:
+    - target: {fileID: 1064110668564320, guid: 4dd6c2b5539220947a0c5938f0a39d20, type: 3}
+      propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1070713993695888, guid: 4dd6c2b5539220947a0c5938f0a39d20, type: 3}
+      propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1212888567235536, guid: 4dd6c2b5539220947a0c5938f0a39d20, type: 3}
+      propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315828585484224, guid: 4dd6c2b5539220947a0c5938f0a39d20, type: 3}
+      propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1921761797403674, guid: 4dd6c2b5539220947a0c5938f0a39d20, type: 3}
+      propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 1949376083282614, guid: 4dd6c2b5539220947a0c5938f0a39d20, type: 3}
       propertyPath: m_Name
       value: BaseFire000
+      objectReference: {fileID: 0}
+    - target: {fileID: 1949376083282614, guid: 4dd6c2b5539220947a0c5938f0a39d20, type: 3}
+      propertyPath: m_Layer
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4223186867483548, guid: 4dd6c2b5539220947a0c5938f0a39d20, type: 3}
       propertyPath: m_LocalPosition.x
@@ -440,6 +465,11 @@ PrefabInstance:
     - target: {fileID: 198825422406738332, guid: 4dd6c2b5539220947a0c5938f0a39d20,
         type: 3}
       propertyPath: ShapeModule.m_Rotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4201041603129108089, guid: 4dd6c2b5539220947a0c5938f0a39d20,
+        type: 3}
+      propertyPath: m_Layer
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6180989378576469752, guid: 4dd6c2b5539220947a0c5938f0a39d20,

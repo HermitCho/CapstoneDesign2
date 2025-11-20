@@ -1,12 +1,8 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using Photon.Pun;
-using Photon.Realtime; // Player 클래스를 위해 추가
-using Febucci.UI;
-using Michsky.UI.Heat;
-using System.Threading;
+
 
 /// <summary>
 /// 생명체의 기본 기능을 담당하는 클래스 (포톤 멀티플레이 고려)
@@ -20,7 +16,7 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
     [Header("Character Data")]
     [SerializeField] private CharacterData characterData;
 
-    private LivingEntity currentAttacker;
+    private IDamageable currentAttacker;
 
     // Health & Shield Properties
     // ✅ [PunRPC]를 통해 동기화될 public 변수이므로 set을 private으로 변경하지 않고,
@@ -31,30 +27,88 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
     public float CurrentHealth { get; private set; }
     public float CurrentShield { get; private set; }
     public bool IsDead { get; private set; }
+
     private bool IsInvincivilityActive;
     private int IsInvincivilityCount;
 
-    // ✅ LivingEntity의 체력 변화를 알리는 static 이벤트. GameManager가 구독합니다.
     public static event Action<float, float, LivingEntity> OnAnyLivingEntityHealthChanged;
-
-    // ✅ 플레이어 사망을 알리는 static 이벤트. TestTeddyBear 등이 구독할 수 있습니다.
     public static event Action<LivingEntity> OnPlayerDied;
-
     public event Action OnRevive;
 
+
+    public int photonViewID
+    {
+        get => base.photonView.ViewID;
+        set => Debug.Log("ViewID는 설정할 수 없습니다.");
+    }
 
 
     [Header("스턴 제어")]
     private MoveController moveController;
 
+    [Header("카메라 컨트롤러")]
+    CameraController cameraController;
+
     // Events
     public event Action OnDeath; // ✅ 각 인스턴스별 사망 이벤트
+
+    [Header("반짝임 이펙트")]
+    private Renderer[] renderers; // 모든 Renderer 컴포넌트
+    private Color[] originalColors; // 원본 색상들
+    private Color[] originalEmissionColors; // ✅ 원본 Emission 색상들
+    private Coroutine hitFlashCoroutine; // 피격 반짝임 코루틴
+    private Coroutine invincibilityFlashCoroutine; // 무적 반짝임 코루틴
+    private float lastHitSoundTime; // 마지막 피격 사운드 재생 시간
+    private const float HIT_SOUND_COOLDOWN = 0.1f; // 피격 사운드 쿨타임 (1초)
+    private const float EMISSION_INTENSITY = 10f;
 
     #region Unity Lifecycle
 
     protected virtual void Awake()
     {
-        // photonView = GetComponent<PhotonView>(); // this.photonView를 사용하면 됩니다.
+        // Renderer 컴포넌트들 초기화
+        InitializeRenderers();
+    }
+
+    /// <summary>
+    /// Renderer 컴포넌트들을 찾아서 원본 색상과 Emission 색상을 저장합니다.
+    /// </summary>
+    private void InitializeRenderers()
+    {
+        renderers = GetComponentsInChildren<Renderer>();
+        originalColors = new Color[renderers.Length];
+        originalEmissionColors = new Color[renderers.Length]; // ✅ 초기화
+
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            if (renderers[i] != null && renderers[i].material != null)
+            {
+                Material mat = renderers[i].material;
+
+                // Material의 _Color 프로퍼티가 있으면 사용, 없으면 기본 색상
+                if (mat.HasProperty("_Color"))
+                {
+                    originalColors[i] = mat.color;
+                }
+                else
+                {
+                    originalColors[i] = Color.white;
+                }
+
+                // ✅ Emission 색상 저장
+                if (mat.HasProperty("_EmissionColor"))
+                {
+                    originalEmissionColors[i] = mat.GetColor("_EmissionColor");
+                }
+                else
+                {
+                    originalEmissionColors[i] = Color.black; // Emission이 없으면 검은색으로 간주
+                }
+
+                // ✅ 런타임에 Emission을 변경할 수 있도록 활성화
+                mat.EnableKeyword("_EMISSION");
+            }
+        }
     }
 
     /// <summary>
@@ -88,6 +142,7 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
         IsInvincivilityCount = 0;
 
         OnAnyLivingEntityHealthChanged?.Invoke(CurrentHealth, StartingHealth, this);
+        cameraController = FindObjectOfType<CameraController>();
     }
 
     #endregion
@@ -109,7 +164,6 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
         IsInvincivilityCount = newInvincibilityCount;
 
         OnAnyLivingEntityHealthChanged?.Invoke(CurrentHealth, StartingHealth, this);
-        // Debug.Log($"[LivingEntity] {gameObject.name} 체력/상태 동기화 - H:{CurrentHealth}, D:{IsDead}, IC:{IsInvincivilityCount}");
     }
 
     [PunRPC]
@@ -119,10 +173,8 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
         if (!PhotonNetwork.IsMasterClient) return;
         if (IsDead) return;
         if (CurrentHealth <= 0f) return;
-
         // 무적 검사 (무제한 무적)
         if (IsInvincivilityActive) return;
-
         // 무적 검사 (횟수 무적)
         if (IsInvincivilityCount > 0)
         {
@@ -133,7 +185,7 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
         }
 
         PhotonView attackerPV = PhotonView.Find(attackerViewId);
-        LivingEntity attacker = attackerPV?.GetComponent<LivingEntity>();
+        IDamageable attacker = attackerPV?.GetComponent<IDamageable>();
 
         // 데미지 적용
         CurrentHealth = Mathf.Max(0f, CurrentHealth - damage);
@@ -144,16 +196,33 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
         if (died && !IsDead)
         {
             currentAttacker = attacker;
-            int attackerId = attacker != null ? attacker.photonView.ViewID : -1;
-            // RPC_Die는 이미 RPC_UpdateHealth에서 IsDead 상태를 설정했으므로,
-            // 추가적인 처리를 위해 RPC를 호출합니다.
+            int attackerId = attacker != null ? attacker.photonViewID : -1;
+            
+            // 킬 사운드 재생 (공격자가 플레이어인 경우에만)
+            if (attackerPV != null && attackerPV.Owner != null)
+            {
+                // 공격자가 플레이어(LivingEntity)인지 확인
+                LivingEntity attackerLivingEntity = attackerPV.GetComponent<LivingEntity>();
+                if (attackerLivingEntity != null)
+                {
+                    // 공격자의 LivingEntity에 RPC 전송 (공격자에게만)
+                    attackerPV.RPC("RPC_PlayKillSound", attackerPV.Owner);
+                }
+            }
+            
             photonView.RPC("RPC_Die", RpcTarget.All, attackerId);
         }
 
         photonView.RPC("RPC_UpdateHealth", RpcTarget.All, CurrentHealth, died, IsInvincivilityCount);
-
         // 피격 효과 RPC는 로컬에서만 실행되도록 Owner에게 전송
-        photonView.RPC("RPC_OnHitEffect", photonView.Owner, -(hitNormal.normalized));
+        photonView.RPC("RPC_OnHitEffect", photonView.Owner, (hitNormal.normalized));
+        // 피격 반짝임 이펙트 시작 (모든 클라이언트에서)
+        photonView.RPC("RPC_StartHitFlash", RpcTarget.All);
+
+        if (cameraController != null)
+        {
+            cameraController.TriggerCameraShake(0.5f, 0.5f); // (지속시간, 세기)
+        }
     }
 
     /// <summary>
@@ -165,7 +234,7 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
     public void RestoreHealth(float healAmount)
     {
         if (!PhotonNetwork.IsMasterClient) return;
-        if (IsDead || healAmount <= 0f) return; // ✅ IsDead 변수 사용
+        if (IsDead || healAmount <= 0f) return;
 
         float prevHealth = CurrentHealth;
         CurrentHealth = Mathf.Min(StartingHealth, CurrentHealth + healAmount);
@@ -173,16 +242,15 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
 
         bool died = CurrentHealth <= 0f;
         photonView.RPC("RPC_UpdateHealth", RpcTarget.All, CurrentHealth, died, IsInvincivilityCount);
-        
+
         photonView.RPC("RPC_OnHealEffect", photonView.Owner);
     }
 
     [PunRPC]
     public void RestoreShield(float shieldAmount)
     {
-        if (IsDead || shieldAmount <= 0f) return; // ✅ IsDead 변수 사용
+        if (IsDead || shieldAmount <= 0f) return;
         CurrentShield = Mathf.Min(StartingShield, CurrentShield + shieldAmount);
-        Debug.Log($"[LivingEntity:Master] {gameObject.name} 방어막 회복: {shieldAmount}, 현재 방어막: {CurrentShield}");
     }
 
     #endregion
@@ -196,27 +264,56 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
     [PunRPC]
     public bool RPC_Die(int attackerViewId)
     {
-        Debug.Log("[LivingEntity] - RPC_Die 실행");
         // 이미 사망한 상태라면 처리하지 않음
         if (IsDead)
         {
             Debug.Log($"[LivingEntity] {gameObject.name} 이미 사망한 상태 - 중복 사망 처리 방지");
             return false;
         }
-
-        // ViewID를 통해 attacker LivingEntity 찾기
-        PhotonView attackerPV = PhotonView.Find(attackerViewId);
-        LivingEntity attacker = attackerPV?.GetComponent<LivingEntity>();
-
         // 사망 상태 설정
         IsDead = true;
-        currentAttacker = attacker;
 
-        Debug.Log($"[LivingEntity] {gameObject.name} 사망 처리 완료 - attacker: {currentAttacker?.name ?? "null"}, IsDead: {IsDead}");
+        // ✅ CRITICAL FIX: 모든 클라이언트에서 공격자 정보 설정
+        // ViewID를 통해 attacker 찾기 (LivingEntity 또는 AIHealth)
+        PhotonView attackerPV = PhotonView.Find(attackerViewId);
+        IDamageable attackerDamageable = null;
+        LivingEntity attacker = null;
+        
+        if (attackerPV != null)
+        {
+            // LivingEntity 또는 AIHealth 모두 IDamageable을 구현하므로
+            attackerDamageable = attackerPV.GetComponent<IDamageable>();
+            attacker = attackerPV.GetComponent<LivingEntity>();
+        }
+        
+        // ✅ 모든 클라이언트에서 currentAttacker 설정 (킬로그를 위해 필요)
+        currentAttacker = attackerDamageable;
+
+        //마스터 클라이언트에서 공격자에게 점수 부여
+        if (PhotonNetwork.IsMasterClient && attacker != null)
+        {
+            PhotonView attackerView = attacker.photonView;
+            float killScore = 20f;
+
+            attackerView.RPC("RPC_GrantKillScore", attackerView.Owner, killScore);
+        }
+
+        // 반짝임 코루틴 중지 및 색상 복원
+        if (hitFlashCoroutine != null)
+        {
+            StopCoroutine(hitFlashCoroutine);
+            hitFlashCoroutine = null;
+        }
+        if (invincibilityFlashCoroutine != null)
+        {
+            StopCoroutine(invincibilityFlashCoroutine);
+            invincibilityFlashCoroutine = null;
+        }
+        RestoreOriginalColors();
 
         OnDeath?.Invoke(); // 이벤트는 각 클라이언트에서 개별적으로 발생
 
-        // MoveController는 로컬에서만 제어해도 무방합니다. (stunned 상태가 물리적인 움직임에만 영향)
+        //스턴 작동
         if (moveController != null)
         {
             moveController.SetStunned(true);
@@ -225,10 +322,17 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
         // 플레이어 사망 이벤트 발생
         OnPlayerDied?.Invoke(this);
 
+        // 사망 사운드 재생 (모든 클라이언트에서 캐릭터 위치에서)
+        if (AudioManager.Inst != null)
+        {
+            AudioManager.Inst.PlayClipAtPoint("SFX_Game_Death", transform.position);
+            Debug.Log($"[LivingEntity] 사망 사운드 재생 - 위치: {transform.position}");
+        }
+
         // 부활 코루틴 시작 (마스터 클라이언트에서만)
         if (PhotonNetwork.IsMasterClient)
         {
-            StartCoroutine(ReviveAfterDelay(10f));
+            StartCoroutine(ReviveAfterDelay(5f));
         }
 
         Debug.Log($"[LivingEntity] {gameObject.name} 사망! - 플레이어 사망 이벤트 발생");
@@ -260,38 +364,49 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
 
         // 부활 RPC 호출 (마스터 클라이언트에서만)
         photonView.RPC("RPC_Revive", RpcTarget.All);
-        Debug.Log($"[LivingEntity] {gameObject.name} 부활 RPC 호출 완료");
     }
 
     [PunRPC]
     public void RPC_Revive()
     {
-        Debug.Log($"[LivingEntity] {gameObject.name} RPC_Revive 호출됨 - 현재 IsDead: {IsDead}");
-
         if (!IsDead)
         {
-            Debug.Log($"[LivingEntity] {gameObject.name} 이미 살아있는 상태 - 부활 처리 건너뜀");
             return;
         }
 
-        Debug.Log($"[LivingEntity] {gameObject.name} 부활 처리 시작");
-
+        // 체력 및 상태 초기화
+        InitializeEntity();
+        // 모든 클라이언트에서 UI 업데이트
+        OnAnyLivingEntityHealthChanged?.Invoke(CurrentHealth, StartingHealth, this);
         // 사망 상태 해제
         IsDead = false;
         currentAttacker = null; // 공격자 정보 초기화
 
-        // 체력 및 상태 초기화
-        InitializeEntity();
+        // 반짝임 코루틴 중지 및 색상 복원
+        if (hitFlashCoroutine != null)
+        {
+            StopCoroutine(hitFlashCoroutine);
+            hitFlashCoroutine = null;
+        }
+        RestoreOriginalColors();
 
         if (moveController != null)
         {
             moveController.SetStunned(false); // 스턴 해제
         }
 
-        Debug.Log($"[LivingEntity] {gameObject.name} 부활 완료 - 현재 체력: {CurrentHealth}, IsDead: {IsDead}");
+        //  부활 직후 무적 상태 활성화 (모든 클라이언트 동기화)
+        photonView.RPC("RPC_SetInvincibility", RpcTarget.All, true);
 
-        // 모든 클라이언트에서 UI 업데이트
-        OnAnyLivingEntityHealthChanged?.Invoke(CurrentHealth, StartingHealth, this);
+
+        //  마스터 클라이언트만 무적 해제 타이머 실행
+        if (PhotonNetwork.IsMasterClient)
+        {
+            StartCoroutine(DisableInvincibilityAfterDelay(3f));
+        }
+
+
+
 
         if (photonView.IsMine)
         {
@@ -299,38 +414,242 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
         }
     }
 
+    [PunRPC]
+    public void RPC_SetInvincibility(bool active)
+    {
+        IsInvincivilityActive = active;
+        // 무적 상태가 활성화되면 하얀색 반짝임 코루틴 시작
+        if (active)
+        {
+            // 기존 무적 반짝임 코루틴이 실행 중이면 중지
+            if (invincibilityFlashCoroutine != null)
+            {
+                StopCoroutine(invincibilityFlashCoroutine);
+            }
+
+            // 무적 반짝임 코루틴 시작
+            invincibilityFlashCoroutine = StartCoroutine(InvincibilityFlashCoroutine());
+        }
+        else
+        {
+            // 무적 상태가 비활성화되면 반짝임 코루틴 중지
+            if (invincibilityFlashCoroutine != null)
+            {
+                StopCoroutine(invincibilityFlashCoroutine);
+                invincibilityFlashCoroutine = null;
+            }
+
+            // 원본 색상으로 복원
+            RestoreOriginalColors();
+        }
+    }
+
+    /// <summary>
+    /// 무적 상태일 때 하얀색으로 반짝거리는 코루틴 (1초마다 재생)
+    /// </summary>
+    private IEnumerator InvincibilityFlashCoroutine()
+    {
+        if (renderers == null || renderers.Length == 0) yield break;
+
+        float flashDuration = 0.1f; // 반짝임 지속 시간
+        Color flashColor = Color.white; // 하얀색으로 반짝임
+        Color flashEmissionColor = flashColor * EMISSION_INTENSITY * 0.5f; // ✅ Emission 색상 설정
+
+        while (IsInvincivilityActive && !IsDead)
+        {
+            // 색상을 하얀색으로 변경
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                if (renderers[i] != null && renderers[i].material != null)
+                {
+                    Material mat = renderers[i].material;
+                    if (mat.HasProperty("_Color"))
+                    {
+                        mat.color = flashColor;
+                    }
+                    // ✅ Emission 색상 변경
+                    if (mat.HasProperty("_EmissionColor"))
+                    {
+                        mat.SetColor("_EmissionColor", flashEmissionColor);
+                    }
+                }
+            }
+
+            yield return new WaitForSeconds(flashDuration);
+
+            // 원본 색상으로 복원
+            RestoreOriginalColors();
+
+            // 1초 대기 후 다시 반짝임
+            yield return new WaitForSeconds(1f - flashDuration);
+        }
+
+        // 코루틴 종료 시 원본 색상으로 복원
+        RestoreOriginalColors();
+        invincibilityFlashCoroutine = null;
+    }
+
+    /// <summary>
+    /// 모든 Renderer의 색상과 Emission을 원본 색상으로 복원합니다.
+    /// </summary>
+    private void RestoreOriginalColors()
+    {
+        if (renderers == null || originalColors == null || originalEmissionColors == null) return; // ✅ Null 체크
+
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            if (renderers[i] != null && renderers[i].material != null)
+            {
+                Material mat = renderers[i].material;
+                if (mat.HasProperty("_Color"))
+                {
+                    mat.color = originalColors[i];
+                }
+
+                // ✅ Emission 색상 복원
+                if (mat.HasProperty("_EmissionColor"))
+                {
+                    mat.SetColor("_EmissionColor", originalEmissionColors[i]);
+                    // Emission이 원래 검은색이면 비활성화하여 성능 최적화
+                    if (originalEmissionColors[i] == Color.black)
+                    {
+                        mat.DisableKeyword("_EMISSION");
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// 일정 시간 후 무적 해제 (마스터만 실행)
+    /// </summary>
+    private IEnumerator DisableInvincibilityAfterDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+
+        // 마스터 클라이언트만 무적 해제 RPC 호출
+        if (PhotonNetwork.IsMasterClient)
+        {
+            photonView.RPC("RPC_SetInvincibility", RpcTarget.All, false);
+        }
+    }
+
     //무제한 무적
     [PunRPC]
     public void Set_Count_invincibility(int count)
     {
-        // 🚨 이 함수는 OneTimeDefense.InitializeShield에서 RPC로 호출되어야 합니다.
-        // 모든 클라이언트에서 동일하게 카운트를 설정합니다.
         if (IsInvincivilityCount <= 0)
         {
             IsInvincivilityCount = count;
         }
-        // Debug.Log($"[LivingEntity] Set_Count_invincibility called. Count: {IsInvincivilityCount}");
     }
-
 
     public bool HasInvincibilityCount()
     {
         return IsInvincivilityCount > 0;
     }
 
-    public LivingEntity GetAttacker()
+    public IDamageable GetAttacker()
     {
         return currentAttacker;
     }
 
+    /// <summary>
+    /// 킬 사운드 재생 (공격자에게만 호출됨)
+    /// </summary>
     [PunRPC]
-    public void RPC_OnHitEffect(Vector3 hitDirection)
+    private void RPC_PlayKillSound()
+    {
+        if (AudioManager.Inst != null)
+        {
+            AudioManager.Inst.PlayOneShot("SFX_Game_Kill");
+            Debug.Log("[LivingEntity] 킬 사운드 재생");
+        }
+    }
+
+    /// 피격 이펙트 (빨간색 반짝임 + 사운드)
+    /// </summary>
+    [PunRPC]
+    private void RPC_OnHitEffect(Vector3 hitDirection)
     {
         // 해당 클라이언트에서만 실행되는 UI 이벤트
         if (photonView.IsMine)
         {
             GameEvents.OnLocalPlayerHit?.Invoke(hitDirection);
         }
+
+        // 피격 반짝임
+        if (hitFlashCoroutine != null)
+        {
+            StopCoroutine(hitFlashCoroutine);
+            hitFlashCoroutine = null;
+        }
+        hitFlashCoroutine = StartCoroutine(HitFlashOnceCoroutine());
+
+        // 피격 사운드 (쿨타임 체크)
+        if (Time.time - lastHitSoundTime >= HIT_SOUND_COOLDOWN)
+        {
+            SoundtoHitPerson();
+            lastHitSoundTime = Time.time;
+        }
+    }
+
+    private void SoundtoHitPerson()
+    {
+        Debug.Log("[LivingEntity - RPC_OnHitEffect] 사운드 출력!");
+        AudioManager.Inst.PlayOneShot("SFX_Game_Hit");
+    }
+
+    [PunRPC]
+    public void RPC_StartHitFlash()
+    {
+        // 이미 실행 중인 코루틴이 있다면 즉시 중지
+        if (hitFlashCoroutine != null)
+        {
+            StopCoroutine(hitFlashCoroutine);
+            hitFlashCoroutine = null;
+        }
+
+        // 피격 중이 아닐 때만 반짝임 시작
+        hitFlashCoroutine = StartCoroutine(HitFlashOnceCoroutine());
+    }
+
+    /// <summary>
+    /// 피격 시 1회만 반짝거리는 코루틴 (짧고 즉시 종료)
+    /// </summary>
+    private IEnumerator HitFlashOnceCoroutine()
+    {
+        if (renderers == null || renderers.Length == 0 || IsDead) yield break;
+
+        float flashDuration = 0.1f; // 반짝임 지속 시간
+        Color flashColor = Color.red; // 빨간색으로 반짝임
+        Color flashEmissionColor = flashColor * EMISSION_INTENSITY; // ✅ Emission 색상 설정
+
+        // 색상을 빨간색으로 변경
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            if (renderers[i] != null && renderers[i].material != null)
+            {
+                Material mat = renderers[i].material;
+                if (mat.HasProperty("_Color"))
+                {
+                    mat.color = flashColor;
+                }
+                // ✅ Emission 색상 변경
+                if (mat.HasProperty("_EmissionColor"))
+                {
+                    mat.SetColor("_EmissionColor", flashEmissionColor);
+                }
+            }
+        }
+
+        yield return new WaitForSeconds(flashDuration);
+
+        // 원본 색상으로 복원
+        RestoreOriginalColors();
+
+        // 종료 시점에서 코루틴 null 처리
+        hitFlashCoroutine = null;
     }
 
     [PunRPC]
@@ -342,7 +661,6 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
             GameEvents.OnLocalPlayerHeal?.Invoke();
         }
     }
-
 
 
     #endregion

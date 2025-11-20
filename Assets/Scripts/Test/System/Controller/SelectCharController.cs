@@ -17,6 +17,10 @@ public class SelectCharController : MonoBehaviour
     
     [Header("캐릭터 선택 버튼들")]
     [SerializeField] private ClickableButton[] characterButtons;
+    
+    [Header("캐릭터별 애니메이션 컨트롤러")]
+    [Tooltip("각 캐릭터 선택 화면의 LobbyAnimationController를 순서대로 할당하세요")]
+    [SerializeField] private LobbyAnimationController[] characterAnimControllers;
 
     void Awake()
     {
@@ -59,12 +63,10 @@ public class SelectCharController : MonoBehaviour
             lobbyData = DataBase.Instance.lobbyData;
             cachedPlayerPrefabData = lobbyData.LobbyCharacterPrefabData.ToArray();
             dataBaseCached = true;
-            Debug.Log("✅ SelectCharController: DataBase 정보 캐싱 완료");
         }
     }
     catch (System.Exception e)
     {
-        Debug.LogError($"❌ SelectCharController: DataBase 캐싱 중 오류: {e.Message}");
         dataBaseCached = false;
     }
    }
@@ -86,6 +88,19 @@ public class SelectCharController : MonoBehaviour
         
         // 버튼 상태 업데이트
         UpdateButtonStates();
+        
+        // ✅ 캐릭터 목소리 사운드 재생
+        PlayCharacterVoice(index);
+        
+        // ✅ 선택된 캐릭터의 Select 애니메이션 재생
+        if (characterAnimControllers != null && index < characterAnimControllers.Length)
+        {
+            LobbyAnimationController animController = characterAnimControllers[index];
+            if (animController != null)
+            {
+                animController.PlaySelectAnimation();
+            }
+        }
     }
 
     public void OnUpdateButton()
@@ -138,5 +153,23 @@ public class SelectCharController : MonoBehaviour
                 }
             }
         }
+    }
+    
+    /// <summary>
+    /// 캐릭터 목소리 사운드 재생 (index에 따라 Char1 ~ Char4 재생)
+    /// </summary>
+    /// <param name="index">캐릭터 인덱스 (0부터 시작)</param>
+    private void PlayCharacterVoice(int index)
+    {
+        if (AudioManager.Inst == null) return;
+        
+        // 인덱스를 1부터 시작하는 캐릭터 번호로 변환
+        int charNumber = index + 1;
+        
+        // SFX_Game_Char1, SFX_Game_Char2, SFX_Game_Char3, SFX_Game_Char4
+        string soundName = $"SFX_Game_Char{charNumber}";
+        
+        // AudioManager를 통해 사운드 재생
+        AudioManager.Inst.PlayOneShot(soundName);
     }
 }

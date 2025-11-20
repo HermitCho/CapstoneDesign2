@@ -6,7 +6,7 @@ using UnityEngine;
 public class HiddenSmoke : MonoBehaviourPun
 {
     [SerializeField] GameObject SmokeEffect;
-    [SerializeField] AudioClip SmokeSound;
+    [SerializeField] AudioClip smokeSound;
     [SerializeField] private float smokeDuration = 5f;  // 연막 지속 시간
     AudioSource aS;
 
@@ -28,8 +28,7 @@ public class HiddenSmoke : MonoBehaviourPun
         SmokeEffect.SetActive(true);
         SmokeEffect.GetComponent<ParticleSystem>().Play();
 
-        if (aS != null && SmokeSound != null)
-            aS.PlayOneShot(SmokeSound);
+        AudioManager.Inst?.PlayClipAtPoint(smokeSound, transform.position, 1f, 1f, null, transform);
 
         yield return new WaitForSeconds(smokeDuration);
         Debug.Log("[HiddenSmoke] - StartSmokeEffect 끝");

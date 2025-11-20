@@ -18,12 +18,21 @@ public class SettingPanel : MonoBehaviour
     [SerializeField] private SliderManager xSensivitySlider;
     [SerializeField] private SliderManager ySensivitySlider;
     [Space(10)]
+    
+    [Header("줌 감도 설정 슬라이더")]
+    [SerializeField] private SliderManager xZoomSensitivitySlider;
+    [SerializeField] private SliderManager yZoomSensitivitySlider;
+    [Space(10)]
 
     [Header("볼륨 설정 슬라이더")]
     [SerializeField] private SliderManager masterVolumeSlider;
     [SerializeField] private SliderManager musicVolumeSlider;
     [SerializeField] private SliderManager sfxVolumeSlider;
     [SerializeField] private SliderManager uiVolumeSlider;
+    [Space(10)]
+    
+    [Header("해상도 설정")]
+    [SerializeField] private HorizontalSelector resolutionSelector;
     [Space(10)] 
 
     [Header("키 바인딩 설정")]
@@ -70,14 +79,18 @@ public class SettingPanel : MonoBehaviour
     // PlayerPrefs 키
     private const string PREF_X_SENSITIVITY = "XSensitivity";
     private const string PREF_Y_SENSITIVITY = "YSensitivity";
+    private const string PREF_X_ZOOM_SENSITIVITY = "XZoomSensitivity";
+    private const string PREF_Y_ZOOM_SENSITIVITY = "YZoomSensitivity";
     private const string PREF_MASTER_VOLUME = "MasterVolume";
     private const string PREF_MUSIC_VOLUME = "MusicVolume";
     private const string PREF_SFX_VOLUME = "SFXVolume";
     private const string PREF_UI_VOLUME = "UIVolume";
+    private const string PREF_RESOLUTION_INDEX = "ResolutionIndex";
     
     // 기본값
     private const float DEFAULT_SENSITIVITY = 1f;
     private const float DEFAULT_VOLUME = 0.8f;
+    private const int DEFAULT_RESOLUTION_INDEX = 0; // 0: FHD
     
     #endregion
     
@@ -105,12 +118,18 @@ public class SettingPanel : MonoBehaviour
         
         // 슬라이더 이벤트 등록
         RegisterSliderEvents();
+        
+        // 해상도 셀렉터 이벤트 등록
+        RegisterResolutionSelectorEvent();
     }
     
     void OnDisable()
     {
         // 슬라이더 이벤트 해제
         UnregisterSliderEvents();
+        
+        // 해상도 셀렉터 이벤트 해제
+        UnregisterResolutionSelectorEvent();
         
         // 키 입력 대기 중이라면 취소
         if (isWaitingForKeyInput)
@@ -171,6 +190,7 @@ public class SettingPanel : MonoBehaviour
     {
         LoadSensitivitySettings();
         LoadVolumeSettings();
+        LoadResolutionSettings();
         LoadKeyBindings();
     }
     
@@ -181,6 +201,8 @@ public class SettingPanel : MonoBehaviour
     {
         float xSens = PlayerPrefs.GetFloat(PREF_X_SENSITIVITY, DEFAULT_SENSITIVITY);
         float ySens = PlayerPrefs.GetFloat(PREF_Y_SENSITIVITY, DEFAULT_SENSITIVITY);
+        float xZoomSens = PlayerPrefs.GetFloat(PREF_X_ZOOM_SENSITIVITY, DEFAULT_SENSITIVITY);
+        float yZoomSens = PlayerPrefs.GetFloat(PREF_Y_ZOOM_SENSITIVITY, DEFAULT_SENSITIVITY);
         
         if (xSensivitySlider != null)
         {
@@ -192,8 +214,18 @@ public class SettingPanel : MonoBehaviour
             ySensivitySlider.mainSlider.value = ySens;
         }
         
+        if (xZoomSensitivitySlider != null)
+        {
+            xZoomSensitivitySlider.mainSlider.value = xZoomSens;
+        }
+        
+        if (yZoomSensitivitySlider != null)
+        {
+            yZoomSensitivitySlider.mainSlider.value = yZoomSens;
+        }
+        
         // DataBase에 적용
-        ApplySensitivityToDataBase(xSens, ySens);
+        ApplySensitivityToDataBase(xSens, ySens, xZoomSens, yZoomSens);
     }
     
     /// <summary>
@@ -228,6 +260,29 @@ public class SettingPanel : MonoBehaviour
         
         // AudioManager에 적용 (마스터 볼륨 비율 적용)
         ApplyVolumeToAudioManager();
+    }
+    
+    /// <summary>
+    /// 해상도 설정 로드
+    /// </summary>
+    private void LoadResolutionSettings()
+    {
+        int savedResolutionIndex = PlayerPrefs.GetInt(PREF_RESOLUTION_INDEX, DEFAULT_RESOLUTION_INDEX);
+        
+        if (resolutionSelector != null)
+        {
+            // 이벤트 리스너를 잠시 제거 (초기 로드 시 중복 호출 방지)
+            resolutionSelector.onValueChanged.RemoveListener(OnResolutionChanged);
+            
+            // HorizontalSelector의 인덱스 설정
+            resolutionSelector.index = savedResolutionIndex;
+            resolutionSelector.UpdateUI();
+            
+            // 이벤트 리스너 다시 등록
+            resolutionSelector.onValueChanged.AddListener(OnResolutionChanged);
+        }
+        
+        Debug.Log($"SettingPanel: 해상도 설정 로드 완료 - Index: {savedResolutionIndex}");
     }
     
     /// <summary>
@@ -293,6 +348,7 @@ public class SettingPanel : MonoBehaviour
     {
         SaveSensitivitySettings();
         SaveVolumeSettings();
+        SaveResolutionSettings();
         SaveKeyBindings();
         
         PlayerPrefs.Save();
@@ -338,6 +394,18 @@ public class SettingPanel : MonoBehaviour
         if (uiVolumeSlider != null)
         {
             PlayerPrefs.SetFloat(PREF_UI_VOLUME, uiVolumeSlider.mainSlider.value);
+        }
+    }
+    
+    /// <summary>
+    /// 해상도 설정 저장
+    /// </summary>
+    private void SaveResolutionSettings()
+    {
+        if (resolutionSelector != null)
+        {
+            PlayerPrefs.SetInt(PREF_RESOLUTION_INDEX, resolutionSelector.index);
+            Debug.Log($"SettingPanel: 해상도 설정 저장 - Index: {resolutionSelector.index}");
         }
     }
     
@@ -389,6 +457,16 @@ public class SettingPanel : MonoBehaviour
         if (ySensivitySlider != null)
         {
             ySensivitySlider.UpdateUI();
+        }
+        
+        if (xZoomSensitivitySlider != null)
+        {
+            xZoomSensitivitySlider.UpdateUI();
+        }
+        
+        if (yZoomSensitivitySlider != null)
+        {
+            yZoomSensitivitySlider.UpdateUI();
         }
     }
     
@@ -452,6 +530,16 @@ public class SettingPanel : MonoBehaviour
             ySensivitySlider.mainSlider.onValueChanged.AddListener(OnYSensitivityChanged);
         }
         
+        if (xZoomSensitivitySlider != null)
+        {
+            xZoomSensitivitySlider.mainSlider.onValueChanged.AddListener(OnXZoomSensitivityChanged);
+        }
+        
+        if (yZoomSensitivitySlider != null)
+        {
+            yZoomSensitivitySlider.mainSlider.onValueChanged.AddListener(OnYZoomSensitivityChanged);
+        }
+        
         if (masterVolumeSlider != null)
         {
             masterVolumeSlider.mainSlider.onValueChanged.AddListener(OnMasterVolumeChanged);
@@ -486,6 +574,16 @@ public class SettingPanel : MonoBehaviour
         if (ySensivitySlider != null)
         {
             ySensivitySlider.mainSlider.onValueChanged.RemoveListener(OnYSensitivityChanged);
+        }
+        
+        if (xZoomSensitivitySlider != null)
+        {
+            xZoomSensitivitySlider.mainSlider.onValueChanged.RemoveListener(OnXZoomSensitivityChanged);
+        }
+        
+        if (yZoomSensitivitySlider != null)
+        {
+            yZoomSensitivitySlider.mainSlider.onValueChanged.RemoveListener(OnYZoomSensitivityChanged);
         }
         
         if (masterVolumeSlider != null)
@@ -550,19 +648,55 @@ public class SettingPanel : MonoBehaviour
     /// <summary>
     /// 감도를 DataBase에 적용
     /// </summary>
-    private void ApplySensitivityToDataBase(float xSens, float ySens)
+    private void ApplySensitivityToDataBase(float xSens, float ySens, float xZoomSens, float yZoomSens)
     {
         if (DataBase.Instance == null) return;
         
         if (DataBase.Instance.playerMoveData != null)
         {
             DataBase.Instance.playerMoveData.RotationSpeed = xSens * 10f;
+            DataBase.Instance.playerMoveData.ZoomRotationSpeed = xZoomSens * 10f;
         }
         
         if (DataBase.Instance.cameraData != null)
         {
             DataBase.Instance.cameraData.MouseSensitivityY = ySens * 10f;
+            DataBase.Instance.cameraData.ZoomMouseSensitivityY = yZoomSens * 10f;
         }
+    }
+    
+    /// <summary>
+    /// X축 줌 감도 변경
+    /// </summary>
+    private void OnXZoomSensitivityChanged(float value)
+    {
+        // DataBase에 적용
+        if (DataBase.Instance != null && DataBase.Instance.playerMoveData != null)
+        {
+            DataBase.Instance.playerMoveData.ZoomRotationSpeed = value * 10f; // 0-1 범위를 0-10으로 변환
+        }
+        
+        // 즉시 저장
+        PlayerPrefs.SetFloat(PREF_X_ZOOM_SENSITIVITY, value);
+        
+        Debug.Log($"SettingPanel: X축 줌 감도 변경 - {value}");
+    }
+    
+    /// <summary>
+    /// Y축 줌 감도 변경
+    /// </summary>
+    private void OnYZoomSensitivityChanged(float value)
+    {
+        // DataBase에 적용
+        if (DataBase.Instance != null && DataBase.Instance.cameraData != null)
+        {
+            DataBase.Instance.cameraData.ZoomMouseSensitivityY = value * 10f; // 0-1 범위를 0-10으로 변환
+        }
+        
+        // 즉시 저장
+        PlayerPrefs.SetFloat(PREF_Y_ZOOM_SENSITIVITY, value);
+        
+        Debug.Log($"SettingPanel: Y축 줌 감도 변경 - {value}");
     }
     
     #endregion
@@ -645,6 +779,51 @@ public class SettingPanel : MonoBehaviour
         AudioManager.Inst.SoundVolume = finalSFXVolume;
         
         Debug.Log($"SettingPanel: 최종 볼륨 적용 - Music: {finalMusicVolume}, SFX: {finalSFXVolume}");
+    }
+    
+    #endregion
+    
+    #region 해상도 설정
+    
+    /// <summary>
+    /// 해상도 셀렉터 이벤트 등록
+    /// </summary>
+    private void RegisterResolutionSelectorEvent()
+    {
+        if (resolutionSelector != null)
+        {
+            resolutionSelector.onValueChanged.AddListener(OnResolutionChanged);
+            Debug.Log("SettingPanel: 해상도 셀렉터 이벤트 등록 완료");
+        }
+    }
+    
+    /// <summary>
+    /// 해상도 셀렉터 이벤트 해제
+    /// </summary>
+    private void UnregisterResolutionSelectorEvent()
+    {
+        if (resolutionSelector != null)
+        {
+            resolutionSelector.onValueChanged.RemoveListener(OnResolutionChanged);
+        }
+    }
+    
+    /// <summary>
+    /// 해상도 변경 이벤트 핸들러
+    /// </summary>
+    /// <param name="resolutionIndex">선택된 해상도 인덱스 (0: FHD, 1: QHD)</param>
+    private void OnResolutionChanged(int resolutionIndex)
+    {
+        Debug.Log($"SettingPanel: OnResolutionChanged 호출됨 - Index: {resolutionIndex}");
+        
+        // 해상도 즉시 적용
+        DisplaySettingController.ApplyResolution(resolutionIndex);
+        
+        // PlayerPrefs에 즉시 저장
+        PlayerPrefs.SetInt(PREF_RESOLUTION_INDEX, resolutionIndex);
+        PlayerPrefs.Save();
+        
+        Debug.Log($"SettingPanel: 해상도 변경 완료 - {DisplaySettingController.GetResolutionName(resolutionIndex)}");
     }
     
     #endregion
@@ -1150,6 +1329,16 @@ public class SettingPanel : MonoBehaviour
             ySensivitySlider.mainSlider.value = DEFAULT_SENSITIVITY;
         }
         
+        if (xZoomSensitivitySlider != null)
+        {
+            xZoomSensitivitySlider.mainSlider.value = DEFAULT_SENSITIVITY;
+        }
+        
+        if (yZoomSensitivitySlider != null)
+        {
+            yZoomSensitivitySlider.mainSlider.value = DEFAULT_SENSITIVITY;
+        }
+        
         // 볼륨 초기화
         if (masterVolumeSlider != null)
         {
@@ -1169,6 +1358,14 @@ public class SettingPanel : MonoBehaviour
         if (uiVolumeSlider != null)
         {
             uiVolumeSlider.mainSlider.value = DEFAULT_VOLUME;
+        }
+        
+        // 해상도 초기화 (FHD)
+        if (resolutionSelector != null)
+        {
+            resolutionSelector.index = DEFAULT_RESOLUTION_INDEX;
+            resolutionSelector.UpdateUI();
+            DisplaySettingController.ApplyResolution(DEFAULT_RESOLUTION_INDEX);
         }
         
         // 키 바인딩 초기화

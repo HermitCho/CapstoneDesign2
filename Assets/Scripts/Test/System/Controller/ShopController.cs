@@ -245,8 +245,6 @@ public class ShopController : MonoBehaviourPun
             {
                 AudioManager.Inst.PlayOneShot("SFX_UI_CloseShop");
             }
-
-            Debug.Log("ShopController: 상점 퇴장");
         }
     }
 
@@ -411,13 +409,11 @@ public class ShopController : MonoBehaviourPun
     {
         if (!isShopOpen)
         {
-            Debug.Log("ShopController: 상점이 열려있지 않음");
             return;
         }
 
         if (currentLookingShopStand == null)
         {
-            Debug.Log("ShopController: 보고 있는 상점 스탠드가 없음");
             return;
         }
 
@@ -425,11 +421,9 @@ public class ShopController : MonoBehaviourPun
         if (currentLookingShopStand.IsPurchaseInProgress() ||
             currentLookingShopStand.IsPlayingPurchaseAnimation())
         {
-            Debug.Log("ShopController: 이미 구매 진행 중이므로 무시");
             return;
         }
 
-        Debug.Log("ShopController: 구매 홀드 시작");
 
         // ShopStand에 구매 프로그레스 시작 알림
         currentLookingShopStand.StartPurchaseProgress(this, purchaseHoldTime);
@@ -448,7 +442,6 @@ public class ShopController : MonoBehaviourPun
     {
         if (!isShopOpen) return;
 
-        Debug.Log("ShopController: 구매 홀드 취소");
 
         // ShopStand에 구매 프로그레스 취소 알림
         if (currentLookingShopStand != null && isPurchaseHolding)
@@ -482,7 +475,6 @@ public class ShopController : MonoBehaviourPun
         // 아이템/스킬 사용 차단
         // ItemController나 SkillController에서 상점 상태 확인하도록 구현 가능
 
-        Debug.Log("ShopController: 게임 입력 차단됨");
     }
 
     /// <summary>
@@ -499,7 +491,6 @@ public class ShopController : MonoBehaviourPun
             // moveController.EnableMovement(); // 이동 제한을 했다면 복원
         }
 
-        Debug.Log("ShopController: 게임 입력 복원됨");
     }
 
     #endregion
@@ -516,7 +507,6 @@ public class ShopController : MonoBehaviourPun
     [PunRPC]
     void ProcessPurchase(int price, int itemIndex, string itemObjectName, int positionIndex)
     {
-        Debug.Log($"ShopController: RPC 구매 처리 시작 - Price: {price}, Index: {itemIndex}, ItemObject: {itemObjectName}");
 
         bool purchaseSuccess = ProcessPurchaseLocal(price, itemIndex, itemObjectName);
 
@@ -527,12 +517,8 @@ public class ShopController : MonoBehaviourPun
             if (shop != null)
             {
                 shop.GetComponent<PhotonView>().RPC("OnItemPurchased", RpcTarget.MasterClient, positionIndex);
-                Debug.Log("ShopController: 구매 성공 - Shop에게 아이템 제거 요청");
+        
             }
-        }
-        else
-        {
-            Debug.Log("ShopController: 구매 실패 - 조건 불만족");
         }
     }
 
@@ -542,15 +528,34 @@ public class ShopController : MonoBehaviourPun
     /// </summary>
     public bool ProcessPurchaseLocal(int price, int itemIndex, string itemObjectName)
     {
-        // ... (코인, 슬롯, 보유 여부 확인 로직은 그대로 유지) ...
-        // ⭐ 이 로직은 로컬에서만 실행됩니다. (ProcessPurchase RPC는 RpcTarget.All)
+      
+        // ✅ 필수 컴포넌트 확인
+        if (playerCoinController == null || playerItemController == null)
+        {
+          
+            return false;
+        }
+        
+        // ✅ 코인 확인 (이미 ShopStand에서 확인했지만 한번 더 안전하게)
+        int currentCoin = playerCoinController.GetCurrentCoin();
+        if (currentCoin < price)
+        {
 
-        // ... (구매 조건 재확인 및 코인 차감 로직은 그대로 유지) ...
+            return false;
+        }
+        
+        // ✅ 슬롯 확인
+        if (playerItemController.GetItemSlotIndex() >= playerItemController.GetMaxItemSlot())
+        {
 
-        // 구매 처리
+            return false;
+        }
+        
+
+        
+        // ✅ 코인 차감
         playerCoinController.SubtractCoin(price);
-        Debug.Log($"ShopController: 코인 차감 완료 - {price}코인");
-
+      
         // ⚡️ 아이템 생성 및 부착 로직 변경: PhotonNetwork.Instantiate 사용
         GameObject itemPrefabToInstantiate = FindItemPrefabInResources(itemObjectName);
 
@@ -590,8 +595,6 @@ public class ShopController : MonoBehaviourPun
                     playerItemController.photonView.RPC("RPC_AttachNetworkItem", RpcTarget.All,
                         itemPv.ViewID, photonView.ViewID);
 
-                    Debug.Log($"ShopController: 아이템 생성 및 RPC 요청 완료 - {itemObjectName} (ViewID: {itemPv.ViewID})");
-                    
                     // 로컬 구매 완료 이벤트 발행
                     OnLocalItemPurchased?.Invoke();
                     

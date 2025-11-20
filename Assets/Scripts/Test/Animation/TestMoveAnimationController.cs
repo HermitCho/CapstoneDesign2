@@ -229,35 +229,63 @@ public class TestMoveAnimationController : MonoBehaviourPun, IPunObservable
         photonView.RPC("RpcPlayReviveAnimation", RpcTarget.All);
         moveController?.SetStunned(false);
     }
-    
+
     /// <summary>
-    /// 게임 종료 시 모든 애니메이션 정지
+    /// 게임 종료 시 모든 애니메이션 정지 (일시적)
     /// </summary>
     public void StopAllAnimations()
     {
         if (animator == null) return;
-        
+
         // 모든 애니메이션 파라미터 초기화
         animator.SetFloat("MoveX", 0f);
         animator.SetFloat("MoveY", 0f);
         animator.SetBool("JumpUp", false);
         animator.SetBool("JumpDown", false);
         animator.SetBool("Reload", false);
-        
+
         // Idle 상태로 전환
         animator.Play("Idle", 0, 0f);
         animator.Play("Idle", upperBodyLayerIndex, 0f);
-        
+
         // 진행 중인 코루틴 정지
         if (speedSkillCoroutine != null)
         {
             StopCoroutine(speedSkillCoroutine);
             speedSkillCoroutine = null;
         }
-        
+
         isReloading = false;
         isJumping = false;
         isShooting = false;
+
+        // ✅ Animator는 활성화 상태 유지 (다른 씬에서 재사용 가능하도록)
+    }
+
+    /// <summary>
+    /// 애니메이션 재개 (씬 전환 후 사용)
+    /// </summary>
+    public void ResumeAllAnimations()
+    {
+        if (animator == null) return;
+
+        // Animator가 비활성화되어 있다면 다시 활성화
+        if (!animator.enabled)
+        {
+            animator.enabled = true;
+        }
+
+        // 상태 초기화
+        isReloading = false;
+        isJumping = false;
+        isShooting = false;
+
+        // Idle 상태로 복귀
+        animator.Play("Idle", 0, 0f);
+        if (upperBodyLayerIndex > 0)
+        {
+            animator.Play("Idle", upperBodyLayerIndex, 0f);
+        }
     }
 
     // --- 입력 처리 ---
@@ -269,7 +297,7 @@ public class TestMoveAnimationController : MonoBehaviourPun, IPunObservable
     private void OnReloadInput()
     {
         if (GameManager.Instance != null && GameManager.Instance.IsGameOver()) return;
-        if (isReloading || gun == null) return;
+        if (isReloading || gun == null || livingEntity.IsDead) return;
         // 총알이 꽉 찼으면 재장전 불가
         if (gun.CurrentMagAmmo >= gun.GetGunData().maxAmmo) return;
         if (reloadCooldown > 0f) return; // 쿨타임 중이면 무시
@@ -309,7 +337,11 @@ public class TestMoveAnimationController : MonoBehaviourPun, IPunObservable
 
         if (skill != null && skill.CanUse)
         {
-            photonView.RPC("RpcPlaySkillAnimation", RpcTarget.All, skill.SkillAnimationTriggerName);
+            // 투척 프리뷰를 사용하는 스킬은 E 입력에서 애니메이션을 재생하지 않음
+            if (!skill.UsesProjectilePreview && !skill.UsePlacementPreview)
+            {
+                photonView.RPC("RpcPlaySkillAnimation", RpcTarget.All, skill.SkillAnimationTriggerName);
+            }
 
             if (speedSkillCoroutine != null) StopCoroutine(speedSkillCoroutine);
             speedSkillCoroutine = StartCoroutine(SpeedSkillRoutine());
@@ -322,9 +354,13 @@ public class TestMoveAnimationController : MonoBehaviourPun, IPunObservable
 
         itemSkill = itemController.GetFirstActiveItem();
         string triggerName = itemSkill.SkillAnimationTriggerName;
-        if (itemSkill != null && itemSkill.CanUse)
+        if (itemSkill != null || itemSkill.CanUse)
         {
-            photonView.RPC("RpcPlaySkillAnimation", RpcTarget.All, triggerName);
+            // 투척 프리뷰를 사용하는 아이템은 E 입력에서 애니메이션을 재생하지 않음
+            if (!itemSkill.UsesProjectilePreview && !itemSkill.UsePlacementPreview)
+            {
+                photonView.RPC("RpcPlaySkillAnimation", RpcTarget.All, triggerName);
+            }
         }
     }
 
@@ -373,7 +409,7 @@ public class TestMoveAnimationController : MonoBehaviourPun, IPunObservable
     [PunRPC]
     private void RpcPlaySkillAnimation(string triggerName)
     {
-        if(string.IsNullOrEmpty(triggerName) || triggerName == "None") return;
+        if (string.IsNullOrEmpty(triggerName) || triggerName == "None") return;
 
         animator.SetTrigger(triggerName);
         animator.SetLayerWeight(upperBodyLayerIndex, 0f);
@@ -394,7 +430,7 @@ public class TestMoveAnimationController : MonoBehaviourPun, IPunObservable
     [PunRPC]
     private void RpcPlayVictoryPose()
     {
-        if(GameManager.Instance.IsGameOver())
+        if (GameManager.Instance.IsGameOver())
         {
             StartCoroutine(PlayVictoryPoseAfterDelay());
         }
@@ -405,7 +441,7 @@ public class TestMoveAnimationController : MonoBehaviourPun, IPunObservable
 
     public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
     {
-        if(stream.IsWriting)
+        if (stream.IsWriting)
         {
             stream.SendNext(moveInput);
             stream.SendNext(animator.GetBool("JumpUp"));

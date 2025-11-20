@@ -254,10 +254,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3582d7d956abab3469fe0abd44ccf53b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  damage: 30
+  damage: 10
   speed: 15
   lifetime: 1.2
-  explosionRadius: 5
+  explosionRadius: 4.93
   stunTime: 2
   explosionEffect: {fileID: 914889955758721309}
   explosionSound: {fileID: 8300000, guid: 284a632bdc0e5bc4db707d6163950144, type: 3}
@@ -268,7 +268,7 @@ CapsuleCollider:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2777540166099777550}
-  m_Material: {fileID: 13400000, guid: 8e172c84c2962ef4db2a0cd3ff9af6e4, type: 2}
+  m_Material: {fileID: 13400000, guid: 47ee73b9685bebc4ab3c88d7fecd3e86, type: 2}
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -310,7 +310,7 @@ Rigidbody:
   m_IsKinematic: 0
   m_Interpolate: 0
   m_Constraints: 0
-  m_CollisionDetection: 0
+  m_CollisionDetection: 1
 --- !u!114 &-4984877127518571434
 MonoBehaviour:
   m_ObjectHideFlags: 0

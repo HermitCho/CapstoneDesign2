@@ -4,57 +4,57 @@ using UnityEngine;
 
 public class TutorialComplete : MonoBehaviour
 {
-    [Header("문 이동 설정")]
+    [Header("문 오브젝트 설정 (Pivot이 힌지에 맞춰져 있어야 함)")]
     [SerializeField] private Transform leftDoor;
     [SerializeField] private Transform rightDoor;
-    [SerializeField] private float openDistance = 2f; // 위로 얼마나 올라갈지
-    [SerializeField] private float openDuration = 0.8f; // 열리는 시간
+
+    [Header("회전 열림 설정")]
+    [SerializeField] private float rotateAngle = 90f;
+    [SerializeField] private float openDuration = 15f; // 🔹 천천히 열리도록 시간 늘림 (기존 0.8 → 1.5)
+    [SerializeField] private bool invertLeftRotation = false;
+    [SerializeField] private bool invertRightRotation = false;
+
+    
 
     private bool isOpened = false;
-    private Vector3 leftInitialPos;
-    private Vector3 rightInitialPos;
 
-    void Awake()
-    {
-        if (leftDoor != null)
-            leftInitialPos = leftDoor.localPosition;
-        if (rightDoor != null)
-            rightInitialPos = rightDoor.localPosition;
-    }
-
+    [ContextMenu("Open Door (Test)")]
     public void OpenDoor()
     {
         if (isOpened) return;
         isOpened = true;
 
-        StopAllCoroutines();
+        // 🔹 사운드 재생
+        AudioManager.Inst.PlayOneShot("SFX_Game_Tutorial_Door");
 
-        // 왼쪽 문은 왼쪽(-x)으로, 오른쪽 문은 오른쪽(+x)으로 열기
         if (leftDoor != null)
         {
-            Vector3 leftTarget = leftInitialPos + Vector3.left * openDistance;
-            StartCoroutine(MoveDoorCoroutine(leftDoor, leftInitialPos, leftTarget, openDuration));
+            float angle = (invertLeftRotation ? -1 : 1) * rotateAngle;
+            StartCoroutine(RotateDoor(leftDoor, angle, openDuration));
         }
 
         if (rightDoor != null)
         {
-            Vector3 rightTarget = rightInitialPos + Vector3.right * openDistance;
-            StartCoroutine(MoveDoorCoroutine(rightDoor, rightInitialPos, rightTarget, openDuration));
+            float angle = (invertRightRotation ? -1 : 1) * rotateAngle;
+            StartCoroutine(RotateDoor(rightDoor, angle, openDuration));
         }
     }
 
-    private System.Collections.IEnumerator MoveDoorCoroutine(Transform tr, Vector3 startPos, Vector3 target, float duration)
+    private IEnumerator RotateDoor(Transform door, float angle, float duration)
     {
+        Quaternion startRot = door.localRotation;
+        Quaternion endRot = startRot * Quaternion.Euler(0f, angle, 0f);
+
         float t = 0f;
         while (t < duration)
         {
             t += Time.deltaTime;
-            float lerp = t / duration;
-            // Ease.OutQuad
-            float eased = 1f - (1f - lerp) * (1f - lerp);
-            tr.localPosition = Vector3.LerpUnclamped(startPos, target, eased);
+            float lerp = Mathf.Clamp01(t / duration);
+            float eased = 1f - (1f - lerp) * (1f - lerp); // easeOutQuad
+            door.localRotation = Quaternion.Slerp(startRot, endRot, eased);
             yield return null;
         }
-        tr.localPosition = target;
+
+        door.localRotation = endRot;
     }
 }

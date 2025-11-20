@@ -22,10 +22,12 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     [SerializeField] private ProgressBar healthProgressBGBar;
     
     [Header("점수 UI")]
+    [SerializeField] private Image scoreIcon;
     [SerializeField] private TextMeshProUGUI scoreText;
     [SerializeField] private TextMeshProUGUI scoreMultiplierText;
     
     [Header("코인 UI")]
+    [SerializeField] private Image coinIcon;
     [SerializeField] private TextMeshProUGUI coinText;
     
     [Header("시간 UI")]
@@ -58,6 +60,8 @@ public class HUDPanel : MonoBehaviourPunCallbacks
 
     [Header("조준점 UI")]
     [SerializeField] private Animator zoomAnimator;
+    [SerializeField] private Image zoomImage;
+    [SerializeField] private Image HitImage;
 
     [Header("장탄수 UI")]
     [SerializeField] private TextMeshProUGUI currentAmmoCountText;
@@ -103,6 +107,13 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     private float healthFadeDelay = 3f; // 3초
     private Color originalHealthBarColor = Color.white;
     
+    // 점수 아이콘 애니메이션 관련
+    private Tween scoreIconShakeTween;
+    
+    // 코인 아이콘 애니메이션 관련
+    private Tween coinIconRotateTween;
+    private Tween coinIconScaleTween;
+    
     // 시간 관련 (GameManager에서 받아옴)
     private float gameTime = 0f;
     private float lastTimeUpdate = 0f;
@@ -144,19 +155,31 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     private Tween reloadIconFadeTween;
     private Tween reloadIconRotateTween;
     private Tween reloadIconBlinkTween;
+    private Tween zoomImageFadeTween; // ✅ zoomImage 페이드 애니메이션
     private Color originalAmmoBarColor = Color.white;
     private Color originalAmmoTextColor = Color.white;
     private Color lowAmmoColor = Color.red;
     private float lowAmmoThreshold = 0.2f; // 20%
     private float ammoUIFadeDelay = 3f; // 3초
+    private float originalZoomImageAlpha = 1f; // ✅ zoomImage 원래 투명도
     
     // 성능 최적화 관련
     private List<PlayerScoreData> previousPlayerDataList = new List<PlayerScoreData>();
     private bool hasScoreChanged = false;
     private float lastAmmoUpdate = 0f;
     
+    // 게임 종료 카운트다운 사운드 관련
+    private bool isCountdownSoundPlaying = false;
+    private int lastCountdownSecond = -1;
+    
+    // HitImage 애니메이션 관련
+    private Tween hitImageFadeTween;
+    private Tween hitImageScaleTween;
+    private Vector3 originalHitImageScale = Vector3.one;
+    private Color originalHitImageColor = Color.white;
+    
     /// <summary>
-    /// 플레이어 점수 Properties 초기화 (두 번째 게임 문제 해결)
+    /// 플레이어 점수 Properties 초기화
     /// </summary>
     private void ClearPlayerScoreProperties()
     {
@@ -174,13 +197,13 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     
     void Start()
     {
-        // 게임 재시작 시 점수 Properties 초기화 (핵심 수정)
+        // 게임 재시작 시 점수 Properties 초기화 
         ClearPlayerScoreProperties();
         
         // 로컬 플레이어 찾기 시작
         StartCoroutine(FindLocalPlayerRoutine());
         
-        // GameManager 이벤트 구독 (시간 정보만)
+        // GameManager 이벤트 구독 
         if (GameManager.Instance != null)
         {
             GameManager.OnGameTimeUpdated += UpdateGameTime;
@@ -190,6 +213,14 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         // LivingEntity 사망 이벤트 구독
         LivingEntity.OnPlayerDied += HandlePlayerDeath;
         Debug.Log("HUD: LivingEntity.OnPlayerDied 이벤트 구독 완료");
+        
+        //AIHealth 사망 이벤트 구독 (봇 사망 감지)
+        AIHealth.OnAIDied += HandleAIDeath;
+        Debug.Log("HUD: AIHealth.OnAIDied 이벤트 구독 완료");
+        
+        // TestGun 히트 이벤트 구독 (HitImage 애니메이션용)
+        TestGun.OnHitTarget += PlayHitImageAnimation;
+        Debug.Log("HUD: TestGun.OnHitTarget 이벤트 구독 완료");
         
         // 점수판 초기화
         InitializeScoreBoard();
@@ -209,12 +240,26 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         LivingEntity.OnPlayerDied -= HandlePlayerDeath;
         Debug.Log("HUD: LivingEntity.OnPlayerDied 이벤트 구독 해제 완료");
         
+        // AIHealth 사망 이벤트 구독 해제
+        AIHealth.OnAIDied -= HandleAIDeath;
+        Debug.Log("HUD: AIHealth.OnAIDied 이벤트 구독 해제 완료");
+        
+        // TestGun 히트 이벤트 구독 해제
+        TestGun.OnHitTarget -= PlayHitImageAnimation;
+        Debug.Log("HUD: TestGun.OnHitTarget 이벤트 구독 해제 완료");
+        
         // 체력 애니메이션 정리
         CleanupHealthAnimations();
         CleanupFadeAnimations();
         
         // 장탄수 애니메이션 정리
         CleanupAmmoAnimations();
+        
+        // 아이콘 애니메이션 정리
+        CleanupIconAnimations();
+        
+        // HitImage 애니메이션 정리
+        CleanupHitImageAnimations();
     }
     
     /// <summary>
@@ -289,7 +334,8 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         // 장탄수 UI 페이드 체크
         CheckAmmoUIFade();
         
-        
+        // 게임 종료 10초 전 카운트다운 사운드 체크
+        CheckGameEndingCountdownSound();
     }
     
     /// <summary>
@@ -380,7 +426,14 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         if (localCoinController != null)
         {
             currentCoin = localCoinController.GetCurrentCoin();
+            currentScore = localCoinController.GetCurrentScore(); // ✅ 점수 초기화
             UpdateCoinDisplay();
+        }
+        else
+        {
+            //CoinController가 없으면 0으로 초기화
+            currentCoin = 0;
+            currentScore = 0f;
         }
         
         if (localCharacterSkill != null)
@@ -388,7 +441,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks
             UpdateSkillDisplay();
         }
         
-        // 초기 점수 표시
+        // 초기 점수 표시 (강제 업데이트)
         UpdateScoreDisplay();
 
         // 초기 아이템 UI 표시
@@ -399,7 +452,29 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         {
             InitializeAmmoUI();
         }
+        
+        // HitImage 초기화
+        InitializeHitImage();
        
+    }
+    
+    /// <summary>
+    /// HitImage 초기화
+    /// </summary>
+    private void InitializeHitImage()
+    {
+        if (HitImage != null)
+        {
+            // 원래 크기와 색상 저장
+            originalHitImageScale = HitImage.transform.localScale;
+            originalHitImageColor = HitImage.color;
+            
+            // 초기 상태: 투명하고 원래 크기
+            Color transparentColor = originalHitImageColor;
+            transparentColor.a = 0f;
+            HitImage.color = transparentColor;
+            HitImage.transform.localScale = originalHitImageScale;
+        }
     }
     
     /// <summary>
@@ -506,7 +581,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks
             healthProgressBGBar.UpdateUI();
         }
         
-        // 빨간색 깜박임 시작 (강한 깜박임)
+        // 빨간색 깜박임 시작 
         StartHealthBlink(damageColor, 0.3f);
         
         // 체력 바 부드럽게 감소
@@ -822,6 +897,9 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         {
             currentCoin = newCoin;
             UpdateCoinDisplay();
+            
+            // 코인 아이콘 회전 애니메이션 실행
+            PlayCoinIconRotateAnimation();
         }
     }
     
@@ -861,6 +939,9 @@ public class HUDPanel : MonoBehaviourPunCallbacks
             float previousScore = currentScore;
             currentScore = newScore;
             UpdateScoreDisplay();
+            
+            // 점수 아이콘 진동 애니메이션 실행
+            PlayScoreIconShakeAnimation();
             
             // 점수가 변경되었을 때 네트워크 동기화
             if (PhotonNetwork.IsConnected && PhotonNetwork.LocalPlayer != null)
@@ -1164,31 +1245,107 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     {
         if (victim == null) return;
 
-        LivingEntity attacker = victim.GetAttacker();
-        if (attacker != null)
+        // 공격자 찾기 (LivingEntity 또는 AIHealth)
+        IDamageable attackerDamageable = victim.GetAttacker();
+        if (attackerDamageable == null) return;
+        
+        // 공격자가 봇인지 플레이어인지 확인
+        AIHealth attackerAI = attackerDamageable as AIHealth;
+        LivingEntity attackerPlayer = attackerDamageable as LivingEntity;
+        
+        // 피해자 닉네임 (항상 플레이어)
+        Photon.Realtime.Player victimPlayer = victim.photonView.Owner;
+        string victimNickname = GetPlayerNickname(victimPlayer);
+        
+        // 공격자 닉네임 결정
+        string attackerNickname;
+        if (attackerAI != null)
         {
-            // 모든 클라이언트에서 킬로그 생성
-        GameObject killLog = Instantiate(killLogPrefab, killLogParent.transform);
-            Debug.Log($"HUD: 킬로그 생성 - {killLog.name}");
-            
-     
-        QuestItem questItem = killLog.GetComponent<QuestItem>();
-
-            Photon.Realtime.Player attackerPlayer = attacker.photonView.Owner;
-            Photon.Realtime.Player victimPlayer = victim.photonView.Owner;
-
-            string attackerNickname = GetPlayerNickname(attackerPlayer);
-            string victimNickname = GetPlayerNickname(victimPlayer);
-            
-            // 킬로그 텍스트 설정
-            questItem.questText = $"{attackerNickname}       {victimNickname}";
-            questItem.UpdateUI();
-
-            // Animate quest
-            questItem.AnimateQuest();
-
-
+            // 공격자가 봇인 경우
+            attackerNickname = "봇";
         }
+        else if (attackerPlayer != null)
+        {
+            // 공격자가 플레이어인 경우
+            Photon.Realtime.Player attackerPhotonPlayer = attackerPlayer.photonView.Owner;
+            attackerNickname = GetPlayerNickname(attackerPhotonPlayer);
+        }
+        else
+        {
+            // 공격자를 찾을 수 없는 경우
+            attackerNickname = "Unknown";
+        }
+        
+        // 모든 클라이언트에서 킬로그 생성
+        CreateKillLog(attackerNickname, victimNickname);
+    }
+    
+    /// <summary>
+    /// AI 사망 이벤트 핸들러 (봇이 죽었을 때)
+    /// </summary>
+    private void HandleAIDeath(AIHealth victimAI, int attackerID)
+    {
+        if (victimAI == null) return;
+        
+        // 피해자 닉네임 (봇)
+        string victimNickname = "봇";
+        
+        // 공격자 찾기 (ViewID로 찾기)
+        PhotonView attackerPV = PhotonView.Find(attackerID);
+        string attackerNickname = "Unknown";
+        
+        if (attackerPV != null)
+        {
+            // 공격자가 봇인지 플레이어인지 확인
+            AIHealth attackerAI = attackerPV.GetComponent<AIHealth>();
+            LivingEntity attackerPlayer = attackerPV.GetComponent<LivingEntity>();
+            
+            if (attackerAI != null)
+            {
+                // 공격자가 봇인 경우
+                attackerNickname = "봇";
+            }
+            else if (attackerPlayer != null)
+            {
+                // 공격자가 플레이어인 경우
+                Photon.Realtime.Player attackerPhotonPlayer = attackerPlayer.photonView.Owner;
+                if (attackerPhotonPlayer != null)
+                {
+                    attackerNickname = GetPlayerNickname(attackerPhotonPlayer);
+                }
+            }
+        }
+        
+        // 모든 클라이언트에서 킬로그 생성
+        CreateKillLog(attackerNickname, victimNickname);
+    }
+    
+    /// <summary>
+    /// 킬로그 생성 헬퍼 메서드 (모든 클라이언트에서 호출)
+    /// </summary>
+    private void CreateKillLog(string attackerNickname, string victimNickname)
+    {
+        if (killLogPrefab == null || killLogParent == null)
+        {
+            Debug.LogWarning("HUD: 킬로그 프리팹 또는 부모가 설정되지 않음");
+            return;
+        }
+        
+        GameObject killLog = Instantiate(killLogPrefab, killLogParent.transform);
+        
+        QuestItem questItem = killLog.GetComponent<QuestItem>();
+        if (questItem == null)
+        {
+            Debug.LogWarning("HUD: QuestItem 컴포넌트를 찾을 수 없음");
+            return;
+        }
+        
+        // 킬로그 텍스트 설정 (KILL!을 빨간색으로 표시)
+        questItem.questText = $"{attackerNickname}   <color=red>KILL!</color>   {victimNickname}";
+        questItem.UpdateUI();
+        
+        // Animate quest
+        questItem.AnimateQuest();
     }
     
     private IEnumerator DestroyKillLogAfterDelay(GameObject killLog, float delay)
@@ -1558,78 +1715,125 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     {
         isAnimating = true;
         
-        // 현재 위치와 순서 정보 저장
-        Dictionary<GameObject, Vector3> originalPositions = new Dictionary<GameObject, Vector3>();
-        Dictionary<GameObject, int> originalIndices = new Dictionary<GameObject, int>();
+        // 이전 순위와 현재 순위를 비교하여 어떤 플레이어가 어디로 이동해야 하는지 파악
+        Dictionary<int, int> playerIdToOldRank = new Dictionary<int, int>();
+        Dictionary<int, int> playerIdToNewRank = new Dictionary<int, int>();
         
+        // 이전 순위 기록
+        for (int i = 0; i < previousPlayerDataList.Count; i++)
+        {
+            playerIdToOldRank[previousPlayerDataList[i].playerId] = i;
+        }
+        
+        // 현재 순위 기록
+        for (int i = 0; i < playerScoreDataList.Count; i++)
+        {
+            playerIdToNewRank[playerScoreDataList[i].playerId] = i;
+        }
+        
+        // 각 UI 요소의 현재 위치 저장
+        Dictionary<int, Vector3> oldPositions = new Dictionary<int, Vector3>();
         for (int i = 0; i < scoreBoardObjects.Count; i++)
         {
-            var scoreBoard = scoreBoardObjects[i];
-            if (scoreBoard != null)
+            if (scoreBoardObjects[i] != null && scoreBoardObjects[i].activeSelf)
             {
-                originalPositions[scoreBoard] = scoreBoard.transform.localPosition;
-                originalIndices[scoreBoard] = scoreBoard.transform.GetSiblingIndex();
+                oldPositions[i] = scoreBoardObjects[i].transform.localPosition;
             }
         }
         
-        // 먼저 새로운 순서로 정렬
+        // 새로운 순위에 맞게 UI 요소 재배치 (즉시)
         for (int i = 0; i < playerScoreDataList.Count && i < scoreBoardObjects.Count; i++)
         {
+            PlayerScoreData playerData = playerScoreDataList[i];
+            
+            // 해당 순위의 점수판 활성화
+            scoreBoardObjects[i].SetActive(true);
+            
+            // 순위와 함께 표시
+            string displayText = $"{playerData.nickname}   {playerData.score:F0}";
+            
+            // 로컬 플레이어인 경우 하이라이트
+            if (playerData.isLocalPlayer)
+            {
+                displayText = $"<color=yellow>{displayText}</color>";
+            }
+            
+            scoreBoardTexts[i].text = displayText;
+            
+            // 새로운 Sibling Index 설정
             scoreBoardObjects[i].transform.SetSiblingIndex(i);
         }
         
-        // Layout 업데이트를 위해 잠시 대기
-        yield return new WaitForEndOfFrame();
+        // 사용하지 않는 점수판 비활성화
+        for (int i = playerScoreDataList.Count; i < scoreBoardObjects.Count; i++)
+        {
+            if (scoreBoardObjects[i] != null)
+            {
+                scoreBoardObjects[i].SetActive(false);
+            }
+        }
         
-        // Layout Group 강제 업데이트
+        // Layout 강제 업데이트
+        yield return new WaitForEndOfFrame();
+        Canvas.ForceUpdateCanvases();
         LayoutRebuilder.ForceRebuildLayoutImmediate(scoreBoardParent.GetComponent<RectTransform>());
         
         // 새로운 목표 위치 저장
-        Dictionary<GameObject, Vector3> targetPositions = new Dictionary<GameObject, Vector3>();
-        foreach (var scoreBoard in scoreBoardObjects)
+        Dictionary<int, Vector3> newPositions = new Dictionary<int, Vector3>();
+        for (int i = 0; i < scoreBoardObjects.Count; i++)
         {
-            if (scoreBoard != null)
+            if (scoreBoardObjects[i] != null && scoreBoardObjects[i].activeSelf)
             {
-                targetPositions[scoreBoard] = scoreBoard.transform.localPosition;
+                newPositions[i] = scoreBoardObjects[i].transform.localPosition;
             }
         }
         
-        // 원래 순서와 위치로 되돌리기
-        foreach (var scoreBoard in scoreBoardObjects)
+        // 각 UI 요소를 이전 위치로 되돌림 (애니메이션 시작 위치)
+        for (int i = 0; i < playerScoreDataList.Count && i < scoreBoardObjects.Count; i++)
         {
-            if (scoreBoard != null && originalIndices.ContainsKey(scoreBoard))
+            PlayerScoreData currentPlayer = playerScoreDataList[i];
+            
+            // 이 플레이어의 이전 순위 찾기
+            if (playerIdToOldRank.TryGetValue(currentPlayer.playerId, out int oldRank))
             {
-                scoreBoard.transform.SetSiblingIndex(originalIndices[scoreBoard]);
-                scoreBoard.transform.localPosition = originalPositions[scoreBoard];
+                // 이전 순위의 위치로 되돌림
+                if (oldPositions.TryGetValue(oldRank, out Vector3 oldPos))
+                {
+                    scoreBoardObjects[i].transform.localPosition = oldPos;
+                }
             }
         }
         
-        // Layout 업데이트를 위해 다시 대기
+        // 잠시 대기 (위치 변경 반영)
         yield return new WaitForEndOfFrame();
         
-        // DOTween을 사용한 부드러운 이동 애니메이션
+        // 부드러운 이동 애니메이션 시작
         List<Tween> tweens = new List<Tween>();
         
-        foreach (var scoreBoard in scoreBoardObjects)
+        for (int i = 0; i < playerScoreDataList.Count && i < scoreBoardObjects.Count; i++)
         {
-            if (scoreBoard != null && targetPositions.ContainsKey(scoreBoard))
+            if (scoreBoardObjects[i] != null && scoreBoardObjects[i].activeSelf && newPositions.ContainsKey(i))
             {
-                // 먼저 올바른 순서로 설정
-                int targetIndex = scoreBoardObjects.IndexOf(scoreBoard);
-                scoreBoard.transform.SetSiblingIndex(targetIndex);
+                // 현재 위치에서 목표 위치로 이동
+                var tween = scoreBoardObjects[i].transform
+                    .DOLocalMove(newPositions[i], 0.6f)
+                    .SetEase(Ease.OutBack);
                 
-                // 그 다음 위치 애니메이션 실행
-                var tween = scoreBoard.transform
-                    .DOLocalMove(targetPositions[scoreBoard], 0.5f)
-                    .SetEase(Ease.OutCubic);
                 tweens.Add(tween);
+                
+                // 약간의 스케일 애니메이션 추가 (펄스 효과)
+                var scaleTween = DOTween.Sequence()
+                    .Append(scoreBoardObjects[i].transform.DOScale(1.1f, 0.15f).SetEase(Ease.OutQuad))
+                    .Append(scoreBoardObjects[i].transform.DOScale(1f, 0.15f).SetEase(Ease.InQuad));
+                
+                tweens.Add(scaleTween);
             }
         }
         
         // 모든 애니메이션이 완료될 때까지 대기
-        yield return new WaitForSeconds(0.5f);
+        yield return new WaitForSeconds(0.6f);
         
-        // 애니메이션 완료 후 정리
+        // 애니메이션 정리
         foreach (var tween in tweens)
         {
             if (tween != null && tween.IsActive())
@@ -1674,8 +1878,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         var props = new ExitGames.Client.Photon.Hashtable();
         props[$"score_{playerId}"] = score;
         PhotonNetwork.LocalPlayer.SetCustomProperties(props);
-        
-        Debug.Log($"HUDPanel: 점수 네트워크 동기화 - Player {playerId}: {score}점");
+
         
         // RPC 제거 - Custom Properties로만 동기화
     }
@@ -1723,6 +1926,47 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         }
     }
 
+    #endregion
+    
+    #region 게임 종료 카운트다운 사운드
+    
+    /// <summary>
+    /// 게임 종료 10초 전 카운트다운 사운드 체크
+    /// </summary>
+    private void CheckGameEndingCountdownSound()
+    {
+        if (GameManager.Instance == null) return;
+        
+        // 남은 시간 가져오기
+        float remainingTime = GameManager.Instance.GetRemainingTime();
+        
+        // 10초 이하일 때만 사운드 재생
+        if (remainingTime <= 10f && remainingTime > 1f)
+        {
+            int currentSecond = Mathf.CeilToInt(remainingTime);
+            
+            // 새로운 초가 시작될 때만 사운드 재생 (중복 방지)
+            if (currentSecond != lastCountdownSecond)
+            {
+                lastCountdownSecond = currentSecond;
+                
+                // 카운트다운 사운드 재생
+                if (AudioManager.Inst != null)
+                {
+                    AudioManager.Inst.PlayOneShot("SFX_UI_GameOver_Count");
+                }
+                
+                isCountdownSoundPlaying = true;
+            }
+        }
+        else if (remainingTime <= 0f && isCountdownSoundPlaying)
+        {
+            // 게임 종료 시 카운트다운 사운드 플래그 리셋
+            isCountdownSoundPlaying = false;
+            lastCountdownSecond = -1;
+        }
+    }
+    
     #endregion
     
     #region 장탄수 UI 시스템
@@ -1775,6 +2019,12 @@ public class HUDPanel : MonoBehaviourPunCallbacks
                 Color iconColor = reloadIcon.color;
                 iconColor.a = 0f;
                 reloadIcon.color = iconColor;
+            }
+            
+            // ✅ zoomImage 원래 투명도 저장
+            if (zoomImage != null)
+            {
+                originalZoomImageAlpha = zoomImage.color.a;
             }
             
             Debug.Log($"HUD: 장탄수 UI 초기화 완료 - Current: {currentAmmo}, Max: {maxAmmo}");
@@ -1954,6 +2204,13 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         reloadIconFadeTween?.Kill();
         reloadIconRotateTween?.Kill();
         reloadIconBlinkTween?.Kill();
+        zoomImageFadeTween?.Kill();
+        
+        // zoomImage 투명도를 0으로 변경 (안보이게)
+        if (zoomImage != null)
+        {
+            zoomImageFadeTween = zoomImage.DOFade(0f, 0.2f).SetEase(Ease.OutCubic);
+        }
         
         // 투명도를 100으로 변경 (255에서 100은 약 0.39)
         Color targetColor = reloadIcon.color;
@@ -2012,12 +2269,19 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         reloadIconFadeTween?.Kill();
         reloadIconRotateTween?.Kill();
         reloadIconBlinkTween?.Kill();
+        zoomImageFadeTween?.Kill();
         
         // 회전 초기화
         reloadIcon.transform.rotation = Quaternion.identity;
         
         // 투명도를 0으로 변경
         reloadIcon.DOFade(0f, 0.3f).SetEase(Ease.OutCubic);
+        
+        //zoomImage 투명도를 원래대로 복원
+        if (zoomImage != null)
+        {
+            zoomImageFadeTween = zoomImage.DOFade(originalZoomImageAlpha, 0.3f).SetEase(Ease.OutCubic);
+        }
     }
     
     /// <summary>
@@ -2132,6 +2396,7 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         reloadIconFadeTween?.Kill();
         reloadIconRotateTween?.Kill();
         reloadIconBlinkTween?.Kill();
+        zoomImageFadeTween?.Kill(); 
         
         ammoBarTween = null;
         ammoBarBlinkTween = null;
@@ -2143,6 +2408,150 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         reloadIconFadeTween = null;
         reloadIconRotateTween = null;
         reloadIconBlinkTween = null;
+        zoomImageFadeTween = null; 
+    }
+    
+    #endregion
+    
+    #region 아이콘 애니메이션
+    
+    /// <summary>
+    /// 점수 아이콘 진동 애니메이션 (좌우로 기울어지며 흔들림)
+    /// </summary>
+    private void PlayScoreIconShakeAnimation()
+    {
+        if (scoreIcon == null) return;
+        
+        // 기존 애니메이션 중지
+        scoreIconShakeTween?.Kill();
+        
+        // 원래 회전값으로 초기화
+        scoreIcon.transform.rotation = Quaternion.identity;
+        
+        // 좌우 진동 애니메이션 (±15도 각도로 3번 왔다갔다)
+        scoreIconShakeTween = DOTween.Sequence()
+            .Append(scoreIcon.transform.DORotate(new Vector3(0f, 0f, 15f), 0.08f).SetEase(Ease.OutQuad))
+            .Append(scoreIcon.transform.DORotate(new Vector3(0f, 0f, -15f), 0.08f).SetEase(Ease.InOutQuad))
+            .Append(scoreIcon.transform.DORotate(new Vector3(0f, 0f, 10f), 0.08f).SetEase(Ease.InOutQuad))
+            .Append(scoreIcon.transform.DORotate(new Vector3(0f, 0f, -10f), 0.08f).SetEase(Ease.InOutQuad))
+            .Append(scoreIcon.transform.DORotate(new Vector3(0f, 0f, 5f), 0.08f).SetEase(Ease.InOutQuad))
+            .Append(scoreIcon.transform.DORotate(new Vector3(0f, 0f, 0f), 0.08f).SetEase(Ease.InQuad))
+            .OnComplete(() => {
+                // 애니메이션 완료 후 회전값 완전히 초기화
+                scoreIcon.transform.rotation = Quaternion.identity;
+            });
+    }
+    
+    /// <summary>
+    /// 코인 아이콘 회전 애니메이션 (마리오 스타일)
+    /// </summary>
+    private void PlayCoinIconRotateAnimation()
+    {
+        if (coinIcon == null) return;
+        
+        // 기존 애니메이션 중지
+        coinIconRotateTween?.Kill();
+        coinIconScaleTween?.Kill();
+        
+        // 원래 크기와 회전값으로 초기화
+        coinIcon.transform.localScale = Vector3.one;
+        coinIcon.transform.rotation = Quaternion.identity;
+        
+        // Y축 180도 회전 (뒤집히는 효과)
+        coinIconRotateTween = coinIcon.transform
+            .DORotate(new Vector3(0f, 180f, 0f), 0.4f, RotateMode.FastBeyond360)
+            .SetEase(Ease.OutQuad)
+            .OnComplete(() => {
+                // 회전 완료 후 원래대로 복원
+                coinIcon.transform.rotation = Quaternion.identity;
+            });
+        
+        // 크기 변화 애니메이션 (약간 커졌다가 작아짐)
+        coinIconScaleTween = DOTween.Sequence()
+            .Append(coinIcon.transform.DOScale(1.2f, 0.2f).SetEase(Ease.OutQuad))
+            .Append(coinIcon.transform.DOScale(1f, 0.2f).SetEase(Ease.InQuad));
+    }
+    
+    /// <summary>
+    /// 아이콘 애니메이션 정리
+    /// </summary>
+    private void CleanupIconAnimations()
+    {
+        scoreIconShakeTween?.Kill();
+        coinIconRotateTween?.Kill();
+        coinIconScaleTween?.Kill();
+        
+        scoreIconShakeTween = null;
+        coinIconRotateTween = null;
+        coinIconScaleTween = null;
+        
+        // 원래 상태로 복원
+        if (scoreIcon != null)
+        {
+            scoreIcon.transform.rotation = Quaternion.identity;
+        }
+        
+        if (coinIcon != null)
+        {
+            coinIcon.transform.rotation = Quaternion.identity;
+            coinIcon.transform.localScale = Vector3.one;
+        }
+    }
+    
+    #endregion
+    
+    #region HitImage 애니메이션
+    
+    /// <summary>
+    /// HitImage 애니메이션 재생 (외부 호출용)
+    /// </summary>
+    public void PlayHitImageAnimation()
+    {
+        if (HitImage == null) return;
+        
+        // 기존 애니메이션 정리
+        CleanupHitImageAnimations();
+        
+        // 초기 상태 설정
+        Color transparentColor = originalHitImageColor;
+        transparentColor.a = 0f;
+        HitImage.color = transparentColor;
+        HitImage.transform.localScale = originalHitImageScale;
+        
+        // 1. 빠르게 페이드인 (0.1초)
+        hitImageFadeTween = HitImage.DOFade(originalHitImageColor.a, 0.1f)
+            .SetEase(Ease.OutQuad)
+            .OnComplete(() => {
+                // 2. 약간 커지기 (0.15초)
+                hitImageScaleTween = HitImage.transform.DOScale(originalHitImageScale * 1.2f, 0.15f)
+                    .SetEase(Ease.OutQuad)
+                    .OnComplete(() => {
+                        // 3. 빠르게 원래 크기로 돌아오기 (0.15초)
+                        hitImageScaleTween = HitImage.transform.DOScale(originalHitImageScale, 0.15f)
+                            .SetEase(Ease.InQuad)
+                            .OnComplete(() => {
+                                // 4. 페이드 아웃 (0.2초)
+                                hitImageFadeTween = HitImage.DOFade(0f, 0.2f)
+                                    .SetEase(Ease.InQuad)
+                                    .OnComplete(() => {
+                                        // 애니메이션 완료 후 정리
+                                        CleanupHitImageAnimations();
+                                    });
+                            });
+                    });
+            });
+    }
+    
+    /// <summary>
+    /// HitImage 애니메이션 정리
+    /// </summary>
+    private void CleanupHitImageAnimations()
+    {
+        hitImageFadeTween?.Kill();
+        hitImageScaleTween?.Kill();
+        
+        hitImageFadeTween = null;
+        hitImageScaleTween = null;
     }
     
     #endregion

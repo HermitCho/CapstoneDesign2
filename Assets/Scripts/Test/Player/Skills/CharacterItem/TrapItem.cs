@@ -22,7 +22,9 @@ public class TrapItem : Skill
     {
         // 설치 위치 (예: 발 밑 조금 앞쪽)
         Vector3 spawnPos = placementPreviewComponent.GetPlacementPosition();
+        Debug.Log("[TrapItem CastExecute] " + spawnPos);
         Quaternion spawnRot = placementPreviewComponent.GetPlacementRotation();
+        Debug.Log("[TrapItem CastExecute] " + spawnRot);
 
         // 네트워크 상에 설치
         GameObject trapObj = PhotonNetwork.Instantiate(
@@ -39,6 +41,8 @@ public class TrapItem : Skill
                 executor.photonView.OwnerActorNr,
                 trapLifetime
             );
+            // 실제 발사 시점에 애니메이션 재생 (E 입력 시에는 재생하지 않음)
+            PlayExecuteAnimation(executor);
         }
         executor.EndSkillInProgress();
     }
@@ -49,7 +53,7 @@ public class TrapItem : Skill
     public override void StartPreview(SkillController owner)
     {
         base.StartPreview(owner);
-        
+
         PlayFollowEffectAtRemote(owner);
     }
 

@@ -5,6 +5,7 @@ using Photon.Realtime;
 using TMPro;
 using UnityEngine.UI;
 using Michsky.UI.Heat;
+using DG.Tweening;
 
 public class FindMatching : MonoBehaviourPunCallbacks
 {
@@ -18,11 +19,26 @@ public class FindMatching : MonoBehaviourPunCallbacks
     [SerializeField] private ModalWindowManager modalWindow;
     [SerializeField] private TextMeshProUGUI statusText;
 
+    [Space(10)]
+    [SerializeField] private Image _player1CountImage;
+    [SerializeField] private Image _player2CountImage;
+    [SerializeField] private Image _player3CountImage;
+    [SerializeField] private Image _player4CountImage;
+    [SerializeField] private Image _player5CountImage;
+    [SerializeField] private Image _player6CountImage;
+    [SerializeField] private Image _player7CountImage;
+    [SerializeField] private Image _player8CountImage;
+
+
     private bool isMatching = false;
     private float matchingTimer = 0f;
     private Coroutine matchingCoroutine;
     private bool isGameStarting = false;
     private bool isMasterServerConnected = false; // 마스터 서버 연결 상태 추적
+    
+    // 플레이어 카운트 이미지 애니메이션 관련
+    private int lastDisplayedPlayerCount = 0; // 마지막으로 표시된 플레이어 수
+    private Image[] playerCountImages; // 플레이어 카운트 이미지 배열
     
     // 재시도 관련
     private int roomJoinRetryCount = 0;
@@ -31,6 +47,7 @@ public class FindMatching : MonoBehaviourPunCallbacks
     private const float RETRY_DELAY = 2f; // 재시도 대기 시간
 
     private const string ROOM_STATE_KEY = "GameState";
+    private const string ROOM_BOT_COUNT_KEY = "botFillCount";
     private const string ROOM_STATE_WAITING = "Waiting";
     private const string ROOM_STATE_STARTING = "Starting";
     private const string ROOM_STATE_IN_GAME = "InGame";
@@ -55,7 +72,39 @@ public class FindMatching : MonoBehaviourPunCallbacks
             modalWindow.showConfirmButton = false;
             modalWindow.closeOnCancel = false;
         }
-
+        
+        // 플레이어 카운트 이미지 배열 초기화
+        InitializePlayerCountImages();
+    }
+    
+    /// <summary>
+    /// 플레이어 카운트 이미지 배열 초기화 및 비활성화
+    /// </summary>
+    private void InitializePlayerCountImages()
+    {
+        playerCountImages = new Image[]
+        {
+            _player1CountImage,
+            _player2CountImage,
+            _player3CountImage,
+            _player4CountImage,
+            _player5CountImage,
+            _player6CountImage,
+            _player7CountImage,
+            _player8CountImage
+        };
+        
+        // 모든 플레이어 카운트 이미지 초기화 (비활성화 + Scale 0)
+        foreach (var image in playerCountImages)
+        {
+            if (image != null)
+            {
+                image.gameObject.SetActive(false);
+                image.transform.localScale = Vector3.zero;
+            }
+        }
+        
+        lastDisplayedPlayerCount = 0;
     }
 
     public void StartMatching()
@@ -69,6 +118,9 @@ public class FindMatching : MonoBehaviourPunCallbacks
         // 재시도 카운터 초기화
         roomJoinRetryCount = 0;
         roomCreateRetryCount = 0;
+        
+        // 플레이어 카운트 이미지 초기화
+        InitializePlayerCountImages();
         
         // 이미 마스터 서버에 연결되어 있는지 체크
         if (PhotonNetwork.IsConnectedAndReady)
@@ -400,6 +452,7 @@ public class FindMatching : MonoBehaviourPunCallbacks
         roomProperties["gamePhase"] = "MATCHING"; // 매칭 중 상태 (Ready 아님)
         roomProperties["countdownStarted"] = false; // 카운트다운 초기화
         roomProperties["countdownStartTime"] = null;
+        roomProperties[ROOM_BOT_COUNT_KEY] = 0;
         roomOptions.CustomRoomProperties = roomProperties;
         roomOptions.CustomRoomPropertiesForLobby = new string[] { ROOM_STATE_KEY, "masterReady", "gamePhase" };
 
@@ -449,10 +502,14 @@ public class FindMatching : MonoBehaviourPunCallbacks
         if (PhotonNetwork.IsMasterClient)
         {
             int playerCount = PhotonNetwork.InRoom ? PhotonNetwork.CurrentRoom.PlayerCount : 1;
+            //수정
+            int requiredBots = Mathf.Max(0, targetPlayerCount - playerCount);
 
             ExitGames.Client.Photon.Hashtable roomProperties = new ExitGames.Client.Photon.Hashtable();
             roomProperties[ROOM_STATE_KEY] = ROOM_STATE_STARTING;
             roomProperties["gamePhase"] = "READY"; // Ready 단계로 설정
+            //수정
+            roomProperties[ROOM_BOT_COUNT_KEY] = requiredBots;
             PhotonNetwork.CurrentRoom.SetCustomProperties(roomProperties);
 
             photonView.RPC("OnGameStarting", RpcTarget.All, playerCount);
@@ -542,6 +599,48 @@ public class FindMatching : MonoBehaviourPunCallbacks
 
             modalWindow.descriptionText = description;
             modalWindow.UpdateUI();
+            
+            // ✅ 플레이어 수가 증가했을 때 이미지 애니메이션 재생
+            if (currentPlayers > lastDisplayedPlayerCount)
+            {
+                StartCoroutine(AnimatePlayerCountImages(lastDisplayedPlayerCount, currentPlayers));
+                lastDisplayedPlayerCount = currentPlayers;
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 플레이어 카운트 이미지 애니메이션 (순차적으로 뿅 튀어나오기)
+    /// </summary>
+    private IEnumerator AnimatePlayerCountImages(int fromCount, int toCount)
+    {
+        // fromCount부터 toCount까지 순차적으로 이미지 표시
+        for (int i = fromCount; i < toCount && i < playerCountImages.Length; i++)
+        {
+            Image currentImage = playerCountImages[i];
+            if (currentImage != null)
+            {
+                // 이미지 활성화
+                currentImage.gameObject.SetActive(true);
+                currentImage.transform.localScale = Vector3.zero;
+                
+                // DOTween 뿅 튀어나오는 애니메이션 (OutBack Ease)
+                Sequence popSequence = DOTween.Sequence();
+                popSequence.Append(currentImage.transform.DOScale(1.2f, 0.3f).SetEase(Ease.OutBack));
+                popSequence.Append(currentImage.transform.DOScale(1f, 0.1f).SetEase(Ease.InOutQuad));
+                
+                // 사운드 재생
+                if (AudioManager.Inst != null)
+                {
+                    AudioManager.Inst.PlayOneShot("SFX_UI_Matching_JoinPlayers");
+                }
+                
+                // 애니메이션 완료 대기
+                yield return popSequence.WaitForCompletion();
+                
+                // 다음 이미지까지 짧은 대기 시간 (0.15초)
+                yield return new WaitForSeconds(0.15f);
+            }
         }
     }
 

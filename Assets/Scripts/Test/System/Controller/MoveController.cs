@@ -44,6 +44,7 @@ public class MoveController : MonoBehaviourPun, IPunObservable
 
     // ✅ DataBase 캐싱된 값들 (성능 최적화)
     private float cachedSpeed;
+    private float baseSpeed; // 원본 속도 저장 (버프 적용 전)
     private float cachedRotationSpeed;
     private float cachedZoomRotationSpeed;
     private float cachedMouseInputTimeout;
@@ -144,7 +145,8 @@ public class MoveController : MonoBehaviourPun, IPunObservable
                 playerMoveData = DataBase.Instance.playerMoveData;
                 playerData = DataBase.Instance.playerData;
                 // 자주 사용되는 값들을 개별 변수로 캐싱
-                cachedSpeed = playerMoveData.Speed;
+                baseSpeed = playerMoveData.Speed; // 원본 속도 저장
+                cachedSpeed = baseSpeed;
                 cachedRotationSpeed = playerMoveData.RotationSpeed;
                 cachedZoomRotationSpeed = playerMoveData.ZoomRotationSpeed;
                 cachedMouseInputTimeout = playerMoveData.MouseInputTimeout;
@@ -228,10 +230,26 @@ public class MoveController : MonoBehaviourPun, IPunObservable
         // 이미 슬로우 상태가 아니라면
         if (!isSlowed)
         {
+            // ✅ baseSpeed를 기준으로 slowMultiplier 적용 (버프는 유지)
+            if (baseSpeed <= 0f)
+            {
+                baseSpeed = playerMoveData != null ? playerMoveData.Speed : 5f;
+            }
+            
+            // 현재 버프 배율 계산 (slowMultiplier 변경 전)
+            float oldSlowMultiplier = slowMultiplier;
+            float currentBuffMultiplier = cachedSpeed / (baseSpeed * oldSlowMultiplier);
+            if (currentBuffMultiplier <= 0f || float.IsNaN(currentBuffMultiplier) || float.IsInfinity(currentBuffMultiplier))
+            {
+                currentBuffMultiplier = 1f;
+            }
+            
             // 속도 배수를 적용하고 상태 변경
             slowMultiplier = 1.0f - slowAmount;
             isSlowed = true;
-            UpdateSpeed();
+            
+            // 버프 배율은 유지하면서 새로운 slowMultiplier 적용
+            cachedSpeed = baseSpeed * currentBuffMultiplier * slowMultiplier;
         }
     }
 
@@ -244,29 +262,62 @@ public class MoveController : MonoBehaviourPun, IPunObservable
         // 슬로우 상태라면
         if (isSlowed)
         {
+            // ✅ 현재 버프 상태를 유지하면서 slowMultiplier만 제거
+            if (baseSpeed <= 0f)
+            {
+                baseSpeed = playerMoveData != null ? playerMoveData.Speed : 5f;
+            }
+            // 현재 버프 배율 계산
+            float currentBuffMultiplier = cachedSpeed / (baseSpeed * slowMultiplier);
+            if (currentBuffMultiplier <= 0f || float.IsNaN(currentBuffMultiplier) || float.IsInfinity(currentBuffMultiplier))
+            {
+                currentBuffMultiplier = 1f;
+            }
+            
             // 속도 배수를 원래대로 되돌리고 상태 변경
             slowMultiplier = 1.0f;
             isSlowed = false;
-            UpdateSpeed();
+            // 버프 배율은 유지하면서 slowMultiplier만 제거
+            cachedSpeed = baseSpeed * currentBuffMultiplier * slowMultiplier;
         }
     }
 
     [PunRPC]
     public void ApplySpeedBuff(float multiplier)
     {
-        cachedSpeed *= (1f + multiplier);
+        // ✅ 원본 속도를 기준으로 버프 적용 (중복 적용 방지)
+        if (baseSpeed <= 0f)
+        {
+            baseSpeed = playerMoveData != null ? playerMoveData.Speed : 5f;
+        }
+        
+        // 원본 속도에 배율을 더한 값으로 계산
+        cachedSpeed = baseSpeed * (1f + multiplier) * slowMultiplier;
+        Debug.Log($"[MoveController] 속도 버프 적용 - 원본: {baseSpeed}, 배율: {multiplier}, 결과: {cachedSpeed}");
     }
 
     [PunRPC]
     public void RemoveSpeedBuff(float multiplier)
     {
-        cachedSpeed /= (1f + multiplier);
+        // ✅ 원본 속도로 복원 (slowMultiplier는 유지)
+        if (baseSpeed <= 0f)
+        {
+            baseSpeed = playerMoveData != null ? playerMoveData.Speed : 5f;
+        }
+        
+        cachedSpeed = baseSpeed * slowMultiplier;
+        Debug.Log($"[MoveController] 속도 버프 해제 - 원본: {baseSpeed}, 결과: {cachedSpeed}");
     }
 
     // 실제 이동 속도를 업데이트하는 함수
     private void UpdateSpeed()
     {
-        cachedSpeed = playerMoveData.Speed * slowMultiplier;
+        // ✅ baseSpeed를 기준으로 slowMultiplier만 적용 (버프는 별도 관리)
+        if (baseSpeed <= 0f)
+        {
+            baseSpeed = playerMoveData != null ? playerMoveData.Speed : 5f;
+        }
+        cachedSpeed = baseSpeed * slowMultiplier;
     }
 
     //움직임 처리

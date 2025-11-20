@@ -215,8 +215,53 @@ public class GameManager : Singleton<GameManager>
             }
         }
         
-        // UI 활성화 및 게임 시작 알림
         EnableGameUI();
+        
+        StartCoroutine(EnablePlayerControlsDelayed());
+    }
+    
+    /// <summary>
+    /// 게임 시작 시 플레이어 조작 활성화
+    /// </summary>
+    private IEnumerator EnablePlayerControlsDelayed()
+    {
+        yield return new WaitForSeconds(0.2f);
+        
+        GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
+        
+        foreach (GameObject player in players)
+        {
+            PhotonView pv = player.GetComponent<PhotonView>();
+            if (pv != null && pv.IsMine)
+            {
+                MoveController moveController = player.GetComponent<MoveController>();
+                if (moveController != null)
+                {
+                    moveController.EnableMoveControls();
+                }
+                
+                SkillController skillController = player.GetComponent<SkillController>();
+                if (skillController != null)
+                {
+                    skillController.EnableSkillControls();
+                }
+                
+                TestGun gun = player.GetComponentInChildren<TestGun>();
+                if (gun != null)
+                {
+                    gun.enabled = true;
+                }
+                
+                CameraController cameraController = player.GetComponent<CameraController>();
+                if (cameraController != null)
+                {
+                    cameraController.enabled = true;
+                }
+            }
+        }
+        
+        Cursor.visible = false;
+        Cursor.lockState = CursorLockMode.Locked;
     }
     
     /// <summary>
@@ -267,6 +312,13 @@ public class GameManager : Singleton<GameManager>
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         string currentSceneName = scene.name;
+        
+        // ✅ 씬이 바뀔 때마다 게임 오버 상태 리셋 (튜토리얼 씬 등에서 애니메이션 작동하도록)
+        if (lastSceneName != currentSceneName)
+        {
+            isGameOver = false;
+        }
+        
         // 씬이 바뀌었고, 게임 씬인 경우
         if (lastSceneName != currentSceneName && IsGameScene(currentSceneName))
         {         
@@ -671,6 +723,13 @@ public class GameManager : Singleton<GameManager>
         // 마스터 클라이언트이거나 방 속성이 없는 경우 로컬 시간 사용
         return (float)(PhotonNetwork.Time - gameStartTime);
     }
+    
+    // ✅ 남은 게임 시간 가져오기 (HUDPanel에서 사용)
+    public float GetRemainingTime()
+    {
+        float currentGameTime = GetGameTime();
+        return Mathf.Max(0f, cachedPlayTime - currentGameTime);
+    }
 
     // GetShopTime 제거 (Shop.cs에서 직접 관리)
     
@@ -860,6 +919,13 @@ public class GameManager : Singleton<GameManager>
                             cameraController.enabled = false;
                         }
                     }
+                    
+                    // ✅ VictoryAnimationController 비활성화 (모든 플레이어 - 승리자만 나중에 활성화)
+                    VictoryAnimationController victoryController = playerObj.GetComponent<VictoryAnimationController>();
+                    if (victoryController != null)
+                    {
+                        victoryController.DisableVictoryControl();
+                    }
                 }
             }
             
@@ -905,6 +971,11 @@ public class GameManager : Singleton<GameManager>
     /// 게임 오버 상태 확인
     /// </summary>
     public bool IsGameOver() => isGameOver;
+
+    public bool GetIsGameOver()
+    {
+        return isGameOver;
+    }
     
     /// <summary>
     /// EventSystem 중복 제거 (씬에 하나만 존재하도록)

@@ -14,6 +14,7 @@ public class GameOverController : MonoBehaviourPunCallbacks
     private List<PlayerRankData> playerRankings = new List<PlayerRankData>();
     private bool isWinnerLocal = false; // 승리 플레이어가 로컬인지 추적
     private int winnerActorNumber = -1; // 승리 플레이어의 ActorNumber 추적
+    private PhotonView pv; // RPC 호출용 PhotonView
 
     // 플레이어 순위 데이터 구조체
     [System.Serializable]
@@ -32,6 +33,16 @@ public class GameOverController : MonoBehaviourPunCallbacks
             score = playerScore;
             isLocalPlayer = isLocal;
             actorNumber = actorNum;
+        }
+    }
+    
+    void Awake()
+    {
+        // PhotonView 컴포넌트 가져오기 (RPC 호출용)
+        pv = GetComponent<PhotonView>();
+        if (pv == null)
+        {
+            Debug.LogWarning("GameOverController: PhotonView 컴포넌트가 없습니다. RPC 호출을 위해 PhotonView를 추가해주세요.");
         }
     }
 
@@ -54,14 +65,127 @@ public class GameOverController : MonoBehaviourPunCallbacks
             isWinnerLocal = playerRankings[0].isLocalPlayer;
         }
 
-        // 로컬 플레이어가 승자인 경우에만 이동
-        CheckAndMoveWinner();
-
-        // GameOverPanel에 순위 정보 전달
+        // ✅ 1단계: 카메라를 cameraPosition으로 즉시 이동
+        SetCameraPosition();
+        
+        // ✅ 2단계: 플레이어 컨트롤 비활성화
+        DisableLocalPlayerControls(isWinnerLocal);
+        
+        // ✅ 3단계: GameOverPanel에 순위 정보 전달 (애니메이션 시작)
         UpdateGameOverPanel();
+        
+        // ✅ 4단계: 승리 캐릭터 이동은 패널 애니메이션 완료 후에 실행
+        // (OnPanelAnimationComplete()에서 호출됨)
         
         // 모든 클라이언트에서 자신의 순위를 직접 계산하고 구글 시트 업데이트
         UpdateGameResultForLocalPlayer();
+    }
+    
+    /// <summary>
+    /// GameOverPanel 애니메이션 완료 시 호출됨
+    /// </summary>
+    public void OnPanelAnimationComplete()
+    {
+        // 승리 캐릭터를 winnerPosition으로 이동
+        // ✅ 승리 플레이어가 로컬이면 이동 및 애니메이션 실행
+        if (isWinnerLocal && winnerPlayer != null)
+        {
+            StartCoroutine(MoveWinnerToPositionAfterAnimation());
+        }
+        else
+        {
+            // ✅ 승리 플레이어가 로컬이 아니어도 사운드는 모든 클라이언트에 재생
+            // 승리 플레이어 이동 사운드 재생 (모든 클라이언트에서 직접 재생)
+            PlayWinnerMoveSound();
+            
+            // 웃음 사운드는 애니메이션 타이밍에 맞춰 재생
+            StartCoroutine(PlayWinnerLaughSoundAfterDelay());
+        }
+    }
+    
+    /// <summary>
+    /// 승리 플레이어가 로컬이 아닐 때 웃음 사운드 재생 (타이밍 맞춤)
+    /// </summary>
+    private IEnumerator PlayWinnerLaughSoundAfterDelay()
+    {
+        // Win1 애니메이션 타이밍에 맞춰 재생 (약 2.3초 후)
+        yield return new WaitForSeconds(2.3f);
+        
+        // 모든 클라이언트에서 직접 재생
+        PlayWinnerLaughSound();
+    }
+    
+    /// <summary>
+    /// 애니메이션 완료 후 승리 캐릭터 이동
+    /// </summary>
+    private IEnumerator MoveWinnerToPositionAfterAnimation()
+    {
+        yield return new WaitForSeconds(0.3f);
+        
+        if (winnerPlayer != null && winnerPosition != null)
+        {
+            VictoryAnimationController victoryController = winnerPlayer.GetComponent<VictoryAnimationController>();
+            
+            // 1️⃣ 승리 캐릭터 이동 사운드 재생 (모든 클라이언트에서 직접 재생)
+            PlayWinnerMoveSound();
+            
+            // 3️⃣ 텔레포트와 동시에 Win1 애니메이션 + 웃음 사운드 재생
+            yield return new WaitForSeconds(1f);
+
+            SimpleTeleport(winnerPlayer, winnerPosition.position, winnerPosition.rotation);
+
+            if (victoryController != null)
+            {
+                // Win1 애니메이션 자동 재생 (네트워크 동기화)
+                victoryController.PlayFlipAnimationAuto();
+            }
+            
+            yield return new WaitForSeconds(1f);
+            if (victoryController != null)
+            {
+                // Win1 애니메이션 자동 재생 (네트워크 동기화)
+                victoryController.PlayWin1AnimationAuto();
+                
+                // 웃음 사운드도 즉시 재생 (모든 클라이언트에서 직접 재생)
+                PlayWinnerLaughSound();
+                
+                // 4️⃣ Win1 애니메이션 완료 후 수동 조작 활성화
+                StartCoroutine(EnableVictoryControlAfterAnimation(victoryController));
+            }
+            else
+            {
+                // VictoryAnimationController가 없으면 바로 활성화
+                EnableWinnerVictoryControl();
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Win1 애니메이션 완료 후 Victory 조작 활성화
+    /// </summary>
+    private IEnumerator EnableVictoryControlAfterAnimation(VictoryAnimationController victoryController)
+    {
+        // Win1 애니메이션 지속 시간만큼 대기 (animationDuration)
+        yield return new WaitForSeconds(victoryController.AnimationDuration);
+        
+        // Victory 애니메이션 수동 조작 활성화
+        EnableWinnerVictoryControl();
+    }
+    
+    /// <summary>
+    /// 승리 플레이어의 Victory 애니메이션 조작 활성화
+    /// </summary>
+    private void EnableWinnerVictoryControl()
+    {
+        if (!isWinnerLocal || winnerPlayer == null) return;
+        
+        // 승리 플레이어의 VictoryAnimationController 찾기
+        VictoryAnimationController victoryController = winnerPlayer.GetComponent<VictoryAnimationController>();
+        
+        if (victoryController != null)
+        {
+            victoryController.EnableVictoryControl();
+        }
     }
 
     /// <summary>
@@ -208,48 +332,6 @@ public class GameOverController : MonoBehaviourPunCallbacks
         return null;
     }
 
-    /// <summary>
-    /// 승자 확인 및 처리
-    /// </summary>
-    private void CheckAndMoveWinner()
-    {
-        if(winnerPlayer != null)
-        {
-            PhotonView winnerPV = winnerPlayer.GetComponent<PhotonView>();
-            if(winnerPV != null && winnerPV.IsMine)
-            {
-                // 로컬 플레이어가 승자인 경우 - 플레이어 이동 + 카메라 설정
-                StartCoroutine(MoveWinnerToPosition());
-            }
-            else
-            {
-                // 로컬 플레이어가 승자가 아닌 경우 - 카메라만 이동
-                StartCoroutine(SetupNonWinnerView());
-            }
-        }
-        else
-        {
-            // 승자를 찾을 수 없는 경우에도 카메라 이동
-            StartCoroutine(SetupNonWinnerView());
-        }
-    }
-
-    private IEnumerator MoveWinnerToPosition()
-    {
-        // 로컬 플레이어만 컨트롤 비활성화 (점프는 제외)
-        DisableLocalPlayerControls(true); // true = 승리 플레이어 (점프 가능)
-        
-        yield return new WaitForSeconds(0.5f);
-        
-        if(winnerPlayer != null && winnerPosition != null)
-        {
-            SimpleTeleport(winnerPlayer, winnerPosition.position, winnerPosition.rotation);
-            SetCameraPosition();
-            
-            // 승리 플레이어의 점프 다시 활성화
-            EnableWinnerJump();
-        }
-    }
     
     /// <summary>
     /// 승리 플레이어의 점프 활성화
@@ -324,19 +406,6 @@ public class GameOverController : MonoBehaviourPunCallbacks
         Cursor.lockState = CursorLockMode.None;
     }
 
-    /// <summary>
-    /// 승자가 아닌 플레이어들을 위한 게임 오버 처리
-    /// </summary>
-    private IEnumerator SetupNonWinnerView()
-    {
-        // 로컬 플레이어 컨트롤 비활성화 (점프 포함 모두 차단)
-        DisableLocalPlayerControls(false); // false = 일반 플레이어 (모든 조작 차단)
-        
-        yield return new WaitForSeconds(0.5f);
-        
-        // 카메라를 cameraPosition으로 이동
-        SetCameraPosition();
-    }
 
 
     /// <summary>
@@ -501,4 +570,32 @@ public class GameOverController : MonoBehaviourPunCallbacks
     public List<PlayerRankData> GetPlayerRankings() => playerRankings;
     public GameObject GetWinnerPlayer() => winnerPlayer;
     public float GetWinnerScore() => winnerScore;
+    
+    #region 승리 사운드 재생
+    
+    /// <summary>
+    /// 승리 캐릭터 이동 사운드 재생 (모든 클라이언트에서 직접 재생)
+    /// </summary>
+    private void PlayWinnerMoveSound()
+    {
+        if (AudioManager.Inst != null)
+        {
+            AudioManager.Inst.PlayOneShot("SFX_Game_GameOver_WinnerMove");
+            Debug.Log("[GameOverController] 승리 이동 사운드 재생");
+        }
+    }
+    
+    /// <summary>
+    /// 승리 캐릭터 웃음 사운드 재생 (모든 클라이언트에서 직접 재생)
+    /// </summary>
+    private void PlayWinnerLaughSound()
+    {
+        if (AudioManager.Inst != null)
+        {
+            AudioManager.Inst.PlayOneShot("SFX_Game_GameOver_WinnerLaugh");
+            Debug.Log("[GameOverController] 승리 웃음 사운드 재생");
+        }
+    }
+    
+    #endregion
 }

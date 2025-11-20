@@ -31,8 +31,9 @@ public class Crown : MonoBehaviourPun
     //테디베어 점수 관련 변수
     private float currentScore;
     
-    //테디베어 재부착 방지 관련 변수
-    private float lastDetachTime = -999f;
+    //테디베어 재부착 방지 관련 변수 (개별 캐릭터별로 관리)
+    private Dictionary<int, float> lastDetachTimePerPlayer = new Dictionary<int, float>(); // ViewID별 마지막 분리 시간
+    private int lastOwnerViewID = -1; // 마지막으로 왕관을 소유한 플레이어의 ViewID
     
     //테디베어 발광 상태 확인 변수
     private bool isGlowing = false;
@@ -136,18 +137,44 @@ public class Crown : MonoBehaviourPun
         {   
             PhotonView playerPhotonView = collision.transform.GetComponent<PhotonView>();
             if (!playerPhotonView.IsMine) return;
-            // 재부착 방지 시간 확인
-            float timeSinceDetach = Time.time - lastDetachTime;
-            if (timeSinceDetach >= cachedDetachReattachTime)
+            
+            // ✅ 플레이어가 죽은 상태인지 확인 (LivingEntity 체크)
+            LivingEntity livingEntity = collision.transform.GetComponent<LivingEntity>();
+            if (livingEntity != null && livingEntity.IsDead)
             {
-                AttachToPlayer(playerPhotonView);
+                Debug.Log($"[Crown] 플레이어 {collision.transform.name}가 사망 상태이므로 왕관 부착 불가");
+                return;
             }
-            else
+            
+            // ✅ 봇이 죽은 상태인지 확인 (AIHealth 체크)
+            AIHealth aiHealth = collision.transform.GetComponent<AIHealth>();
+            if (aiHealth != null && aiHealth.IsDead)
             {
-                // 재부착 방지 시간 동안은 부착하지 않음
-                float remainingTime = cachedDetachReattachTime - timeSinceDetach;
-                Debug.Log($"재부착 방지 중... 남은 시간: {remainingTime:F1}초");
+                Debug.Log($"[Crown] 봇 {collision.transform.name}가 사망 상태이므로 왕관 부착 불가");
+                return;
             }
+            
+            // ✅ 개별 캐릭터별 재부착 방지 시간 확인
+            int currentPlayerViewID = playerPhotonView.ViewID;
+            if (lastDetachTimePerPlayer.ContainsKey(currentPlayerViewID))
+            {
+                float timeSinceDetach = Time.time - lastDetachTimePerPlayer[currentPlayerViewID];
+                if (timeSinceDetach < cachedDetachReattachTime)
+                {
+                    // 이 플레이어/봇만 재부착 방지 시간 동안 부착 불가
+                    float remainingTime = cachedDetachReattachTime - timeSinceDetach;
+                    Debug.Log($"[Crown] {collision.transform.name} 재부착 방지 중... 남은 시간: {remainingTime:F1}초");
+                    return;
+                }
+                else
+                {
+                    // 재부착 방지 시간이 지났으면 딕셔너리에서 제거
+                    lastDetachTimePerPlayer.Remove(currentPlayerViewID);
+                }
+            }
+            
+            // 왕관 부착
+            AttachToPlayer(playerPhotonView);
         }
     }
     
@@ -214,7 +241,6 @@ public class Crown : MonoBehaviourPun
         #warning Static으로 선언되어 있음. 최적화를 위해 수정 필요
         if(playerView.IsMine)
         {
-            TestShoot.SetIsShooting(false);
             isAttached = true;
             
             // 로컬 왕관 부착 이벤트 발행
@@ -230,14 +256,16 @@ public class Crown : MonoBehaviourPun
 
         playerTransform = playerPV.transform;
 
-        // 플레이어 머리 위에 부착
-        Vector3 targetPosition = playerPV.transform.position + playerPV.transform.forward * cachedAttachOffset.z + playerPV.transform.up * cachedAttachOffset.y + playerPV.transform.right * cachedAttachOffset.x;
-        Quaternion targetRotation = playerPV.transform.rotation * Quaternion.Euler(cachedAttachRotation);
-
-        
-        transform.localPosition = targetPosition;
-        transform.localRotation = targetRotation;
+        // ✅ CRITICAL FIX: SetParent를 먼저 호출한 후 localPosition 설정!
+        // 기존 코드는 월드 좌표를 localPosition에 할당하여 텔레포트 발생
         transform.SetParent(playerTransform);
+        
+        // 플레이어 머리 위에 부착 (로컬 좌표로!)
+        Vector3 localOffset = new Vector3(cachedAttachOffset.x, cachedAttachOffset.y, cachedAttachOffset.z);
+        Quaternion localRotation = Quaternion.Euler(cachedAttachRotation);
+        
+        transform.localPosition = localOffset;
+        transform.localRotation = localRotation;
 
         if (crownRigidbody != null)
         {
@@ -248,6 +276,10 @@ public class Crown : MonoBehaviourPun
         {
             crownCollider.enabled = false;
         }
+        
+        // ✅ CRITICAL FIX: 왕관 GameObject를 "Ignore Raycast" Layer로 변경!
+        // 봇이 왕관을 쓰고 있을 때 레이캐스트가 왕관을 무시하도록 함
+        SetLayerRecursively(gameObject, LayerMask.NameToLayer("Ignore Raycast"));
         
         // 왕관 회전 애니메이션 시작
         StartCrownRotation();
@@ -372,7 +404,7 @@ public class Crown : MonoBehaviourPun
     {
         currentScore = 0f;
         cachedTeddyBearScore = 0f;
-        lastDetachTime = -999f; // 재부착 방지 시간도 리셋
+        lastDetachTimePerPlayer.Clear(); // 모든 재부착 방지 시간 리셋
     }
 
     
@@ -386,37 +418,67 @@ public class Crown : MonoBehaviourPun
 
     #region 외부 호출용 메서드 모음
     
-    // 기본 부착 해제 기능 - 현재 위치에 떨구기
+    // 기본 부착 해제 기능 - 현재 위치에 떨구기 (수동 분리)
     public void DetachFromPlayer()
+    {
+        DetachFromPlayer(true); // 수동 분리
+    }
+    
+    // 오버로드: 수동/자동 분리 구분
+    private void DetachFromPlayer(bool isManual)
     {     
         if (currentPlayerPhotonView == null || !currentPlayerPhotonView.IsMine) return;
         if (!isAttached) return;
         
+        // ✅ CRITICAL FIX: 봇이 왕관을 쓰고 있으면 수동 분리 불가!
+        // 플레이어의 Shift 키 입력이 봇에게 영향을 주면 안됨
+        if (isManual && currentPlayerPhotonView != null)
+        {
+            // 방법 1: AIHealth 컴포넌트로 봇 체크
+            AIHealth aiHealth = currentPlayerPhotonView.GetComponent<AIHealth>();
+            if (aiHealth != null)
+            {
+                Debug.Log($"[Crown] 수동 분리 차단 - 봇 {currentPlayerPhotonView.name}이 왕관 소유 중");
+                return; // 봇이 쓰고 있으면 플레이어 입력으로 떨어뜨릴 수 없음
+            }
+            
+            // 방법 2: LivingEntity가 없으면 봇일 가능성 (이중 안전 체크)
+            LivingEntity livingEntity = currentPlayerPhotonView.GetComponent<LivingEntity>();
+            if (livingEntity == null)
+            {
+                Debug.Log($"[Crown] 수동 분리 차단 - {currentPlayerPhotonView.name}은 플레이어가 아님");
+                return; // 플레이어가 아니면 수동 분리 불가
+            }
+        }
+        
+        // ✅ 현재 소유자의 ViewID를 기록하고 재부착 방지 시간 설정
+        int ownerViewID = currentPlayerPhotonView.ViewID;
+        lastDetachTimePerPlayer[ownerViewID] = Time.time;
+        lastOwnerViewID = ownerViewID;
+        
+        Debug.Log($"[Crown] {currentPlayerPhotonView.name} (ViewID: {ownerViewID})에게서 분리. 재부착 방지 시간 {cachedDetachReattachTime}초 시작 (수동: {isManual})");
+        
         // 현재 위치 저장 (떨굴 위치)
         Vector3 dropPosition = transform.position;
         
+        // 플레이어의 forward 방향 저장 (힘을 가하기 위해)
+        Vector3 playerForward = playerTransform != null ? playerTransform.forward : Vector3.forward;
 
         // 모든 클라이언트에서 떨구기 상태 적용
-        photonView.RPC("RpcDetachFromPlayer", RpcTarget.AllBuffered, transform.position);  
-
-        // 재부착 방지 시간 기록
-        lastDetachTime = Time.time;
+        photonView.RPC("RpcDetachFromPlayer", RpcTarget.AllBuffered, dropPosition, playerForward);  
         
         playerTransform = null;
 
         if(currentPlayerPhotonView.IsMine)
         {
-            TestShoot.SetIsShooting(true);
             isAttached = false;
         }
         currentPlayerPhotonView = null;
     }
 
     [PunRPC]
-    private void RpcDetachFromPlayer(Vector3 dropPosition)
+    private void RpcDetachFromPlayer(Vector3 dropPosition, Vector3 playerForward)
     {
-        playerTransform = null;
-        
         // 회전 애니메이션 중지
         StopCrownRotation();
 
@@ -432,19 +494,36 @@ public class Crown : MonoBehaviourPun
         {
             crownRigidbody.isKinematic = false;
             crownRigidbody.useGravity = true;
+            crownRigidbody.velocity = Vector3.zero;
+            crownRigidbody.angularVelocity = Vector3.zero;
 
-            // optional: 약간 힘을 가해 밀어내기
-            if (playerTransform != null)
-            {
-             Vector3 pushDirection = playerTransform.forward + Vector3.up * 0.5f;
-            float pushForce = 5f;
+            // 랜덤한 방향으로 힘을 가해 튀어나가게 하기
+            float randomAngle = UnityEngine.Random.Range(-45f, 45f);
+            Vector3 randomDirection = Quaternion.Euler(0, randomAngle, 0) * playerForward;
+            Vector3 pushDirection = (randomDirection + Vector3.up * 0.8f).normalized;
+            float pushForce = UnityEngine.Random.Range(4f, 7f);
             crownRigidbody.AddForce(pushDirection * pushForce, ForceMode.Impulse);
-            }
+            
+            // 회전도 랜덤하게 추가
+            Vector3 randomTorque = new Vector3(
+                UnityEngine.Random.Range(-5f, 5f),
+                UnityEngine.Random.Range(-5f, 5f),
+                UnityEngine.Random.Range(-5f, 5f)
+            );
+            crownRigidbody.AddTorque(randomTorque, ForceMode.Impulse);
         }
+        
         // 콜라이더 활성화
         if (crownCollider != null)
             crownCollider.enabled = true;
 
+        // ✅ CRITICAL FIX: 왕관 GameObject를 원래 Layer로 복원!
+        // 분리되면 다시 레이캐스트에 감지되도록 Default Layer로 복원
+        SetLayerRecursively(gameObject, LayerMask.NameToLayer("Default"));
+
+        // 플레이어 참조 해제
+        playerTransform = null;
+        
         // 분리되면 다시 발광 시작
         StartGlowing();
     }
@@ -476,8 +555,9 @@ public class Crown : MonoBehaviourPun
             crownCollider.enabled = true;
         }
         
-        // 재부착 방지 시간 기록
-        lastDetachTime = Time.time;
+        // ✅ 이 메서드(DetachAndReturnToOriginal)는 아이템 사용 시 호출되므로
+        // 재부착 방지 시간을 설정하지 않음 (즉시 재부착 가능)
+        // 필요시 현재 소유자의 ViewID를 기록할 수 있음
         
         playerTransform = null;
         
@@ -562,19 +642,49 @@ public class Crown : MonoBehaviourPun
         TeddyBearScoreReset();
     }
     
-    // 재부착까지 남은 시간 가져오기
-    public float GetTimeUntilReattach()
+    // 특정 플레이어/봇의 재부착까지 남은 시간 가져오기
+    public float GetTimeUntilReattach(int viewID)
     {
-        float timeSinceDetach = Time.time - lastDetachTime;
+        if (!lastDetachTimePerPlayer.ContainsKey(viewID))
+        {
+            return 0f; // 제한 없음
+        }
+        
+        float timeSinceDetach = Time.time - lastDetachTimePerPlayer[viewID];
         float remainingTime = cachedDetachReattachTime - timeSinceDetach;
         return Mathf.Max(0f, remainingTime);
     }
     
-    // 재부착 가능한 상태인지 확인
+    // 마지막 소유자의 재부착까지 남은 시간 (UI 표시용)
+    public float GetTimeUntilReattach()
+    {
+        if (lastOwnerViewID == -1)
+        {
+            return 0f;
+        }
+        return GetTimeUntilReattach(lastOwnerViewID);
+    }
+    
+    // 특정 플레이어/봇이 재부착 가능한 상태인지 확인
+    public bool CanReattach(int viewID)
+    {
+        if (!lastDetachTimePerPlayer.ContainsKey(viewID))
+        {
+            return true; // 제한 없음
+        }
+        
+        float timeSinceDetach = Time.time - lastDetachTimePerPlayer[viewID];
+        return timeSinceDetach >= cachedDetachReattachTime;
+    }
+    
+    // 마지막 소유자가 재부착 가능한지 확인 (UI 표시용)
     public bool CanReattach()
     {
-        float timeSinceDetach = Time.time - lastDetachTime;
-        return timeSinceDetach >= cachedDetachReattachTime;
+        if (lastOwnerViewID == -1)
+        {
+            return true;
+        }
+        return CanReattach(lastOwnerViewID);
     }
 
     #endregion
@@ -636,10 +746,51 @@ public class Crown : MonoBehaviourPun
             if (playerTransform == deadPlayer.transform)
             {
                 Debug.Log($"✅ TestTeddyBear - 플레이어 사망으로 인한 테디베어 자동 분리: {deadPlayer.name}");
-                DetachFromPlayer();
+                DetachFromPlayer(false); // 자동 분리 (재부착 방지 시간 무시)
             }
         }
     }
 
+    #endregion
+    
+    #region Public Helper Methods
+    
+    /// <summary>
+    /// 특정 Transform이 현재 왕관을 소유하고 있는지 확인
+    /// </summary>
+    public bool IsAttachedToPlayer(Transform targetTransform)
+    {
+        return isAttached && playerTransform == targetTransform;
+    }
+    
+    /// <summary>
+    /// 사망으로 인한 왕관 자동 분리 (재부착 방지 시간 무시)
+    /// </summary>
+    public void DetachFromPlayerOnDeath()
+    {
+        if (!isAttached) return;
+        if (currentPlayerPhotonView == null || !currentPlayerPhotonView.IsMine) return;
+        
+        DetachFromPlayer(false); // 자동 분리
+    }
+    
+    /// <summary>
+    /// GameObject와 모든 자식의 Layer를 재귀적으로 변경
+    /// </summary>
+    private void SetLayerRecursively(GameObject obj, int newLayer)
+    {
+        if (obj == null) return;
+        
+        obj.layer = newLayer;
+        
+        foreach (Transform child in obj.transform)
+        {
+            if (child != null)
+            {
+                SetLayerRecursively(child.gameObject, newLayer);
+            }
+        }
+    }
+    
     #endregion
 }
