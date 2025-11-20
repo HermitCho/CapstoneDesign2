@@ -9,6 +9,13 @@ public class StrengthEffect : MonoBehaviourPun
     [PunRPC]
     public void InitializeEffectAndBuff(int executorViewId, float multiplier, float duration)
     {
+        // ✅ 중복 호출 방지: 이펙트 오브젝트의 소유자(생성한 클라이언트)만 버프 적용
+        if (!photonView.IsMine)
+        {
+            Debug.Log($"[StrengthEffect] 이펙트 소유자가 아니므로 버프 적용 건너뜀 (ViewID: {photonView.ViewID})");
+            return;
+        }
+        
         // ⭐ 1. 실행 주체(플레이어) 찾기
         PhotonView excuterPV = PhotonView.Find(executorViewId);
         if (excuterPV == null)
