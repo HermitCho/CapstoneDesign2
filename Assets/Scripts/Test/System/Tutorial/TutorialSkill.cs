@@ -10,9 +10,6 @@ public class TutorialSkill : MonoBehaviour
     [Header("튜토리얼 완료 참조")]
     [SerializeField] private TutorialComplete tutorialComplete;
 
-    private bool isActive = false;
-    private bool isCompleted = false;
-
     void OnEnable()
     {
         if (tutorialUI != null)
@@ -27,15 +24,17 @@ public class TutorialSkill : MonoBehaviour
 
     private void ActivateTutorial()
     {
-        isActive = true;
+        TutorialStateManager.SkillTriggered = true;
         Debug.Log("✅ 튜토리얼 UI 닫힘 - 튜토리얼 활성화됨");
     }
 
     // 외부(예: DoorSensor나 Trigger 등)에서 튜토리얼 완료를 알릴 때 호출
     public void CompleteTutorial()
     {
-        if (!isActive || isCompleted) return;
-        isCompleted = true;
+        if (!TutorialStateManager.SkillTriggered || TutorialStateManager.SkillCompleted)
+            return;
+
+        TutorialStateManager.SkillCompleted = true;
 
         // ✅ 완료 스티커 표시
         if (tutorialUI != null)

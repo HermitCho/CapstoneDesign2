@@ -92,7 +92,7 @@ public class TutorialFindMatching : MonoBehaviourPunCallbacks
     public void OnClickStartTutorialButton()
     {
         if (isConnecting || isTutorialStarting) return;
-        
+
         // 이미 방에 있거나 다른 매칭이 진행 중인지 확인 (안전 장치)
         if (PhotonNetwork.InRoom)
         {
@@ -268,7 +268,7 @@ public class TutorialFindMatching : MonoBehaviourPunCallbacks
     private IEnumerator LoadTutorialScene()
     {
         Debug.Log("TutorialFindMatching: 튜토리얼 씬 로드 시작");
-        
+
         // 방 상태 업데이트 (마스터 클라이언트)
         if (PhotonNetwork.IsMasterClient && PhotonNetwork.InRoom)
         {
@@ -574,6 +574,9 @@ public class TutorialFindMatching : MonoBehaviourPunCallbacks
     public override void OnJoinedRoom()
     {
         Debug.Log("TutorialFindMatching: 방 입장 완료");
+
+        TutorialStateManager.ResetAll();
+        Debug.Log("튜토리얼 상태 초기화 완료");
         
         // 튜토리얼 진행 중이 아니라면 무시 (FindMatching으로 입장한 경우)
         if (!isConnecting)

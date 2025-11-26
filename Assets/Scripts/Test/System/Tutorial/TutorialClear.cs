@@ -95,6 +95,8 @@ public class TutorialClear : MonoBehaviour
 
     private IEnumerator ReturnToLobby()
     {
+        TutorialStateManager.ResetAll();
+
         // 모달 창 닫기
         if (modalWindowManager != null)
         {
