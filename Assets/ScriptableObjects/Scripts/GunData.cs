@@ -13,6 +13,9 @@ public class GunData : ScriptableObject
     public int maxAmmo;
     public int currentAmmo;
     public float reloadTime;
+    [Header("반동 스탯")]
+    [Range(0f, 1f)]
+    public float recoil;
 
     [Header("Shotgun Specific (or Multi-pellet Gun)")]
     [Tooltip("총알 당 발사되는 펠릿(pellet)의 수. 1이면 일반 총처럼 작동합니다.")]

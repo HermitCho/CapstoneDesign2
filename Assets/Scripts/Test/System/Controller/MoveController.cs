@@ -5,6 +5,7 @@ using UnityEngine.InputSystem;
 using System;
 using System.Linq;
 using Photon.Pun;
+using DG.Tweening;
 
 
 /// <summary>
@@ -60,6 +61,17 @@ public class MoveController : MonoBehaviourPun, IPunObservable
 
 
     private float rotationAmount;
+
+    // 반동 관련 변수
+    private float currentRecoilHorizontal = 0f;
+    private float targetRecoilHorizontal = 0f;
+    private float kickRecoilHorizontal = 0f;
+    private float recoilRecoverySpeed = 8f;
+    private float recoilKickDuration = 0.05f;
+    private float recoilRecoveryDuration = 0.1f;
+    private float recoilTimer = 0f;
+    private bool isRecoilKicking = false;
+    private float recoilStartTime = 0f;
 
     // 마우스 입력 타이머 (마우스 입력이 없으면 정지)
     private float lastMouseInputTime;
@@ -487,7 +499,46 @@ public class MoveController : MonoBehaviourPun, IPunObservable
             {
                 rotationAmount = 0;
             }
-            tr.Rotate(Vector3.up, rotationAmount);
+
+            // 반동 처리 (킥 → 복구 패턴, 시간 기반으로 정확히 동기화)
+            if (recoilStartTime > 0f)
+            {
+                float elapsedTime = Time.time - recoilStartTime;
+                float totalDuration = recoilKickDuration + recoilRecoveryDuration;
+                
+                if (elapsedTime < totalDuration)
+                {
+                    if (elapsedTime < recoilKickDuration)
+                    {
+                        // 킥 단계: 빠르게 킥 위치로 이동 (수직 반동과 동시)
+                        float t = elapsedTime / recoilKickDuration;
+                        t = Mathf.Clamp01(t);
+                        currentRecoilHorizontal = Mathf.Lerp(0f, kickRecoilHorizontal, t);
+                        isRecoilKicking = true;
+                    }
+                    else
+                    {
+                        // 복구 단계: 킥 위치에서 최종 반동 위치로 복구 (수직 반동과 동시)
+                        float recoveryElapsed = elapsedTime - recoilKickDuration;
+                        float t = recoveryElapsed / recoilRecoveryDuration;
+                        t = Mathf.Clamp01(t);
+                        currentRecoilHorizontal = Mathf.Lerp(kickRecoilHorizontal, targetRecoilHorizontal, t);
+                        isRecoilKicking = false;
+                    }
+                }
+                else
+                {
+                    // 반동 완료
+                    currentRecoilHorizontal = 0f;
+                    targetRecoilHorizontal = 0f;
+                    kickRecoilHorizontal = 0f;
+                    recoilStartTime = 0f;
+                    isRecoilKicking = false;
+                }
+            }
+            
+            float totalRotation = rotationAmount + currentRecoilHorizontal;
+            tr.Rotate(Vector3.up, totalRotation);
         }
         else
         {
@@ -1010,5 +1061,29 @@ public class MoveController : MonoBehaviourPun, IPunObservable
         }
     }
 
+    /// <summary>
+    /// 총기 반동 적용 (수평 반동)
+    /// </summary>
+    public void ApplyRecoil(float recoilValue, float horizontalDirection)
+    {
+        if (!photonView.IsMine) return;
+        if (recoilValue <= 0f) return;
+
+        float maxRecoilAngle = 2f * recoilValue;
+        float finalRecoilAngle = maxRecoilAngle * horizontalDirection;
+        float kickAngle = finalRecoilAngle * 1.4f;
+
+        if (recoilStartTime > 0f)
+        {
+            currentRecoilHorizontal = 0f;
+            targetRecoilHorizontal = 0f;
+            kickRecoilHorizontal = 0f;
+        }
+
+        kickRecoilHorizontal = kickAngle;
+        targetRecoilHorizontal = finalRecoilAngle;
+        recoilStartTime = Time.time;
+        isRecoilKicking = true;
+    }
 
 }
