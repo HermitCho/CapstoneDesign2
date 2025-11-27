@@ -172,8 +172,8 @@ public class TestMoveAnimationController : MonoBehaviourPun, IPunObservable
     private void HandleMovementAnimation()
     {
         bool isMoving = moveInput.magnitude > 0.1f;
-        animator.SetFloat("MoveX", moveInput.x, 0.1f, Time.deltaTime);
-        animator.SetFloat("MoveY", moveInput.y, 0.1f, Time.deltaTime);
+        animator.SetFloat("MoveX", moveInput.x);
+        animator.SetFloat("MoveY", moveInput.y);
         footstepSoundPlayer.SetIsMoving(isMoving);
     }
 
@@ -182,7 +182,7 @@ public class TestMoveAnimationController : MonoBehaviourPun, IPunObservable
         if (!moveController.IsGrounded())
         {
             isJumping = true;
-            if (rb.velocity.y > 0.05f)
+            if (rb.velocity.y > 0.07f)
             {
                 animator.SetBool("JumpUp", true);
                 animator.SetBool("JumpDown", false);

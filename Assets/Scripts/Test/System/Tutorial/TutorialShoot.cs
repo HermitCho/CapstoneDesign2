@@ -20,10 +20,6 @@ public class TutorialShoot : MonoBehaviour
     [SerializeField] private float targetActivateDelay = 1.5f; // UI 닫힌 후 등장 전 대기 시간
     [SerializeField] private float fadeInDuration = 0.7f;      // 서서히 나타나는 시간
 
-    private int destroyedTargets = 0;
-    private bool isCounting = false;
-
-    public bool IsTutorialUIFinished { get; private set; } = false;
 
     void OnEnable()
     {
@@ -39,9 +35,9 @@ public class TutorialShoot : MonoBehaviour
 
     private void BeginCounting()
     {
-        IsTutorialUIFinished = true;
-        destroyedTargets = 0;
-        isCounting = true;
+        TutorialStateManager.ShootTriggered = true;
+        TutorialStateManager.ShootCompleted = false;
+        TutorialStateManager.DestroyedTargets = 0;
 
         Debug.Log("🎯 타겟 카운팅 시작됨 (튜토리얼 UI 종료)");
 
@@ -91,18 +87,19 @@ public class TutorialShoot : MonoBehaviour
 
     public void OnTargetDestroyed()
     {
-        if (!isCounting) return;
+        if (!TutorialStateManager.ShootTriggered ||
+            TutorialStateManager.ShootCompleted)
+            return;
 
-        destroyedTargets++;
-        Debug.Log($"🎯 타겟 파괴됨: {destroyedTargets}/{totalTargets}");
+        TutorialStateManager.DestroyedTargets++;
 
-        if (destroyedTargets >= totalTargets)
+        if (TutorialStateManager.DestroyedTargets >= totalTargets)
             CompleteTutorial();
     }
 
     private void CompleteTutorial()
     {
-        isCounting = false;
+        TutorialStateManager.ShootCompleted = true;
         Debug.Log("✅ 모든 타겟 파괴됨 — 튜토리얼 완료!");
 
         if (tutorialUI != null)

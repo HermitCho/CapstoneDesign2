@@ -9,20 +9,19 @@ public class TutorialClear : MonoBehaviour
 {
     [Header("모달 창 참조")]
     [SerializeField] private ModalWindowManager modalWindowManager;
-    private bool hasTriggered = false;
     private MoveController playerMoveController;
     private CameraController playerCameraController;
     private TestMoveAnimationController playerAnimationController;
 
     void OnTriggerEnter(Collider other)
     {
-        if (hasTriggered) return;
+        if (TutorialStateManager.ClearTriggered) return;
         if (!other.CompareTag("Player")) return;
         
         PhotonView playerPhotonView = other.GetComponentInParent<PhotonView>();
         if (playerPhotonView == null || !playerPhotonView.IsMine) return;
 
-        hasTriggered = true;
+        TutorialStateManager.ClearTriggered = true;
         FindPlayerComponents(other);
         ShowCompletionModal();
     }

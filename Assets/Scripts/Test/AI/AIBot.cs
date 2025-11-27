@@ -75,6 +75,15 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
     private float nextActionTime;
     private bool isInShop;
     
+    // 네트워크 동기화용 변수 (MoveController와 동일한 패턴)
+    private double lastReceiveTime;
+    private Vector3 targetPos;
+    private Quaternion targetRot;
+    
+    // 비마스터 클라이언트 애니메이션용 변수
+    private Vector3 lastPosition; // 이전 프레임 위치 (속도 계산용)
+    private Vector3 calculatedVelocity; // 계산된 속도
+    
     // 도망 상태 관리
     private float fleeUntilTime = 0f; // 도망 상태 종료 시간
     private const float FLEE_AFTER_REVIVE_DURATION = 2f; // 부활 후 도망 지속 시간 (2초로 단축)
@@ -103,6 +112,10 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
         pv = GetComponent<PhotonView>();
         agent = GetComponent<NavMeshAgent>();
         aiHealth = GetComponent<AIHealth>();
+        
+        // 비마스터 클라이언트 애니메이션용 초기화
+        lastPosition = transform.position;
+        calculatedVelocity = Vector3.zero;
         
         Debug.Log($"[AIBot] {gameObject.name} 컴포넌트 체크 - PV:{pv!=null}, Agent:{agent!=null}, Health:{aiHealth!=null}");
         
@@ -227,7 +240,16 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
     {
         // 마스터 클라이언트만 AI 실행
         if (!ShouldRunAI())
+        {
+            // 비마스터 클라이언트: 네트워크 위치/회전 보간 
+            if (!PhotonNetwork.IsMasterClient && pv != null && !pv.IsMine)
+            {
+                HandleNetworkInterpolation();
+            }
+            // 애니메이션만 업데이트
+            UpdateAnimation();
             return;
+        }
         
         // NavMesh 체크
         if (agent == null)
@@ -263,6 +285,29 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
         
         // 애니메이션 업데이트
         UpdateAnimation();
+    }
+    
+    /// <summary>
+    /// 네트워크 위치/회전 보간 처리 (MoveController와 동일한 패턴)
+    /// </summary>
+    private void HandleNetworkInterpolation()
+    {
+        if (aiHealth != null && aiHealth.IsDead)
+        {
+            calculatedVelocity = Vector3.zero;
+            return;
+        }
+        
+        // 이전 위치 저장 (속도 계산용)
+        Vector3 previousPosition = transform.position;
+        
+        // 사망 상태가 아닐 때만 보간
+        transform.position = Vector3.Lerp(transform.position, targetPos, Time.deltaTime * 10f);
+        transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, Time.deltaTime * 10f);
+        
+        // 속도 계산 (이전 위치와 현재 위치의 차이)
+        calculatedVelocity = (transform.position - previousPosition) / Time.deltaTime;
+        lastPosition = transform.position;
     }
     
     #endregion
@@ -1151,35 +1196,46 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
         if (animator == null)
             return;
         
-        // 이동 애니메이션 - TestMoveAnimationController와 동일한 방식 사용
-        if (agent != null && agent.isOnNavMesh && aiHealth != null && !aiHealth.IsDead)
+        if (aiHealth != null && aiHealth.IsDead)
         {
-            Vector3 velocity = agent.velocity;
-            float speed = velocity.magnitude;
+            // 사망 상태면 애니메이션 정지
+            animator.SetFloat(moveXHash, 0f, 0.1f, Time.deltaTime);
+            animator.SetFloat(moveYHash, 0f, 0.1f, Time.deltaTime);
+            return;
+        }
+        
+        Vector3 velocity = Vector3.zero;
+        
+        // 마스터 클라이언트: NavMeshAgent의 velocity 사용
+        if (PhotonNetwork.IsMasterClient && agent != null && agent.isOnNavMesh)
+        {
+            velocity = agent.velocity;
+        }
+        // 비마스터 클라이언트: 계산된 velocity 사용
+        else if (!PhotonNetwork.IsMasterClient)
+        {
+            velocity = calculatedVelocity;
+        }
+        
+        float speed = velocity.magnitude;
+        
+        if (speed > 0.1f)
+        {
+            // 로컬 좌표계로 변환
+            Vector3 localVelocity = transform.InverseTransformDirection(velocity);
             
-            if (speed > 0.1f)
-            {
-                // 로컬 좌표계로 변환
-                Vector3 localVelocity = transform.InverseTransformDirection(velocity);
-                
-                // 속도 정규화 (-1 ~ 1 범위)
-                float moveSpeed = characterData != null ? characterData.moveSpeed : 5f;
-                float normalizedX = Mathf.Clamp(localVelocity.x / moveSpeed, -1f, 1f);
-                float normalizedZ = Mathf.Clamp(localVelocity.z / moveSpeed, -1f, 1f);
-                
-                // TestMoveAnimationController처럼 dampTime 0.1f 사용하여 부드럽게 보간
-                animator.SetFloat(moveXHash, normalizedX, 0.1f, Time.deltaTime);
-                animator.SetFloat(moveYHash, normalizedZ, 0.1f, Time.deltaTime);
-            }
-            else
-            {
-                // 정지 상태
-                animator.SetFloat(moveXHash, 0f, 0.1f, Time.deltaTime);
-                animator.SetFloat(moveYHash, 0f, 0.1f, Time.deltaTime);
-            }
+            // 속도 정규화 (-1 ~ 1 범위)
+            float moveSpeed = characterData != null ? characterData.moveSpeed : 5f;
+            float normalizedX = Mathf.Clamp(localVelocity.x / moveSpeed, -1f, 1f);
+            float normalizedZ = Mathf.Clamp(localVelocity.z / moveSpeed, -1f, 1f);
+            
+            // TestMoveAnimationController처럼 dampTime 0.1f 사용하여 부드럽게 보간
+            animator.SetFloat(moveXHash, normalizedX, 0.1f, Time.deltaTime);
+            animator.SetFloat(moveYHash, normalizedZ, 0.1f, Time.deltaTime);
         }
         else
         {
+            // 정지 상태
             animator.SetFloat(moveXHash, 0f, 0.1f, Time.deltaTime);
             animator.SetFloat(moveYHash, 0f, 0.1f, Time.deltaTime);
         }
@@ -1291,7 +1347,7 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
     {
         if (stream.IsWriting)
         {
-            // ✅ 마스터가 상태 + 위치/회전 전송
+            // 마스터가 상태 + 위치/회전 전송 
             stream.SendNext((int)currentState);
             stream.SendNext(currentAmmo);
             stream.SendNext(isReloading);
@@ -1300,32 +1356,23 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
         }
         else
         {
-            // ✅ 클라이언트가 상태 + 위치/회전 수신
+            //  클라이언트가 상태 + 위치/회전 수신 
             currentState = (AIState)stream.ReceiveNext();
             currentAmmo = (int)stream.ReceiveNext();
             isReloading = (bool)stream.ReceiveNext();
-            Vector3 networkPosition = (Vector3)stream.ReceiveNext();
-            Quaternion networkRotation = (Quaternion)stream.ReceiveNext();
+            targetPos = (Vector3)stream.ReceiveNext();
+            targetRot = (Quaternion)stream.ReceiveNext();
+            lastReceiveTime = info.SentServerTime;
             
-            // ✅ CRITICAL: 클라이언트에서는 NavMeshAgent를 사용하지 않고 직접 위치 동기화
-            if (!PhotonNetwork.IsMasterClient)
+            //CRITICAL: 거리 차이가 크면 즉시 이동 (워프 방지)
+            // 보간은 Update의 HandleNetworkInterpolation에서 처리
+            if (!PhotonNetwork.IsMasterClient && !aiHealth.IsDead)
             {
-                // 사망 상태가 아닐 때만 동기화
-                if (!aiHealth.IsDead)
+                float distance = Vector3.Distance(transform.position, targetPos);
+                if (distance > 5f) // 5m 이상 차이나면 즉시 이동
                 {
-                    // 거리 차이가 크면 즉시 이동 (워프), 작으면 보간
-                    float distance = Vector3.Distance(transform.position, networkPosition);
-                    
-                    if (distance > 5f) // 5m 이상 차이나면 즉시 이동 (텔레포트 방지)
-                    {
-                        transform.position = networkPosition;
-                        transform.rotation = networkRotation;
-                    }
-                    else if (distance > 0.1f) // 작은 차이는 부드럽게 보간
-                    {
-                        transform.position = Vector3.Lerp(transform.position, networkPosition, Time.deltaTime * 10f);
-                        transform.rotation = Quaternion.Lerp(transform.rotation, networkRotation, Time.deltaTime * 10f);
-                    }
+                    transform.position = targetPos;
+                    transform.rotation = targetRot;
                 }
             }
         }

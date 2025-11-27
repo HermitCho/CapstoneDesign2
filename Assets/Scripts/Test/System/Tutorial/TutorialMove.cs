@@ -14,9 +14,6 @@ public class TutorialMove : MonoBehaviour
     [Header("트랩 팬 참조")]
     [SerializeField] private Trap_Fan trap_Fan;
 
-    private bool isActive = false;
-    private bool isCompleted = false;
-
     void OnEnable()
     {
         if (tutorialUI != null)
@@ -31,7 +28,7 @@ public class TutorialMove : MonoBehaviour
 
     private void ActivateTutorial()
     {
-        isActive = true;
+        TutorialStateManager.MoveTriggered = true;
         Debug.Log("✅ 이동 튜토리얼 UI 닫힘 - 튜토리얼 활성화됨");
 
     }
@@ -39,8 +36,12 @@ public class TutorialMove : MonoBehaviour
     // 외부(DoorSensor 등)에서 호출
     public void CompleteTutorial()
     {
-        if (!isActive || isCompleted) return;
-        isCompleted = true;
+        // 이미 활성화 안되었거나 완료됐으면 무시
+        if (!TutorialStateManager.MoveTriggered || TutorialStateManager.MoveCompleted)
+            return;
+
+        // 완료 기록
+        TutorialStateManager.MoveCompleted = true;
 
         // ✅ 완료 스티커 표시
         if (tutorialUI != null)
