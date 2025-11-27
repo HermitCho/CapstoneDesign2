@@ -606,6 +606,12 @@ public class FindMatching : MonoBehaviourPunCallbacks
                 StartCoroutine(AnimatePlayerCountImages(lastDisplayedPlayerCount, currentPlayers));
                 lastDisplayedPlayerCount = currentPlayers;
             }
+            // ✅ 플레이어 수가 감소했을 때 이미지 숨기기 애니메이션 재생
+            else if (currentPlayers < lastDisplayedPlayerCount)
+            {
+                StartCoroutine(HidePlayerCountImages(lastDisplayedPlayerCount, currentPlayers));
+                lastDisplayedPlayerCount = currentPlayers;
+            }
         }
     }
     
@@ -640,6 +646,42 @@ public class FindMatching : MonoBehaviourPunCallbacks
                 
                 // 다음 이미지까지 짧은 대기 시간 (0.15초)
                 yield return new WaitForSeconds(0.15f);
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 플레이어 카운트 이미지 숨기기 애니메이션 (순차적으로 사라지기)
+    /// </summary>
+    private IEnumerator HidePlayerCountImages(int fromCount, int toCount)
+    {
+        // fromCount-1부터 toCount까지 역순으로 이미지 숨기기
+        for (int i = fromCount - 1; i >= toCount && i >= 0 && i < playerCountImages.Length; i--)
+        {
+            Image currentImage = playerCountImages[i];
+            if (currentImage != null && currentImage.gameObject.activeSelf)
+            {
+                // DOTween 사라지는 애니메이션 (InBack Ease + 페이드아웃)
+                Sequence hideSequence = DOTween.Sequence();
+                
+                // 스케일을 0으로 줄이면서 페이드아웃
+                hideSequence.Append(currentImage.transform.DOScale(0f, 0.3f).SetEase(Ease.InBack));
+                hideSequence.Join(currentImage.DOFade(0f, 0.3f));
+                
+                // 애니메이션 완료 후 비활성화
+                yield return hideSequence.WaitForCompletion();
+                
+                // 이미지 비활성화 및 초기화
+                currentImage.gameObject.SetActive(false);
+                currentImage.transform.localScale = Vector3.zero;
+                
+                // 색상 알파값 복원 (다음에 다시 나타날 때를 위해)
+                Color originalColor = currentImage.color;
+                originalColor.a = 1f;
+                currentImage.color = originalColor;
+                
+                // 다음 이미지까지 짧은 대기 시간 (0.1초)
+                yield return new WaitForSeconds(0.1f);
             }
         }
     }

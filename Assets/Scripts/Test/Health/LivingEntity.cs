@@ -298,6 +298,16 @@ public class LivingEntity : MonoBehaviourPunCallbacks, IDamageable, IPunObservab
             attackerView.RPC("RPC_GrantKillScore", attackerView.Owner, killScore);
         }
 
+        // 사망 시 점수 30% 차감 (로컬 플레이어인 경우에만)
+        if (photonView.IsMine)
+        {
+            CoinController coinController = GetComponent<CoinController>();
+            if (coinController != null)
+            {
+                coinController.photonView.RPC("RPC_SubtractDeathPenalty", photonView.Owner);
+            }
+        }
+
         // 반짝임 코루틴 중지 및 색상 복원
         if (hitFlashCoroutine != null)
         {
