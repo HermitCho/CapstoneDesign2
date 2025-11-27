@@ -87,6 +87,9 @@ public class TestMoveAnimationController : MonoBehaviourPun, IPunObservable
             livingEntity.OnDeath += OnStunned;
             livingEntity.OnRevive += OnRevive;
         }
+
+        // ✅ NEW: 총이 실제 재장전을 시작했을 때 애니메이션을 재생하기 위한 이벤트 구독
+        TestGun.OnLocalReloadStarted += OnLocalReloadStarted;
     }
 
     private void OnDisable()
@@ -106,6 +109,9 @@ public class TestMoveAnimationController : MonoBehaviourPun, IPunObservable
             livingEntity.OnDeath -= OnStunned;
             livingEntity.OnRevive -= OnRevive;
         }
+
+        // ✅ NEW: 이벤트 구독 해제
+        TestGun.OnLocalReloadStarted -= OnLocalReloadStarted;
     }
 
     private void Update()
@@ -258,8 +264,6 @@ public class TestMoveAnimationController : MonoBehaviourPun, IPunObservable
         isReloading = false;
         isJumping = false;
         isShooting = false;
-
-        // ✅ Animator는 활성화 상태 유지 (다른 씬에서 재사용 가능하도록)
     }
 
     /// <summary>
@@ -269,18 +273,15 @@ public class TestMoveAnimationController : MonoBehaviourPun, IPunObservable
     {
         if (animator == null) return;
 
-        // Animator가 비활성화되어 있다면 다시 활성화
         if (!animator.enabled)
         {
             animator.enabled = true;
         }
 
-        // 상태 초기화
         isReloading = false;
         isJumping = false;
         isShooting = false;
 
-        // Idle 상태로 복귀
         animator.Play("Idle", 0, 0f);
         if (upperBodyLayerIndex > 0)
         {
@@ -294,39 +295,32 @@ public class TestMoveAnimationController : MonoBehaviourPun, IPunObservable
     private void OnShootInput() => isShooting = true;
     private void OnShootCanceledInput() => isShooting = false;
 
+    // 🔄 CHANGED: 재장전 입력 → 애니메이션 직접 트리거 X, 총에게 Reload 요청만 보냄
     private void OnReloadInput()
     {
         if (GameManager.Instance != null && GameManager.Instance.IsGameOver()) return;
-        if (isReloading || gun == null || livingEntity.IsDead) return;
-        // 총알이 꽉 찼으면 재장전 불가
-        if (gun.CurrentMagAmmo >= gun.GetGunData().maxAmmo) return;
-        if (reloadCooldown > 0f) return; // 쿨타임 중이면 무시
+        if (gun == null || livingEntity.IsDead) return;
 
+        // 쿨타임/장전 가능 여부는 TestGun.Reload() 안에서 최종 판단
+        gun.Reload();
+    }
+
+    // ✅ NEW: 총이 실제로 재장전을 시작했다고 알려줄 때 (수동 + 자동 공통)
+    private void OnLocalReloadStarted()
+    {
+        if (!photonView.IsMine) return;
+
+        // 모든 클라이언트에 재장전 애니메이션 실행
         photonView.RPC("RpcPlayReloadAnimation", RpcTarget.All);
-
-
-        // // TestGun 재장전 호출
-        // gun.Reload();
-
-        // 첫 장전이면 쿨타임 0, 이후부터는 3.3초
-        if (firstReload)
-        {
-            reloadCooldown = 0f;
-            firstReload = false;
-        }
-        else
-        {
-            reloadCooldown = 3.3f; // 애니메이션 길이와 동일하게
-        }
     }
 
     // 애니메이션 이벤트에서 호출
     private void OnReloadStart() => isReloading = true;
+
     private void OnReloadEnd()
     {
         if (!isReloading) return;
 
-        // Reload 끝났으니 상태 초기화
         isReloading = false;
         animator.SetBool("Reload", false);
     }
@@ -337,7 +331,6 @@ public class TestMoveAnimationController : MonoBehaviourPun, IPunObservable
 
         if (skill != null && skill.CanUse)
         {
-            // 투척 프리뷰를 사용하는 스킬은 E 입력에서 애니메이션을 재생하지 않음
             if (!skill.UsesProjectilePreview && !skill.UsePlacementPreview)
             {
                 photonView.RPC("RpcPlaySkillAnimation", RpcTarget.All, skill.SkillAnimationTriggerName);
@@ -356,7 +349,6 @@ public class TestMoveAnimationController : MonoBehaviourPun, IPunObservable
         string triggerName = itemSkill.SkillAnimationTriggerName;
         if (itemSkill != null || itemSkill.CanUse)
         {
-            // 투척 프리뷰를 사용하는 아이템은 E 입력에서 애니메이션을 재생하지 않음
             if (!itemSkill.UsesProjectilePreview && !itemSkill.UsePlacementPreview)
             {
                 photonView.RPC("RpcPlaySkillAnimation", RpcTarget.All, triggerName);
@@ -394,7 +386,6 @@ public class TestMoveAnimationController : MonoBehaviourPun, IPunObservable
         animator.SetTrigger("Victory");
         animator.SetLayerWeight(upperBodyLayerIndex, 0f);
     }
-
 
     // --- RPC 처리 ---
 
@@ -437,8 +428,6 @@ public class TestMoveAnimationController : MonoBehaviourPun, IPunObservable
     }
 
     // --- 포톤 동기화 ---
-
-
     public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
     {
         if (stream.IsWriting)
