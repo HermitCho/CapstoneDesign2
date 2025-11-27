@@ -22,9 +22,15 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
         AttackEnemy,
         ChaseCrownHolder,
         FleeWithCrown,
-        FleeFromDanger, // 위험으로부터 도망 (부활 후 또는 체력 낮을 때)
+        FleeFromDanger,
         SeekFreeCrown,
         Dead
+    }
+
+    private enum BotRole
+    {
+        Normal,
+        Tracker
     }
     
     #endregion
@@ -66,6 +72,10 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
     private Transform currentTarget;
     private Coin targetCoin;
     private Crown crownObject;
+    
+    // 봇 역할
+    private BotRole botRole = BotRole.Normal;
+    private const float TRACKER_PROBABILITY = 0.35f;
     
     // 전투 상태
     private int currentAmmo;
@@ -214,6 +224,20 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
         {
             currentAmmo = gunData.maxAmmo;
         }
+
+        AssignBotRole();
+    }
+
+    private void AssignBotRole()
+    {
+        if (Random.value < TRACKER_PROBABILITY)
+        {
+            botRole = BotRole.Tracker;
+        }
+        else
+        {
+            botRole = BotRole.Normal;
+        }
     }
     
     private void OnEnable()
@@ -322,10 +346,8 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
     
     private void UpdateState()
     {
-        // 상점 안에 있는지 확인
         CheckIfInShop();
         
-        // ✅ 우선순위 0: 도망 상태가 활성화되어 있으면 도망 (부활 후 짧은 시간만)
         if (Time.time < fleeUntilTime)
         {
             Transform nearestThreat = FindNearestEnemy();
@@ -335,60 +357,117 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
                 currentState = AIState.FleeFromDanger;
                 return;
             }
-            // 위협이 없으면 도망 상태 해제
             fleeUntilTime = 0f;
         }
-        
-        // ✅ 우선순위 1: 왕관 소유자 추적 (최우선, 확률 100%)
+
+        if (botRole == BotRole.Tracker)
+        {
+            UpdateStateAsTracker();
+        }
+        else
+        {
+            UpdateStateAsNormal();
+        }
+    }
+
+    private void UpdateStateAsTracker()
+    {
         Transform crownHolder = GetCrownHolder();
         if (crownHolder != null && crownHolder != transform)
         {
-            // 왕관 주변에 적이 많은지 확인
+            currentTarget = crownHolder;
+            currentState = AIState.ChaseCrownHolder;
+            return;
+        }
+
+        if (crownObject != null && !IsCrownAttached())
+        {
+            float dist = Vector3.Distance(transform.position, crownObject.transform.position);
+            if (dist <= visionRange * 3f)
+            {
+                currentState = AIState.SeekFreeCrown;
+                return;
+            }
+        }
+
+        if (HasCrown())
+        {
+            Transform threat = FindNearestEnemy();
+            if (threat != null && Vector3.Distance(transform.position, threat.position) < visionRange)
+            {
+                currentTarget = threat;
+                currentState = AIState.FleeWithCrown;
+                return;
+            }
+        }
+
+        Transform enemy = FindNearestEnemy();
+        if (enemy != null && Vector3.Distance(transform.position, enemy.position) <= visionRange * 2f)
+        {
+            currentTarget = enemy;
+            currentState = AIState.AttackEnemy;
+            return;
+        }
+
+        if (crownObject != null && !IsCrownAttached())
+        {
+            float dist = Vector3.Distance(transform.position, crownObject.transform.position);
+            if (dist <= visionRange * 3f)
+            {
+                currentState = AIState.SeekFreeCrown;
+            }
+            else
+            {
+                currentState = AIState.Idle;
+            }
+        }
+        else
+        {
+            currentState = AIState.Idle;
+        }
+    }
+
+    private void UpdateStateAsNormal()
+    {
+        Transform crownHolder = GetCrownHolder();
+        if (crownHolder != null && crownHolder != transform)
+        {
             int nearbyEnemyCount = CountNearbyEnemies(crownHolder.position, visionRange);
             
-            // 왕관 주변에 적이 많으면 전략적으로 행동 (도망 또는 공격)
             if (nearbyEnemyCount >= DANGER_ENEMY_COUNT)
             {
-                // 확률적으로 도망 (40%) 또는 공격 (60%)
                 if (Random.value < FLEE_PROBABILITY_MANY_ENEMIES)
                 {
-                    // 도망: 가장 가까운 적으로부터 도망
                     Transform nearestThreat = FindNearestEnemy();
                     if (nearestThreat != null)
                     {
                         currentTarget = nearestThreat;
                         currentState = AIState.FleeFromDanger;
-                        fleeUntilTime = Time.time + 2f; // 2초 동안 도망
+                        fleeUntilTime = Time.time + 2f;
                         return;
                     }
                 }
-                // 공격: 왕관 소유자를 공격 (60% 확률)
                 currentTarget = crownHolder;
                 currentState = AIState.ChaseCrownHolder;
                 return;
             }
             else
             {
-                // 주변에 적이 적으면 왕관 소유자 추적
                 currentTarget = crownHolder;
                 currentState = AIState.ChaseCrownHolder;
                 return;
             }
         }
         
-        // ✅ 우선순위 1.5: 떨어진 왕관 획득 (왕관이 최우선이므로 상위로 이동)
         if (crownObject != null && !IsCrownAttached())
         {
             float dist = Vector3.Distance(transform.position, crownObject.transform.position);
             if (dist <= visionRange)
             {
-                // 왕관 주변에 적이 많은지 확인
                 int nearbyEnemyCount = CountNearbyEnemies(crownObject.transform.position, visionRange);
                 
-                // 왕관 주변에 적이 많으면 전략적으로 행동
                 if (nearbyEnemyCount >= DANGER_ENEMY_COUNT)
                 {
-                    // 확률적으로 도망 (40%) 또는 왕관 획득 시도 (60%)
                     if (Random.value < FLEE_PROBABILITY_MANY_ENEMIES)
                     {
                         Transform nearestThreat = FindNearestEnemy();
@@ -401,38 +480,32 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
                         }
                     }
                 }
-                // 왕관 획득 시도
                 currentState = AIState.SeekFreeCrown;
                 return;
             }
         }
         
-        // ✅ 우선순위 2: 체력이 낮거나 주변에 적이 많으면 전략적으로 행동
         if (aiHealth != null && !aiHealth.IsDead)
         {
             float healthRatio = aiHealth.CurrentHealth / aiHealth.MaxHealth;
             int nearbyEnemyCount = CountNearbyEnemies(visionRange);
             
-            // 체력이 30% 이하이거나 주변에 3명 이상의 적이 있으면 전략 판단
             if (healthRatio <= LOW_HEALTH_THRESHOLD || nearbyEnemyCount >= DANGER_ENEMY_COUNT)
             {
                 Transform nearestThreat = FindNearestEnemy();
                 if (nearestThreat != null && Vector3.Distance(transform.position, nearestThreat.position) < visionRange)
                 {
-                    // 체력이 낮을 때는 50% 확률로 도망, 적이 많을 때는 40% 확률로 도망
                     float fleeChance = healthRatio <= LOW_HEALTH_THRESHOLD ? FLEE_PROBABILITY_LOW_HEALTH : FLEE_PROBABILITY_MANY_ENEMIES;
                     
                     if (Random.value < fleeChance)
                     {
-                        // 도망
                         currentTarget = nearestThreat;
                         currentState = AIState.FleeFromDanger;
-                        fleeUntilTime = Time.time + 2f; // 2초 동안 도망
+                        fleeUntilTime = Time.time + 2f;
                         return;
                     }
                     else
                     {
-                        // 맞서 싸우기
                         currentTarget = nearestThreat;
                         currentState = AIState.AttackEnemy;
                         return;
@@ -441,7 +514,6 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             }
         }
         
-        // 우선순위 3: 내가 왕관을 가지고 있으면 도망
         if (HasCrown())
         {
             Transform threat = FindNearestEnemy();
@@ -451,7 +523,6 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
                 currentState = AIState.FleeWithCrown;
                 return;
             }
-            // 왕관 있어도 가끔 코인 수집 (20% 확률)
             if (Random.value < 0.2f)
             {
                 currentState = AIState.CollectCoin;
@@ -459,7 +530,6 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             }
         }
         
-        // 우선순위 4: 시야 내 적 공격 (랜덤 확률 60%, 가끔 무시)
         Transform enemy = FindNearestEnemy();
         if (enemy != null && Vector3.Distance(transform.position, enemy.position) <= visionRange && Random.value > 0.4f)
         {
@@ -468,14 +538,13 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             return;
         }
         
-        // 우선순위 5: 코인 수집 또는 랜덤 배회
         if (Random.value > 0.1f)
         {
             currentState = AIState.CollectCoin;
         }
         else
         {
-            currentState = AIState.Idle; // 가끔 잠깐 멈춤
+            currentState = AIState.Idle;
         }
     }
     
@@ -604,7 +673,6 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
         
         if (distance <= attackRange)
         {
-            // 시야선 체크
             if (HasLineOfSight(currentTarget))
             {
                 StopMovement();
@@ -613,13 +681,24 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             }
             else
             {
-                // 벽에 막혀있으면 계속 추적
                 MoveTo(currentTarget.position);
             }
         }
         else
         {
-            MoveTo(currentTarget.position);
+            if (botRole == BotRole.Tracker)
+            {
+                MoveTo(currentTarget.position);
+            }
+            else if (distance <= visionRange * 1.5f)
+            {
+                MoveTo(currentTarget.position);
+            }
+            else
+            {
+                currentTarget = null;
+                currentState = AIState.Idle;
+            }
         }
     }
     
@@ -1319,11 +1398,10 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
         isReloading = false;
         currentTarget = null;
         
-        // 부활 후 일정 시간 동안 도망 상태로 설정 (뭉치는 현상 방지)
-        fleeUntilTime = Time.time + FLEE_AFTER_REVIVE_DURATION;
-        Debug.Log($"[AIBot] {gameObject.name} 부활 - {FLEE_AFTER_REVIVE_DURATION}초 동안 도망 상태 활성화");
+        AssignBotRole();
         
-        // CRITICAL: NavMeshAgent는 MasterClient에서만 활성화
+        fleeUntilTime = Time.time + FLEE_AFTER_REVIVE_DURATION;
+        
         if (agent != null && PhotonNetwork.IsMasterClient)
         {
             agent.enabled = true;
@@ -1333,7 +1411,6 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
         if (animator != null)
         {
             animator.SetTrigger(reviveHash);
-            // 애니메이션 파라미터 초기화
             animator.SetFloat(moveXHash, 0f);
             animator.SetFloat(moveYHash, 0f);
         }

@@ -37,7 +37,8 @@ public class TestGun : MonoBehaviourPun
 
     private MoveController moveController;
     private SkillController skillController;
-    private TestShoot testShoot; // TestShoot 스크립트 참조 추가
+    private TestShoot testShoot;
+    private CameraController cameraController; // TestShoot 스크립트 참조 추가
 
     #endregion
 
@@ -103,6 +104,14 @@ public class TestGun : MonoBehaviourPun
         IsShouldering = false;
         moveController = GetComponentInParent<MoveController>();
         skillController = GetComponentInParent<SkillController>();
+        if (cameraController == null)
+        {
+            cameraController = GetComponentInParent<CameraController>();
+            if (cameraController == null)
+            {
+                cameraController = FindObjectOfType<CameraController>();
+            }
+        }
     }
     #endregion
 
@@ -213,6 +222,30 @@ public class TestGun : MonoBehaviourPun
             }
 
             StartCoroutine(ShotEffect(fireTransform.position, pelletHitPosition));
+        }
+
+        if (photonViewCached.IsMine)
+        {
+            StartCoroutine(ApplyRecoilAfterShot());
+        }
+    }
+
+    private IEnumerator ApplyRecoilAfterShot()
+    {
+        yield return null;
+
+        if (gunData != null && gunData.recoil > 0f)
+        {
+            float randomDirection = UnityEngine.Random.Range(-1f, 1f);
+            
+            if (cameraController != null)
+            {
+                cameraController.ApplyRecoil(gunData.recoil, randomDirection);
+            }
+            if (moveController != null)
+            {
+                moveController.ApplyRecoil(gunData.recoil, randomDirection);
+            }
         }
     }
 
