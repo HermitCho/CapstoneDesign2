@@ -574,9 +574,6 @@ public class TutorialFindMatching : MonoBehaviourPunCallbacks
     public override void OnJoinedRoom()
     {
         Debug.Log("TutorialFindMatching: 방 입장 완료");
-
-        TutorialStateManager.ResetAll();
-        Debug.Log("튜토리얼 상태 초기화 완료");
         
         // 튜토리얼 진행 중이 아니라면 무시 (FindMatching으로 입장한 경우)
         if (!isConnecting)

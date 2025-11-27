@@ -95,5 +95,8 @@ public static class TutorialStateManager
 
         // Clear
         ClearTriggered = false;
+
+        // UI 시스템 리셋
+        TutorialUI.ResetAllTutorials();
     }
 }
