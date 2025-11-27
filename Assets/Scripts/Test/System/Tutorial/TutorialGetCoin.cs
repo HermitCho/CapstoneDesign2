@@ -15,9 +15,6 @@ public class TutorialGetCoin : MonoBehaviour
     [Header("획득해야 하는 코인 수")]
     [SerializeField] private int requiredCoinCount = 5;
 
-    private bool isCounting = false;
-    private int startCoin = 0;
-
     void OnEnable()
     {
         if (tutorialUI != null)
@@ -37,39 +34,44 @@ public class TutorialGetCoin : MonoBehaviour
 
     private void BeginCounting()
     {
-        // 튜토리얼 패널을 닫은 시점부터 코인 카운트 시작
-        isCounting = true;
-        startCoin = GetLocalCoinSafe();
+        TutorialStateManager.CoinTriggered = true;
+        TutorialStateManager.CoinCompleted = false;
+        TutorialStateManager.CoinGained = 0;
+
         CoinController.LocalCoinChanged += OnLocalCoinChanged;
     }
 
     private void OnLocalCoinChanged(int currentCoin)
     {
-        if (!isCounting) return;
+        if (!TutorialStateManager.CoinTriggered ||
+            TutorialStateManager.CoinCompleted)
+            return;
 
-        int gained = currentCoin - startCoin;
+        // 첫 갱신이라면 기준점 기록
+        if (TutorialStateManager.CoinGained == 0)
+            TutorialStateManager.CoinGained = currentCoin;
+
+        int gained = currentCoin - TutorialStateManager.CoinGained;
+
+        Debug.Log($"💰 코인 획득량 계산됨: {gained}/{requiredCoinCount}");
+
         if (gained >= requiredCoinCount)
         {
-            isCounting = false;
-            CoinController.LocalCoinChanged -= OnLocalCoinChanged;
-
-            // 완료 스티커 표시 (있을 때만)
-            if (tutorialUI != null)
-            {
-                tutorialUI.ShowCompleteSticker();
-            }
-
-            // 다음 문 열기
-            if (tutorialComplete != null)
-            {
-                tutorialComplete.OpenDoor();
-            }
+            CompleteTutorial();
         }
     }
 
-    private int GetLocalCoinSafe()
+    private void CompleteTutorial()
     {
-        var coinController = FindObjectOfType<CoinController>();
-        return coinController != null ? coinController.GetCurrentCoin() : 0;
+        TutorialStateManager.CoinCompleted = true;
+        CoinController.LocalCoinChanged -= OnLocalCoinChanged;
+
+        Debug.Log("✅ 코인 튜토리얼 완료!");
+
+        if (tutorialUI != null)
+            tutorialUI.ShowCompleteSticker();
+
+        if (tutorialComplete != null)
+            tutorialComplete.OpenDoor();
     }
 }

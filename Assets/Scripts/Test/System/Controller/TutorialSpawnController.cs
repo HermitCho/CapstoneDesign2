@@ -32,6 +32,10 @@ public class TutorialSpawnController : MonoBehaviourPunCallbacks
     
     void Awake()
     {
+        // 튜토리얼 씬 진입 시마다 상태 초기화
+        TutorialStateManager.ResetAll();
+        Debug.Log("TutorialSpawnController: TutorialStateManager 초기화");
+        
         // DataBase 정보 캐싱
         CacheDataBaseInfo();
         
