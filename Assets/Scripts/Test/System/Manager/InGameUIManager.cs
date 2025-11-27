@@ -30,13 +30,27 @@ public class InGameUIManager : MonoBehaviour
     
     // BGMController 캐싱 (성능 최적화)
     private InGameBGMController cachedBGMController;
+    private bool isMapReady = false;
+    private bool mapGenerationRequested = false;
     
     #region Unity 생명주기
     
+    void Awake()
+    {
+        MapGenerator.OnGlobalMapReady += HandleMapReady;
+    }
+
+    void OnDestroy()
+    {
+        MapGenerator.OnGlobalMapReady -= HandleMapReady;
+    }
+
     void Start()
     {
         // BGMController 캐싱 (씬 시작 시 한 번만)
         CacheBGMController();
+
+        isMapReady = MapGenerator.GlobalMapReady;
         
         // 게임 단계에 따라 적절한 패널 표시
         CheckGamePhaseAndShowPanel();
@@ -75,7 +89,7 @@ public class InGameUIManager : MonoBehaviour
             return;
         }
         
-        string targetPanel = "Ready"; // 기본값
+        string targetPanel = readyPanelName; // 기본값
         
         if (PhotonNetwork.InRoom && PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("gamePhase", out object phase))
         {
@@ -88,12 +102,18 @@ public class InGameUIManager : MonoBehaviour
             }
             else if (gamePhase == "PLAYING")
             {
-                targetPanel = "HUD";
+                targetPanel = hudPanelName;
             }
             else
             {
-                targetPanel = "Ready";
+                targetPanel = readyPanelName;
             }
+        }
+
+        if (targetPanel == readyPanelName && !isMapReady)
+        {
+            EnsureMapGenerationRequested();
+            return;
         }
         
         // 중복 호출 방지
@@ -101,7 +121,7 @@ public class InGameUIManager : MonoBehaviour
         {
             currentPanel = targetPanel;
             
-            if (targetPanel == "HUD")
+            if (targetPanel == hudPanelName)
             {
                 ShowHUDPanel();
             }
@@ -124,6 +144,12 @@ public class InGameUIManager : MonoBehaviour
     /// </summary>
     public void ShowReadyPanel()
     {
+        if (!isMapReady)
+        {
+            EnsureMapGenerationRequested();
+            return;
+        }
+
         if (panelManager != null)
         {
             panelManager.OpenPanel(readyPanelName);
@@ -277,7 +303,34 @@ public class InGameUIManager : MonoBehaviour
         isGameOverPanelActive = false;
         currentPanel = "";
         cachedBGMController = null; // 캐시 초기화 (새 씬에서 다시 찾기)
+        isMapReady = MapGenerator.GlobalMapReady;
+        mapGenerationRequested = false;
         Debug.Log("InGameUIManager: 게임 상태 리셋 - 자동 전환 재활성화");
+    }
+
+    private void HandleMapReady()
+    {
+        isMapReady = true;
+        mapGenerationRequested = false;
+        CheckGamePhaseAndShowPanel();
+    }
+
+    private void EnsureMapGenerationRequested()
+    {
+        if (isMapReady || mapGenerationRequested)
+        {
+            return;
+        }
+
+        MapGenerator generator = FindObjectOfType<MapGenerator>();
+        if (generator != null)
+        {
+            if (PhotonNetwork.IsMasterClient)
+            {
+                generator.StartMapGeneration();
+                mapGenerationRequested = true;
+            }
+        }
     }
 
     

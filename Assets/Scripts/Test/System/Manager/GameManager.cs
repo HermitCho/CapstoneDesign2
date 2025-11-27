@@ -19,7 +19,7 @@ public class GameManager : Singleton<GameManager>
 
     // 테디베어 관리 (점수는 CoinController에서 관리)
     private Crown currentTeddyBear;
-    
+
     // 게임 시간 관리
     private double gameStartTime = 0f;
     private bool isGameActuallyStarted = false;
@@ -29,16 +29,19 @@ public class GameManager : Singleton<GameManager>
     // 플레이어 상태 관리
     private float playerHealth = 100f;
     private float maxPlayerHealth = 100f;
-    
+
     // 코인 컨트롤러 관리
     private CoinController currentPlayerCoinController;
-    
+
     // 게임 오버 관리
     private bool isGameOver = false;
     private InGameUIManager inGameUIManager;
-    
+
     // 씬 전환 감지를 위한 변수
     private string lastSceneName = "";
+
+    private bool hasPreparedMapThisScene = false;
+    private Coroutine mapPreparationRoutine;
 
     #endregion
 
@@ -55,7 +58,7 @@ public class GameManager : Singleton<GameManager>
     // 상점 시간 캐싱 제거 (Shop.cs에서 직접 관리)
     private GameObject[] cachedItemData;
     private bool dataBaseCached = false;
-    
+
 
     #endregion
 
@@ -89,7 +92,7 @@ public class GameManager : Singleton<GameManager>
     public static event Action OnCharacterSpawned;
 
     // 상점 이벤트 (제거됨 - Shop.cs에서 직접 관리)
-    
+
     // 게임 오버 이벤트
     public static event Action<float> OnGameOver; // 최종 점수와 함께 게임 오버 알림
 
@@ -110,12 +113,12 @@ public class GameManager : Singleton<GameManager>
             PhotonNetwork.SendRate = 20; // 20 FPS로 전송률 조정
             PhotonNetwork.SerializationRate = 10; // 10 FPS로 직렬화율 조정
         }
-        
+
         // 씬 로드 이벤트 구독 (싱글톤이므로 한번만 구독됨)
         SceneManager.sceneLoaded += OnSceneLoaded;
-        
+
         // 이벤트 구독 제거 - Room Properties 기반으로 변경
-        
+
         // 현재 씬이 게임 씬이라면 즉시 초기화
         string currentSceneName = SceneManager.GetActiveScene().name;
         if (IsGameScene(currentSceneName))
@@ -130,12 +133,12 @@ public class GameManager : Singleton<GameManager>
         // DataBase 정보 캐싱 (항상 수행)
         CacheDataBaseInfo();
     }
-    
+
     void Update()
     {
         // Room Properties 기반으로 게임 시작 상태 체크
         CheckGameStartFromRoomProperties();
-        
+
         // 게임이 실제로 시작되고 게임 오버 상태가 아닐 때만 시간 체크
         if (isGameActuallyStarted && !isGameOver)
         {
@@ -144,15 +147,15 @@ public class GameManager : Singleton<GameManager>
             {
                 UpdateMasterGameTime();
             }
-            
+
             // 게임 씬에서 필요한 컴포넌트들이 null인지 주기적으로 체크
             CheckAndFindMissingComponents();
-            
+
             if (inGameUIManager == null || currentTeddyBear == null)
             {
-                return; 
+                return;
             }
-            
+
             CheckGameTimeForGameOver();
         }
         else
@@ -161,7 +164,7 @@ public class GameManager : Singleton<GameManager>
             CheckAndFindMissingComponents();
         }
     }
-    
+
     /// <summary>
     /// Room Properties를 통해 게임 시작 상태 체크 (실무 스타일)
     /// </summary>
@@ -170,7 +173,7 @@ public class GameManager : Singleton<GameManager>
         if (!isGameActuallyStarted && PhotonNetwork.InRoom)
         {
             var props = PhotonNetwork.CurrentRoom.CustomProperties;
-            if (props.TryGetValue("gamePhase", out object gamePhaseObj) && 
+            if (props.TryGetValue("gamePhase", out object gamePhaseObj) &&
                 gamePhaseObj.ToString() == "PLAYING")
             {
                 // 게임이 시작되었음을 감지
@@ -178,7 +181,7 @@ public class GameManager : Singleton<GameManager>
             }
         }
     }
-    
+
     /// <summary>
     /// 게임 시작 (Room Properties 기반)
     /// </summary>
@@ -188,9 +191,9 @@ public class GameManager : Singleton<GameManager>
         {
             return;
         }
-        
+
         isGameActuallyStarted = true;
-        
+
         // ✅ Room Properties에서 게임 시작 시간 가져오기 (마스터가 설정한 값)
         if (PhotonNetwork.InRoom && PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("gameStartTime", out object startTimeObj))
         {
@@ -207,28 +210,43 @@ public class GameManager : Singleton<GameManager>
         {
             // Room Properties에 없으면 현재 시간 사용 (백업)
             gameStartTime = PhotonNetwork.Time;
-            
+
             // 마스터 클라이언트가 설정하지 않았다면 직접 설정
             if (PhotonNetwork.IsMasterClient)
             {
                 SetMasterGameTime();
             }
         }
-        
+
+        // 맵 생성 컨트롤러 호출 (GameManager가 맵 생성 시작 권한을 가짐)
+        if (PhotonNetwork.IsMasterClient)
+        {
+            // 씬에서 MapGenerator 컴포넌트 찾기
+            MapGenerator mapGenerator = FindObjectOfType<MapGenerator>();
+            if (mapGenerator != null)
+            {
+                mapGenerator.StartMapGeneration(); // 맵 생성 시작
+            }
+            else
+            {
+                Debug.LogError("MapGenerator를 씬에서 찾을 수 없습니다.");
+            }
+        }
+
         EnableGameUI();
-        
+
         StartCoroutine(EnablePlayerControlsDelayed());
     }
-    
+
     /// <summary>
     /// 게임 시작 시 플레이어 조작 활성화
     /// </summary>
     private IEnumerator EnablePlayerControlsDelayed()
     {
         yield return new WaitForSeconds(0.2f);
-        
+
         GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
-        
+
         foreach (GameObject player in players)
         {
             PhotonView pv = player.GetComponent<PhotonView>();
@@ -239,19 +257,19 @@ public class GameManager : Singleton<GameManager>
                 {
                     moveController.EnableMoveControls();
                 }
-                
+
                 SkillController skillController = player.GetComponent<SkillController>();
                 if (skillController != null)
                 {
                     skillController.EnableSkillControls();
                 }
-                
+
                 TestGun gun = player.GetComponentInChildren<TestGun>();
                 if (gun != null)
                 {
                     gun.enabled = true;
                 }
-                
+
                 CameraController cameraController = player.GetComponent<CameraController>();
                 if (cameraController != null)
                 {
@@ -259,11 +277,11 @@ public class GameManager : Singleton<GameManager>
                 }
             }
         }
-        
+
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Locked;
     }
-    
+
     /// <summary>
     /// 누락된 컴포넌트들을 주기적으로 체크하고 찾기
     /// </summary>
@@ -271,17 +289,17 @@ public class GameManager : Singleton<GameManager>
     {
         string currentSceneName = SceneManager.GetActiveScene().name;
         if (!IsGameScene(currentSceneName)) return;
-        
+
         // InGameUIManager 체크 (가장 중요)
         if (inGameUIManager == null)
         {
             FindInGameUIManager();
         }
-        
+
         // 테디베어 체크
         if (currentTeddyBear == null)
         {
-        FindTeddyBear();
+            FindTeddyBear();
         }
     }
 
@@ -289,9 +307,9 @@ public class GameManager : Singleton<GameManager>
     {
         // 씬 로드 이벤트 구독 해제
         SceneManager.sceneLoaded -= OnSceneLoaded;
-        
+
         // 이벤트 구독 해제 제거 - Room Properties 기반으로 변경
-        
+
         LivingEntity.OnAnyLivingEntityHealthChanged -= HandleAnyLivingEntityHealthChanged;
     }
 
@@ -303,7 +321,7 @@ public class GameManager : Singleton<GameManager>
 
 
     #region 씬 전환 및 게임 상태 초기화 메서드
-    
+
     /// <summary>
     /// 씬 로드 이벤트 콜백 (씬이 로드될 때마다 호출됨)
     /// </summary>
@@ -312,27 +330,30 @@ public class GameManager : Singleton<GameManager>
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         string currentSceneName = scene.name;
-        
+
         // ✅ 씬이 바뀔 때마다 게임 오버 상태 리셋 (튜토리얼 씬 등에서 애니메이션 작동하도록)
         if (lastSceneName != currentSceneName)
         {
             isGameOver = false;
         }
-        
+
         // 씬이 바뀌었고, 게임 씬인 경우
         if (lastSceneName != currentSceneName && IsGameScene(currentSceneName))
-        {         
+        {
             // 게임 상태 초기화
+            hasPreparedMapThisScene = false;
             ResetGameState();
-            
+
+            PrepareMapEarlyIfNeeded();
+
             // 약간의 지연 후 컴포넌트 찾기 (씬 로드 완료 대기)
             StartCoroutine(FindComponentsAfterSceneLoad());
         }
-        
+
         // 현재 씬 이름 저장
         lastSceneName = currentSceneName;
     }
-    
+
     /// <summary>
     /// 씬 로드 후 컴포넌트 찾기 (지연 호출)
     /// </summary>
@@ -341,15 +362,15 @@ public class GameManager : Singleton<GameManager>
         // 씬 로드 완료 대기
         yield return new WaitForEndOfFrame();
         yield return new WaitForEndOfFrame(); // 추가 대기로 안전성 확보
-        
+
         // 컴포넌트 찾기
         FindInGameUIManager();
         FindTeddyBear();
-        
+
         // 필수 컴포넌트 확인 시작
         StartCoroutine(VerifyEssentialComponents());
     }
-    
+
     /// <summary>
     /// 필수 컴포넌트들이 모두 찾아졌는지 확인 (안전장치)
     /// </summary>
@@ -357,27 +378,27 @@ public class GameManager : Singleton<GameManager>
     {
         float checkTime = 0f;
         float maxCheckTime = 5f; // 최대 5초간 체크
-        
+
         while (checkTime < maxCheckTime)
         {
             yield return new WaitForSeconds(0.5f); // 0.5초마다 체크
             checkTime += 0.5f;
-            
+
             // 필수 컴포넌트 체크
             bool allFound = true;
-            
+
             if (inGameUIManager == null)
             {
                 FindInGameUIManager();
                 allFound = false;
             }
-            
+
             if (currentTeddyBear == null)
             {
                 FindTeddyBear();
                 allFound = false;
             }
-            
+
             // 모든 컴포넌트를 찾았다면 종료
             if (allFound)
             {
@@ -385,7 +406,56 @@ public class GameManager : Singleton<GameManager>
             }
         }
     }
-    
+
+    private void PrepareMapEarlyIfNeeded()
+    {
+        if (hasPreparedMapThisScene)
+        {
+            return;
+        }
+
+        if (!PhotonNetwork.IsMasterClient)
+        {
+            return;
+        }
+
+        if (mapPreparationRoutine != null)
+        {
+            StopCoroutine(mapPreparationRoutine);
+        }
+
+        mapPreparationRoutine = StartCoroutine(EnsureMapPreparedRoutine());
+    }
+
+    private IEnumerator EnsureMapPreparedRoutine()
+    {
+        float timeout = 5f;
+
+        while (timeout > 0f)
+        {
+            MapGenerator mapGenerator = FindObjectOfType<MapGenerator>();
+            if (mapGenerator != null)
+            {
+                mapGenerator.StartMapGeneration();
+
+                while (!mapGenerator.IsMapReady)
+                {
+                    yield return null;
+                }
+
+                hasPreparedMapThisScene = true;
+                mapPreparationRoutine = null;
+                yield break;
+            }
+
+            timeout -= Time.deltaTime;
+            yield return null;
+        }
+
+        Debug.LogWarning("GameManager: 제한 시간 내에 MapGenerator를 찾지 못했습니다.");
+        mapPreparationRoutine = null;
+    }
+
     /// <summary>
     /// 게임 씬인지 확인
     /// </summary>
@@ -395,7 +465,7 @@ public class GameManager : Singleton<GameManager>
     {
         // 게임 씬 목록 (프로젝트에 맞게 수정)
         string[] gameScenes = { "InGame", "Prototype", "GameScene", "Main" };
-        
+
         foreach (string gameScene in gameScenes)
         {
             if (sceneName.Contains(gameScene))
@@ -403,27 +473,27 @@ public class GameManager : Singleton<GameManager>
                 return true;
             }
         }
-        
+
         return false;
     }
-    
+
     /// <summary>
     /// 게임 상태 초기화 (새 게임 시작)
     /// </summary>
     void ResetGameState()
     {
         Debug.Log("GameManager: ResetGameState() 호출 - 게임 상태 완전 초기화");
-        
+
         // 1. DataBase 정보 먼저 캐싱 (PlayTime 확보)
         CacheDataBaseInfo();
-        
+
         // 2. 게임 시간 완전 초기화
         gameStartTime = 0f; // ✅ 0으로 초기화 (StartGame에서 PhotonNetwork.Time으로 재설정)
         isGameActuallyStarted = false; // ✅ 게임 시작 플래그 초기화 (중요!)
         isGameOver = false;
-        
+
         Debug.Log($"GameManager: 게임 시작 플래그 초기화 - isGameActuallyStarted: {isGameActuallyStarted}, isGameOver: {isGameOver}");
-        
+
         // 마스터 클라이언트가 권위적 시간을 방 속성에서 제거 (초기화)
         if (PhotonNetwork.IsMasterClient && PhotonNetwork.InRoom)
         {
@@ -432,26 +502,26 @@ public class GameManager : Singleton<GameManager>
             props["currentGameTime"] = null;
             PhotonNetwork.CurrentRoom.SetCustomProperties(props);
         }
-        
+
         // 3. 점수 완전 초기화
         // totalTeddyBearScore = 0f; // 점수 관련 필드 제거
         ResetAllScores(); // 테디베어 점수도 함께 초기화
-        
+
         // 4. 플레이어 상태 초기화
         playerHealth = 100f;
         maxPlayerHealth = 100f;
-        
+
         // 5. 이벤트 구독 해제 (컴포넌트 참조 초기화 전에 수행)
         if (localPlayerLivingEntity != null)
         {
             LivingEntity.OnAnyLivingEntityHealthChanged -= HandleAnyLivingEntityHealthChanged;
         }
-        
+
         // 6. 컴포넌트 참조 초기화 (새로 찾아야 함)
         localPlayerLivingEntity = null;
         currentPlayerCoinController = null;
         currentTeddyBear = null;
-        
+
         // InGameUIManager 상태 리셋 (새 게임 시작 시)
         if (inGameUIManager != null)
         {
@@ -467,39 +537,39 @@ public class GameManager : Singleton<GameManager>
             }
         }
         // 상점 상태 초기화 제거 (Shop.cs에서 직접 관리)
-        
+
         // 8. UI 이벤트 발생 (초기값으로) - 약간의 지연을 두어 확실히 적용
         StartCoroutine(SendInitialUIEvents());
     }
-    
+
     /// <summary>
     /// 초기 UI 이벤트 발생 (약간의 지연으로 확실한 적용)
     /// </summary>
     IEnumerator SendInitialUIEvents()
     {
         yield return new WaitForEndOfFrame();
-        
+
         // UI 이벤트 발생 전 최종 상태 확인
         float currentPlayTime = GetPlayTime();
         float currentGameTime = GetGameTime();
-        float remainingTime = currentPlayTime - currentGameTime;   
+        float remainingTime = currentPlayTime - currentGameTime;
         // UI 이벤트 발생 (초기값으로)
         OnScoreUpdated?.Invoke(0f);
         OnScoreMultiplierUpdated?.Invoke(1f);
         OnGameTimeUpdated?.Invoke(remainingTime); // 남은 시간으로 초기화
     }
-    
+
     /// <summary>
     /// 외부에서 호출 가능한 강제 게임 상태 초기화 (디버그용)
     /// </summary>
     public void ForceResetGameState()
     {
         ResetGameState();
-        
+
         // 테디베어 다시 찾기 및 초기화
         currentTeddyBear = null;
         FindTeddyBear();
-        
+
         // InGameUIManager 다시 찾기
         inGameUIManager = null;
         FindInGameUIManager();
@@ -719,11 +789,11 @@ public class GameManager : Singleton<GameManager>
                 return (float)elapsed;
             }
         }
-        
+
         // 마스터 클라이언트이거나 방 속성이 없는 경우 로컬 시간 사용
         return (float)(PhotonNetwork.Time - gameStartTime);
     }
-    
+
     // ✅ 남은 게임 시간 가져오기 (HUDPanel에서 사용)
     public float GetRemainingTime()
     {
@@ -732,27 +802,27 @@ public class GameManager : Singleton<GameManager>
     }
 
     // GetShopTime 제거 (Shop.cs에서 직접 관리)
-    
+
     /// <summary>
     /// 마스터 클라이언트가 권위적 게임 시간 설정
     /// </summary>
     private void SetMasterGameTime()
     {
         if (!PhotonNetwork.IsMasterClient || PhotonNetwork.CurrentRoom == null) return;
-        
+
         PhotonHashtable props = new PhotonHashtable();
         props["gameStartTime"] = PhotonNetwork.Time;
         props["playTime"] = cachedPlayTime;
         PhotonNetwork.CurrentRoom.SetCustomProperties(props);
     }
-    
+
     /// <summary>
     /// 마스터 클라이언트가 게임 시간을 주기적으로 업데이트
     /// </summary>
     private void UpdateMasterGameTime()
     {
         if (!PhotonNetwork.IsMasterClient || PhotonNetwork.CurrentRoom == null) return;
-        
+
         // 5초마다 시간 동기화 업데이트
         if (Time.time - lastTimeSync > 5f)
         {
@@ -762,17 +832,17 @@ public class GameManager : Singleton<GameManager>
             lastTimeSync = Time.time;
         }
     }
-    
+
     private float lastTimeSync = 0f;
 
     #endregion
-    
-    
-    
-    
-    
+
+
+
+
+
     #region 게임 오버 관리 메서드
-    
+
     /// <summary>
     /// 플레이어 사망 시 코인 및 점수 손실 처리
     /// </summary>
@@ -783,7 +853,7 @@ public class GameManager : Singleton<GameManager>
         {
             return;
         }
-        
+
         try
         {
             if (DataBase.Instance == null || DataBase.Instance.gameData == null)
@@ -801,16 +871,16 @@ public class GameManager : Singleton<GameManager>
                 // 코인 손실 처리
                 int currentCoins = currentPlayerCoinController.GetCurrentCoin();
                 int coinsToLose = Mathf.RoundToInt(currentCoins * coinLossRate);
-                
+
                 if (coinsToLose > 0)
                 {
                     currentPlayerCoinController.SubtractCoin(coinsToLose);
                 }
-                
+
                 // 점수 손실 처리 (CoinController를 통해)
                 float currentScore = currentPlayerCoinController.GetCurrentScore();
                 float scoreToLose = currentScore * scoreLossRate;
-                
+
                 if (scoreToLose > 0f)
                 {
                     currentPlayerCoinController.SubtractScore(scoreToLose);
@@ -822,7 +892,7 @@ public class GameManager : Singleton<GameManager>
             Debug.LogError($"❌ GameManager: 플레이어 사망 손실 처리 중 오류 발생 - {e.Message}");
         }
     }
-    
+
     /// <summary>
     /// 게임 시간을 체크하여 게임 오버 조건 확인
     /// </summary>
@@ -830,26 +900,26 @@ public class GameManager : Singleton<GameManager>
     {
         float currentGameTime = GetGameTime();
         float remainingTime = cachedPlayTime - currentGameTime;
-        
+
         // 시간이 0 이하가 되면 게임 오버
         if (remainingTime <= 0f && !isGameOver)
         {
             TriggerGameOver();
         }
-        
+
         // 게임 시간 업데이트 이벤트 (남은 시간으로 전달)
         OnGameTimeUpdated?.Invoke(Mathf.Max(0f, remainingTime));
     }
-    
+
     /// <summary>
     /// 게임 오버 트리거
     /// </summary>
     public void TriggerGameOver()
     {
         if (isGameOver) return; // 이미 게임 오버 상태라면 중복 실행 방지
-        
+
         isGameOver = true;
-        
+
         // 게임 단계를 GAMEOVER로 설정 (마스터 클라이언트)
         if (PhotonNetwork.IsMasterClient && PhotonNetwork.InRoom)
         {
@@ -858,26 +928,26 @@ public class GameManager : Singleton<GameManager>
             PhotonNetwork.CurrentRoom.SetCustomProperties(props);
             Debug.Log("GameManager: gamePhase를 GAMEOVER로 설정");
         }
-        
+
         // 최종 점수 가져오기
         float finalScore = GetTeddyBearScore();
-        
+
         // 플레이어 조작 비활성화
         DisablePlayerControls();
-        
+
         // EventSystem 중복 제거
         EnsureSingleEventSystem();
-        
-        
+
+
         // UI 표시
         ShowGameOverUI(finalScore);
-        
+
         // 게임 오버 이벤트 발생 (최종 점수와 함께)
         OnGameOver?.Invoke(finalScore);
-        
+
 
     }
-    
+
     /// <summary>
     /// 모든 플레이어 조작 비활성화
     /// </summary>
@@ -887,11 +957,11 @@ public class GameManager : Singleton<GameManager>
         {
             // 모든 플레이어 찾기
             GameObject[] allPlayerObjects = GameObject.FindGameObjectsWithTag("Player");
-            
-            foreach(GameObject playerObj in allPlayerObjects)
+
+            foreach (GameObject playerObj in allPlayerObjects)
             {
                 PhotonView pv = playerObj.GetComponent<PhotonView>();
-                if(pv != null)
+                if (pv != null)
                 {
                     // 애니메이션 정지 (모든 플레이어)
                     TestMoveAnimationController animController = playerObj.GetComponent<TestMoveAnimationController>();
@@ -899,27 +969,27 @@ public class GameManager : Singleton<GameManager>
                     {
                         animController.StopAllAnimations();
                     }
-                    
+
                     // MoveController 비활성화
                     MoveController moveController = playerObj.GetComponent<MoveController>();
                     SkillController skillController = playerObj.GetComponent<SkillController>();
-                    if(moveController != null && skillController != null)
+                    if (moveController != null && skillController != null)
                     {
                         moveController.DisableMoveControls();
                         skillController.DisableSkillControls();
                     }
-                    
+
                     // CameraController 비활성화 (로컬 플레이어만)
-                    if(pv.IsMine)
+                    if (pv.IsMine)
                     {
                         CameraController cameraController = playerObj.GetComponent<CameraController>();
-                        if(cameraController != null)
+                        if (cameraController != null)
                         {
                             cameraController.DisableCameraControl();
                             cameraController.enabled = false;
                         }
                     }
-                    
+
                     // ✅ VictoryAnimationController 비활성화 (모든 플레이어 - 승리자만 나중에 활성화)
                     VictoryAnimationController victoryController = playerObj.GetComponent<VictoryAnimationController>();
                     if (victoryController != null)
@@ -928,21 +998,21 @@ public class GameManager : Singleton<GameManager>
                     }
                 }
             }
-            
+
             // 전역 사격 시스템 비활성화
             TestShoot.SetIsShooting(false);
-            
+
             // 마우스 커서 표시
             Cursor.visible = true;
             Cursor.lockState = CursorLockMode.None;
-            
+
         }
         catch (System.Exception e)
         {
             Debug.LogError($"GameManager: 플레이어 조작 비활성화 중 오류 - {e.Message}");
         }
     }
-    
+
     /// <summary>
     /// 게임 오버 UI 표시 (HeatUI 호환)
     /// </summary>
@@ -954,7 +1024,7 @@ public class GameManager : Singleton<GameManager>
         {
             FindInGameUIManager();
         }
-        
+
         if (inGameUIManager != null)
         {
             // HeatUI를 통해 GameOverPanel 활성화 (SetWinnerPlayer는 InGameUIManager에서 처리)
@@ -965,8 +1035,8 @@ public class GameManager : Singleton<GameManager>
             Debug.LogError("GameManager: InGameUIManager를 찾을 수 없어 GameOverPanel을 표시할 수 없습니다.");
         }
     }
-    
-    
+
+
     /// <summary>
     /// 게임 오버 상태 확인
     /// </summary>
@@ -976,14 +1046,14 @@ public class GameManager : Singleton<GameManager>
     {
         return isGameOver;
     }
-    
+
     /// <summary>
     /// EventSystem 중복 제거 (씬에 하나만 존재하도록)
     /// </summary>
     private void EnsureSingleEventSystem()
     {
         UnityEngine.EventSystems.EventSystem[] eventSystems = FindObjectsOfType<UnityEngine.EventSystems.EventSystem>();
-        
+
         if (eventSystems.Length > 1)
         {
             // 첫 번째 EventSystem만 유지하고 나머지 제거
@@ -1137,13 +1207,13 @@ public class GameManager : Singleton<GameManager>
         {
             currentTeddyBear = FindObjectOfType<Crown>();
             if (currentTeddyBear != null)
-            {     
+            {
                 // 게임 씬에서는 항상 점수 초기화
                 currentTeddyBear.ResetScore();
             }
         }
     }
-    
+
     /// <summary>
     /// InGameUIManager 찾기 (강화된 버전)
     /// </summary>
@@ -1153,12 +1223,12 @@ public class GameManager : Singleton<GameManager>
         {
             // 1차 시도: 기본 FindObjectOfType
             inGameUIManager = FindObjectOfType<InGameUIManager>();
-            
+
             if (inGameUIManager != null)
             {
                 return;
             }
-            
+
             // 2차 시도: 비활성화된 오브젝트까지 포함해서 찾기
             InGameUIManager[] allManagers = Resources.FindObjectsOfTypeAll<InGameUIManager>();
             foreach (var manager in allManagers)
@@ -1167,7 +1237,7 @@ public class GameManager : Singleton<GameManager>
                 if (manager.gameObject.scene.isLoaded)
                 {
                     inGameUIManager = manager;
-                    
+
                     // 비활성화되어 있다면 활성화
                     if (!manager.gameObject.activeInHierarchy)
                     {
@@ -1227,16 +1297,16 @@ public class GameManager : Singleton<GameManager>
         // 실시간으로 모든 플레이어 찾기 (멀티플레이어 환경에서 안전)
         GameObject[] playerObjects = GameObject.FindGameObjectsWithTag("Player");
         List<LivingEntity> livingEntities = new List<LivingEntity>();
-        
-        foreach(GameObject playerObj in playerObjects)
+
+        foreach (GameObject playerObj in playerObjects)
         {
             LivingEntity livingEntity = playerObj.GetComponent<LivingEntity>();
-            if(livingEntity != null)
+            if (livingEntity != null)
             {
                 livingEntities.Add(livingEntity);
             }
         }
-        
+
         allPlayerLivingEntities = livingEntities.ToArray();
         return allPlayerLivingEntities;
     }
@@ -1301,8 +1371,8 @@ public class GameManager : Singleton<GameManager>
     }
 
     #endregion
-    
-    
+
+
     /// <summary>
     /// 게임 UI 활성화
     /// </summary>
