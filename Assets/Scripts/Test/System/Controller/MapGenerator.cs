@@ -9,9 +9,13 @@ public class MapGenerator : MonoBehaviourPunCallbacks
 {
     // 맵 조각 프리팹 목록. 인덱스로 맵 타입을 식별합니다.
     public GameObject[] MapPrefabs;
-    
+
     // 각 맵 조각의 실제 월드 크기 (Gizmo의 흰 선 간격)
     public float PieceSize = 15f;
+
+    [Header("Hierarchy Settings")]
+    [Tooltip("모든 맵 조각의 부모가 될 MapRoot의 부모 오브젝트입니다. NavMeshSurface가 이 오브젝트에 있어야 합니다.")]
+    [SerializeField] private Transform planesParent; // Planes 오브젝트를 여기에 할당합니다.
 
     [Header("NavMesh Settings")]
     [Tooltip("맵 배치 직후 다시 빌드할 NavMeshSurface 목록입니다.")]
@@ -20,11 +24,11 @@ public class MapGenerator : MonoBehaviourPunCallbacks
     [SerializeField] private float navMeshBakeDelay = 0.2f;
 
     // 생성된 모든 맵 조각의 부모가 될 게임 오브젝트 (RPC 수신 시 동적 생성됨)
-    private GameObject mapParent; 
+    private GameObject mapParent;
 
     // 맵 조각의 종류를 식별하기 위한 상수 (MapPrefabs 배열의 인덱스와 일치해야 합니다)
-    private const int SPAWN_MAP_INDEX = 0;      // MapPrefabs[0]에 스폰 맵 할당 필요
-    private const int SHOP_MAP_INDEX = 1;       // MapPrefabs[1]에 상점 맵 할당 필요
+    private const int SPAWN_MAP_INDEX = 0;       // MapPrefabs[0]에 스폰 맵 할당 필요
+    private const int SHOP_MAP_INDEX = 1;        // MapPrefabs[1]에 상점 맵 할당 필요
     private const int RANDOM_MAP_START_INDEX = 2; // MapPrefabs[2]부터 랜덤 맵 할당 필요
 
     // 맵 크기
@@ -92,20 +96,52 @@ public class MapGenerator : MonoBehaviourPunCallbacks
     private void GenerateMapLayout()
     {
         // 9x9 그리드에 어떤 프리셋 인덱스를 배치할지 저장하는 배열
+        // 맵 조각을 배치하지 않는 경우를 위해 -1을 빈 공간으로 사용합니다.
         int[,] mapLayout = new int[MAP_GRID_SIZE, MAP_GRID_SIZE];
+        for (int x = 0; x < MAP_GRID_SIZE; x++)
+        {
+            for (int y = 0; y < MAP_GRID_SIZE; y++)
+            {
+                mapLayout[x, y] = -1; // 초기값을 -1 (빈 공간)으로 설정
+            }
+        }
 
-        // 1. 필수 맵 배치
-        mapLayout[CENTER_INDEX, CENTER_INDEX] = SHOP_MAP_INDEX; 
-        mapLayout[0, 0] = SPAWN_MAP_INDEX;
-        mapLayout[0, MAP_GRID_SIZE - 1] = SPAWN_MAP_INDEX;
-        mapLayout[MAP_GRID_SIZE - 1, 0] = SPAWN_MAP_INDEX;
-        mapLayout[MAP_GRID_SIZE - 1, MAP_GRID_SIZE - 1] = SPAWN_MAP_INDEX;
+        // 1. 필수 맵 배치 (NULL이면 -1 유지)
+
+        // 상점 맵 배치 (맵 중앙)
+        if (SHOP_MAP_INDEX < MapPrefabs.Length && MapPrefabs[SHOP_MAP_INDEX] != null)
+        {
+            mapLayout[CENTER_INDEX, CENTER_INDEX] = SHOP_MAP_INDEX;
+        }
+        else
+        {
+            Debug.LogWarning("경고: 상점 맵 프리셋이 할당되지 않았거나 null입니다. 맵 중앙에 상점을 생성하지 않습니다.");
+        }
+
+        // 스폰 맵 배치 (네 코너)
+        bool isSpawnPrefabAvailable = SPAWN_MAP_INDEX < MapPrefabs.Length && MapPrefabs[SPAWN_MAP_INDEX] != null;
+
+        if (isSpawnPrefabAvailable)
+        {
+            mapLayout[0, 0] = SPAWN_MAP_INDEX;
+            mapLayout[0, MAP_GRID_SIZE - 1] = SPAWN_MAP_INDEX;
+            mapLayout[MAP_GRID_SIZE - 1, 0] = SPAWN_MAP_INDEX;
+            mapLayout[MAP_GRID_SIZE - 1, MAP_GRID_SIZE - 1] = SPAWN_MAP_INDEX;
+        }
+        else
+        {
+            Debug.LogWarning("경고: 스폰 맵 프리셋이 할당되지 않았거나 null입니다. 맵 코너에 스폰 지점을 생성하지 않습니다.");
+        }
 
         // 2. 나머지 구간 랜덤 배열
         if (randomMapIndices.Count == 0)
         {
             Debug.LogError("오류: 랜덤 맵 프리셋이 할당되지 않았습니다.");
-            return;
+            // 랜덤 맵이 없고 필수 맵도 모두 null이면 맵 생성을 진행할 이유가 없으므로 RPC 전송 전에 조기 종료
+            if (!isSpawnPrefabAvailable && (SHOP_MAP_INDEX >= MapPrefabs.Length || MapPrefabs[SHOP_MAP_INDEX] == null))
+            {
+                return;
+            }
         }
 
         for (int x = 0; x < MAP_GRID_SIZE; x++)
@@ -114,20 +150,29 @@ public class MapGenerator : MonoBehaviourPunCallbacks
             {
                 // 필수 맵 위치 확인
                 bool isMandatorySpot = 
-                     (x == CENTER_INDEX && y == CENTER_INDEX) || 
-                     (x == 0 && y == 0) || 
-                     (x == 0 && y == MAP_GRID_SIZE - 1) || 
-                     (x == MAP_GRID_SIZE - 1 && y == 0) || 
-                     (x == MAP_GRID_SIZE - 1 && y == MAP_GRID_SIZE - 1);
-                
+                    (x == CENTER_INDEX && y == CENTER_INDEX) || // 상점 위치
+                    (x == 0 && y == 0) ||
+                    (x == 0 && y == MAP_GRID_SIZE - 1) ||
+                    (x == MAP_GRID_SIZE - 1 && y == 0) ||
+                    (x == MAP_GRID_SIZE - 1 && y == MAP_GRID_SIZE - 1); // 스폰 위치
+
+                // 🌟 수정된 부분: 필수 맵 위치가 아닌 경우에만 랜덤 맵 할당 로직을 수행합니다.
                 if (!isMandatorySpot)
                 {
-                    int randomIndex = UnityEngine.Random.Range(0, randomMapIndices.Count);
-                    mapLayout[x, y] = randomMapIndices[randomIndex];
+                    // 이 위치는 필수 맵이 아니므로, -1이면 랜덤 맵으로 채웁니다.
+                    if (mapLayout[x, y] == -1)
+                    {
+                        if (randomMapIndices.Count > 0)
+                        {
+                            int randomIndex = UnityEngine.Random.Range(0, randomMapIndices.Count);
+                            mapLayout[x, y] = randomMapIndices[randomIndex];
+                        }
+                    }
                 }
+                // 필수 맵 위치인 경우, 이미 이전 단계에서 SPAWN/SHOP 인덱스 또는 -1 (NULL)로 확정되었으므로 건너뜁니다.
             }
         }
-        
+
         // 3. 맵 레이아웃 데이터를 1차원 배열로 변환
         int[] flatLayout = new int[MAP_GRID_SIZE * MAP_GRID_SIZE];
         for (int x = 0; x < MAP_GRID_SIZE; x++)
@@ -150,27 +195,50 @@ public class MapGenerator : MonoBehaviourPunCallbacks
     private void RPC_InstantiateMap(int[] flatLayout)
     {
         Debug.Log("맵 레이아웃 데이터를 수신했습니다. 맵 부모와 조각 생성을 시작합니다.");
-        
+
         // 1. 기존 맵 청소 및 새 부모 오브젝트 동적 생성
         if (mapParent != null)
         {
-            // 기존 맵 오브젝트들이 있다면 파괴하고 새로 만듭니다.
             Destroy(mapParent);
         }
 
-        // 새 부모 오브젝트를 동적으로 생성합니다. (모든 클라이언트의 Hierarchy를 정리)
         mapParent = new GameObject("MapRoot");
         mapParent.transform.position = Vector3.zero;
-        
+
+        // MapRoot를 Planes 오브젝트의 하위로 설정
+        if (planesParent != null)
+        {
+            // MapRoot의 월드 위치(0,0,0)를 유지하며 planesParent의 자식으로 설정
+            mapParent.transform.SetParent(planesParent, false); 
+            Debug.Log("MapRoot를 Planes 부모 오브젝트의 자식으로 설정했습니다.");
+        }
+        else
+        {
+            Debug.LogWarning("경고: Planes Parent 오브젝트가 할당되지 않아 MapRoot가 씬 루트에 생성됩니다.");
+        }
+
         // 2. 맵 조각 인스턴스화 및 부모 설정 (로컬 Instantiate)
+        float halfPieceSize = PieceSize / 2f; // 맵 중앙 배치 오프셋 계산
+
         for (int i = 0; i < flatLayout.Length; i++)
         {
             int mapPieceIndex = flatLayout[i];
 
+            // 인덱스가 -1 (빈 공간)인 경우 인스턴스화를 건너뜜
+            if (mapPieceIndex == -1)
+            {
+                continue;
+            }
+
             int x = i / MAP_GRID_SIZE;
             int y = i % MAP_GRID_SIZE;
 
-            Vector3 position = new Vector3(x * PieceSize, 0f, y * PieceSize);
+            // 맵 조각의 중심이 그리드 사각형의 중앙에 오도록 오프셋 적용
+            Vector3 position = new Vector3(
+                (x * PieceSize) + halfPieceSize,
+                0f,
+                (y * PieceSize) + halfPieceSize
+            );
 
             if (mapPieceIndex >= 0 && mapPieceIndex < MapPrefabs.Length)
             {
@@ -178,28 +246,40 @@ public class MapGenerator : MonoBehaviourPunCallbacks
 
                 if (prefabToInstantiate != null)
                 {
-                    // 맵 조각을 로컬 Instantiate로 생성하고 부모를 지정합니다.
-                    // 맵 배치는 flatLayout 데이터에 의해 동기화됩니다.
                     Instantiate(prefabToInstantiate, position, Quaternion.identity, mapParent.transform);
                 }
                 else
                 {
-                    Debug.LogError($"맵 생성 실패: 인덱스 {mapPieceIndex}의 프리팹 참조가 깨졌습니다.");
+                    Debug.LogError($"맵 생성 실패: 인덱스 {mapPieceIndex}의 프리팹 참조가 깨졌습니다. (MapPrefabs 배열의 값: null)");
                 }
             }
             else
             {
-                Debug.LogError($"잘못된 맵 프리셋 인덱스: {mapPieceIndex}.");
+                Debug.LogError($"잘못된 맵 프리셋 인덱스: {mapPieceIndex}. 맵 프리팹 인덱스는 0 이상 {MapPrefabs.Length} 미만이어야 합니다.");
             }
         }
 
         OnMapPiecesInstantiated();
     }
-    
+
     public bool IsMapReady => hasGeneratedLayout && (!ShouldBakeNavMesh() || isNavMeshReady);
 
     private void CacheNavMeshSurfaces()
     {
+        // 1. planesParent에서 NavMeshSurface를 최우선으로 찾습니다. (사용자 의도 반영)
+        if (planesParent != null)
+        {
+            NavMeshSurface surfaceOnPlanes = planesParent.GetComponent<NavMeshSurface>();
+            if (surfaceOnPlanes != null)
+            {
+                // Planes 오브젝트에 단일 Surface가 있다면 그것만 사용합니다.
+                navMeshSurfaces = new NavMeshSurface[] { surfaceOnPlanes };
+                Debug.Log("NavMeshSurface: Planes Parent에서 유효한 Surface를 찾았습니다.");
+                return;
+            }
+        }
+
+        // 2. Planes Parent에 없거나 설정되지 않았다면, 기존 로직대로 MapGenerator 자체 및 자식에서 찾습니다.
         if (navMeshSurfaces != null && navMeshSurfaces.Length > 0)
         {
             return;
@@ -222,6 +302,10 @@ public class MapGenerator : MonoBehaviourPunCallbacks
 
     private void OnMapPiecesInstantiated()
     {
+        // 맵 조각 인스턴스화 후 NavMeshSurface를 다시 캐시하여,
+        // MapRoot가 Planes Parent에 연결된 후 Surface가 올바르게 인식되도록 합니다.
+        CacheNavMeshSurfaces();
+
         if (!ShouldBakeNavMesh())
         {
             isNavMeshReady = true;
@@ -232,9 +316,10 @@ public class MapGenerator : MonoBehaviourPunCallbacks
         if (!PhotonNetwork.IsMasterClient)
         {
             SetGlobalMapReady(true);
-            return; // 네브메시는 마스터에서만 필요
+            return;
         }
 
+        // NavMesh를 굽는 코루틴을 시작합니다.
         QueueNavMeshBake();
     }
 
@@ -265,7 +350,8 @@ public class MapGenerator : MonoBehaviourPunCallbacks
         {
             if (surface == null) continue;
             surface.RemoveData();
-            surface.BuildNavMesh();
+            // BuildNavMesh() 호출은 새로 생성된 모든 맵 바닥을 포함하여 NavMesh를 생성합니다.
+            surface.BuildNavMesh(); 
         }
 
         isNavMeshReady = true;
@@ -288,11 +374,13 @@ public class MapGenerator : MonoBehaviourPunCallbacks
     {
         if (Application.isPlaying) return;
 
-        // 중앙 (4, 4)와 꼭짓점 (0,0, 0,8, 8,0, 8,8)을 표시
+        // 중앙 조각의 실제 중앙 위치를 표시하도록 Gizmo 좌표 업데이트
         Gizmos.color = Color.yellow;
-        Gizmos.DrawSphere(new Vector3(CENTER_INDEX * PieceSize, 0, CENTER_INDEX * PieceSize), 0.5f);
+        float centerOffset = PieceSize / 2f;
+        float centerPosition = (CENTER_INDEX * PieceSize) + centerOffset;
+        Gizmos.DrawSphere(new Vector3(centerPosition, 0, centerPosition), 0.5f);
 
-        // 그리드 선 그리기 (9x9 크기 확인)
+        // 그리드 선 그리기 (맵 조각의 경계는 그대로 유지됨)
         Gizmos.color = Color.white;
         float totalSize = MAP_GRID_SIZE * PieceSize;
 
