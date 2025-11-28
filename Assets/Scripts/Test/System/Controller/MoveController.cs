@@ -1064,7 +1064,7 @@ public class MoveController : MonoBehaviourPun, IPunObservable
     /// <summary>
     /// 총기 반동 적용 (수평 반동)
     /// </summary>
-    public void ApplyRecoil(float recoilValue, float horizontalDirection)
+    public void ApplyRecoil(float recoilValue, float horizontalDirection, float startTime)
     {
         if (!photonView.IsMine) return;
         if (recoilValue <= 0f) return;
@@ -1082,7 +1082,7 @@ public class MoveController : MonoBehaviourPun, IPunObservable
 
         kickRecoilHorizontal = kickAngle;
         targetRecoilHorizontal = finalRecoilAngle;
-        recoilStartTime = Time.time;
+        recoilStartTime = startTime; // 전달받은 시작 시간 사용
         isRecoilKicking = true;
     }
 

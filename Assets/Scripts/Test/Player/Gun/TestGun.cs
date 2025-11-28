@@ -237,14 +237,15 @@ public class TestGun : MonoBehaviourPun
         if (gunData != null && gunData.recoil > 0f)
         {
             float randomDirection = UnityEngine.Random.Range(-1f, 1f);
+            float recoilStartTime = Time.time; // 한 번만 시간 기록
             
             if (cameraController != null)
             {
-                cameraController.ApplyRecoil(gunData.recoil, randomDirection);
+                cameraController.ApplyRecoil(gunData.recoil, randomDirection, recoilStartTime);
             }
             if (moveController != null)
             {
-                moveController.ApplyRecoil(gunData.recoil, randomDirection);
+                moveController.ApplyRecoil(gunData.recoil, randomDirection, recoilStartTime);
             }
         }
     }
