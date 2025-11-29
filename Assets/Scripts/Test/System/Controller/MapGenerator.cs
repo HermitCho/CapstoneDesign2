@@ -103,15 +103,19 @@ public class MapGenerator : MonoBehaviourPunCallbacks
     {
         // 9x9 그리드에 어떤 프리셋 인덱스를 배치할지 저장하는 배열
         int[,] mapLayout = new int[MAP_GRID_SIZE, MAP_GRID_SIZE];
+        // 🌟 추가: 각 맵 조각의 Y축 회전 각도를 저장하는 배열 (0, 90, 180, 270)
+        int[,] mapRotation = new int[MAP_GRID_SIZE, MAP_GRID_SIZE]; 
+        
         for (int x = 0; x < MAP_GRID_SIZE; x++)
         {
             for (int y = 0; y < MAP_GRID_SIZE; y++)
             {
                 mapLayout[x, y] = -1; // 초기값을 -1 (빈 공간)으로 설정
+                mapRotation[x, y] = 0; // 초기 회전 각도는 0도로 설정 (고정 맵의 기본값)
             }
         }
 
-        // 1. 필수/고정 맵 배치
+        // 1. 필수/고정 맵 배치 (회전 0도로 고정)
 
         // 상점 맵 배치 (맵 중앙)
         if (SHOP_MAP_INDEX < MapPrefabs.Length && MapPrefabs[SHOP_MAP_INDEX] != null)
@@ -151,11 +155,13 @@ public class MapGenerator : MonoBehaviourPunCallbacks
             Debug.LogWarning("경고: 중앙 인접 고정 맵 프리셋이 할당되지 않았거나 null입니다. 해당 위치를 랜덤 또는 빈 공간으로 남깁니다.");
         }
 
-        // 2. 나머지 구간 랜덤 배열
+        // 2. 나머지 구간 랜덤 배열 및 회전 할당
         if (randomMapIndices.Count == 0)
         {
             Debug.LogError("오류: 랜덤 맵 프리셋이 할당되지 않았습니다.");
         }
+
+        int[] rotations = new int[] { 0, 90, 180, 270 };
 
         for (int x = 0; x < MAP_GRID_SIZE; x++)
         {
@@ -171,7 +177,7 @@ public class MapGenerator : MonoBehaviourPunCallbacks
 
                 if (isFixedSpot)
                 {
-                    // 고정된 위치라면 현재 할당된 값을 유지하고, 랜덤 맵 할당을 건너뜁니다.
+                    // 고정된 위치는 회전 0도를 유지하고 건너뜜
                     continue;
                 }
 
@@ -180,8 +186,13 @@ public class MapGenerator : MonoBehaviourPunCallbacks
                 {
                     if (randomMapIndices.Count > 0)
                     {
+                        // 🌟 랜덤 맵 인덱스 할당
                         int randomIndex = UnityEngine.Random.Range(0, randomMapIndices.Count);
                         mapLayout[x, y] = randomMapIndices[randomIndex];
+                        
+                        // 🌟 90도 단위 랜덤 회전 할당
+                        int randomRotationIndex = UnityEngine.Random.Range(0, rotations.Length);
+                        mapRotation[x, y] = rotations[randomRotationIndex];
                     }
                 }
             }
@@ -189,16 +200,21 @@ public class MapGenerator : MonoBehaviourPunCallbacks
 
         // 3. 맵 레이아웃 데이터를 1차원 배열로 변환
         int[] flatLayout = new int[MAP_GRID_SIZE * MAP_GRID_SIZE];
+        // 🌟 추가: 회전 정보를 1차원 배열로 변환
+        int[] flatRotation = new int[MAP_GRID_SIZE * MAP_GRID_SIZE]; 
+        
         for (int x = 0; x < MAP_GRID_SIZE; x++)
         {
             for (int y = 0; y < MAP_GRID_SIZE; y++)
             {
                 flatLayout[x * MAP_GRID_SIZE + y] = mapLayout[x, y];
+                flatRotation[x * MAP_GRID_SIZE + y] = mapRotation[x, y]; // 🌟 회전 정보 저장
             }
         }
 
         // 4. RPC 호출을 통해 모든 클라이언트에게 맵 정보 전송 및 생성 지시
-        photonView.RPC("RPC_InstantiateMap", RpcTarget.AllBuffered, flatLayout);
+        // 🌟 RPC 매개변수 수정: flatRotation 배열 추가
+        photonView.RPC("RPC_InstantiateMap", RpcTarget.AllBuffered, flatLayout, flatRotation);
     }
 
     /// <summary>
@@ -206,7 +222,8 @@ public class MapGenerator : MonoBehaviourPunCallbacks
     /// 맵 조각을 로컬에서 인스턴스화하여 부모의 자식으로 배치하는 RPC 메서드입니다.
     /// </summary>
     [PunRPC]
-    private void RPC_InstantiateMap(int[] flatLayout)
+    // 🌟 RPC 매개변수 수정: flatRotation 배열 추가
+    private void RPC_InstantiateMap(int[] flatLayout, int[] flatRotation) 
     {
         Debug.Log("맵 레이아웃 데이터를 수신했습니다. 맵 부모와 조각 생성을 시작합니다.");
 
@@ -222,7 +239,6 @@ public class MapGenerator : MonoBehaviourPunCallbacks
         // MapRoot를 Planes 오브젝트의 하위로 설정
         if (planesParent != null)
         {
-            // MapRoot의 월드 위치(0,0,0)를 유지하며 planesParent의 자식으로 설정
             mapParent.transform.SetParent(planesParent, false); 
             Debug.Log("MapRoot를 Planes 부모 오브젝트의 자식으로 설정했습니다.");
         }
@@ -237,6 +253,9 @@ public class MapGenerator : MonoBehaviourPunCallbacks
         for (int i = 0; i < flatLayout.Length; i++)
         {
             int mapPieceIndex = flatLayout[i];
+            
+            // 🌟 회전 각도 가져오기. flatRotation 배열이 flatLayout과 같은 크기여야 합니다.
+            int rotationY = (flatRotation.Length > i) ? flatRotation[i] : 0; 
 
             // 인덱스가 -1 (빈 공간)인 경우 인스턴스화를 건너뜜
             if (mapPieceIndex == -1)
@@ -253,6 +272,9 @@ public class MapGenerator : MonoBehaviourPunCallbacks
                 0f,
                 (y * PieceSize) + halfPieceSize
             );
+            
+            // 🌟 회전 Quaternion 생성
+            Quaternion rotation = Quaternion.Euler(0f, rotationY, 0f); 
 
             if (mapPieceIndex >= 0 && mapPieceIndex < MapPrefabs.Length)
             {
@@ -260,7 +282,8 @@ public class MapGenerator : MonoBehaviourPunCallbacks
 
                 if (prefabToInstantiate != null)
                 {
-                    Instantiate(prefabToInstantiate, position, Quaternion.identity, mapParent.transform);
+                    // 🌟 회전 적용
+                    Instantiate(prefabToInstantiate, position, rotation, mapParent.transform);
                 }
                 else
                 {
@@ -384,7 +407,6 @@ public class MapGenerator : MonoBehaviourPunCallbacks
     }
 
     // --- 유니티 에디터 확인용 (Gizmo) ---
-    // [Header("Editor Debugging (Gizmos)")] 속성은 메서드 위에 사용할 수 없으므로 제거했습니다.
     
     private void OnDrawGizmos()
     {
