@@ -556,7 +556,37 @@ public class SpawnController : MonoBehaviourPunCallbacks
             return;
         }
 
-        botSpawnCoroutine = StartCoroutine(SpawnBotsAfterDelay(0.5f));
+        // ✅ CRITICAL: NavMesh bake 완료를 기다림
+        botSpawnCoroutine = StartCoroutine(SpawnBotsAfterNavMeshReady());
+    }
+    
+    /// <summary>
+    /// NavMesh bake 완료 후 봇 스폰
+    /// </summary>
+    private IEnumerator SpawnBotsAfterNavMeshReady()
+    {
+        // NavMesh bake 완료 대기 (최대 10초)
+        float timeout = 10f;
+        float timer = 0f;
+        
+        while (!MapGenerator.GlobalMapReady && timer < timeout)
+        {
+            yield return new WaitForSeconds(0.1f);
+            timer += 0.1f;
+        }
+        
+        if (!MapGenerator.GlobalMapReady)
+        {
+            Debug.LogError("[SpawnController] NavMesh bake 타임아웃 - 봇 스폰 실패");
+            botSpawnCoroutine = null;
+            yield break;
+        }
+        
+        // NavMesh bake 완료 후 추가 대기 (NavMesh 안정화)
+        yield return new WaitForSeconds(0.5f);
+        
+        botSpawnCoroutine = null;
+        SpawnBotsInternal();
     }
 
     private IEnumerator SpawnBotsAfterDelay(float delay)
