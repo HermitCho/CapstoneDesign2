@@ -211,7 +211,9 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             }
             else
             {
-                Debug.Log($"[AIBot] {gameObject.name} NavMeshAgent 설정됨 - Speed:{agent.speed}, ObstacleAvoidance: NoObstacleAvoidance (마스터)");
+                // ✅ CRITICAL: NavMesh bake 완료 후 NavMeshAgent 초기화
+                StartCoroutine(InitializeNavMeshAgentAfterBake());
+                Debug.Log($"[AIBot] {gameObject.name} NavMeshAgent 설정 시작 - Speed:{agent.speed}, ObstacleAvoidance: NoObstacleAvoidance (마스터)");
             }
         }
         else
@@ -226,6 +228,62 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
         }
 
         AssignBotRole();
+    }
+    
+    /// <summary>
+    /// NavMesh bake 완료 후 NavMeshAgent 초기화
+    /// </summary>
+    private IEnumerator InitializeNavMeshAgentAfterBake()
+    {
+        // NavMesh bake 완료 대기
+        float timeout = 10f;
+        float timer = 0f;
+        
+        while (!MapGenerator.GlobalMapReady && timer < timeout)
+        {
+            yield return new WaitForSeconds(0.1f);
+            timer += 0.1f;
+        }
+        
+        if (!MapGenerator.GlobalMapReady)
+        {
+            Debug.LogError($"[AIBot] {gameObject.name} NavMesh bake 타임아웃");
+            yield break;
+        }
+        
+        // NavMesh 안정화 대기
+        yield return new WaitForSeconds(0.2f);
+        
+        if (agent != null && PhotonNetwork.IsMasterClient)
+        {
+            // ✅ CRITICAL: 봇의 CapsuleCollider가 활성화되어 있는지 확인
+            CapsuleCollider capsuleCollider = GetComponent<CapsuleCollider>();
+            if (capsuleCollider != null)
+            {
+                capsuleCollider.enabled = true;
+                Debug.Log($"[AIBot] {gameObject.name} CapsuleCollider 활성화 확인 - Enabled: {capsuleCollider.enabled}, Layer: {LayerMask.LayerToName(capsuleCollider.gameObject.layer)}");
+            }
+            else
+            {
+                Debug.LogWarning($"[AIBot] {gameObject.name} CapsuleCollider를 찾을 수 없음!");
+            }
+            
+            // NavMeshAgent 활성화
+            agent.enabled = true;
+            
+            // NavMesh 위로 Warp
+            NavMeshHit hit;
+            if (NavMesh.SamplePosition(transform.position, out hit, 10f, NavMesh.AllAreas))
+            {
+                agent.Warp(hit.position);
+                transform.position = hit.position; // transform.position도 동기화
+                Debug.Log($"[AIBot] {gameObject.name} NavMeshAgent 초기화 완료 - Position: {hit.position}, isOnNavMesh: {agent.isOnNavMesh}");
+            }
+            else
+            {
+                Debug.LogError($"[AIBot] {gameObject.name} NavMesh 위의 위치를 찾을 수 없음 - Position: {transform.position}");
+            }
+        }
     }
 
     private void AssignBotRole()
@@ -282,10 +340,21 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             return;
         }
         
-        if (!agent.isOnNavMesh)
+        // ✅ CRITICAL: NavMesh 위에 없으면 NavMesh 위로 Warp
+        if (!agent.isOnNavMesh && agent.enabled)
         {
-            Debug.LogWarning($"[AIBot] {gameObject.name} NavMesh 위에 없음! Position: {transform.position}");
-            return;
+            NavMeshHit hit;
+            if (NavMesh.SamplePosition(transform.position, out hit, 10f, NavMesh.AllAreas))
+            {
+                agent.Warp(hit.position);
+                transform.position = hit.position;
+                Debug.LogWarning($"[AIBot] {gameObject.name} NavMesh 위로 Warp - Position: {hit.position}");
+            }
+            else
+            {
+                Debug.LogWarning($"[AIBot] {gameObject.name} NavMesh 위에 없고 NavMesh 위의 위치를 찾을 수 없음! Position: {transform.position}");
+                return;
+            }
         }
             
         // 사망 상태면 정지
@@ -708,6 +777,25 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
         {
             currentState = AIState.CollectCoin;
             return;
+        }
+        
+        // ✅ 도망 중에도 코인 수집 시도
+        Coin nearbyCoin = FindNearestCoin();
+        if (nearbyCoin != null && !nearbyCoin.IsCollected)
+        {
+            float coinDistance = Vector3.Distance(transform.position, nearbyCoin.transform.position);
+            // 코인이 가까이 있고(10m 이내), 위협으로부터 안전한 거리면 코인 수집
+            if (coinDistance <= 10f)
+            {
+                float threatDistance = Vector3.Distance(transform.position, currentTarget.position);
+                // 위협이 충분히 멀리 있으면(15m 이상) 코인 수집
+                if (threatDistance >= 15f)
+                {
+                    targetCoin = nearbyCoin;
+                    MoveTo(nearbyCoin.transform.position);
+                    return;
+                }
+            }
         }
         
         // 위협으로부터 반대 방향으로 도망

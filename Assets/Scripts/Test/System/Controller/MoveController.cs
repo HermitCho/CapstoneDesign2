@@ -608,9 +608,42 @@ public class MoveController : MonoBehaviourPun, IPunObservable
     // 지면 체크
     private bool CheckGrounded()
     {
+        // ✅ CRITICAL FIX: Ground 레이어만 체크하고, Non-convex MeshCollider를 안정적으로 감지
+        LayerMask groundMask = LayerMask.GetMask("Ground");
+        
+        // ✅ 플레이어 발 위치에서만 아래로 체크 (앞뒤좌우 4개 점 + 중심 1개 = 총 5개)
+        // 너무 많은 점은 벽 감지 문제를 일으키고, 너무 적은 점은 Non-convex MeshCollider를 놓칠 수 있음
+        Vector3[] rayOrigins = new Vector3[]
+        {
+            tr.position,                                    // 중심
+            tr.position + tr.forward * 0.2f,               // 앞 (거리 감소)
+            tr.position + tr.forward * -0.2f,             // 뒤
+            tr.position + tr.right * 0.2f,                // 오른쪽
+            tr.position + tr.right * -0.2f                 // 왼쪽
+        };
+        
+        // ✅ 체크 거리를 약간 증가시켜 Non-convex MeshCollider를 안정적으로 감지
+        float checkDistance = cachedGroundCheckDistance + 0.3f;
+        
         RaycastHit hit;
-
-        return Physics.Raycast(tr.position, Vector3.down, out hit, cachedGroundCheckDistance);
+        foreach (Vector3 origin in rayOrigins)
+        {
+            if (Physics.Raycast(origin, Vector3.down, out hit, checkDistance, groundMask, QueryTriggerInteraction.Ignore))
+            {
+                // ✅ Ground 레이어인지 확인
+                if (hit.collider.gameObject.layer == LayerMask.NameToLayer("Ground"))
+                {
+                    // ✅ 추가 검증: 히트 포인트가 플레이어보다 아래에 있는지 확인 (벽 감지 방지)
+                    // 약간의 여유를 두어 경사면도 감지 가능하도록 함
+                    if (hit.point.y <= tr.position.y + 0.1f)
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+        
+        return false;
     }
 
     /// <summary>
