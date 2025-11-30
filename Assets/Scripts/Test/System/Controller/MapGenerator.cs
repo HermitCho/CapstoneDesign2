@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq; 
+using System.Linq;
 using Photon.Pun;
 using Unity.AI.Navigation;
 using UnityEngine;
@@ -30,31 +30,34 @@ public class MapGenerator : MonoBehaviourPunCallbacks
     // 🌟🌟🌟 새로운 랜덤 맵 유형 분류 🌟🌟🌟
     [Header("Controlled Random Map Types")]
     [Tooltip("1. 중앙 통로를 반드시 포함하며, 주변 통로와 연결되어야 하는 맵 조각 (예: 십자 길, T자 길).")]
-    public GameObject[] CentralPathMaps; 
+    public GameObject[] CentralPathMaps;
 
     [Tooltip("2. 중앙 통로를 막을 수 있는 구조를 가지며, CentralPathMaps에 인접하여 배치될 수 없는 맵 조각 (예: 변의 중심에 벽이 있는 프리셋).")]
     public GameObject[] BlockingMaps;
 
     [Tooltip("3. CentralPathMaps와 BlockingMaps 사이에 들어가 연결을 중재할 수 있는 맵 조각 (예: 단순히 사방이 뚫린 빈 공간, 길).")]
-    public GameObject[] NeutralMaps; 
-    
+    public GameObject[] NeutralMaps;
+
     // --- 내부 상수 및 변수 ---
-    
-    private const int SPAWN_MAP_INDEX = 0; 
-    private const int SHOP_MAP_INDEX = 1; 
-    private const int FIXED_NEIGHBOR_MAP_INDEX = 2; 
-    private const int RANDOM_MAP_START_INDEX = 3; 
+
+    private const int SPAWN_MAP_INDEX = 0;
+    private const int SHOP_MAP_INDEX = 1;
+    private const int FIXED_NEIGHBOR_MAP_INDEX = 2;
+    private const int RANDOM_MAP_START_INDEX = 3;
 
     private const int TYPE_FIXED = 10;
     private const int TYPE_CENTRAL_PATH = 0;
-    private const int TYPE_BLOCKING = 1;    
-    private const int TYPE_NEUTRAL = 2;     
-    private const int TYPE_EMPTY = -1;      
+    private const int TYPE_BLOCKING = 1;
+    private const int TYPE_NEUTRAL = 2;
+    private const int TYPE_EMPTY = -1;
 
-    private const int MAP_GRID_SIZE = 9; 
-    private const int CENTER_INDEX = MAP_GRID_SIZE / 2; 
+    private const int MAP_GRID_SIZE = 9;
+    private const int CENTER_INDEX = MAP_GRID_SIZE / 2;
 
     private GameObject mapParent;
+
+    // 고정 맵 프리팹 참조 저장 (InitializeRandomMaps 후에도 사용하기 위해)
+    private GameObject fixedNeighborMapPrefab;
 
     // 맵 배치 제어용 (어떤 타입의 맵이 배치되었는지 기록)
     private int[,] mapType = new int[MAP_GRID_SIZE, MAP_GRID_SIZE];
@@ -89,7 +92,7 @@ public class MapGenerator : MonoBehaviourPunCallbacks
             return false;
         }
 
-        InitializeRandomMaps(); 
+        InitializeRandomMaps();
         SetGlobalMapReady(false);
         hasGeneratedLayout = true;
         isNavMeshReady = !ShouldBakeNavMesh();
@@ -102,8 +105,14 @@ public class MapGenerator : MonoBehaviourPunCallbacks
 
     private void InitializeRandomMaps()
     {
+        // 고정 맵 프리팹 참조 저장 (InitializeRandomMaps 전에 저장)
+        if (FIXED_NEIGHBOR_MAP_INDEX < MapPrefabs.Length)
+        {
+            fixedNeighborMapPrefab = MapPrefabs[FIXED_NEIGHBOR_MAP_INDEX];
+        }
+
         List<GameObject> finalMapPrefabs = new List<GameObject>();
-        
+
         // 1. 고정 맵 (0, 1, 2) 유지
         finalMapPrefabs.AddRange(MapPrefabs.Take(RANDOM_MAP_START_INDEX).Where(p => p != null));
 
@@ -111,10 +120,10 @@ public class MapGenerator : MonoBehaviourPunCallbacks
         finalMapPrefabs.AddRange(CentralPathMaps.Where(p => p != null).Except(finalMapPrefabs));
         finalMapPrefabs.AddRange(BlockingMaps.Where(p => p != null).Except(finalMapPrefabs));
         finalMapPrefabs.AddRange(NeutralMaps.Where(p => p != null).Except(finalMapPrefabs));
-        
+
         // 3. MapPrefabs 배열 갱신
         MapPrefabs = finalMapPrefabs.ToArray();
-        
+
         if (MapPrefabs.Length <= RANDOM_MAP_START_INDEX)
         {
             Debug.LogError("오류: Central/Blocking/Neutral 맵 프리셋이 할당되지 않아 랜덤 맵을 생성할 수 없습니다.");
@@ -125,26 +134,34 @@ public class MapGenerator : MonoBehaviourPunCallbacks
     private void GenerateMapLayout()
     {
         int[,] mapLayout = new int[MAP_GRID_SIZE, MAP_GRID_SIZE];
-        int[,] mapRotation = new int[MAP_GRID_SIZE, MAP_GRID_SIZE]; 
-        
+        int[,] mapRotation = new int[MAP_GRID_SIZE, MAP_GRID_SIZE];
+
         // 맵 및 타입 배열 초기화
         for (int x = 0; x < MAP_GRID_SIZE; x++)
         {
             for (int y = 0; y < MAP_GRID_SIZE; y++)
             {
-                mapLayout[x, y] = TYPE_EMPTY; 
-                mapRotation[x, y] = 0; 
+                mapLayout[x, y] = TYPE_EMPTY;
+                mapRotation[x, y] = 0;
                 mapType[x, y] = TYPE_EMPTY;
             }
         }
 
-        // 1. 필수/고정 맵 배치 
+        // 1. 필수/고정 맵 배치
+        // 🌟 중요: 중앙 위치는 항상 고정 맵으로 표시 (상점이 null이어도 다른 맵이 생성되지 않도록)
         if (SHOP_MAP_INDEX < MapPrefabs.Length && MapPrefabs[SHOP_MAP_INDEX] != null)
         {
             mapLayout[CENTER_INDEX, CENTER_INDEX] = SHOP_MAP_INDEX;
             mapType[CENTER_INDEX, CENTER_INDEX] = TYPE_FIXED;
         }
+        else
+        {
+            // 상점이 null이어도 중앙 위치를 TYPE_FIXED로 표시하여 다른 맵이 생성되지 않도록 함
+            mapLayout[CENTER_INDEX, CENTER_INDEX] = TYPE_EMPTY;
+            mapType[CENTER_INDEX, CENTER_INDEX] = TYPE_FIXED;
+        }
 
+        // 🌟 중요: 스폰 맵 위치는 항상 고정 맵으로 표시 (스폰 맵이 null이어도 다른 맵이 생성되지 않도록)
         if (SPAWN_MAP_INDEX < MapPrefabs.Length && MapPrefabs[SPAWN_MAP_INDEX] != null)
         {
             mapLayout[0, 0] = SPAWN_MAP_INDEX; mapType[0, 0] = TYPE_FIXED;
@@ -152,13 +169,37 @@ public class MapGenerator : MonoBehaviourPunCallbacks
             mapLayout[MAP_GRID_SIZE - 1, 0] = SPAWN_MAP_INDEX; mapType[MAP_GRID_SIZE - 1, 0] = TYPE_FIXED;
             mapLayout[MAP_GRID_SIZE - 1, MAP_GRID_SIZE - 1] = SPAWN_MAP_INDEX; mapType[MAP_GRID_SIZE - 1, MAP_GRID_SIZE - 1] = TYPE_FIXED;
         }
-        
-        if (FIXED_NEIGHBOR_MAP_INDEX < MapPrefabs.Length && MapPrefabs[FIXED_NEIGHBOR_MAP_INDEX] != null)
+        else
         {
-            mapLayout[CENTER_INDEX, CENTER_INDEX - 1] = FIXED_NEIGHBOR_MAP_INDEX; mapType[CENTER_INDEX, CENTER_INDEX - 1] = TYPE_FIXED;
-            mapLayout[CENTER_INDEX, CENTER_INDEX + 1] = FIXED_NEIGHBOR_MAP_INDEX; mapType[CENTER_INDEX, CENTER_INDEX + 1] = TYPE_FIXED;
-            mapLayout[CENTER_INDEX - 1, CENTER_INDEX] = FIXED_NEIGHBOR_MAP_INDEX; mapType[CENTER_INDEX - 1, CENTER_INDEX] = TYPE_FIXED;
-            mapLayout[CENTER_INDEX + 1, CENTER_INDEX] = FIXED_NEIGHBOR_MAP_INDEX; mapType[CENTER_INDEX + 1, CENTER_INDEX] = TYPE_FIXED;
+            // 스폰 맵이 null이어도 스폰 위치를 TYPE_FIXED로 표시하여 다른 맵이 생성되지 않도록 함
+            mapLayout[0, 0] = TYPE_EMPTY; mapType[0, 0] = TYPE_FIXED;
+            mapLayout[0, MAP_GRID_SIZE - 1] = TYPE_EMPTY; mapType[0, MAP_GRID_SIZE - 1] = TYPE_FIXED;
+            mapLayout[MAP_GRID_SIZE - 1, 0] = TYPE_EMPTY; mapType[MAP_GRID_SIZE - 1, 0] = TYPE_FIXED;
+            mapLayout[MAP_GRID_SIZE - 1, MAP_GRID_SIZE - 1] = TYPE_EMPTY; mapType[MAP_GRID_SIZE - 1, MAP_GRID_SIZE - 1] = TYPE_FIXED;
+        }
+
+        // 중앙 인접 고정 맵 배치 (저장된 프리팹 참조를 사용하여 인덱스 찾기)
+        // 🌟 중요: 중앙 위치(CENTER_INDEX, CENTER_INDEX)는 절대 건드리지 않음 (상점이 배치된 위치)
+        if (fixedNeighborMapPrefab != null)
+        {
+            int fixedNeighborIndex = GetPrefabIndex(fixedNeighborMapPrefab);
+            if (fixedNeighborIndex != -1)
+            {
+                // 중앙 상점(CENTER_INDEX, CENTER_INDEX)의 상하좌우에만 배치
+                // 상하좌우 위치는 모두 중앙 위치가 아니므로 안전하게 배치 가능
+                mapLayout[CENTER_INDEX, CENTER_INDEX - 1] = fixedNeighborIndex; mapType[CENTER_INDEX, CENTER_INDEX - 1] = TYPE_FIXED; // 상 (4, 3)
+                mapLayout[CENTER_INDEX, CENTER_INDEX + 1] = fixedNeighborIndex; mapType[CENTER_INDEX, CENTER_INDEX + 1] = TYPE_FIXED; // 하 (4, 5)
+                mapLayout[CENTER_INDEX - 1, CENTER_INDEX] = fixedNeighborIndex; mapType[CENTER_INDEX - 1, CENTER_INDEX] = TYPE_FIXED; // 좌 (3, 4)
+                mapLayout[CENTER_INDEX + 1, CENTER_INDEX] = fixedNeighborIndex; mapType[CENTER_INDEX + 1, CENTER_INDEX] = TYPE_FIXED; // 우 (5, 4)
+            }
+            else
+            {
+                Debug.LogError($"오류: 중앙 인접 고정 맵 프리팹({fixedNeighborMapPrefab.name})을 MapPrefabs 배열에서 찾을 수 없습니다.");
+            }
+        }
+        else
+        {
+            Debug.LogWarning("경고: 중앙 인접 고정 맵 프리팹이 할당되지 않았습니다. 상점 주변에 고정 맵이 생성되지 않습니다.");
         }
 
         // 2. 나머지 구간 랜덤 배열 및 회전 할당 (개선된 로직)
@@ -168,7 +209,11 @@ public class MapGenerator : MonoBehaviourPunCallbacks
         {
             for (int y = 0; y < MAP_GRID_SIZE; y++)
             {
+                // 고정 맵 위치는 건너뛰기
                 if (mapType[x, y] == TYPE_FIXED) continue;
+                
+                // 🌟 맵 중앙 위치는 절대 건드리지 않음 (상점이 배치된 위치)
+                if (x == CENTER_INDEX && y == CENTER_INDEX) continue;
 
                 // 🌟 인접한 맵 타입 확인
                 bool isNeighborCentralOrFixed = CheckNeighborType(x, y, TYPE_CENTRAL_PATH) || CheckNeighborType(x, y, TYPE_FIXED);
@@ -179,7 +224,7 @@ public class MapGenerator : MonoBehaviourPunCallbacks
 
                 // 🌟 배치 가능한 맵 목록 필터링 (CentralPath와 Blocking이 절대 인접하지 않도록)
                 List<GameObject> availableMaps = new List<GameObject>();
-                
+
                 if (isNeighborCentralOrFixed && isNeighborBlocking)
                 {
                     // Case 1: Central/Fixed와 Blocking 둘 다 인접한 경우 -> Neutral만 사용 가능
@@ -219,13 +264,13 @@ public class MapGenerator : MonoBehaviourPunCallbacks
 
                 if (selectedPrefab != null)
                 {
-                    int prefabIndex = GetPrefabIndex(selectedPrefab); 
-                    
+                    int prefabIndex = GetPrefabIndex(selectedPrefab);
+
                     if (prefabIndex != -1)
                     {
                         mapLayout[x, y] = prefabIndex;
                         mapType[x, y] = selectedType;
-                        
+
                         int randomRotationIndex = Random.Range(0, rotations.Length);
                         mapRotation[x, y] = rotations[randomRotationIndex];
                     }
@@ -239,12 +284,13 @@ public class MapGenerator : MonoBehaviourPunCallbacks
 
         // 3. 맵 레이아웃 데이터를 1차원 배열로 변환
         int[] flatLayout = new int[MAP_GRID_SIZE * MAP_GRID_SIZE];
-        int[] flatRotation = new int[MAP_GRID_SIZE * MAP_GRID_SIZE]; 
-        
+        int[] flatRotation = new int[MAP_GRID_SIZE * MAP_GRID_SIZE];
+
         for (int x = 0; x < MAP_GRID_SIZE; x++)
         {
             for (int y = 0; y < MAP_GRID_SIZE; y++)
             {
+                // 행 우선(Row-Major) 방식: [x][y] -> x * SIZE + y
                 flatLayout[x * MAP_GRID_SIZE + y] = mapLayout[x, y];
                 flatRotation[x * MAP_GRID_SIZE + y] = mapRotation[x, y];
             }
@@ -253,7 +299,7 @@ public class MapGenerator : MonoBehaviourPunCallbacks
         // 4. RPC 호출
         photonView.RPC("RPC_InstantiateMap", RpcTarget.AllBuffered, flatLayout, flatRotation);
     }
-    
+
     // --- 헬퍼 함수 ---
 
     /// <summary>
@@ -264,7 +310,7 @@ public class MapGenerator : MonoBehaviourPunCallbacks
         // Linq 대신 Array.IndexOf를 사용하며, MapPrefabs 배열은 InitializeRandomMaps에서 이미 통합되어 있습니다.
         return Array.IndexOf(MapPrefabs, prefab);
     }
-    
+
     /// <summary>
     /// 주어진 프리팹이 어떤 유형(Central, Blocking, Neutral)에 속하는지 반환합니다.
     /// </summary>
@@ -282,10 +328,10 @@ public class MapGenerator : MonoBehaviourPunCallbacks
     private int GetPrefabTypeByIndex(int prefabIndex)
     {
         if (prefabIndex < 0 || prefabIndex >= MapPrefabs.Length) return TYPE_EMPTY;
-        
+
         GameObject prefab = MapPrefabs[prefabIndex];
         if (prefab == null) return TYPE_EMPTY;
-        
+
         return GetPrefabType(prefab);
     }
 
@@ -326,7 +372,7 @@ public class MapGenerator : MonoBehaviourPunCallbacks
     // --- RPC 및 NavMesh 관련 함수 ---
 
     [PunRPC]
-    private void RPC_InstantiateMap(int[] flatLayout, int[] flatRotation) 
+    private void RPC_InstantiateMap(int[] flatLayout, int[] flatRotation)
     {
         Debug.Log("맵 레이아웃 데이터를 수신했습니다. 맵 부모와 조각 생성을 시작합니다.");
 
@@ -340,7 +386,7 @@ public class MapGenerator : MonoBehaviourPunCallbacks
 
         if (planesParent != null)
         {
-            mapParent.transform.SetParent(planesParent, false); 
+            mapParent.transform.SetParent(planesParent, false);
             Debug.Log("MapRoot를 Planes 부모 오브젝트의 자식으로 설정했습니다.");
         }
         else
@@ -348,29 +394,39 @@ public class MapGenerator : MonoBehaviourPunCallbacks
             Debug.LogWarning("경고: Planes Parent 오브젝트가 할당되지 않아 MapRoot가 씬 루트에 생성됩니다.");
         }
 
-        float halfPieceSize = PieceSize / 2f; 
+        float halfPieceSize = PieceSize / 2f;
+
+        // 🌟🌟🌟 수정된 부분: 맵 전체를 월드 원점 (0, 0, 0) 기준으로 중앙 정렬 🌟🌟🌟
+        float totalMapSize = MAP_GRID_SIZE * PieceSize;
+        float centerOffset = totalMapSize / 2f;
+
+        // 맵의 (0,0) 위치가 월드 (0,0,0)에 있으므로, 중앙을 (0,0,0)에 오도록 전체를 이동
+        // mapParent의 위치를 조정하여 전체 맵의 중심을 월드 원점(0, 0, 0) 근처로 이동시킵니다.
+        // 각 맵 조각은 (0,0)을 기준으로 배치되므로, 이 조정을 통해 전체 맵이 중앙으로 옵니다.
+        mapParent.transform.position = new Vector3(-centerOffset + halfPieceSize, 0f, -centerOffset + halfPieceSize);
+        // -------------------------------------------------------------
 
         for (int i = 0; i < flatLayout.Length; i++)
         {
             int mapPieceIndex = flatLayout[i];
-            
+
             if (mapPieceIndex == TYPE_EMPTY)
             {
                 continue;
             }
 
-            int rotationY = (flatRotation.Length > i) ? flatRotation[i] : 0; 
-            
-            int x = i / MAP_GRID_SIZE;
-            int y = i % MAP_GRID_SIZE;
+            int rotationY = (flatRotation.Length > i) ? flatRotation[i] : 0;
+
+            int x = i / MAP_GRID_SIZE; // 행 인덱스
+            int y = i % MAP_GRID_SIZE; // 열 인덱스
 
             Vector3 position = new Vector3(
                 (x * PieceSize) + halfPieceSize,
                 0f,
                 (y * PieceSize) + halfPieceSize
             );
-            
-            Quaternion rotation = Quaternion.Euler(0f, rotationY, 0f); 
+
+            Quaternion rotation = Quaternion.Euler(0f, rotationY, 0f);
 
             if (mapPieceIndex >= 0 && mapPieceIndex < MapPrefabs.Length)
             {
@@ -378,6 +434,7 @@ public class MapGenerator : MonoBehaviourPunCallbacks
 
                 if (prefabToInstantiate != null)
                 {
+                    // position은 mapParent의 로컬 좌표입니다.
                     Instantiate(prefabToInstantiate, position, rotation, mapParent.transform);
                 }
                 else
@@ -475,7 +532,7 @@ public class MapGenerator : MonoBehaviourPunCallbacks
         {
             if (surface == null) continue;
             surface.RemoveData();
-            surface.BuildNavMesh(); 
+            surface.BuildNavMesh();
         }
 
         isNavMeshReady = true;
@@ -496,28 +553,59 @@ public class MapGenerator : MonoBehaviourPunCallbacks
     {
         if (Application.isPlaying) return;
 
+        // 맵 중앙 정렬을 시뮬레이션
+        float halfPieceSize = PieceSize / 2f;
+        float totalMapSize = MAP_GRID_SIZE * PieceSize;
+        float centerOffset = totalMapSize / 2f;
+        Vector3 mapRootAdjustment = new Vector3(-centerOffset + halfPieceSize, 0f, -centerOffset + halfPieceSize);
+        
+        // Gizmo 중심 위치 (맵 전체 중심)
+        float gizmoCenter = centerOffset;
+
+        // 중앙 상점 (CENTER_INDEX, CENTER_INDEX)의 월드 좌표를 계산
+        float centerPosLocal = (CENTER_INDEX * PieceSize) + halfPieceSize;
+        Vector3 shopWorldPos = new Vector3(centerPosLocal, 0, centerPosLocal) + mapRootAdjustment;
+        
         Gizmos.color = Color.yellow;
-        float centerOffset = PieceSize / 2f;
-        float centerPosition = (CENTER_INDEX * PieceSize) + centerOffset;
-        Gizmos.DrawSphere(new Vector3(centerPosition, 0, centerPosition), 0.5f);
+        Gizmos.DrawSphere(shopWorldPos, 0.5f); // 맵 중앙 (상점 위치)
 
+        // 중앙 인접 고정 맵 위치 확인 (Magenta)
         Gizmos.color = Color.magenta;
-        Gizmos.DrawWireCube(new Vector3(centerPosition, 0, (CENTER_INDEX - 1) * PieceSize + centerOffset), new Vector3(PieceSize, 0.1f, PieceSize));
-        Gizmos.DrawWireCube(new Vector3(centerPosition, 0, (CENTER_INDEX + 1) * PieceSize + centerOffset), new Vector3(PieceSize, 0.1f, PieceSize));
-        Gizmos.DrawWireCube(new Vector3((CENTER_INDEX - 1) * PieceSize + centerOffset, 0, centerPosition), new Vector3(PieceSize, 0.1f, PieceSize));
-        Gizmos.DrawWireCube(new Vector3((CENTER_INDEX + 1) * PieceSize + centerOffset, 0, centerPosition), new Vector3(PieceSize, 0.1f, PieceSize));
 
+        // 상점 (4, 4)의 주변 (4, 3), (4, 5), (3, 4), (5, 4) 위치
+        Vector3 pieceSizeV3 = new Vector3(PieceSize, 0.1f, PieceSize);
+
+        // (4, 3) -> X: Center, Z: Center - 1
+        float z_minus_1 = ((CENTER_INDEX - 1) * PieceSize) + halfPieceSize;
+        Gizmos.DrawWireCube(new Vector3(centerPosLocal, 0, z_minus_1) + mapRootAdjustment, pieceSizeV3);
+
+        // (4, 5) -> X: Center, Z: Center + 1
+        float z_plus_1 = ((CENTER_INDEX + 1) * PieceSize) + halfPieceSize;
+        Gizmos.DrawWireCube(new Vector3(centerPosLocal, 0, z_plus_1) + mapRootAdjustment, pieceSizeV3);
+
+        // (3, 4) -> X: Center - 1, Z: Center
+        float x_minus_1 = ((CENTER_INDEX - 1) * PieceSize) + halfPieceSize;
+        Gizmos.DrawWireCube(new Vector3(x_minus_1, 0, centerPosLocal) + mapRootAdjustment, pieceSizeV3);
+
+        // (5, 4) -> X: Center + 1, Z: Center
+        float x_plus_1 = ((CENTER_INDEX + 1) * PieceSize) + halfPieceSize;
+        Gizmos.DrawWireCube(new Vector3(x_plus_1, 0, centerPosLocal) + mapRootAdjustment, pieceSizeV3);
+
+
+        // 전체 그리드 선 그리기 (흰색)
         Gizmos.color = Color.white;
         float totalSize = MAP_GRID_SIZE * PieceSize;
 
         for (int i = 0; i <= MAP_GRID_SIZE; i++)
         {
-            Vector3 startX = new Vector3(i * PieceSize, 0, 0);
-            Vector3 endX = new Vector3(i * PieceSize, 0, totalSize);
+            // Z 축으로 길게 (X 변화)
+            Vector3 startX = new Vector3(i * PieceSize, 0, 0) + mapRootAdjustment;
+            Vector3 endX = new Vector3(i * PieceSize, 0, totalSize) + mapRootAdjustment;
             Gizmos.DrawLine(startX, endX);
 
-            Vector3 startZ = new Vector3(0, 0, i * PieceSize);
-            Vector3 endZ = new Vector3(totalSize, 0, i * PieceSize);
+            // X 축으로 길게 (Z 변화)
+            Vector3 startZ = new Vector3(0, 0, i * PieceSize) + mapRootAdjustment;
+            Vector3 endZ = new Vector3(totalSize, 0, i * PieceSize) + mapRootAdjustment;
             Gizmos.DrawLine(startZ, endZ);
         }
     }
