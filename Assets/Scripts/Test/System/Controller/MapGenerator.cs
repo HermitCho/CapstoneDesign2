@@ -74,12 +74,20 @@ public class MapGenerator : MonoBehaviourPunCallbacks
     void Awake()
     {
         CacheNavMeshSurfaces();
+        //수정 반영: 모든 클라이언트가 가장 이른 시점에 MapPrefabs를 완성합니다.
+        InitializeRandomMaps(); 
     }
 
     public bool StartMapGeneration()
     {
+        // InitializeRandomMaps는 이미 Awake에서 호출되었으므로 여기서 삭제
+
         if (!PhotonNetwork.IsMasterClient)
         {
+            if (hasGeneratedLayout && !isNavMeshReady && ShouldBakeNavMesh())
+            {
+                QueueNavMeshBake();
+            }
             return false;
         }
 
@@ -92,7 +100,6 @@ public class MapGenerator : MonoBehaviourPunCallbacks
             return false;
         }
 
-        InitializeRandomMaps();
         SetGlobalMapReady(false);
         hasGeneratedLayout = true;
         isNavMeshReady = !ShouldBakeNavMesh();
@@ -113,7 +120,7 @@ public class MapGenerator : MonoBehaviourPunCallbacks
 
         List<GameObject> finalMapPrefabs = new List<GameObject>();
 
-        // 🌟🌟🌟 수정 부분: 고정 맵 (0, 1, 2)은 Null 여부와 관계없이 그대로 유지 (요청 반영)
+        // 🌟🌟🌟 수정 반영: 고정 맵 (0, 1, 2)은 Null 여부와 관계없이 그대로 유지 (요청 반영)
         finalMapPrefabs.AddRange(MapPrefabs.Take(RANDOM_MAP_START_INDEX)); 
 
         // 2. 나머지 랜덤 맵 통합 (Null은 제거하고 통합)
@@ -178,12 +185,11 @@ public class MapGenerator : MonoBehaviourPunCallbacks
 
 
         // 2. Element 2 고정 맵 배치 (총 8개 위치)
-        // 주의: fixedNeighborMapPrefab은 MapPrefabs[2] 참조이며, 이 값이 Null일 경우 아래 로직이 실행되더라도 Null 인덱스(2)가 맵 레이아웃에 배치됩니다.
         if (FIXED_NEIGHBOR_MAP_INDEX < MapPrefabs.Length)
         {
             int fixedNeighborIndex = FIXED_NEIGHBOR_MAP_INDEX; 
             
-            // 프리팹 자체가 null이어도 인덱스를 사용하기 위해 MapPrefabs.Length만 체크
+            // 프리팹 자체의 Null 여부와 관계없이 인덱스 범위만 체크
             if (fixedNeighborIndex != -1 && MapPrefabs.Length > fixedNeighborIndex)
             {
                 // A. 기존 중앙 인접 고정 맵 4곳
@@ -345,11 +351,11 @@ public class MapGenerator : MonoBehaviourPunCallbacks
     /// </summary>
     private int GetPrefabType(GameObject prefab)
     {
+        // Null이 MapPrefabs에 유지되므로, Null이면 TYPE_EMPTY 반환
+        if (prefab == null) return TYPE_EMPTY;
+        
         // 고정 맵 인덱스에 해당하는 프리팹인지 먼저 확인하여 TYPE_FIXED를 보장
         int prefabIndex = GetPrefabIndex(prefab);
-        
-        // 🌟 수정 반영: Null이 MapPrefabs에 유지되므로, 여기서도 prefab이 Null이면 TYPE_EMPTY 반환
-        if (prefab == null) return TYPE_EMPTY;
         
         if (prefabIndex == SPAWN_MAP_INDEX || 
             prefabIndex == SHOP_MAP_INDEX || 
@@ -418,7 +424,17 @@ public class MapGenerator : MonoBehaviourPunCallbacks
     [PunRPC]
     private void RPC_InstantiateMap(int[] flatLayout, int[] flatRotation)
     {
-        Debug.Log("맵 레이아웃 데이터를 수신했습니다. 맵 부모와 조각 생성을 시작합니다.");
+        // RPC 수신 확인 로직 (디버그)
+        if (!photonView.IsMine)
+        {
+            Debug.Log($"비마스터 클라이언트가 맵 데이터를 수신했습니다. 레이아웃 크기: {flatLayout.Length}");
+        }
+        else
+        {
+            Debug.Log("마스터 클라이언트: 맵 레이아웃 데이터를 전송했습니다.");
+        }
+
+        // -------------------------------------------------------------
 
         if (mapParent != null)
         {
@@ -439,14 +455,10 @@ public class MapGenerator : MonoBehaviourPunCallbacks
         }
 
         float halfPieceSize = PieceSize / 2f;
-
-        // 맵 전체를 월드 원점 (0, 0, 0) 기준으로 중앙 정렬
         float totalMapSize = MAP_GRID_SIZE * PieceSize;
         float centerOffset = totalMapSize / 2f;
 
-        // mapParent의 위치를 조정하여 전체 맵의 중심을 월드 원점(0, 0, 0) 근처로 이동시킵니다.
         mapParent.transform.position = new Vector3(-centerOffset + halfPieceSize, 0f, -centerOffset + halfPieceSize);
-        // -------------------------------------------------------------
 
         for (int i = 0; i < flatLayout.Length; i++)
         {
@@ -459,8 +471,8 @@ public class MapGenerator : MonoBehaviourPunCallbacks
 
             int rotationY = (flatRotation.Length > i) ? flatRotation[i] : 0;
 
-            int x = i / MAP_GRID_SIZE; // 행 인덱스
-            int y = i % MAP_GRID_SIZE; // 열 인덱스
+            int x = i / MAP_GRID_SIZE;
+            int y = i % MAP_GRID_SIZE;
 
             Vector3 position = new Vector3(
                 (x * PieceSize) + halfPieceSize,
@@ -470,25 +482,22 @@ public class MapGenerator : MonoBehaviourPunCallbacks
 
             Quaternion rotation = Quaternion.Euler(0f, rotationY, 0f);
 
+            // 배열 길이를 확인합니다. (비마스터 클라이언트의 배열이 마스터와 동일하도록 Awake에서 초기화했으므로, 이 체크가 이제 유효해야 합니다.)
             if (mapPieceIndex >= 0 && mapPieceIndex < MapPrefabs.Length)
             {
                 GameObject prefabToInstantiate = MapPrefabs[mapPieceIndex];
 
-                // 🌟 수정 반영: Null 값이 의도적으로 유지되므로, prefabToInstantiate가 null이면 아무것도 소환하지 않고 건너뜁니다.
+                // Null 값이 의도적으로 유지되므로, prefabToInstantiate가 null이면 아무것도 소환하지 않고 건너뜁니다.
                 if (prefabToInstantiate != null)
                 {
-                    // position은 mapParent의 로컬 좌표입니다.
                     Instantiate(prefabToInstantiate, position, rotation, mapParent.transform);
-                }
-                else
-                {
-                    // Null 인덱스에 할당된 맵 조각이 Null이므로, 의도대로 아무것도 소환하지 않고 다음으로 넘어갑니다.
-                    // Debug.LogWarning($"맵 생성 건너뜀: 인덱스 {mapPieceIndex}의 프리팹 참조가 NULL입니다. (의도된 빈 공간)");
                 }
             }
             else
             {
-                Debug.LogError($"잘못된 맵 프리셋 인덱스: {mapPieceIndex}. 맵 프리팹 인덱스는 0 이상 {MapPrefabs.Length} 미만이어야 합니다.");
+                // 이 오류가 발생하면, 아직도 MapPrefabs의 길이가 일치하지 않았거나, 
+                // 마스터가 할당한 인덱스가 Master의 최종 배열 길이보다 더 큽니다.
+                Debug.LogError($"잘못된 맵 프리셋 인덱스: {mapPieceIndex}. [CRITICAL] 로컬 MapPrefabs 인덱스는 0 이상 {MapPrefabs.Length} 미만이어야 합니다.");
             }
         }
 
@@ -622,7 +631,7 @@ public class MapGenerator : MonoBehaviourPunCallbacks
         Vector3 pieceSizeV3 = new Vector3(PieceSize, 0.1f, PieceSize);
 
 
-        // 🌟🌟 A. 중앙 인접 고정 맵 4곳 (Magenta) 🌟🌟
+        // A. 중앙 인접 고정 맵 4곳 (Magenta)
         Gizmos.color = Color.magenta;
         Gizmos.DrawWireCube(new Vector3(centerPosLocal, 0, z_minus_1) + mapRootAdjustment, pieceSizeV3); // (4, 3)
         Gizmos.DrawWireCube(new Vector3(centerPosLocal, 0, z_plus_1) + mapRootAdjustment, pieceSizeV3);  // (4, 5)
@@ -630,7 +639,7 @@ public class MapGenerator : MonoBehaviourPunCallbacks
         Gizmos.DrawWireCube(new Vector3(x_plus_1, 0, centerPosLocal) + mapRootAdjustment, pieceSizeV3);   // (5, 4)
 
 
-        // 🌟🌟 B. 경계 중앙에 위치하는 추가 고정 통로 4곳 (Cyan) 🌟🌟
+        // B. 경계 중앙에 위치하는 추가 고정 통로 4곳 (Cyan)
         Gizmos.color = Color.cyan;
         
         // (0, 4) - 좌측 중앙 경계
