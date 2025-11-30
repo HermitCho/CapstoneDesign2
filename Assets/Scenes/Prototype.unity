@@ -8548,16 +8548,20 @@ MonoBehaviour:
   - {fileID: 0}
   - {fileID: 0}
   - {fileID: 1746612587689938916, guid: 26d5403f93ed28945b0231737b148d9a, type: 3}
-  - {fileID: 2221227319976306058, guid: 6ceabe9f3f091f24cb02de78c98116a0, type: 3}
-  - {fileID: 701755509303940561, guid: 5b0a11929023df14290784eecfb8d991, type: 3}
-  - {fileID: 8919947952053810804, guid: ba5158a62cc14274093de8c66a4b0402, type: 3}
-  - {fileID: 7642874584289558419, guid: d577c04eabf15be4783dbe5bcff8da87, type: 3}
-  - {fileID: 683198111205356817, guid: c1b66efd1b311d142ad86a89e7657ed3, type: 3}
-  - {fileID: 2618774970630503145, guid: d92c4037fa6343c4d9ce40ac12f1d2e9, type: 3}
   PieceSize: 15
   planesParent: {fileID: 2050910665}
   navMeshSurfaces: []
   navMeshBakeDelay: 0.2
+  CentralPathMaps:
+  - {fileID: 2221227319976306058, guid: 6ceabe9f3f091f24cb02de78c98116a0, type: 3}
+  - {fileID: 701755509303940561, guid: 5b0a11929023df14290784eecfb8d991, type: 3}
+  - {fileID: 8919947952053810804, guid: ba5158a62cc14274093de8c66a4b0402, type: 3}
+  - {fileID: 683198111205356817, guid: c1b66efd1b311d142ad86a89e7657ed3, type: 3}
+  BlockingMaps:
+  - {fileID: 7642874584289558419, guid: d577c04eabf15be4783dbe5bcff8da87, type: 3}
+  NeutralMaps:
+  - {fileID: 2618774970630503145, guid: d92c4037fa6343c4d9ce40ac12f1d2e9, type: 3}
+  - {fileID: 1746612587689938916, guid: 26d5403f93ed28945b0231737b148d9a, type: 3}
 --- !u!114 &2108582641
 MonoBehaviour:
   m_ObjectHideFlags: 0
