@@ -150,6 +150,18 @@ public class CoinController : MonoBehaviourPun
         AddScore(score);
     }
 
+    /// <summary>
+    /// 사망 시 점수 30% 차감 RPC
+    /// </summary>
+    [PunRPC]
+    public void RPC_SubtractDeathPenalty()
+    {
+        if (!photonView.IsMine) return;
+
+        float penaltyAmount = currentScore * 0.3f;
+        SubtractScore(penaltyAmount);
+    }
+
     #endregion
 
     /// <summary>

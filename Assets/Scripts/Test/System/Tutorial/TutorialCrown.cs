@@ -15,9 +15,6 @@ public class TutorialCrown : MonoBehaviour
     [Header("왕관 착용 후 요구 코인 수")]
     [SerializeField] private int requiredCoinCount = 2;
 
-    private bool isCounting = false;
-    private bool hasCrownAttached = false;
-    private int startCoin = 0;
 
     void OnEnable()
     {
@@ -35,38 +32,48 @@ public class TutorialCrown : MonoBehaviour
         }
         Crown.OnLocalCrownAttached -= OnCrownAttached;
         CoinController.LocalCoinChanged -= OnCoinChanged;
-        isCounting = false;
     }
 
     private void BeginCounting()
     {
-        hasCrownAttached = false;
-        isCounting = true;
-        
-        // 왕관 부착 이벤트 구독
+        TutorialStateManager.CrownTriggered = true;
+        TutorialStateManager.CrownCompleted = false;
+
+        TutorialStateManager.CrownAttached = false;
+        TutorialStateManager.CrownStartCoin = 0;
+
+        // 왕관 착용 이벤트 구독
         Crown.OnLocalCrownAttached += OnCrownAttached;
     }
 
     private void OnCrownAttached()
     {
-        if (!isCounting) return;
-        
-        hasCrownAttached = true;
-        startCoin = GetLocalCoinSafe();
-        
-        // 코인 변화 추적 시작
+        if (!TutorialStateManager.CrownTriggered ||
+            TutorialStateManager.CrownCompleted)
+            return;
+
+        TutorialStateManager.CrownAttached = true;
+
+        // 기준 코인 저장
+        TutorialStateManager.CrownStartCoin = GetLocalCoinSafe();
+
+        // 코인 체크 시작
         CoinController.LocalCoinChanged += OnCoinChanged;
     }
 
     private void OnCoinChanged(int currentCoin)
     {
-        if (!isCounting || !hasCrownAttached) return;
+        if (!TutorialStateManager.CrownTriggered ||
+            TutorialStateManager.CrownCompleted ||
+            !TutorialStateManager.CrownAttached)
+            return;
 
-        int gained = currentCoin - startCoin;
+        int gained = currentCoin - TutorialStateManager.CrownStartCoin;
+
+        Debug.Log($"👑 코인 획득량: {gained}/{requiredCoinCount}");
+
         if (gained >= requiredCoinCount)
-        {
             CompleteTutorial();
-        }
     }
 
     private int GetLocalCoinSafe()
@@ -77,7 +84,8 @@ public class TutorialCrown : MonoBehaviour
 
     private void CompleteTutorial()
     {
-        isCounting = false;
+        TutorialStateManager.CrownCompleted = true;
+
         Crown.OnLocalCrownAttached -= OnCrownAttached;
         CoinController.LocalCoinChanged -= OnCoinChanged;
 

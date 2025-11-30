@@ -26,13 +26,23 @@ public class Trap_Arrow_Needle : MonoBehaviourPun
         await UniTask.Delay((int)(niddleOnTime * 1000));
         transform.Translate(Vector3.up * -0.5f);
 
-        if (Trap_Arrow != null && Trap_Arrow.photonView != null && Trap_Arrow.photonView.ViewID != 0)
+        // ✅ PhotonView 유효성 확인 후 RPC 호출 또는 로컬 호출
+        if (Trap_Arrow != null)
         {
-            Trap_Arrow.photonView.RPC("RPC_arrowOff", RpcTarget.All);
+            if (Trap_Arrow.photonView != null && Trap_Arrow.photonView.ViewID != 0)
+            {
+                // 네트워크 모드: RPC 사용
+                Trap_Arrow.photonView.RPC("RPC_arrowOff", RpcTarget.All);
+            }
+            else
+            {
+                // 로컬 모드: 직접 호출
+                Trap_Arrow.RPC_arrowOff();
+            }
         }
         else
         {
-            Debug.LogError($"RPC_arrowOff 실패: 부모 Trap_Arrow 또는 PhotonView가 유효하지 않습니다. (Trap_Arrow null: {Trap_Arrow == null})");
+            Debug.LogError($"[Trap_Arrow_Needle] {gameObject.name} 부모 Trap_Arrow를 찾을 수 없습니다.");
         }
     }
 }

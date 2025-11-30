@@ -44,6 +44,18 @@ public class CameraController : MonoBehaviourPun
     private Vector3 originalLocalPosition;
     private Coroutine shakeCoroutine;
 
+    // 반동 관련 변수
+    private float currentRecoilVertical = 0f;
+    private float targetRecoilVertical = 0f;
+    private float kickRecoilVertical = 0f;
+    private float recoilRecoverySpeed = 8f;
+    private float recoilKickDuration = 0.05f;
+    private float recoilRecoveryDuration = 0.1f;
+    private float recoilTimer = 0f;
+    private bool isRecoilKicking = false;
+    private float recoilHorizontalDirection = 0f;
+    private float recoilStartTime = 0f;
+
     // 카메라 제어용
     private Camera mainCamera;
     private PhotonView photonView;
@@ -234,7 +246,7 @@ public class CameraController : MonoBehaviourPun
         // Y축 처리 (수직 회전만)
         // float mouseY = mouseInput.y * currentSensitivity * Time.deltaTime;
 
-        targetVerticalAngle -= mouseY; // Y축은 반전
+        targetVerticalAngle -= mouseY;
         targetVerticalAngle = Mathf.Clamp(targetVerticalAngle, cachedMinVerticalAngle, cachedMaxVerticalAngle);
     }
 
@@ -363,8 +375,47 @@ public class CameraController : MonoBehaviourPun
                 HandleWallCollisionAvoidance();
             }
 
+            // 반동 처리 (킥 → 복구 패턴, 시간 기반으로 정확히 동기화)
+            if (recoilStartTime > 0f)
+            {
+                float elapsedTime = Time.time - recoilStartTime;
+                float totalDuration = recoilKickDuration + recoilRecoveryDuration;
+                
+                if (elapsedTime < totalDuration)
+                {
+                    if (elapsedTime < recoilKickDuration)
+                    {
+                        // 킥 단계: 빠르게 킥 위치로 이동
+                        float t = elapsedTime / recoilKickDuration;
+                        t = Mathf.Clamp01(t);
+                        currentRecoilVertical = Mathf.Lerp(0f, kickRecoilVertical, t);
+                        isRecoilKicking = true;
+                    }
+                    else
+                    {
+                        // 복구 단계: 킥 위치에서 최종 반동 위치로 복구
+                        float recoveryElapsed = elapsedTime - recoilKickDuration;
+                        float t = recoveryElapsed / recoilRecoveryDuration;
+                        t = Mathf.Clamp01(t);
+                        currentRecoilVertical = Mathf.Lerp(kickRecoilVertical, targetRecoilVertical, t);
+                        isRecoilKicking = false;
+                    }
+                }
+                else
+                {
+                    // 반동 완료
+                    targetVerticalAngle += currentRecoilVertical;
+                    currentRecoilVertical = 0f;
+                    targetRecoilVertical = 0f;
+                    kickRecoilVertical = 0f;
+                    recoilStartTime = 0f;
+                    isRecoilKicking = false;
+                }
+            }
+
             // 부드러운 회전 적용 (수직 각도만) (캐싱된 값 사용)
-            currentVerticalAngle = Mathf.SmoothDamp(currentVerticalAngle, targetVerticalAngle, ref rotationVelocity, cachedRotationSmoothTime);
+            float finalTargetAngle = targetVerticalAngle + currentRecoilVertical;
+            currentVerticalAngle = Mathf.SmoothDamp(currentVerticalAngle, finalTargetAngle, ref rotationVelocity, cachedRotationSmoothTime);
 
             // 3인칭 카메라 위치 및 회전 적용
             ApplyThirdPersonCamera();
@@ -692,5 +743,31 @@ public class CameraController : MonoBehaviourPun
     public float GetTargetVerticalAngle()
     {
         return targetVerticalAngle;
+    }
+
+    /// <summary>
+    /// 총기 반동 적용 (수직 반동)
+    /// </summary>
+    public void ApplyRecoil(float recoilValue, float horizontalDirection, float startTime)
+    {
+        if (!photonView.IsMine) return;
+        if (recoilValue <= 0f) return;
+
+        float maxRecoilAngle = 15f * recoilValue;
+        float finalRecoilAngle = maxRecoilAngle;
+        float kickAngle = finalRecoilAngle * 1.4f;
+
+        if (recoilStartTime > 0f)
+        {
+            targetVerticalAngle += currentRecoilVertical;
+            currentRecoilVertical = 0f;
+            kickRecoilVertical = 0f;
+        }
+
+        recoilHorizontalDirection = horizontalDirection;
+        kickRecoilVertical = -kickAngle;
+        targetRecoilVertical = -finalRecoilAngle;
+        recoilStartTime = startTime; // 전달받은 시작 시간 사용
+        isRecoilKicking = true;
     }
 }

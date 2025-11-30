@@ -9,6 +9,7 @@ using Photon.Pun;
 /// </summary>
 public class TestGun : MonoBehaviourPun
 {
+    // ✅ [NEW] 재장전 애니메이션 트리거용 이벤트
     public static System.Action OnLocalReloadStarted; // 로컬 플레이어가 재장전을 실제로 시작했을 때
     public static System.Action OnHitTarget; // 로컬 플레이어가 쏜 총알이 타겟을 맞췄을 때
 
@@ -37,7 +38,8 @@ public class TestGun : MonoBehaviourPun
 
     private MoveController moveController;
     private SkillController skillController;
-    private TestShoot testShoot; // TestShoot 스크립트 참조 추가
+    private TestShoot testShoot;
+    private CameraController cameraController; // TestShoot 스크립트 참조 추가
 
     #endregion
 
@@ -103,6 +105,14 @@ public class TestGun : MonoBehaviourPun
         IsShouldering = false;
         moveController = GetComponentInParent<MoveController>();
         skillController = GetComponentInParent<SkillController>();
+        if (cameraController == null)
+        {
+            cameraController = GetComponentInParent<CameraController>();
+            if (cameraController == null)
+            {
+                cameraController = FindObjectOfType<CameraController>();
+            }
+        }
     }
     #endregion
 
@@ -132,10 +142,12 @@ public class TestGun : MonoBehaviourPun
             ExecuteFire(shootDirection);
         }
     }
+
     public GunData GetGunData()
     {
         return gunData;
     }
+
     public Transform GetFireTransform()
     {
         return fireTransform;
@@ -186,6 +198,9 @@ public class TestGun : MonoBehaviourPun
             if (CurrentMagAmmo <= 0)
                 CurrentState = GunState.Empty;
 
+            // ✅ [NEW] 탄약 0이면 자동 재장전 시도
+            TryAutoReload();
+
             // 탄약 상태를 다른 클라이언트에게 동기화
             photonViewCached.RPC("RPC_SyncAmmo", RpcTarget.Others, CurrentMagAmmo, CurrentState);
         }
@@ -213,6 +228,31 @@ public class TestGun : MonoBehaviourPun
             }
 
             StartCoroutine(ShotEffect(fireTransform.position, pelletHitPosition));
+        }
+
+        if (photonViewCached.IsMine)
+        {
+            StartCoroutine(ApplyRecoilAfterShot());
+        }
+    }
+
+    private IEnumerator ApplyRecoilAfterShot()
+    {
+        yield return null;
+
+        if (gunData != null && gunData.recoil > 0f)
+        {
+            float randomDirection = UnityEngine.Random.Range(-1f, 1f);
+            float recoilStartTime = Time.time; // 한 번만 시간 기록
+            
+            if (cameraController != null)
+            {
+                cameraController.ApplyRecoil(gunData.recoil, randomDirection, recoilStartTime);
+            }
+            if (moveController != null)
+            {
+                moveController.ApplyRecoil(gunData.recoil, randomDirection, recoilStartTime);
+            }
         }
     }
 
@@ -291,8 +331,6 @@ public class TestGun : MonoBehaviourPun
             Debug.Log($"[TestGun] 레이캐스트 히트! Object: {hit.collider.gameObject.name}, Layer: {LayerMask.LayerToName(hit.collider.gameObject.layer)}, Distance: {hit.distance:F2}m");
 
             // ✅ CRITICAL FIX: GetComponentInParent 사용!
-            // AI 봇의 구조: 부모(AIHealth, PhotonView) -> 자식(Collider)
-            // GetComponent는 같은 GameObject에서만 찾음 → 절대 못 찾음!
             IDamageable target = hit.collider.GetComponentInParent<IDamageable>();
             PhotonView targetView = hit.collider.GetComponentInParent<PhotonView>();
 
@@ -307,10 +345,9 @@ public class TestGun : MonoBehaviourPun
                     return isSoundPlayed;
                 }
 
-                // 같은 소유자인 경우 AI가 아니면 무시 (플레이어 자신의 총알은 막음)
+                // 같은 소유자인 경우 AI가 아니면 무시
                 if (targetView.OwnerActorNr == photonViewCached.OwnerActorNr)
                 {
-                    // 둘 다 AI가 아닌 경우만 무시
                     bool attackerIsAI = photonViewCached.GetComponent<AIHealth>() != null;
                     bool targetIsAI = targetView.GetComponent<AIHealth>() != null;
 
@@ -326,22 +363,20 @@ public class TestGun : MonoBehaviourPun
                 if (!isSoundPlayed)
                 {
                     AudioManager.Inst.PlayOneShot("SFX_Game_Hit");
-                    isSoundPlayed = true; // 사운드 재생 후 플래그를 True로 설정
+                    isSoundPlayed = true;
                 }
-                
-                // HitImage 애니메이션 이벤트 발생 (로컬 플레이어가 쏜 총알이 히트했을 때만)
+
                 if (photonViewCached.IsMine)
                 {
                     OnHitTarget?.Invoke();
                 }
-                
+
                 targetView.RPC("OnDamage", RpcTarget.All, damage, hit.point, hit.normal, attackerViewID);
                 Debug.Log($"[TestGun - ProcessPelletHit] ✅ 데미지 RPC 호출 성공 → {targetView.name} (ViewID: {targetView.ViewID})");
             }
         }
         else
         {
-            // 레이캐스트 빗나감
             Debug.Log($"[TestGun] 레이캐스트 빗나감 - 사거리: {gunData.range}m");
         }
         return isSoundPlayed;
@@ -399,10 +434,10 @@ public class TestGun : MonoBehaviourPun
         if (CurrentState == GunState.Reloading || CurrentMagAmmo >= gunData.maxAmmo || livingEntity.IsDead)
             return false;
 
-        // 소유자만 재장전 시작 (상태 변경은 RPC로 동기화)
+        // 🔹 소유자만 재장전 시작 (상태 변경은 RPC로 동기화)
         StartCoroutine(ReloadRoutine());
 
-        // 로컬 재장전 시작 이벤트 발행 (실제 재장전이 시작될 때만)
+        // ✅ [NEW] 실제 재장전 시작 시 애니메이션 쪽에 알림 (수동 + 자동 공통)
         OnLocalReloadStarted?.Invoke();
 
         return true;
@@ -410,10 +445,10 @@ public class TestGun : MonoBehaviourPun
 
     protected virtual IEnumerator ReloadRoutine()
     {
-        // 재장전 상태를 모든 클라이언트에 동기화
+        // 🔹 재장전 상태를 모든 클라이언트에 동기화
         photonViewCached.RPC("RPC_SetReloadingState", RpcTarget.All, true);
 
-        // 소유자만 사운드 재생
+        // 🔹 소유자만 사운드 재생
         if (photonViewCached.IsMine)
         {
             PlayReloadSound();
@@ -421,7 +456,7 @@ public class TestGun : MonoBehaviourPun
 
         yield return new WaitForSeconds(gunData.reloadTime);
 
-        // 재장전 완료를 모든 클라이언트에 동기화
+        // 🔹 재장전 완료를 모든 클라이언트에 동기화
         photonViewCached.RPC("RPC_CompleteReload", RpcTarget.All);
     }
 
@@ -439,6 +474,16 @@ public class TestGun : MonoBehaviourPun
     {
         CurrentMagAmmo = gunData.maxAmmo;
         CurrentState = GunState.Ready;
+    }
+
+    // ✅ [NEW] 탄약 0일 때 자동으로 Reload() 호출
+    private void TryAutoReload()
+    {
+        if (!photonViewCached.IsMine) return;
+        if (CurrentMagAmmo > 0) return;
+        if (CurrentState == GunState.Reloading) return;
+
+        Reload();
     }
 
     private void PlayReloadSound()

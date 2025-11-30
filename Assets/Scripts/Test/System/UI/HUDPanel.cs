@@ -109,6 +109,9 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     
     // 점수 아이콘 애니메이션 관련
     private Tween scoreIconShakeTween;
+    private Tween scoreTextColorTween;
+    private Color originalScoreTextColor = Color.white;
+    private Color penaltyColor = Color.red;
     
     // 코인 아이콘 애니메이션 관련
     private Tween coinIconRotateTween;
@@ -426,14 +429,18 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         if (localCoinController != null)
         {
             currentCoin = localCoinController.GetCurrentCoin();
-            currentScore = localCoinController.GetCurrentScore(); // ✅ 점수 초기화
+            currentScore = localCoinController.GetCurrentScore();
             UpdateCoinDisplay();
         }
         else
         {
-            //CoinController가 없으면 0으로 초기화
             currentCoin = 0;
             currentScore = 0f;
+        }
+
+        if (scoreText != null)
+        {
+            originalScoreTextColor = scoreText.color;
         }
         
         if (localCharacterSkill != null)
@@ -937,13 +944,19 @@ public class HUDPanel : MonoBehaviourPunCallbacks
         if (Mathf.Abs(newScore - currentScore) > 0.1f)
         {
             float previousScore = currentScore;
+            bool isDecrease = newScore < previousScore;
             currentScore = newScore;
-            UpdateScoreDisplay();
             
-            // 점수 아이콘 진동 애니메이션 실행
-            PlayScoreIconShakeAnimation();
+            if (isDecrease)
+            {
+                PlayScoreDecreaseAnimation(previousScore, newScore);
+            }
+            else
+            {
+                UpdateScoreDisplay();
+                PlayScoreIconShakeAnimation();
+            }
             
-            // 점수가 변경되었을 때 네트워크 동기화
             if (PhotonNetwork.IsConnected && PhotonNetwork.LocalPlayer != null)
             {
                 SyncPlayerScoreToNetwork(PhotonNetwork.LocalPlayer.ActorNumber, newScore);
@@ -1643,25 +1656,23 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     /// </summary>
     private void UpdateScoreBoardUI()
     {
-        // 모든 점수판을 먼저 비활성화
         foreach (var scoreBoard in scoreBoardObjects)
         {
             if (scoreBoard != null)
                 scoreBoard.SetActive(false);
         }
         
-        // 플레이어 데이터에 따라 점수판 업데이트
         for (int i = 0; i < playerScoreDataList.Count && i < scoreBoardObjects.Count; i++)
         {
             PlayerScoreData playerData = playerScoreDataList[i];
             
-            // 해당 순위의 점수판 활성화
             scoreBoardObjects[i].SetActive(true);
             
-            // 순위와 함께 표시
+            float previousScore = GetPreviousPlayerScore(playerData.playerId);
+            bool isScoreDecreased = previousScore > 0f && playerData.score < previousScore;
+            
             string displayText = $"{playerData.nickname}   {playerData.score:F0}";
             
-            // 로컬 플레이어인 경우 하이라이트
             if (playerData.isLocalPlayer)
             {
                 displayText = $"<color=yellow>{displayText}</color>";
@@ -1669,8 +1680,48 @@ public class HUDPanel : MonoBehaviourPunCallbacks
             
             scoreBoardTexts[i].text = displayText;
             
+            if (isScoreDecreased && scoreBoardTexts[i] != null)
+            {
+                StartCoroutine(AnimateScoreBoardPenalty(scoreBoardTexts[i], previousScore, playerData.score));
+            }
         }
     }
+
+    private float GetPreviousPlayerScore(int playerId)
+    {
+        foreach (var prevData in previousPlayerDataList)
+        {
+            if (prevData.playerId == playerId)
+            {
+                return prevData.score;
+            }
+        }
+        return 0f;
+    }
+
+    private IEnumerator AnimateScoreBoardPenalty(TextMeshProUGUI text, float fromScore, float toScore)
+    {
+        Color originalColor = text.color;
+        text.color = penaltyColor;
+        
+        string baseText = text.text;
+        int lastSpaceIndex = baseText.LastIndexOf(' ');
+        if (lastSpaceIndex >= 0)
+        {
+            baseText = baseText.Substring(0, lastSpaceIndex + 1);
+        }
+        
+        DOTween.To(() => fromScore, x => {
+            text.text = baseText + $"{x:F0}";
+        }, toScore, 0.6f)
+        .SetEase(Ease.OutCubic)
+        .OnComplete(() => {
+            text.DOColor(originalColor, 0.4f).SetEase(Ease.OutQuad);
+        });
+        
+        yield return new WaitForSeconds(0.6f);
+    }
+
     
     /// <summary>
     /// 순위 변경 확인 및 애니메이션 실행
@@ -2416,19 +2467,38 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     #region 아이콘 애니메이션
     
     /// <summary>
+    /// 점수 감소 애니메이션 (빨간색으로 변경 후 부드럽게 감소)
+    /// </summary>
+    private void PlayScoreDecreaseAnimation(float fromScore, float toScore)
+    {
+        if (scoreText == null) return;
+
+        scoreTextColorTween?.Kill();
+
+        scoreText.color = penaltyColor;
+        
+        DOTween.To(() => fromScore, x => {
+            scoreText.text = $"{x:F0}";
+        }, toScore, 0.8f)
+        .SetEase(Ease.OutCubic)
+        .OnComplete(() => {
+            UpdateScoreDisplay();
+            scoreText.DOColor(originalScoreTextColor, 0.5f).SetEase(Ease.OutQuad);
+            PlayScoreIconShakeAnimation();
+        });
+    }
+
+
+    /// <summary>
     /// 점수 아이콘 진동 애니메이션 (좌우로 기울어지며 흔들림)
     /// </summary>
     private void PlayScoreIconShakeAnimation()
     {
         if (scoreIcon == null) return;
         
-        // 기존 애니메이션 중지
         scoreIconShakeTween?.Kill();
-        
-        // 원래 회전값으로 초기화
         scoreIcon.transform.rotation = Quaternion.identity;
         
-        // 좌우 진동 애니메이션 (±15도 각도로 3번 왔다갔다)
         scoreIconShakeTween = DOTween.Sequence()
             .Append(scoreIcon.transform.DORotate(new Vector3(0f, 0f, 15f), 0.08f).SetEase(Ease.OutQuad))
             .Append(scoreIcon.transform.DORotate(new Vector3(0f, 0f, -15f), 0.08f).SetEase(Ease.InOutQuad))
@@ -2437,7 +2507,6 @@ public class HUDPanel : MonoBehaviourPunCallbacks
             .Append(scoreIcon.transform.DORotate(new Vector3(0f, 0f, 5f), 0.08f).SetEase(Ease.InOutQuad))
             .Append(scoreIcon.transform.DORotate(new Vector3(0f, 0f, 0f), 0.08f).SetEase(Ease.InQuad))
             .OnComplete(() => {
-                // 애니메이션 완료 후 회전값 완전히 초기화
                 scoreIcon.transform.rotation = Quaternion.identity;
             });
     }
@@ -2478,17 +2547,23 @@ public class HUDPanel : MonoBehaviourPunCallbacks
     private void CleanupIconAnimations()
     {
         scoreIconShakeTween?.Kill();
+        scoreTextColorTween?.Kill();
         coinIconRotateTween?.Kill();
         coinIconScaleTween?.Kill();
         
         scoreIconShakeTween = null;
+        scoreTextColorTween = null;
         coinIconRotateTween = null;
         coinIconScaleTween = null;
         
-        // 원래 상태로 복원
         if (scoreIcon != null)
         {
             scoreIcon.transform.rotation = Quaternion.identity;
+        }
+        
+        if (scoreText != null)
+        {
+            scoreText.color = originalScoreTextColor;
         }
         
         if (coinIcon != null)

@@ -6,15 +6,11 @@ public class TutorialShopAndItem : MonoBehaviour
 {
     [Header("튜토리얼 UI 참조")]
     [SerializeField] private TutorialUI tutorialUI;
-    [Space(10)]
+    
 
     [Header("튜토리얼 완료 참조")]
     [SerializeField] private TutorialComplete tutorialComplete;
-    [Space(10)]
     
-    private bool isCounting = false;
-    private bool hasPurchased = false;
-    private bool hasUsedItem = false;
 
     void OnEnable()
     {
@@ -32,36 +28,44 @@ public class TutorialShopAndItem : MonoBehaviour
         }
         ShopController.OnLocalItemPurchased -= OnItemPurchased;
         SkillController.OnLocalItemUsed -= OnItemUsed;
-        isCounting = false;
+        
     }
 
     private void BeginCounting()
     {
-        hasPurchased = false;
-        hasUsedItem = false;
-        isCounting = true;
-        
+        TutorialStateManager.ItemTriggered = true;
+        TutorialStateManager.ItemCompleted = false;
+        TutorialStateManager.ItemPurchased = false;
+        TutorialStateManager.ItemUsed = false;
+
         ShopController.OnLocalItemPurchased += OnItemPurchased;
         SkillController.OnLocalItemUsed += OnItemUsed;
     }
 
     private void OnItemPurchased()
     {
-        if (!isCounting) return;
-        hasPurchased = true;
+        if (!TutorialStateManager.ItemTriggered ||
+            TutorialStateManager.ItemCompleted)
+            return;
+
+        TutorialStateManager.ItemPurchased = true;
         CheckCompletion();
     }
 
     private void OnItemUsed()
     {
-        if (!isCounting) return;
-        hasUsedItem = true;
+        if (!TutorialStateManager.ItemTriggered ||
+            TutorialStateManager.ItemCompleted)
+            return;
+
+        TutorialStateManager.ItemUsed = true;
         CheckCompletion();
     }
 
     private void CheckCompletion()
     {
-        if (hasPurchased && hasUsedItem)
+        if (TutorialStateManager.ItemPurchased &&
+            TutorialStateManager.ItemUsed)
         {
             CompleteTutorial();
         }
@@ -69,7 +73,8 @@ public class TutorialShopAndItem : MonoBehaviour
 
     private void CompleteTutorial()
     {
-        isCounting = false;
+        TutorialStateManager.ItemCompleted = true;
+
         ShopController.OnLocalItemPurchased -= OnItemPurchased;
         SkillController.OnLocalItemUsed -= OnItemUsed;
 

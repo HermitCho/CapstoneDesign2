@@ -5,6 +5,7 @@ using UnityEngine.InputSystem;
 using System;
 using System.Linq;
 using Photon.Pun;
+using DG.Tweening;
 
 
 /// <summary>
@@ -60,6 +61,17 @@ public class MoveController : MonoBehaviourPun, IPunObservable
 
 
     private float rotationAmount;
+
+    // 반동 관련 변수
+    private float currentRecoilHorizontal = 0f;
+    private float targetRecoilHorizontal = 0f;
+    private float kickRecoilHorizontal = 0f;
+    private float recoilRecoverySpeed = 8f;
+    private float recoilKickDuration = 0.05f;
+    private float recoilRecoveryDuration = 0.1f;
+    private float recoilTimer = 0f;
+    private bool isRecoilKicking = false;
+    private float recoilStartTime = 0f;
 
     // 마우스 입력 타이머 (마우스 입력이 없으면 정지)
     private float lastMouseInputTime;
@@ -487,7 +499,46 @@ public class MoveController : MonoBehaviourPun, IPunObservable
             {
                 rotationAmount = 0;
             }
-            tr.Rotate(Vector3.up, rotationAmount);
+
+            // 반동 처리 (킥 → 복구 패턴, 시간 기반으로 정확히 동기화)
+            if (recoilStartTime > 0f)
+            {
+                float elapsedTime = Time.time - recoilStartTime;
+                float totalDuration = recoilKickDuration + recoilRecoveryDuration;
+                
+                if (elapsedTime < totalDuration)
+                {
+                    if (elapsedTime < recoilKickDuration)
+                    {
+                        // 킥 단계: 빠르게 킥 위치로 이동 (수직 반동과 동시)
+                        float t = elapsedTime / recoilKickDuration;
+                        t = Mathf.Clamp01(t);
+                        currentRecoilHorizontal = Mathf.Lerp(0f, kickRecoilHorizontal, t);
+                        isRecoilKicking = true;
+                    }
+                    else
+                    {
+                        // 복구 단계: 킥 위치에서 최종 반동 위치로 복구 (수직 반동과 동시)
+                        float recoveryElapsed = elapsedTime - recoilKickDuration;
+                        float t = recoveryElapsed / recoilRecoveryDuration;
+                        t = Mathf.Clamp01(t);
+                        currentRecoilHorizontal = Mathf.Lerp(kickRecoilHorizontal, targetRecoilHorizontal, t);
+                        isRecoilKicking = false;
+                    }
+                }
+                else
+                {
+                    // 반동 완료
+                    currentRecoilHorizontal = 0f;
+                    targetRecoilHorizontal = 0f;
+                    kickRecoilHorizontal = 0f;
+                    recoilStartTime = 0f;
+                    isRecoilKicking = false;
+                }
+            }
+            
+            float totalRotation = rotationAmount + currentRecoilHorizontal;
+            tr.Rotate(Vector3.up, totalRotation);
         }
         else
         {
@@ -557,9 +608,42 @@ public class MoveController : MonoBehaviourPun, IPunObservable
     // 지면 체크
     private bool CheckGrounded()
     {
+        // ✅ CRITICAL FIX: Ground 레이어만 체크하고, Non-convex MeshCollider를 안정적으로 감지
+        LayerMask groundMask = LayerMask.GetMask("Ground");
+        
+        // ✅ 플레이어 발 위치에서만 아래로 체크 (앞뒤좌우 4개 점 + 중심 1개 = 총 5개)
+        // 너무 많은 점은 벽 감지 문제를 일으키고, 너무 적은 점은 Non-convex MeshCollider를 놓칠 수 있음
+        Vector3[] rayOrigins = new Vector3[]
+        {
+            tr.position,                                    // 중심
+            tr.position + tr.forward * 0.2f,               // 앞 (거리 감소)
+            tr.position + tr.forward * -0.2f,             // 뒤
+            tr.position + tr.right * 0.2f,                // 오른쪽
+            tr.position + tr.right * -0.2f                 // 왼쪽
+        };
+        
+        // ✅ 체크 거리를 약간 증가시켜 Non-convex MeshCollider를 안정적으로 감지
+        float checkDistance = cachedGroundCheckDistance + 0.3f;
+        
         RaycastHit hit;
-
-        return Physics.Raycast(tr.position, Vector3.down, out hit, cachedGroundCheckDistance);
+        foreach (Vector3 origin in rayOrigins)
+        {
+            if (Physics.Raycast(origin, Vector3.down, out hit, checkDistance, groundMask, QueryTriggerInteraction.Ignore))
+            {
+                // ✅ Ground 레이어인지 확인
+                if (hit.collider.gameObject.layer == LayerMask.NameToLayer("Ground"))
+                {
+                    // ✅ 추가 검증: 히트 포인트가 플레이어보다 아래에 있는지 확인 (벽 감지 방지)
+                    // 약간의 여유를 두어 경사면도 감지 가능하도록 함
+                    if (hit.point.y <= tr.position.y + 0.1f)
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+        
+        return false;
     }
 
     /// <summary>
@@ -1010,5 +1094,29 @@ public class MoveController : MonoBehaviourPun, IPunObservable
         }
     }
 
+    /// <summary>
+    /// 총기 반동 적용 (수평 반동)
+    /// </summary>
+    public void ApplyRecoil(float recoilValue, float horizontalDirection, float startTime)
+    {
+        if (!photonView.IsMine) return;
+        if (recoilValue <= 0f) return;
+
+        float maxRecoilAngle = 2f * recoilValue;
+        float finalRecoilAngle = maxRecoilAngle * horizontalDirection;
+        float kickAngle = finalRecoilAngle * 1.4f;
+
+        if (recoilStartTime > 0f)
+        {
+            currentRecoilHorizontal = 0f;
+            targetRecoilHorizontal = 0f;
+            kickRecoilHorizontal = 0f;
+        }
+
+        kickRecoilHorizontal = kickAngle;
+        targetRecoilHorizontal = finalRecoilAngle;
+        recoilStartTime = startTime; // 전달받은 시작 시간 사용
+        isRecoilKicking = true;
+    }
 
 }
