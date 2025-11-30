@@ -42,7 +42,7 @@ public class MapGenerator : MonoBehaviourPunCallbacks
 
     private const int SPAWN_MAP_INDEX = 0;
     private const int SHOP_MAP_INDEX = 1;
-    private const int FIXED_NEIGHBOR_MAP_INDEX = 2;
+    private const int FIXED_NEIGHBOR_MAP_INDEX = 2; // Element 2 인덱스
     private const int RANDOM_MAP_START_INDEX = 3;
 
     private const int TYPE_FIXED = 10;
@@ -52,7 +52,7 @@ public class MapGenerator : MonoBehaviourPunCallbacks
     private const int TYPE_EMPTY = -1;
 
     private const int MAP_GRID_SIZE = 9;
-    private const int CENTER_INDEX = MAP_GRID_SIZE / 2;
+    private const int CENTER_INDEX = MAP_GRID_SIZE / 2; // 4
 
     private GameObject mapParent;
 
@@ -105,7 +105,7 @@ public class MapGenerator : MonoBehaviourPunCallbacks
 
     private void InitializeRandomMaps()
     {
-        // 고정 맵 프리팹 참조 저장 (InitializeRandomMaps 전에 저장)
+        // 고정 맵 프리팹 참조 저장
         if (FIXED_NEIGHBOR_MAP_INDEX < MapPrefabs.Length)
         {
             fixedNeighborMapPrefab = MapPrefabs[FIXED_NEIGHBOR_MAP_INDEX];
@@ -113,17 +113,27 @@ public class MapGenerator : MonoBehaviourPunCallbacks
 
         List<GameObject> finalMapPrefabs = new List<GameObject>();
 
-        // 1. 고정 맵 (0, 1, 2) 유지
-        finalMapPrefabs.AddRange(MapPrefabs.Take(RANDOM_MAP_START_INDEX).Where(p => p != null));
+        // 🌟🌟🌟 수정 부분: 고정 맵 (0, 1, 2)은 Null 여부와 관계없이 그대로 유지 (요청 반영)
+        finalMapPrefabs.AddRange(MapPrefabs.Take(RANDOM_MAP_START_INDEX)); 
 
-        // 2. 랜덤 맵 통합 (기존 MapPrefabs에 없는 프리팹만 추가하여 중복 방지)
+        // 2. 나머지 랜덤 맵 통합 (Null은 제거하고 통합)
+        
+        // 기존 MapPrefabs의 랜덤 맵 영역 (인덱스 3부터)을 Null 제거 후 통합
+        if (MapPrefabs.Length > RANDOM_MAP_START_INDEX)
+        {
+            finalMapPrefabs.AddRange(MapPrefabs.Skip(RANDOM_MAP_START_INDEX)
+                                               .Where(p => p != null)
+                                               .Except(finalMapPrefabs));
+        }
+
+        // Controlled Random Map Types 배열 통합 (Null은 제거하고 통합)
         finalMapPrefabs.AddRange(CentralPathMaps.Where(p => p != null).Except(finalMapPrefabs));
         finalMapPrefabs.AddRange(BlockingMaps.Where(p => p != null).Except(finalMapPrefabs));
         finalMapPrefabs.AddRange(NeutralMaps.Where(p => p != null).Except(finalMapPrefabs));
 
         // 3. MapPrefabs 배열 갱신
         MapPrefabs = finalMapPrefabs.ToArray();
-
+        
         if (MapPrefabs.Length <= RANDOM_MAP_START_INDEX)
         {
             Debug.LogError("오류: Central/Blocking/Neutral 맵 프리셋이 할당되지 않아 랜덤 맵을 생성할 수 없습니다.");
@@ -147,74 +157,94 @@ public class MapGenerator : MonoBehaviourPunCallbacks
             }
         }
 
-        // 1. 필수/고정 맵 배치
-        // 🌟 중요: 중앙 위치는 항상 고정 맵으로 표시 (상점이 null이어도 다른 맵이 생성되지 않도록)
+        // 1. 필수/고정 맵 배치 (스폰 및 중앙 상점)
+        // (4, 4) 중앙 상점
         if (SHOP_MAP_INDEX < MapPrefabs.Length && MapPrefabs[SHOP_MAP_INDEX] != null)
         {
             mapLayout[CENTER_INDEX, CENTER_INDEX] = SHOP_MAP_INDEX;
-            mapType[CENTER_INDEX, CENTER_INDEX] = TYPE_FIXED;
         }
-        else
-        {
-            // 상점이 null이어도 중앙 위치를 TYPE_FIXED로 표시하여 다른 맵이 생성되지 않도록 함
-            mapLayout[CENTER_INDEX, CENTER_INDEX] = TYPE_EMPTY;
-            mapType[CENTER_INDEX, CENTER_INDEX] = TYPE_FIXED;
-        }
+        mapType[CENTER_INDEX, CENTER_INDEX] = TYPE_FIXED; 
 
-        // 🌟 중요: 스폰 맵 위치는 항상 고정 맵으로 표시 (스폰 맵이 null이어도 다른 맵이 생성되지 않도록)
+        // 네 모서리 스폰 (0, 0), (0, 8), (8, 0), (8, 8)
         if (SPAWN_MAP_INDEX < MapPrefabs.Length && MapPrefabs[SPAWN_MAP_INDEX] != null)
         {
-            mapLayout[0, 0] = SPAWN_MAP_INDEX; mapType[0, 0] = TYPE_FIXED;
-            mapLayout[0, MAP_GRID_SIZE - 1] = SPAWN_MAP_INDEX; mapType[0, MAP_GRID_SIZE - 1] = TYPE_FIXED;
-            mapLayout[MAP_GRID_SIZE - 1, 0] = SPAWN_MAP_INDEX; mapType[MAP_GRID_SIZE - 1, 0] = TYPE_FIXED;
-            mapLayout[MAP_GRID_SIZE - 1, MAP_GRID_SIZE - 1] = SPAWN_MAP_INDEX; mapType[MAP_GRID_SIZE - 1, MAP_GRID_SIZE - 1] = TYPE_FIXED;
+            mapLayout[0, 0] = SPAWN_MAP_INDEX; 
+            mapLayout[0, MAP_GRID_SIZE - 1] = SPAWN_MAP_INDEX; 
+            mapLayout[MAP_GRID_SIZE - 1, 0] = SPAWN_MAP_INDEX; 
+            mapLayout[MAP_GRID_SIZE - 1, MAP_GRID_SIZE - 1] = SPAWN_MAP_INDEX;
         }
-        else
-        {
-            // 스폰 맵이 null이어도 스폰 위치를 TYPE_FIXED로 표시하여 다른 맵이 생성되지 않도록 함
-            mapLayout[0, 0] = TYPE_EMPTY; mapType[0, 0] = TYPE_FIXED;
-            mapLayout[0, MAP_GRID_SIZE - 1] = TYPE_EMPTY; mapType[0, MAP_GRID_SIZE - 1] = TYPE_FIXED;
-            mapLayout[MAP_GRID_SIZE - 1, 0] = TYPE_EMPTY; mapType[MAP_GRID_SIZE - 1, 0] = TYPE_FIXED;
-            mapLayout[MAP_GRID_SIZE - 1, MAP_GRID_SIZE - 1] = TYPE_EMPTY; mapType[MAP_GRID_SIZE - 1, MAP_GRID_SIZE - 1] = TYPE_FIXED;
-        }
+        mapType[0, 0] = TYPE_FIXED; mapType[0, MAP_GRID_SIZE - 1] = TYPE_FIXED; 
+        mapType[MAP_GRID_SIZE - 1, 0] = TYPE_FIXED; mapType[MAP_GRID_SIZE - 1, MAP_GRID_SIZE - 1] = TYPE_FIXED;
 
-        // 중앙 인접 고정 맵 배치 (저장된 프리팹 참조를 사용하여 인덱스 찾기)
-        // 🌟 중요: 중앙 위치(CENTER_INDEX, CENTER_INDEX)는 절대 건드리지 않음 (상점이 배치된 위치)
-        if (fixedNeighborMapPrefab != null)
+
+        // 2. Element 2 고정 맵 배치 (총 8개 위치)
+        // 주의: fixedNeighborMapPrefab은 MapPrefabs[2] 참조이며, 이 값이 Null일 경우 아래 로직이 실행되더라도 Null 인덱스(2)가 맵 레이아웃에 배치됩니다.
+        if (FIXED_NEIGHBOR_MAP_INDEX < MapPrefabs.Length)
         {
-            int fixedNeighborIndex = GetPrefabIndex(fixedNeighborMapPrefab);
-            if (fixedNeighborIndex != -1)
+            int fixedNeighborIndex = FIXED_NEIGHBOR_MAP_INDEX; 
+            
+            // 프리팹 자체가 null이어도 인덱스를 사용하기 위해 MapPrefabs.Length만 체크
+            if (fixedNeighborIndex != -1 && MapPrefabs.Length > fixedNeighborIndex)
             {
-                // 중앙 상점(CENTER_INDEX, CENTER_INDEX)의 상하좌우에만 배치
-                // 상하좌우 위치는 모두 중앙 위치가 아니므로 안전하게 배치 가능
-                mapLayout[CENTER_INDEX, CENTER_INDEX - 1] = fixedNeighborIndex; mapType[CENTER_INDEX, CENTER_INDEX - 1] = TYPE_FIXED; // 상 (4, 3)
-                mapLayout[CENTER_INDEX, CENTER_INDEX + 1] = fixedNeighborIndex; mapType[CENTER_INDEX, CENTER_INDEX + 1] = TYPE_FIXED; // 하 (4, 5)
-                mapLayout[CENTER_INDEX - 1, CENTER_INDEX] = fixedNeighborIndex; mapType[CENTER_INDEX - 1, CENTER_INDEX] = TYPE_FIXED; // 좌 (3, 4)
-                mapLayout[CENTER_INDEX + 1, CENTER_INDEX] = fixedNeighborIndex; mapType[CENTER_INDEX + 1, CENTER_INDEX] = TYPE_FIXED; // 우 (5, 4)
+                // A. 기존 중앙 인접 고정 맵 4곳
+                mapLayout[CENTER_INDEX, CENTER_INDEX - 1] = fixedNeighborIndex; mapType[CENTER_INDEX, CENTER_INDEX - 1] = TYPE_FIXED; // (4, 3)
+                mapLayout[CENTER_INDEX, CENTER_INDEX + 1] = fixedNeighborIndex; mapType[CENTER_INDEX, CENTER_INDEX + 1] = TYPE_FIXED; // (4, 5)
+                mapLayout[CENTER_INDEX - 1, CENTER_INDEX] = fixedNeighborIndex; mapType[CENTER_INDEX - 1, CENTER_INDEX] = TYPE_FIXED; // (3, 4)
+                mapLayout[CENTER_INDEX + 1, CENTER_INDEX] = fixedNeighborIndex; mapType[CENTER_INDEX + 1, CENTER_INDEX] = TYPE_FIXED; // (5, 4)
+
+                // B. 경계 중앙에 위치하는 추가 고정 통로 4곳
+                
+                // (0, 4) - 좌측 중앙 경계
+                if (mapType[0, CENTER_INDEX] == TYPE_EMPTY)
+                {
+                    mapLayout[0, CENTER_INDEX] = fixedNeighborIndex; mapType[0, CENTER_INDEX] = TYPE_FIXED;
+                }
+                
+                // (4, 0) - 하단 중앙 경계
+                if (mapType[CENTER_INDEX, 0] == TYPE_EMPTY)
+                {
+                    mapLayout[CENTER_INDEX, 0] = fixedNeighborIndex; mapType[CENTER_INDEX, 0] = TYPE_FIXED;
+                }
+                
+                // (8, 4) - 우측 중앙 경계
+                if (mapType[MAP_GRID_SIZE - 1, CENTER_INDEX] == TYPE_EMPTY)
+                {
+                    mapLayout[MAP_GRID_SIZE - 1, CENTER_INDEX] = fixedNeighborIndex; mapType[MAP_GRID_SIZE - 1, CENTER_INDEX] = TYPE_FIXED;
+                }
+                
+                // (4, 8) - 상단 중앙 경계
+                if (mapType[CENTER_INDEX, MAP_GRID_SIZE - 1] == TYPE_EMPTY)
+                {
+                    mapLayout[CENTER_INDEX, MAP_GRID_SIZE - 1] = fixedNeighborIndex; mapType[CENTER_INDEX, MAP_GRID_SIZE - 1] = TYPE_FIXED;
+                }
+                
             }
             else
             {
-                Debug.LogError($"오류: 중앙 인접 고정 맵 프리팹({fixedNeighborMapPrefab.name})을 MapPrefabs 배열에서 찾을 수 없습니다.");
+                Debug.LogError($"오류: MapPrefabs 배열 인덱스 {FIXED_NEIGHBOR_MAP_INDEX} 접근 오류.");
             }
         }
         else
         {
-            Debug.LogWarning("경고: 중앙 인접 고정 맵 프리팹이 할당되지 않았습니다. 상점 주변에 고정 맵이 생성되지 않습니다.");
+            Debug.LogWarning("경고: 고정 맵 인덱스가 MapPrefabs 배열 범위를 벗어납니다.");
         }
+        
+        // -------------------------------------------------------------
 
-        // 2. 나머지 구간 랜덤 배열 및 회전 할당 (개선된 로직)
+
+        // 3. 나머지 구간 랜덤 배열 및 회전 할당 (TYPE_FIXED로 지정된 위치는 제외)
         int[] rotations = new int[] { 0, 90, 180, 270 };
 
         for (int x = 0; x < MAP_GRID_SIZE; x++)
         {
             for (int y = 0; y < MAP_GRID_SIZE; y++)
             {
-                // 고정 맵 위치는 건너뛰기
+                // **TYPE_FIXED**로 지정된 위치는 건너뛰기
                 if (mapType[x, y] == TYPE_FIXED) continue;
                 
-                // 🌟 맵 중앙 위치는 절대 건드리지 않음 (상점이 배치된 위치)
-                if (x == CENTER_INDEX && y == CENTER_INDEX) continue;
-
+                if (x == CENTER_INDEX && y == CENTER_INDEX) continue; 
+                
+                
                 // 🌟 인접한 맵 타입 확인
                 bool isNeighborCentralOrFixed = CheckNeighborType(x, y, TYPE_CENTRAL_PATH) || CheckNeighborType(x, y, TYPE_FIXED);
                 bool isNeighborBlocking = CheckNeighborType(x, y, TYPE_BLOCKING);
@@ -250,7 +280,6 @@ public class MapGenerator : MonoBehaviourPunCallbacks
                     availableMaps.AddRange(NeutralMaps.Where(p => p != null));
                 }
 
-                // 🌟 배치 가능한 맵이 있는지 확인하고 선택
                 if (availableMaps.Count > 0)
                 {
                     selectedPrefab = GetRandomPrefab(availableMaps.ToArray());
@@ -282,7 +311,7 @@ public class MapGenerator : MonoBehaviourPunCallbacks
             }
         }
 
-        // 3. 맵 레이아웃 데이터를 1차원 배열로 변환
+        // 4. 맵 레이아웃 데이터를 1차원 배열로 변환
         int[] flatLayout = new int[MAP_GRID_SIZE * MAP_GRID_SIZE];
         int[] flatRotation = new int[MAP_GRID_SIZE * MAP_GRID_SIZE];
 
@@ -296,7 +325,7 @@ public class MapGenerator : MonoBehaviourPunCallbacks
             }
         }
 
-        // 4. RPC 호출
+        // 5. RPC 호출
         photonView.RPC("RPC_InstantiateMap", RpcTarget.AllBuffered, flatLayout, flatRotation);
     }
 
@@ -307,18 +336,32 @@ public class MapGenerator : MonoBehaviourPunCallbacks
     /// </summary>
     private int GetPrefabIndex(GameObject prefab)
     {
-        // Linq 대신 Array.IndexOf를 사용하며, MapPrefabs 배열은 InitializeRandomMaps에서 이미 통합되어 있습니다.
         return Array.IndexOf(MapPrefabs, prefab);
     }
 
     /// <summary>
     /// 주어진 프리팹이 어떤 유형(Central, Blocking, Neutral)에 속하는지 반환합니다.
+    /// 맵 인덱스 0, 1, 2는 고정 맵으로 간주하여 TYPE_FIXED를 반환합니다.
     /// </summary>
     private int GetPrefabType(GameObject prefab)
     {
+        // 고정 맵 인덱스에 해당하는 프리팹인지 먼저 확인하여 TYPE_FIXED를 보장
+        int prefabIndex = GetPrefabIndex(prefab);
+        
+        // 🌟 수정 반영: Null이 MapPrefabs에 유지되므로, 여기서도 prefab이 Null이면 TYPE_EMPTY 반환
+        if (prefab == null) return TYPE_EMPTY;
+        
+        if (prefabIndex == SPAWN_MAP_INDEX || 
+            prefabIndex == SHOP_MAP_INDEX || 
+            prefabIndex == FIXED_NEIGHBOR_MAP_INDEX)
+        {
+            return TYPE_FIXED;
+        }
+        
         if (CentralPathMaps.Contains(prefab)) return TYPE_CENTRAL_PATH;
         if (BlockingMaps.Contains(prefab)) return TYPE_BLOCKING;
         if (NeutralMaps.Contains(prefab)) return TYPE_NEUTRAL;
+        
         return TYPE_EMPTY;
     }
 
@@ -330,6 +373,7 @@ public class MapGenerator : MonoBehaviourPunCallbacks
         if (prefabIndex < 0 || prefabIndex >= MapPrefabs.Length) return TYPE_EMPTY;
 
         GameObject prefab = MapPrefabs[prefabIndex];
+        // Null이 의도적으로 유지되므로 여기서 Null 체크
         if (prefab == null) return TYPE_EMPTY;
 
         return GetPrefabType(prefab);
@@ -396,13 +440,11 @@ public class MapGenerator : MonoBehaviourPunCallbacks
 
         float halfPieceSize = PieceSize / 2f;
 
-        // 🌟🌟🌟 수정된 부분: 맵 전체를 월드 원점 (0, 0, 0) 기준으로 중앙 정렬 🌟🌟🌟
+        // 맵 전체를 월드 원점 (0, 0, 0) 기준으로 중앙 정렬
         float totalMapSize = MAP_GRID_SIZE * PieceSize;
         float centerOffset = totalMapSize / 2f;
 
-        // 맵의 (0,0) 위치가 월드 (0,0,0)에 있으므로, 중앙을 (0,0,0)에 오도록 전체를 이동
         // mapParent의 위치를 조정하여 전체 맵의 중심을 월드 원점(0, 0, 0) 근처로 이동시킵니다.
-        // 각 맵 조각은 (0,0)을 기준으로 배치되므로, 이 조정을 통해 전체 맵이 중앙으로 옵니다.
         mapParent.transform.position = new Vector3(-centerOffset + halfPieceSize, 0f, -centerOffset + halfPieceSize);
         // -------------------------------------------------------------
 
@@ -432,6 +474,7 @@ public class MapGenerator : MonoBehaviourPunCallbacks
             {
                 GameObject prefabToInstantiate = MapPrefabs[mapPieceIndex];
 
+                // 🌟 수정 반영: Null 값이 의도적으로 유지되므로, prefabToInstantiate가 null이면 아무것도 소환하지 않고 건너뜁니다.
                 if (prefabToInstantiate != null)
                 {
                     // position은 mapParent의 로컬 좌표입니다.
@@ -439,7 +482,8 @@ public class MapGenerator : MonoBehaviourPunCallbacks
                 }
                 else
                 {
-                    Debug.LogError($"맵 생성 실패: 인덱스 {mapPieceIndex}의 프리팹 참조가 깨졌습니다. (MapPrefabs 배열의 값: null)");
+                    // Null 인덱스에 할당된 맵 조각이 Null이므로, 의도대로 아무것도 소환하지 않고 다음으로 넘어갑니다.
+                    // Debug.LogWarning($"맵 생성 건너뜀: 인덱스 {mapPieceIndex}의 프리팹 참조가 NULL입니다. (의도된 빈 공간)");
                 }
             }
             else
@@ -559,9 +603,6 @@ public class MapGenerator : MonoBehaviourPunCallbacks
         float centerOffset = totalMapSize / 2f;
         Vector3 mapRootAdjustment = new Vector3(-centerOffset + halfPieceSize, 0f, -centerOffset + halfPieceSize);
         
-        // Gizmo 중심 위치 (맵 전체 중심)
-        float gizmoCenter = centerOffset;
-
         // 중앙 상점 (CENTER_INDEX, CENTER_INDEX)의 월드 좌표를 계산
         float centerPosLocal = (CENTER_INDEX * PieceSize) + halfPieceSize;
         Vector3 shopWorldPos = new Vector3(centerPosLocal, 0, centerPosLocal) + mapRootAdjustment;
@@ -569,28 +610,41 @@ public class MapGenerator : MonoBehaviourPunCallbacks
         Gizmos.color = Color.yellow;
         Gizmos.DrawSphere(shopWorldPos, 0.5f); // 맵 중앙 (상점 위치)
 
-        // 중앙 인접 고정 맵 위치 확인 (Magenta)
-        Gizmos.color = Color.magenta;
-
-        // 상점 (4, 4)의 주변 (4, 3), (4, 5), (3, 4), (5, 4) 위치
+        // 고정 맵 위치 계산을 위한 변수
+        float z_minus_1 = ((CENTER_INDEX - 1) * PieceSize) + halfPieceSize; // 3
+        float z_plus_1 = ((CENTER_INDEX + 1) * PieceSize) + halfPieceSize;  // 5
+        float x_minus_1 = ((CENTER_INDEX - 1) * PieceSize) + halfPieceSize; // 3
+        float x_plus_1 = ((CENTER_INDEX + 1) * PieceSize) + halfPieceSize;  // 5
+        float x_0 = (0 * PieceSize) + halfPieceSize; // 0
+        float x_8 = (8 * PieceSize) + halfPieceSize; // 8
+        float z_0 = (0 * PieceSize) + halfPieceSize; // 0
+        float z_8 = (8 * PieceSize) + halfPieceSize; // 8
         Vector3 pieceSizeV3 = new Vector3(PieceSize, 0.1f, PieceSize);
 
-        // (4, 3) -> X: Center, Z: Center - 1
-        float z_minus_1 = ((CENTER_INDEX - 1) * PieceSize) + halfPieceSize;
-        Gizmos.DrawWireCube(new Vector3(centerPosLocal, 0, z_minus_1) + mapRootAdjustment, pieceSizeV3);
 
-        // (4, 5) -> X: Center, Z: Center + 1
-        float z_plus_1 = ((CENTER_INDEX + 1) * PieceSize) + halfPieceSize;
-        Gizmos.DrawWireCube(new Vector3(centerPosLocal, 0, z_plus_1) + mapRootAdjustment, pieceSizeV3);
+        // 🌟🌟 A. 중앙 인접 고정 맵 4곳 (Magenta) 🌟🌟
+        Gizmos.color = Color.magenta;
+        Gizmos.DrawWireCube(new Vector3(centerPosLocal, 0, z_minus_1) + mapRootAdjustment, pieceSizeV3); // (4, 3)
+        Gizmos.DrawWireCube(new Vector3(centerPosLocal, 0, z_plus_1) + mapRootAdjustment, pieceSizeV3);  // (4, 5)
+        Gizmos.DrawWireCube(new Vector3(x_minus_1, 0, centerPosLocal) + mapRootAdjustment, pieceSizeV3);  // (3, 4)
+        Gizmos.DrawWireCube(new Vector3(x_plus_1, 0, centerPosLocal) + mapRootAdjustment, pieceSizeV3);   // (5, 4)
 
-        // (3, 4) -> X: Center - 1, Z: Center
-        float x_minus_1 = ((CENTER_INDEX - 1) * PieceSize) + halfPieceSize;
-        Gizmos.DrawWireCube(new Vector3(x_minus_1, 0, centerPosLocal) + mapRootAdjustment, pieceSizeV3);
 
-        // (5, 4) -> X: Center + 1, Z: Center
-        float x_plus_1 = ((CENTER_INDEX + 1) * PieceSize) + halfPieceSize;
-        Gizmos.DrawWireCube(new Vector3(x_plus_1, 0, centerPosLocal) + mapRootAdjustment, pieceSizeV3);
+        // 🌟🌟 B. 경계 중앙에 위치하는 추가 고정 통로 4곳 (Cyan) 🌟🌟
+        Gizmos.color = Color.cyan;
+        
+        // (0, 4) - 좌측 중앙 경계
+        Gizmos.DrawWireCube(new Vector3(x_0, 0, centerPosLocal) + mapRootAdjustment, pieceSizeV3);
 
+        // (4, 0) - 하단 중앙 경계
+        Gizmos.DrawWireCube(new Vector3(centerPosLocal, 0, z_0) + mapRootAdjustment, pieceSizeV3);
+        
+        // (8, 4) - 우측 중앙 경계
+        Gizmos.DrawWireCube(new Vector3(x_8, 0, centerPosLocal) + mapRootAdjustment, pieceSizeV3);
+        
+        // (4, 8) - 상단 중앙 경계
+        Gizmos.DrawWireCube(new Vector3(centerPosLocal, 0, z_8) + mapRootAdjustment, pieceSizeV3);
+        // -------------------------------------------------------------
 
         // 전체 그리드 선 그리기 (흰색)
         Gizmos.color = Color.white;
