@@ -29,10 +29,10 @@ public class MapGenerator : MonoBehaviourPunCallbacks
 
     // 🌟🌟🌟 새로운 랜덤 맵 유형 분류 🌟🌟🌟
     [Header("Controlled Random Map Types")]
-    [Tooltip("1. 중앙 통로를 반드시 포함하며, 주변 통로와 연결되어야 하는 맵 조각 (예: 터널).")]
+    [Tooltip("1. 중앙 통로를 반드시 포함하며, 주변 통로와 연결되어야 하는 맵 조각 (예: 십자 길, T자 길).")]
     public GameObject[] CentralPathMaps; 
 
-    [Tooltip("2. 중앙 통로를 막을 수 있는 구조를 가지며, CentralPathMaps에 인접하여 배치될 수 없는 맵 조각 (예: 벽이 중앙을 가로막는 L자형).")]
+    [Tooltip("2. 중앙 통로를 막을 수 있는 구조를 가지며, CentralPathMaps에 인접하여 배치될 수 없는 맵 조각 (예: 변의 중심에 벽이 있는 프리셋).")]
     public GameObject[] BlockingMaps;
 
     [Tooltip("3. CentralPathMaps와 BlockingMaps 사이에 들어가 연결을 중재할 수 있는 맵 조각 (예: 단순히 사방이 뚫린 빈 공간, 길).")]
