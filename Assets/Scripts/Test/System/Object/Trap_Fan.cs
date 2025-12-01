@@ -26,12 +26,9 @@ public class Trap_Fan : MonoBehaviourPun
         if (photonView == null || photonView.ViewID == 0)
         {
             Debug.LogWarning($"[Trap_Fan] {gameObject.name} PhotonView가 유효하지 않습니다. 로컬 모드로 작동합니다.");
-            // 로컬 모드: 마스터 클라이언트만 실행
-            if (PhotonNetwork.IsMasterClient)
-            {
-                cts = new CancellationTokenSource();
-                StartFanCycleLocal(cts.Token);
-            }
+            // 로컬 모드: 모든 클라이언트에서 자체적으로 동작 (마스터/비마스터 동일한 애니메이션/사운드/바람 효과)
+            cts = new CancellationTokenSource();
+            StartFanCycleLocal(cts.Token);
         }
         else
         {
