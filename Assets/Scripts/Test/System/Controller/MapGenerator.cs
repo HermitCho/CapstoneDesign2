@@ -74,25 +74,67 @@ public class MapGenerator : MonoBehaviourPunCallbacks
     void Awake()
     {
         CacheNavMeshSurfaces();
-        //수정 반영: 모든 클라이언트가 가장 이른 시점에 MapPrefabs를 완성합니다.
+        // 수정 반영: 모든 클라이언트가 가장 이른 시점에 MapPrefabs를 완성합니다.
         InitializeRandomMaps(); 
     }
 
+    /// <summary>
+    /// 🌟🌟🌟 [수정 로직] 맵 생성 시작 전 상태 초기화 및 RPC 버퍼 정리 (두 번째 판 문제 해결) 🌟🌟🌟
+    /// </summary>
+    public void CleanupMapState()
+    {
+        // 1. 내부 상태 초기화
+        hasGeneratedLayout = false;
+        isNavMeshReady = false;
+        SetGlobalMapReady(false); // GlobalMapReady도 확실히 false로 설정
+
+        // NavMesh Bake 코루틴이 실행 중이면 중지
+        if (navMeshBakeRoutine != null)
+        {
+            StopCoroutine(navMeshBakeRoutine);
+            navMeshBakeRoutine = null;
+        }
+
+        // 2. 핵심: 마스터 클라이언트만 이전 맵 생성 RPC 버퍼를 제거
+        if (PhotonNetwork.IsMasterClient)
+        {
+            // 이 PhotonView가 속한 모든 그룹의 RPC 버퍼를 제거합니다.
+            // RPC_InstantiateMap만 제거하는 것이 가장 좋지만, 간단하게 그룹 전체 제거를 사용합니다.
+            // (권장: PhotonNetwork.RemoveBufferedRPCs(photonView.ViewID, nameof(RPC_InstantiateMap));)
+            PhotonNetwork.RemoveRPCsInGroup(photonView.Group); 
+            Debug.Log("마스터 클라이언트: 이전 맵 생성 RPC 버퍼를 제거했습니다.");
+        }
+
+        // 3. 기존 맵 오브젝트 파괴
+        if (mapParent != null)
+        {
+            Destroy(mapParent);
+            mapParent = null;
+            Debug.Log("MapRoot 오브젝트를 파괴했습니다.");
+        }
+        
+        // 4. mapType 배열 초기화
+        for (int x = 0; x < MAP_GRID_SIZE; x++)
+        {
+            for (int y = 0; y < MAP_GRID_SIZE; y++)
+            {
+                mapType[x, y] = TYPE_EMPTY;
+            }
+        }
+    }
+
+
     public bool StartMapGeneration()
     {
-        // InitializeRandomMaps는 이미 Awake에서 호출되었으므로 여기서 삭제
-
         if (!PhotonNetwork.IsMasterClient)
         {
-            if (hasGeneratedLayout && !isNavMeshReady && ShouldBakeNavMesh())
-            {
-                QueueNavMeshBake();
-            }
+            // 비마스터 클라이언트는 마스터의 RPC를 기다립니다.
             return false;
         }
 
         if (hasGeneratedLayout)
         {
+            // 이미 레이아웃이 생성되었고 NavMesh만 남았는지 확인
             if (!isNavMeshReady && ShouldBakeNavMesh())
             {
                 QueueNavMeshBake();
@@ -103,7 +145,11 @@ public class MapGenerator : MonoBehaviourPunCallbacks
         SetGlobalMapReady(false);
         hasGeneratedLayout = true;
         isNavMeshReady = !ShouldBakeNavMesh();
-        SetGlobalMapReady(isNavMeshReady);
+        
+        if (!ShouldBakeNavMesh())
+        {
+            SetGlobalMapReady(true);
+        }
 
         Debug.Log("마스터 클라이언트: 맵 레이아웃 생성을 시작합니다.");
         GenerateMapLayout();
@@ -120,7 +166,7 @@ public class MapGenerator : MonoBehaviourPunCallbacks
 
         List<GameObject> finalMapPrefabs = new List<GameObject>();
 
-        // 🌟🌟🌟 수정 반영: 고정 맵 (0, 1, 2)은 Null 여부와 관계없이 그대로 유지 (요청 반영)
+        // 🌟🌟🌟 수정 반영: 고정 맵 (0, 1, 2)은 Null 여부와 관계없이 그대로 유지
         finalMapPrefabs.AddRange(MapPrefabs.Take(RANDOM_MAP_START_INDEX)); 
 
         // 2. 나머지 랜덤 맵 통합 (Null은 제거하고 통합)
@@ -160,7 +206,8 @@ public class MapGenerator : MonoBehaviourPunCallbacks
             {
                 mapLayout[x, y] = TYPE_EMPTY;
                 mapRotation[x, y] = 0;
-                mapType[x, y] = TYPE_EMPTY;
+                // mapType은 CleanupMapState()에서 이미 초기화되었지만, 안전을 위해 다시 확인
+                if (mapType[x, y] != TYPE_FIXED) mapType[x, y] = TYPE_EMPTY;
             }
         }
 
@@ -331,8 +378,8 @@ public class MapGenerator : MonoBehaviourPunCallbacks
             }
         }
 
-        // 5. RPC 호출
-        photonView.RPC("RPC_InstantiateMap", RpcTarget.AllBuffered, flatLayout, flatRotation);
+        // 5. RPC 호출: AllBuffered로 호출하여 새로 들어오는 플레이어에게도 맵 정보가 전달되도록 합니다.
+        photonView.RPC(nameof(RPC_InstantiateMap), RpcTarget.AllBuffered, flatLayout, flatRotation);
     }
 
     // --- 헬퍼 함수 ---
@@ -482,7 +529,7 @@ public class MapGenerator : MonoBehaviourPunCallbacks
 
             Quaternion rotation = Quaternion.Euler(0f, rotationY, 0f);
 
-            // 배열 길이를 확인합니다. (비마스터 클라이언트의 배열이 마스터와 동일하도록 Awake에서 초기화했으므로, 이 체크가 이제 유효해야 합니다.)
+            // 배열 길이를 확인합니다.
             if (mapPieceIndex >= 0 && mapPieceIndex < MapPrefabs.Length)
             {
                 GameObject prefabToInstantiate = MapPrefabs[mapPieceIndex];
@@ -490,6 +537,7 @@ public class MapGenerator : MonoBehaviourPunCallbacks
                 // Null 값이 의도적으로 유지되므로, prefabToInstantiate가 null이면 아무것도 소환하지 않고 건너뜁니다.
                 if (prefabToInstantiate != null)
                 {
+                    // PhotonNetwork.InstantiateRoomObject()를 사용하지 않으므로, 일반 Instantiate 사용
                     Instantiate(prefabToInstantiate, position, rotation, mapParent.transform);
                 }
             }
@@ -549,9 +597,12 @@ public class MapGenerator : MonoBehaviourPunCallbacks
             return;
         }
 
+        // 비마스터 클라이언트가 NavMesh를 굽도록 허용하지 않고 마스터에게만 권한을 주는 경우
+        // 마스터가 굽고 완료되면 별도의 RPC로 다른 클라이언트에게 알리는 것이 일반적입니다.
+        // 여기서는 마스터만 굽도록 처리합니다.
         if (!PhotonNetwork.IsMasterClient)
         {
-            SetGlobalMapReady(true);
+            SetGlobalMapReady(true); // 맵 조각은 다 깔렸으니 일단 준비됨으로 간주
             return;
         }
 
@@ -584,7 +635,8 @@ public class MapGenerator : MonoBehaviourPunCallbacks
         foreach (var surface in navMeshSurfaces)
         {
             if (surface == null) continue;
-            surface.RemoveData();
+            // NavMeshSurface가 맵 생성 시점에 새롭게 생성되지 않았다면 RemoveData()가 필요 없을 수 있지만 안전을 위해 유지
+            surface.RemoveData(); 
             surface.BuildNavMesh();
         }
 
@@ -621,9 +673,9 @@ public class MapGenerator : MonoBehaviourPunCallbacks
 
         // 고정 맵 위치 계산을 위한 변수
         float z_minus_1 = ((CENTER_INDEX - 1) * PieceSize) + halfPieceSize; // 3
-        float z_plus_1 = ((CENTER_INDEX + 1) * PieceSize) + halfPieceSize;  // 5
+        float z_plus_1 = ((CENTER_INDEX + 1) * PieceSize) + halfPieceSize;  // 5
         float x_minus_1 = ((CENTER_INDEX - 1) * PieceSize) + halfPieceSize; // 3
-        float x_plus_1 = ((CENTER_INDEX + 1) * PieceSize) + halfPieceSize;  // 5
+        float x_plus_1 = ((CENTER_INDEX + 1) * PieceSize) + halfPieceSize;  // 5
         float x_0 = (0 * PieceSize) + halfPieceSize; // 0
         float x_8 = (8 * PieceSize) + halfPieceSize; // 8
         float z_0 = (0 * PieceSize) + halfPieceSize; // 0
@@ -634,9 +686,9 @@ public class MapGenerator : MonoBehaviourPunCallbacks
         // A. 중앙 인접 고정 맵 4곳 (Magenta)
         Gizmos.color = Color.magenta;
         Gizmos.DrawWireCube(new Vector3(centerPosLocal, 0, z_minus_1) + mapRootAdjustment, pieceSizeV3); // (4, 3)
-        Gizmos.DrawWireCube(new Vector3(centerPosLocal, 0, z_plus_1) + mapRootAdjustment, pieceSizeV3);  // (4, 5)
-        Gizmos.DrawWireCube(new Vector3(x_minus_1, 0, centerPosLocal) + mapRootAdjustment, pieceSizeV3);  // (3, 4)
-        Gizmos.DrawWireCube(new Vector3(x_plus_1, 0, centerPosLocal) + mapRootAdjustment, pieceSizeV3);   // (5, 4)
+        Gizmos.DrawWireCube(new Vector3(centerPosLocal, 0, z_plus_1) + mapRootAdjustment, pieceSizeV3);  // (4, 5)
+        Gizmos.DrawWireCube(new Vector3(x_minus_1, 0, centerPosLocal) + mapRootAdjustment, pieceSizeV3);  // (3, 4)
+        Gizmos.DrawWireCube(new Vector3(x_plus_1, 0, centerPosLocal) + mapRootAdjustment, pieceSizeV3);   // (5, 4)
 
 
         // B. 경계 중앙에 위치하는 추가 고정 통로 4곳 (Cyan)
