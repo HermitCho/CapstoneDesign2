@@ -218,14 +218,15 @@ public class GameManager : Singleton<GameManager>
             }
         }
 
-        // 맵 생성 컨트롤러 호출 (GameManager가 맵 생성 시작 권한을 가짐)
+        // 맵 생성 컨트롤러 초기화 및 호출
         if (PhotonNetwork.IsMasterClient)
         {
             // 씬에서 MapGenerator 컴포넌트 찾기
             MapGenerator mapGenerator = FindObjectOfType<MapGenerator>();
             if (mapGenerator != null)
             {
-                mapGenerator.StartMapGeneration(); // 맵 생성 시작
+                mapGenerator.CleanupMapState();
+                mapGenerator.StartMapGeneration();
             }
             else
             {
