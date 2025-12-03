@@ -7,7 +7,7 @@ public class Coin : MonoBehaviour
 {
     [Header("코인 가치 (1, 10, 50)")]
     [SerializeField] private int coinValue = 1;
-    
+
     [Header("코인 회전 속도")]
     [SerializeField] private float rotationSpeed = 10f;
 
@@ -30,10 +30,10 @@ public class Coin : MonoBehaviour
 
     private CoinController coinController;
     private SpawnCoin spawnCoin;
-    
+
     // 각 Renderer의 원본 머티리얼 배열 저장
     private List<Material[]> originalMaterials = new List<Material[]>();
-    
+
     // AI가 코인 상태를 확인할 수 있도록 public 프로퍼티 제공
     public bool IsCollected => isCollected;
 
@@ -59,7 +59,7 @@ public class Coin : MonoBehaviour
         // ⭐ 이 코드가 PhotonNetwork.Instantiate로 생성된 경우, 부모가 없을 수 있습니다.
         // 이 경우, spawnCoin은 null일 수 있습니다. (아래 OnTriggerEnter에서 null 검사 수행)
         spawnCoin = GetComponentInParent<SpawnCoin>();
-        
+
         // 각 Renderer의 모든 머티리얼을 저장
         foreach (Renderer renderer in coinRenderers)
         {
@@ -73,7 +73,7 @@ public class Coin : MonoBehaviour
     {
         // Y축 회전
         transform.Rotate(0, rotationSpeed * Time.deltaTime, 0);
-        
+
         // 위아래 떨림 효과
         float bobbingOffset = Mathf.Sin(Time.time * bobbingSpeed) * bobbingHeight;
         limitBobbingHeight = Mathf.Clamp(bobbingOffset, 0, bobbingHeight);
@@ -86,25 +86,26 @@ public class Coin : MonoBehaviour
         if (other.CompareTag("Player") && !isCollected)
         {
             CollectCoin();
-            
+
             // 플레이어의 CoinController에 직접 코인 추가
             CoinController playerCoinController = other.GetComponent<CoinController>();
-            
+
             if (playerCoinController == null)
             {
                 // 플레이어에 CoinController가 없으면 자식에서 찾기
                 playerCoinController = other.GetComponentInChildren<CoinController>();
             }
-            
+
             if (playerCoinController != null)
             {
                 playerCoinController.AddCoin(coinValue);
             }
-            else
-            {
-                Debug.LogWarning("⚠️ Coin - 플레이어에 CoinController를 찾을 수 없습니다.");
-            }
             
+            if (spawnCoin != null)
+            {
+                spawnCoin.StartCoroutine(spawnCoin.RespawnAfterDelay(spawnTime));
+            }
+
             // 코인 즉시 파괴
             // 주의: 네트워크 객체(PhotonView)라면 PhotonNetwork.Destroy(gameObject)를 사용해야 합니다.
             Destroy(gameObject);
@@ -114,7 +115,7 @@ public class Coin : MonoBehaviour
     private void CollectCoin()
     {
         isCollected = true;
-        
+
         // 파티클 효과 재생 (선택사항)
         if (coinEffect != null)
         {
