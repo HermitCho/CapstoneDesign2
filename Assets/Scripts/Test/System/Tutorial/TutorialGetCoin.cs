@@ -13,7 +13,7 @@ public class TutorialGetCoin : MonoBehaviour
     [Space(10)]
 
     [Header("획득해야 하는 코인 수")]
-    [SerializeField] private int requiredCoinCount = 5;
+    [SerializeField] private int requiredCoinCount = 8;
 
     void OnEnable()
     {
@@ -55,7 +55,7 @@ public class TutorialGetCoin : MonoBehaviour
 
         Debug.Log($"💰 코인 획득량 계산됨: {gained}/{requiredCoinCount}");
 
-        if (gained >= requiredCoinCount)
+        if (gained >= 8)
         {
             CompleteTutorial();
         }
