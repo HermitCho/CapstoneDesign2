@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 8058354627879376659}
   - component: {fileID: 4964236348951324101}
   - component: {fileID: 7873486795082295972}
+  - component: {fileID: 8749730438889288177}
   m_Layer: 10
   m_Name: Coin Spawner
   m_TagString: Untagged
@@ -66,7 +67,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ecfb464e367403f409a801f5c2411040, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  coinPrefab: {fileID: 6361179611418772720, guid: f9f57107bbc100145a58e75f9ee9d147,
+  coin1Prefab: {fileID: 6361179611418772720, guid: f9f57107bbc100145a58e75f9ee9d147,
     type: 3}
   coin10Prefab: {fileID: 6361179611418772720, guid: 830896ae375b58a459eb56d87eb9f10b,
     type: 3}
@@ -75,3 +76,25 @@ MonoBehaviour:
   tenCoinChance: 0.05
   fiftyCoinChance: 0.01
   spawnHeight: -0.5
+--- !u!114 &8749730438889288177
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1218878962689920051}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aa584fbee541324448dd18d8409c7a41, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ObservedComponentsFoldoutOpen: 1
+  Group: 0
+  prefixField: -1
+  Synchronization: 3
+  OwnershipTransfer: 0
+  observableSearch: 2
+  ObservedComponents: []
+  sceneViewId: 0
+  InstantiationId: 0
+  isRuntimeInstantiated: 0

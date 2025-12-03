@@ -1,7 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using Photon.Pun; // Photon PUN 네임스페이스 추가 (이 코인이 네트워크 객체라면 필수)
+using Photon.Pun; // Photon PUN 네임스페이스 추가
 
 public class Coin : MonoBehaviour
 {
@@ -29,13 +29,20 @@ public class Coin : MonoBehaviour
     private float limitBobbingHeight;
 
     private CoinController coinController;
-    private SpawnCoin spawnCoin;
+
+    // ⭐ 수정: SpawnCoin의 PhotonView ID를 저장할 필드
+    private int spawnCoinViewID = 0;
 
     // 각 Renderer의 원본 머티리얼 배열 저장
     private List<Material[]> originalMaterials = new List<Material[]>();
 
-    // AI가 코인 상태를 확인할 수 있도록 public 프로퍼티 제공
     public bool IsCollected => isCollected;
+
+    // ⭐ 새로 추가: SpawnCoin의 ViewID를 설정하는 메서드
+    public void SetSpawnCoinViewID(int viewID)
+    {
+        this.spawnCoinViewID = viewID;
+    }
 
     void Start()
     {
@@ -56,14 +63,9 @@ public class Coin : MonoBehaviour
         originalPosition = transform.position;
         coinRenderers = GetComponentsInChildren<Renderer>();
         coinController = FindObjectOfType<CoinController>();
-        // ⭐ 이 코드가 PhotonNetwork.Instantiate로 생성된 경우, 부모가 없을 수 있습니다.
-        // 이 경우, spawnCoin은 null일 수 있습니다. (아래 OnTriggerEnter에서 null 검사 수행)
-        spawnCoin = GetComponentInParent<SpawnCoin>();
 
-        // 각 Renderer의 모든 머티리얼을 저장
         foreach (Renderer renderer in coinRenderers)
         {
-            // materials를 사용하면 모든 머티리얼을 가져옴
             Material[] materials = renderer.materials;
             originalMaterials.Add(materials);
         }
@@ -71,10 +73,8 @@ public class Coin : MonoBehaviour
 
     private void RotateCoin()
     {
-        // Y축 회전
         transform.Rotate(0, rotationSpeed * Time.deltaTime, 0);
 
-        // 위아래 떨림 효과
         float bobbingOffset = Mathf.Sin(Time.time * bobbingSpeed) * bobbingHeight;
         limitBobbingHeight = Mathf.Clamp(bobbingOffset, 0, bobbingHeight);
         transform.position = originalPosition + Vector3.up * limitBobbingHeight;
@@ -82,17 +82,21 @@ public class Coin : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        // 플레이어와 닿았을 때만 처리
+        // 1. 플레이어 및 로컬 플레이어 확인
         if (other.CompareTag("Player") && !isCollected)
         {
+            PhotonView playerPV = other.GetComponent<PhotonView>();
+            if (playerPV == null || !playerPV.IsMine)
+            {
+                return; // 로컬 플레이어가 아니면 처리하지 않음
+            }
+
             CollectCoin();
 
-            // 플레이어의 CoinController에 직접 코인 추가
+            // 2. 코인 획득 및 점수 처리 (로컬 처리)
             CoinController playerCoinController = other.GetComponent<CoinController>();
-
             if (playerCoinController == null)
             {
-                // 플레이어에 CoinController가 없으면 자식에서 찾기
                 playerCoinController = other.GetComponentInChildren<CoinController>();
             }
 
@@ -100,15 +104,19 @@ public class Coin : MonoBehaviour
             {
                 playerCoinController.AddCoin(coinValue);
             }
-            
-            if (spawnCoin != null)
+
+            // ⭐ 3. RPC 호출: 마스터 클라이언트에게 파괴 및 재생성 요청
+            // 이 코인의 PhotonView를 사용하여 마스터에게 RPC를 보냅니다.
+            PhotonView coinPV = GetComponent<PhotonView>();
+            if (coinPV != null)
             {
-                spawnCoin.StartCoroutine(spawnCoin.RespawnAfterDelay(spawnTime));
+                // 코인 파괴와 SpawnCoin 재생성 요청을 동시에 수행하는 RPC를 마스터에게 보냅니다.
+                coinPV.RPC("RPC_CollectAndRespawn", RpcTarget.MasterClient, spawnCoinViewID, spawnTime);
             }
 
-            // 코인 즉시 파괴
-            // 주의: 네트워크 객체(PhotonView)라면 PhotonNetwork.Destroy(gameObject)를 사용해야 합니다.
-            Destroy(gameObject);
+            // ⭐ 4. 로컬 파괴 삭제: 직접 Destroy하지 않고 마스터의 RPC를 기다립니다.
+            // 로컬에서는 IsCollected 플래그만 true로 설정하여 추가 충돌을 방지합니다.
+            // PhotonNetwork.Destroy(gameObject); // ❌ 이 코드를 삭제합니다.
         }
     }
 
@@ -116,10 +124,34 @@ public class Coin : MonoBehaviour
     {
         isCollected = true;
 
-        // 파티클 효과 재생 (선택사항)
         if (coinEffect != null)
         {
             coinEffect.Play();
         }
+    }
+
+    /// <summary>
+    /// 마스터 클라이언트만 실행: 코인을 파괴하고 SpawnCoin에게 재생성을 요청합니다.
+    /// </summary>
+    /// <param name="targetSpawnCoinViewID">재생성을 요청할 SpawnCoin의 View ID</param>
+    /// <param name="delay">재생성 딜레이 시간</param>
+    [PunRPC]
+    public void RPC_CollectAndRespawn(int targetSpawnCoinViewID, float delay)
+    {
+        if (!PhotonNetwork.IsMasterClient) return; // 마스터 클라이언트만 실행 보장
+
+        // 1. SpawnCoin에게 재생성 RPC 요청 (기존 로직 재사용)
+        if (targetSpawnCoinViewID != 0)
+        {
+            PhotonView spawnCoinPV = PhotonView.Find(targetSpawnCoinViewID);
+            if (spawnCoinPV != null)
+            {
+                // SpawnCoin의 재생성 RPC 호출
+                spawnCoinPV.RPC("RPC_RequestRespawn", RpcTarget.MasterClient, delay);
+            }
+        }
+
+        // 2. 코인 파괴 (마스터 클라이언트가 소유자이므로 파괴 가능)
+        PhotonNetwork.Destroy(gameObject);
     }
 }

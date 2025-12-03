@@ -1,13 +1,14 @@
+// 파일: SpawnCoin.cs
+
 using System.Collections;
 using UnityEngine;
-using Photon.Pun; // ⭐ 1. Photon PUN 네임스페이스 추가
+using Photon.Pun;
+using Photon.Realtime; 
 
-// ⭐ 2. MonoBehaviourPunCallbacks 또는 MonoBehaviour 상속 유지
-public class SpawnCoin : MonoBehaviour
+// ⭐ 수정: MonoBehaviourPunCallbacks를 상속받아 마스터 변경 시 처리에 대비하며, photonView에 접근합니다.
+public class SpawnCoin : MonoBehaviourPunCallbacks
 {
-    // 필드들은 그대로 유지
     [Header("코인 프리팹 (PhotonView 포함)")]
-    // 이 프리팹들은 Resources 폴더에 있어야 하며, PhotonView 컴포넌트가 있어야 합니다.
     [SerializeField] private GameObject coin1Prefab;
     [SerializeField] private GameObject coin10Prefab;
     [SerializeField] private GameObject coin50Prefab;
@@ -18,27 +19,36 @@ public class SpawnCoin : MonoBehaviour
 
     [Header("코인 생성 높이")]
     [SerializeField] private float spawnHeight = 2f;
+    
+    // ⭐ 새로 추가: 현재 스폰된 코인의 PhotonView ID를 추적합니다.
+    private int currentCoinViewID = 0; 
 
-    // Start는 그대로 사용합니다.
     void Start()
     {
-        // ⭐ 3. 마스터 클라이언트에서만 Spawn 로직을 실행하도록 합니다.
+        // 맵 생성 시점에 마스터 클라이언트만 초기 코인 생성
         if (PhotonNetwork.IsMasterClient)
         {
+            if (photonView == null)
+            {
+                Debug.LogError("SpawnCoin에 PhotonView가 없습니다. 인스펙터에 추가해주세요!");
+                return;
+            }
             Spawn();
         }
     }
 
     private void Spawn()
     {
-        // 현재 오브젝트의 위치에서 위쪽으로 spawnHeight만큼 떨어진 위치 계산
+        // ⭐ 중복 생성 방지 및 PhotonView 확인
+        if (currentCoinViewID != 0) return;
+        if (photonView == null) return;
+        
         Vector3 spawnPosition = transform.position + Vector3.up * spawnHeight;
 
-        float rand = Random.value; // 0~1 난수
+        float rand = Random.value;
         GameObject prefabToSpawn;
-        string prefabName; // ⭐ PhotonNetwork.Instantiate는 프리팹 이름(string)을 사용합니다.
+        string prefabName;
 
-        // 확률 구간에 따라 코인 종류 결정
         if (rand < fiftyCoinChance)
         {
             prefabToSpawn = coin50Prefab;
@@ -55,34 +65,56 @@ public class SpawnCoin : MonoBehaviour
             prefabName = coin1Prefab.name;
         }
         
-        // ⭐ 4. PhotonNetwork.Instantiate를 사용하여 네트워크 객체 생성
-        // 이 함수는 마스터 클라이언트가 호출하면 모든 클라이언트에 해당 객체를 동기화합니다.
-        // 첫 번째 인자는 Resources 폴더 내의 프리팹 이름이어야 합니다.
+        // ⭐ PhotonNetwork.Instantiate를 사용하여 네트워크 객체 생성 (Resources 폴더에 있어야 함)
+        // 코인은 맵 조각의 자식 객체가 아니므로 RoomObject가 아닌 일반 Instantiate를 사용하고,
+        // 마스터 클라이언트가 생성과 소유권을 가집니다.
         GameObject spawnedCoin = PhotonNetwork.Instantiate(
-            "Prefabs/Coin/" + prefabName, // Resources 폴더 내의 프리팹 이름
+            "Prefabs/Coin/" + prefabName, // Prefabs/Coin/coin1PrefabName 와 같은 경로를 사용해야 함
             spawnPosition, 
             Quaternion.identity
         );
+        
+        // ⭐ 생성된 코인의 PhotonView ID를 저장합니다.
+        PhotonView coinPV = spawnedCoin.GetComponent<PhotonView>();
+        if (coinPV != null)
+        {
+            currentCoinViewID = coinPV.ViewID;
+            
+            // ⭐ 수정: 생성된 코인에게 이 SpawnCoin의 PhotonView ID를 전달합니다.
+            Coin coinScript = spawnedCoin.GetComponent<Coin>();
+            if (coinScript != null)
+            {
+                coinScript.SetSpawnCoinViewID(photonView.ViewID); 
+            }
+        }
     }
 
-    public IEnumerator RespawnAfterDelay(float delay)
+    // ⭐ 6. Coin이 파괴된 후, 마스터 클라이언트만 호출하는 코인 재생성 코루틴 시작 RPC
+    [PunRPC]
+    public void RPC_RequestRespawn(float delay)
     {
-        // ⭐ 6. 마스터 클라이언트에서만 리스폰을 진행해야 합니다.
-        if (PhotonNetwork.IsMasterClient)
-        {
-            yield return new WaitForSeconds(delay);
-            Spawn();
-        }
+        // 이 RPC는 마스터 클라이언트에서만 실행됩니다.
+        if (!PhotonNetwork.IsMasterClient) return;
+        
+        // 기존 코인 ID 초기화
+        currentCoinViewID = 0; 
+        
+        StartCoroutine(RespawnRoutine(delay));
     }
     
-    // ⭐ 마스터 클라이언트가 변경될 경우 새로운 마스터 클라이언트가 리스폰 관리를 이어받을 수 있도록 처리
-    // 이 스크립트를 Photon.Pun.MonoBehaviourPunCallbacks를 상속받도록 변경해야 합니다.
-    /* public override void OnMasterClientSwitched(Player newMasterClient)
+    private IEnumerator RespawnRoutine(float delay)
     {
-        if (newMasterClient.IsLocal && !alreadySpawned) // alreadySpawned 플래그는 추가적으로 구현해야 합니다.
+        yield return new WaitForSeconds(delay);
+        Spawn();
+    }
+    
+    // ⭐ 7. 마스터 클라이언트가 변경될 경우 새로운 마스터 클라이언트가 스폰을 이어받도록 처리
+    public override void OnMasterClientSwitched(Player newMasterClient)
+    {
+        // 새로 마스터가 된 클라이언트가 이 SpawnCoin이 관리하는 코인이 없는 경우, 초기 생성을 시도합니다.
+        if (newMasterClient.IsLocal && currentCoinViewID == 0) 
         {
-             // 새로 마스터가 된 클라이언트가 스폰을 이어받도록 처리 (상황에 따라)
+             Spawn();
         }
     }
-    */
 }
