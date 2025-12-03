@@ -488,7 +488,15 @@ public class MapGenerator : MonoBehaviourPunCallbacks
     [PunRPC]
     private void RPC_InstantiateMap(int[] flatLayout, int[] flatRotation)
     {
-        // ... (기존 RPC 수신 확인 로직 유지)
+        // RPC 수신 확인 로직 (디버그)
+        if (!photonView.IsMine)
+        {
+            Debug.Log($"비마스터 클라이언트가 맵 데이터를 수신했습니다. 레이아웃 크기: {flatLayout.Length}");
+        }
+        else
+        {
+            Debug.Log("마스터 클라이언트: 맵 레이아웃 데이터를 전송했습니다.");
+        }
 
         if (mapParent != null)
         {
@@ -498,13 +506,43 @@ public class MapGenerator : MonoBehaviourPunCallbacks
         mapParent = new GameObject("MapRoot");
         mapParent.transform.position = Vector3.zero;
 
-        // ... (planesParent 설정 및 오프셋 계산 로직 유지)
+        if (planesParent != null)
+        {
+            mapParent.transform.SetParent(planesParent, false);
+            Debug.Log("MapRoot를 Planes 부모 오브젝트의 자식으로 설정했습니다.");
+        }
+        else
+        {
+            Debug.LogWarning("경고: Planes Parent 오브젝트가 할당되지 않아 MapRoot가 씬 루트에 생성됩니다.");
+        }
 
         float halfPieceSize = PieceSize / 2f;
         float totalMapSize = MAP_GRID_SIZE * PieceSize;
         float centerOffset = totalMapSize / 2f;
 
         mapParent.transform.position = new Vector3(-centerOffset + halfPieceSize, 0f, -centerOffset + halfPieceSize);
+
+        // ✅ 맵 조각 생성 개수 추적
+        int totalPiecesToCreate = 0;
+        for (int i = 0; i < flatLayout.Length; i++)
+        {
+            if (flatLayout[i] != TYPE_EMPTY)
+            {
+                totalPiecesToCreate++;
+            }
+        }
+
+        // ✅ 코루틴으로 맵 조각 생성 및 완료 대기
+        StartCoroutine(InstantiateMapPiecesCoroutine(flatLayout, flatRotation, totalPiecesToCreate));
+    }
+
+    /// <summary>
+    /// 맵 조각을 순차적으로 생성하고 완료를 대기하는 코루틴
+    /// </summary>
+    private IEnumerator InstantiateMapPiecesCoroutine(int[] flatLayout, int[] flatRotation, int totalPieces)
+    {
+        float halfPieceSize = PieceSize / 2f;
+        int createdCount = 0;
 
         for (int i = 0; i < flatLayout.Length; i++)
         {
@@ -534,41 +572,19 @@ public class MapGenerator : MonoBehaviourPunCallbacks
 
                 if (prefabToInstantiate != null)
                 {
-                    // ⭐ 수정: PhotonNetwork.InstantiateRoomObject 사용
-                    // 맵 조각 자체를 네트워크 객체로 생성합니다. (Resources 폴더에 있어야 함)
-
-                    if (PhotonNetwork.IsMasterClient)
+                    // ✅ 일반 Instantiate 사용 (맵 조각은 네트워크 객체가 아님)
+                    // 맵 조각은 씬에 포함된 정적 오브젝트로 생성
+                    GameObject instantiatedPiece = Instantiate(prefabToInstantiate, position, rotation, mapParent.transform);
+                    
+                    if (instantiatedPiece != null)
                     {
-                        // 마스터 클라이언트만 RoomObject 생성
-                        string prefabName = prefabToInstantiate.name;
-
-                        GameObject instantiatedPiece = PhotonNetwork.InstantiateRoomObject(
-                            "Prefabs/Maps/Random Map/" + prefabName,
-                            position,
-                            rotation,
-                            group: 0,
-                            data: null
-                        );
-
-                        // 마스터 클라이언트가 생성한 RoomObject를 MapRoot의 자식으로 설정
-                        if (instantiatedPiece != null)
+                        createdCount++;
+                        // 매 프레임마다 한 개씩 생성하여 프레임 드롭 방지
+                        if (createdCount % 5 == 0)
                         {
-                            instantiatedPiece.transform.SetParent(mapParent.transform);
+                            yield return null;
                         }
                     }
-                    else
-                    {
-                        // 비마스터 클라이언트: 
-                        // 마스터가 InstantiateRoomObject로 생성한 맵 조각을 
-                        // 네트워크를 통해 동기화하여 받게 됩니다.
-                        // 로컬 클라이언트는 부모 설정만 시도합니다. (동기화될 때)
-
-                        // 주의: RoomObject가 동기화되기 전에 이 로직이 실행될 수 있으므로, 
-                        // RoomObject가 동기화된 후에 MapRoot의 자식으로 설정되도록 하는
-                        // 추가적인 동기화 로직이 필요할 수 있습니다. 
-                        // 여기서는 일단 마스터 클라이언트에서만 부모 설정을 수행합니다.
-                    }
-
                 }
             }
             else
@@ -577,6 +593,12 @@ public class MapGenerator : MonoBehaviourPunCallbacks
             }
         }
 
+        Debug.Log($"맵 조각 생성 완료: {createdCount}/{totalPieces}");
+
+        // ✅ 맵 조각 생성 완료 후 약간의 대기 (물리/콜라이더 초기화 대기)
+        yield return new WaitForSeconds(0.1f);
+
+        // ✅ 맵 조각 생성 완료 후 NavMesh 베이크 시작
         OnMapPiecesInstantiated();
     }
 
@@ -616,25 +638,31 @@ public class MapGenerator : MonoBehaviourPunCallbacks
 
     private void OnMapPiecesInstantiated()
     {
+        Debug.Log("OnMapPiecesInstantiated 호출됨");
+        
         CacheNavMeshSurfaces();
 
         if (!ShouldBakeNavMesh())
         {
+            Debug.Log("NavMesh 베이크가 필요하지 않습니다. 맵 준비 완료.");
             isNavMeshReady = true;
             SetGlobalMapReady(true);
             return;
         }
 
-        // 비마스터 클라이언트가 NavMesh를 굽도록 허용하지 않고 마스터에게만 권한을 주는 경우
-        // 마스터가 굽고 완료되면 별도의 RPC로 다른 클라이언트에게 알리는 것이 일반적입니다.
-        // 여기서는 마스터만 굽도록 처리합니다.
-        if (!PhotonNetwork.IsMasterClient)
+        // ✅ 마스터 클라이언트에서만 NavMesh 베이크 실행
+        if (PhotonNetwork.IsMasterClient)
         {
-            SetGlobalMapReady(true); // 맵 조각은 다 깔렸으니 일단 준비됨으로 간주
-            return;
+            Debug.Log("마스터 클라이언트: NavMesh 베이크를 시작합니다.");
+            QueueNavMeshBake();
         }
-
-        QueueNavMeshBake();
+        else
+        {
+            // ✅ 비마스터 클라이언트는 마스터가 베이크 완료할 때까지 대기
+            // 마스터가 베이크 완료 후 RPC로 알려줄 때까지 GlobalMapReady는 false로 유지
+            Debug.Log("비마스터 클라이언트: 마스터의 NavMesh 베이크 완료를 대기합니다.");
+            // isNavMeshReady는 false로 유지 (마스터가 RPC로 알려줄 때까지)
+        }
     }
 
     private void QueueNavMeshBake()
@@ -651,26 +679,55 @@ public class MapGenerator : MonoBehaviourPunCallbacks
 
     private IEnumerator BakeNavMeshRoutine()
     {
+        Debug.Log("NavMesh 베이크 코루틴 시작");
+        
+        // ✅ 맵 조각 생성 완료 후 추가 대기 (물리/콜라이더 완전 초기화 대기)
         if (navMeshBakeDelay > 0f)
         {
             yield return new WaitForSeconds(navMeshBakeDelay);
         }
         else
         {
-            yield return null;
+            yield return new WaitForSeconds(0.2f); // 최소 대기 시간
         }
+
+        Debug.Log($"NavMesh 베이크 시작: {navMeshSurfaces.Length}개의 NavMeshSurface");
 
         foreach (var surface in navMeshSurfaces)
         {
             if (surface == null) continue;
-            // NavMeshSurface가 맵 생성 시점에 새롭게 생성되지 않았다면 RemoveData()가 필요 없을 수 있지만 안전을 위해 유지
+            
+            Debug.Log($"NavMeshSurface '{surface.name}' 베이크 시작");
+            
+            // ✅ 기존 NavMesh 데이터 제거
             surface.RemoveData();
+            
+            // ✅ NavMesh 베이크 실행
             surface.BuildNavMesh();
+            
+            Debug.Log($"NavMeshSurface '{surface.name}' 베이크 완료");
         }
 
         isNavMeshReady = true;
-        SetGlobalMapReady(true);
+        
+        // ✅ 마스터 클라이언트가 베이크 완료 후 모든 클라이언트에 알림
+        if (PhotonNetwork.IsMasterClient)
+        {
+            photonView.RPC(nameof(RPC_OnNavMeshBakeComplete), RpcTarget.All);
+        }
+        
         Debug.Log("MapGenerator: NavMesh 재베이크가 완료되었습니다.");
+    }
+
+    /// <summary>
+    /// NavMesh 베이크 완료를 모든 클라이언트에 알리는 RPC
+    /// </summary>
+    [PunRPC]
+    private void RPC_OnNavMeshBakeComplete()
+    {
+        Debug.Log("NavMesh 베이크 완료 RPC 수신");
+        isNavMeshReady = true;
+        SetGlobalMapReady(true);
     }
 
     private void SetGlobalMapReady(bool ready)
