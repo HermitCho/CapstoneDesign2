@@ -72,7 +72,7 @@ public class TutorialCrown : MonoBehaviour
 
         Debug.Log($"👑 코인 획득량: {gained}/{requiredCoinCount}");
 
-        if (gained >= requiredCoinCount)
+        if (gained >= 10)
             CompleteTutorial();
     }
 

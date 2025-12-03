@@ -55,7 +55,7 @@ public class TutorialGetCoin : MonoBehaviour
 
         Debug.Log($"💰 코인 획득량 계산됨: {gained}/{requiredCoinCount}");
 
-        if (gained >= requiredCoinCount)
+        if (gained >= 8)
         {
             CompleteTutorial();
         }
