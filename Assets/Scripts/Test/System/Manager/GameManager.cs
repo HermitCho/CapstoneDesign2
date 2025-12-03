@@ -218,21 +218,21 @@ public class GameManager : Singleton<GameManager>
             }
         }
 
-        // // 맵 생성 컨트롤러 초기화 및 호출
-        // if (PhotonNetwork.IsMasterClient)
-        // {
-        //     // 씬에서 MapGenerator 컴포넌트 찾기
-        //     MapGenerator mapGenerator = FindObjectOfType<MapGenerator>();
-        //     if (mapGenerator != null)
-        //     {
-        //         mapGenerator.CleanupMapState();
-        //         mapGenerator.StartMapGeneration();
-        //     }
-        //     else
-        //     {
-        //         Debug.LogError("MapGenerator를 씬에서 찾을 수 없습니다.");
-        //     }
-        // }
+        // 맵 생성 컨트롤러 초기화 및 호출
+        if (PhotonNetwork.IsMasterClient)
+        {
+            // 씬에서 MapGenerator 컴포넌트 찾기
+            MapGenerator mapGenerator = FindObjectOfType<MapGenerator>();
+            if (mapGenerator != null)
+            {
+                mapGenerator.CleanupMapState();
+                mapGenerator.StartMapGeneration();
+            }
+            else
+            {
+                Debug.LogError("MapGenerator를 씬에서 찾을 수 없습니다.");
+            }
+        }
 
         EnableGameUI();
 
@@ -437,7 +437,6 @@ public class GameManager : Singleton<GameManager>
             MapGenerator mapGenerator = FindObjectOfType<MapGenerator>();
             if (mapGenerator != null)
             {
-                mapGenerator.CleanupMapState();
                 mapGenerator.StartMapGeneration();
 
                 while (!mapGenerator.IsMapReady)
