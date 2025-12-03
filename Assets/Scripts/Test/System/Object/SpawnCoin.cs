@@ -18,6 +18,13 @@ public class SpawnCoin : MonoBehaviour
 
     [Header("코인 생성 높이")]
     [SerializeField] private float spawnHeight = 2f;
+    
+    // ✅ 재생성 스케줄링을 위한 변수
+    private Coroutine respawnCoroutine = null;
+    private bool isRespawning = false;
+    
+    // ✅ 재생성 횟수 추적 (재생성마다 다른 랜덤 값 생성)
+    private int respawnCount = 0;
 
     // Start는 그대로 사용합니다.
     void Start()
@@ -29,12 +36,37 @@ public class SpawnCoin : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 코인 스폰 (마스터 클라이언트에서만 실행)
+    /// </summary>
     private void Spawn()
     {
+        if (!PhotonNetwork.IsMasterClient) return;
+        
         // 현재 오브젝트의 위치에서 위쪽으로 spawnHeight만큼 떨어진 위치 계산
         Vector3 spawnPosition = transform.position + Vector3.up * spawnHeight;
 
-        float rand = Random.value; // 0~1 난수
+        // ✅ 동일한 시드로 난수 생성하여 모든 클라이언트에서 같은 코인이 생성되도록 보장
+        // 재생성 횟수를 시드에 포함시켜 재생성마다 다른 랜덤 값 생성
+        int baseSeed = 0;
+        PhotonView pv = GetComponent<PhotonView>();
+        if (pv != null && pv.ViewID != 0)
+        {
+            // PhotonView가 있으면 ViewID를 기본 시드로 사용 (모든 클라이언트에서 동일)
+            baseSeed = pv.ViewID;
+        }
+        else
+        {
+            // PhotonView가 없으면 위치 기반 해시를 기본 시드로 사용
+            baseSeed = (int)(spawnPosition.x * 1000f) + (int)(spawnPosition.z * 1000f);
+        }
+        
+        // ✅ 재생성 횟수를 시드에 추가하여 재생성마다 다른 랜덤 값 생성
+        int seed = baseSeed + respawnCount;
+        
+        System.Random random = new System.Random(seed);
+        float rand = (float)random.NextDouble(); // 0~1 난수
+        
         GameObject prefabToSpawn;
         string prefabName; // ⭐ PhotonNetwork.Instantiate는 프리팹 이름(string)을 사용합니다.
 
@@ -63,16 +95,40 @@ public class SpawnCoin : MonoBehaviour
             spawnPosition, 
             Quaternion.identity
         );
+        
+        Debug.Log($"[SpawnCoin] 코인 스폰: {prefabName} at {spawnPosition} (재생성 횟수: {respawnCount}, 시드: {seed}, 랜덤값: {rand})");
+    }
+    
+    /// <summary>
+    /// 코인 재생성 스케줄링 (마스터 클라이언트에서만 호출)
+    /// </summary>
+    public void ScheduleRespawn(float delay)
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+        if (isRespawning) return; // 이미 재생성 중이면 무시
+        
+        // 기존 코루틴이 있으면 취소
+        if (respawnCoroutine != null)
+        {
+            StopCoroutine(respawnCoroutine);
+        }
+        
+        respawnCoroutine = StartCoroutine(RespawnAfterDelay(delay));
     }
 
-    public IEnumerator RespawnAfterDelay(float delay)
+    private IEnumerator RespawnAfterDelay(float delay)
     {
-        // ⭐ 6. 마스터 클라이언트에서만 리스폰을 진행해야 합니다.
-        if (PhotonNetwork.IsMasterClient)
-        {
-            yield return new WaitForSeconds(delay);
-            Spawn();
-        }
+        if (!PhotonNetwork.IsMasterClient) yield break;
+        
+        isRespawning = true;
+        yield return new WaitForSeconds(delay);
+        
+        // ✅ 재생성 횟수 증가 (재생성마다 다른 랜덤 값 생성)
+        respawnCount++;
+        
+        Spawn();
+        isRespawning = false;
+        respawnCoroutine = null;
     }
     
     // ⭐ 마스터 클라이언트가 변경될 경우 새로운 마스터 클라이언트가 리스폰 관리를 이어받을 수 있도록 처리
