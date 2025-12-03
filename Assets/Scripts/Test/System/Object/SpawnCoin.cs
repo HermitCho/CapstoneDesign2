@@ -18,13 +18,12 @@ public class SpawnCoin : MonoBehaviour
 
     [Header("코인 생성 높이")]
     [SerializeField] private float spawnHeight = 2f;
-    private bool isSpawned = false;
 
     // Start는 그대로 사용합니다.
     void Start()
     {
         // ⭐ 3. 마스터 클라이언트에서만 Spawn 로직을 실행하도록 합니다.
-        if (PhotonNetwork.IsMasterClient && !isSpawned)
+        if (PhotonNetwork.IsMasterClient)
         {
             Spawn();
         }
@@ -64,13 +63,12 @@ public class SpawnCoin : MonoBehaviour
             spawnPosition, 
             Quaternion.identity
         );
-        isSpawned = true;
     }
 
     public IEnumerator RespawnAfterDelay(float delay)
     {
         // ⭐ 6. 마스터 클라이언트에서만 리스폰을 진행해야 합니다.
-        if (PhotonNetwork.IsMasterClient && !isSpawned)
+        if (PhotonNetwork.IsMasterClient)
         {
             yield return new WaitForSeconds(delay);
             Spawn();
