@@ -13,7 +13,7 @@ public class TutorialCrown : MonoBehaviour
     [Space(10)]
 
     [Header("왕관 착용 후 요구 코인 수")]
-    [SerializeField] private int requiredCoinCount = 2;
+    [SerializeField] private int requiredCoinCount = 4;
 
 
     void OnEnable()
@@ -72,7 +72,7 @@ public class TutorialCrown : MonoBehaviour
 
         Debug.Log($"👑 코인 획득량: {gained}/{requiredCoinCount}");
 
-        if (gained >= requiredCoinCount)
+        if (gained >= 10)
             CompleteTutorial();
     }
 
