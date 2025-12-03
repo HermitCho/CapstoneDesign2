@@ -18,12 +18,18 @@ public class SpawnCoin : MonoBehaviour
 
     [Header("코인 생성 높이")]
     [SerializeField] private float spawnHeight = 2f;
+    
+    // ✅ 중복 생성 방지 및 재생성 관리
+    private bool hasSpawned = false; // 초기 스폰 여부
+    private Coroutine respawnCoroutine = null; // 재생성 코루틴 추적
+    private bool isRespawning = false; // 재생성 중인지 확인
 
     // Start는 그대로 사용합니다.
     void Start()
     {
         // ⭐ 3. 마스터 클라이언트에서만 Spawn 로직을 실행하도록 합니다.
-        if (PhotonNetwork.IsMasterClient)
+        // ✅ 중복 생성 방지: 이미 스폰했으면 다시 스폰하지 않음
+        if (PhotonNetwork.IsMasterClient && !hasSpawned)
         {
             Spawn();
         }
@@ -31,6 +37,8 @@ public class SpawnCoin : MonoBehaviour
 
     private void Spawn()
     {
+        if (!PhotonNetwork.IsMasterClient) return;
+        
         // 현재 오브젝트의 위치에서 위쪽으로 spawnHeight만큼 떨어진 위치 계산
         Vector3 spawnPosition = transform.position + Vector3.up * spawnHeight;
 
@@ -64,21 +72,42 @@ public class SpawnCoin : MonoBehaviour
             Quaternion.identity
         );
 
-        // ⭐ 5. (선택 사항) 부모 설정
-        // Photon 객체의 부모 설정은 복잡할 수 있습니다. 
-        // 일반적으로 월드 좌표에 스폰하고, 필요하다면 RPC를 사용하여 클라이언트들에게 부모를 설정하도록 명령해야 합니다.
-        // 단순 동기화 목적이라면 SetParent를 생략하는 것을 권장합니다.
-        // spawnedCoin.transform.SetParent(transform);
+        // ✅ 초기 스폰 완료 표시
+        hasSpawned = true;
+        
+        Debug.Log($"[SpawnCoin] 코인 스폰 완료: {prefabName} at {spawnPosition}");
+    }
+    
+    /// <summary>
+    /// 코인 재생성 스케줄링 (마스터 클라이언트에서만 호출)
+    /// </summary>
+    public void ScheduleRespawn(float delay)
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+        if (isRespawning) return; // ✅ 이미 재생성 중이면 무시 (중복 방지)
+        
+        // 기존 코루틴이 있으면 취소
+        if (respawnCoroutine != null)
+        {
+            StopCoroutine(respawnCoroutine);
+        }
+        
+        respawnCoroutine = StartCoroutine(RespawnAfterDelay(delay));
     }
 
-    public IEnumerator RespawnAfterDelay(float delay)
+    private IEnumerator RespawnAfterDelay(float delay)
     {
-        // ⭐ 6. 마스터 클라이언트에서만 리스폰을 진행해야 합니다.
-        if (PhotonNetwork.IsMasterClient)
-        {
-            yield return new WaitForSeconds(delay);
-            Spawn();
-        }
+        if (!PhotonNetwork.IsMasterClient) yield break;
+        
+        isRespawning = true;
+        yield return new WaitForSeconds(delay);
+        
+        // ✅ 재생성 전에 hasSpawned를 false로 설정하여 다시 스폰 가능하도록
+        hasSpawned = false;
+        Spawn();
+        
+        isRespawning = false;
+        respawnCoroutine = null;
     }
     
     // ⭐ 마스터 클라이언트가 변경될 경우 새로운 마스터 클라이언트가 리스폰 관리를 이어받을 수 있도록 처리

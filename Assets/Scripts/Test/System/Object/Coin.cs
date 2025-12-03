@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Photon.Pun;
 
 public class Coin : MonoBehaviour
 {
@@ -55,7 +56,33 @@ public class Coin : MonoBehaviour
         originalPosition = transform.position;
         coinRenderers = GetComponentsInChildren<Renderer>();
         coinController = FindObjectOfType<CoinController>();
+        
+        // ✅ SpawnCoin 찾기 (부모가 없으면 위치 기반으로 가장 가까운 것 찾기)
         spawnCoin = GetComponentInParent<SpawnCoin>();
+        if (spawnCoin == null)
+        {
+            // 부모에 없으면 가장 가까운 SpawnCoin 찾기
+            SpawnCoin[] allSpawnCoins = FindObjectsOfType<SpawnCoin>();
+            float closestDistance = float.MaxValue;
+            SpawnCoin closestSpawnCoin = null;
+            
+            foreach (SpawnCoin sc in allSpawnCoins)
+            {
+                float dist = Vector3.Distance(transform.position, sc.transform.position);
+                if (dist < closestDistance)
+                {
+                    closestDistance = dist;
+                    closestSpawnCoin = sc;
+                }
+            }
+            
+            spawnCoin = closestSpawnCoin;
+            
+            if (spawnCoin == null)
+            {
+                Debug.LogWarning($"[Coin] {gameObject.name} - SpawnCoin을 찾을 수 없습니다. 리스폰이 작동하지 않을 수 있습니다.");
+            }
+        }
         
         // 각 Renderer의 모든 머티리얼을 저장
         foreach (Renderer renderer in coinRenderers)
@@ -97,17 +124,13 @@ public class Coin : MonoBehaviour
             {
                 playerCoinController.AddCoin(coinValue);
             }
-
-
-            else
+            
+            // ✅ 마스터 클라이언트에서만 재생성 요청 (중복 방지 및 동기화)
+            if (PhotonNetwork.IsMasterClient && spawnCoin != null)
             {
-                Debug.LogWarning("⚠️ Coin - 플레이어에 CoinController를 찾을 수 없습니다.");
+                spawnCoin.ScheduleRespawn(spawnTime);
             }
-
-            if(spawnCoin != null)
-            {
-                spawnCoin.StartCoroutine(spawnCoin.RespawnAfterDelay(spawnTime));
-            }
+            
             // 코인 즉시 파괴
             Destroy(gameObject);
         }

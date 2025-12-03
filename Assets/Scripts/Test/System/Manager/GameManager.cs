@@ -219,14 +219,21 @@ public class GameManager : Singleton<GameManager>
         }
 
         // 맵 생성 컨트롤러 초기화 및 호출
-        if (PhotonNetwork.IsMasterClient)
+        // ✅ 중복 생성 방지: 이미 맵이 준비되었으면 다시 생성하지 않음
+        if (PhotonNetwork.IsMasterClient && !hasPreparedMapThisScene)
         {
             // 씬에서 MapGenerator 컴포넌트 찾기
             MapGenerator mapGenerator = FindObjectOfType<MapGenerator>();
             if (mapGenerator != null)
             {
-                mapGenerator.CleanupMapState();
-                mapGenerator.StartMapGeneration();
+                // ✅ CleanupMapState는 PrepareMapEarlyIfNeeded에서 이미 호출되었을 수 있으므로
+                // 맵이 아직 준비되지 않았을 때만 CleanupMapState 호출
+                if (!mapGenerator.IsMapReady)
+                {
+                    mapGenerator.CleanupMapState();
+                    mapGenerator.StartMapGeneration();
+                    hasPreparedMapThisScene = true; // 맵 생성 시작 표시
+                }
             }
             else
             {
@@ -437,14 +444,19 @@ public class GameManager : Singleton<GameManager>
             MapGenerator mapGenerator = FindObjectOfType<MapGenerator>();
             if (mapGenerator != null)
             {
-                mapGenerator.StartMapGeneration();
+                // ✅ 중복 생성 방지: 이미 맵이 준비되었거나 생성 중이면 건너뛰기
+                if (!mapGenerator.IsMapReady && !hasPreparedMapThisScene)
+                {
+                    mapGenerator.CleanupMapState();
+                    mapGenerator.StartMapGeneration();
+                    hasPreparedMapThisScene = true; // 맵 생성 시작 표시
+                }
 
                 while (!mapGenerator.IsMapReady)
                 {
                     yield return null;
                 }
 
-                hasPreparedMapThisScene = true;
                 mapPreparationRoutine = null;
                 yield break;
             }

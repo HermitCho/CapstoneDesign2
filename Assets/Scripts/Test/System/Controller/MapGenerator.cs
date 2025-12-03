@@ -98,11 +98,9 @@ public class MapGenerator : MonoBehaviourPunCallbacks
         // 2. 핵심: 마스터 클라이언트만 이전 맵 생성 RPC 버퍼를 제거
         if (PhotonNetwork.IsMasterClient)
         {
-            // 이 PhotonView가 속한 모든 그룹의 RPC 버퍼를 제거합니다.
-            // RPC_InstantiateMap만 제거하는 것이 가장 좋지만, 간단하게 그룹 전체 제거를 사용합니다.
-            // (권장: PhotonNetwork.RemoveBufferedRPCs(photonView.ViewID, nameof(RPC_InstantiateMap));)
-            PhotonNetwork.RemoveRPCsInGroup(photonView.Group); 
-            Debug.Log("마스터 클라이언트: 이전 맵 생성 RPC 버퍼를 제거했습니다.");
+            // ✅ 이 MapGenerator의 RPC_InstantiateMap 버퍼만 제거 (다른 그룹/뷰의 RPC는 건드리지 않음)
+            PhotonNetwork.RemoveBufferedRPCs(photonView.ViewID, nameof(RPC_InstantiateMap));
+            Debug.Log("마스터 클라이언트: 이전 맵 생성 RPC 버퍼(RPC_InstantiateMap)만 제거했습니다.");
         }
 
         // 3. 기존 맵 오브젝트 파괴
