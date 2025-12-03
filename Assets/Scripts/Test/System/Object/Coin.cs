@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Photon.Pun; // Photon PUN 네임스페이스 추가 (이 코인이 네트워크 객체라면 필수)
 
 public class Coin : MonoBehaviour
 {
@@ -55,6 +56,8 @@ public class Coin : MonoBehaviour
         originalPosition = transform.position;
         coinRenderers = GetComponentsInChildren<Renderer>();
         coinController = FindObjectOfType<CoinController>();
+        // ⭐ 이 코드가 PhotonNetwork.Instantiate로 생성된 경우, 부모가 없을 수 있습니다.
+        // 이 경우, spawnCoin은 null일 수 있습니다. (아래 OnTriggerEnter에서 null 검사 수행)
         spawnCoin = GetComponentInParent<SpawnCoin>();
         
         // 각 Renderer의 모든 머티리얼을 저장
@@ -97,18 +100,13 @@ public class Coin : MonoBehaviour
             {
                 playerCoinController.AddCoin(coinValue);
             }
-
-
             else
             {
                 Debug.LogWarning("⚠️ Coin - 플레이어에 CoinController를 찾을 수 없습니다.");
             }
-
-            if(spawnCoin != null)
-            {
-                spawnCoin.StartCoroutine(spawnCoin.RespawnAfterDelay(spawnTime));
-            }
+            
             // 코인 즉시 파괴
+            // 주의: 네트워크 객체(PhotonView)라면 PhotonNetwork.Destroy(gameObject)를 사용해야 합니다.
             Destroy(gameObject);
         }
     }

@@ -18,12 +18,13 @@ public class SpawnCoin : MonoBehaviour
 
     [Header("코인 생성 높이")]
     [SerializeField] private float spawnHeight = 2f;
+    private bool isSpawned = false;
 
     // Start는 그대로 사용합니다.
     void Start()
     {
         // ⭐ 3. 마스터 클라이언트에서만 Spawn 로직을 실행하도록 합니다.
-        if (PhotonNetwork.IsMasterClient)
+        if (PhotonNetwork.IsMasterClient && !isSpawned)
         {
             Spawn();
         }
@@ -63,18 +64,13 @@ public class SpawnCoin : MonoBehaviour
             spawnPosition, 
             Quaternion.identity
         );
-
-        // ⭐ 5. (선택 사항) 부모 설정
-        // Photon 객체의 부모 설정은 복잡할 수 있습니다. 
-        // 일반적으로 월드 좌표에 스폰하고, 필요하다면 RPC를 사용하여 클라이언트들에게 부모를 설정하도록 명령해야 합니다.
-        // 단순 동기화 목적이라면 SetParent를 생략하는 것을 권장합니다.
-        // spawnedCoin.transform.SetParent(transform);
+        isSpawned = true;
     }
 
     public IEnumerator RespawnAfterDelay(float delay)
     {
         // ⭐ 6. 마스터 클라이언트에서만 리스폰을 진행해야 합니다.
-        if (PhotonNetwork.IsMasterClient)
+        if (PhotonNetwork.IsMasterClient && !isSpawned)
         {
             yield return new WaitForSeconds(delay);
             Spawn();
