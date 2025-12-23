@@ -592,7 +592,7 @@ public class GameOverController : MonoBehaviourPunCallbacks
     {
         if (AudioManager.Inst != null)
         {
-            AudioManager.Inst.PlayOneShot("SFX_Game_GameOver_WinnerLaugh");
+            AudioManager.Inst.PlayOneShot("SFX_UI_GameOver_WinVoice");
             Debug.Log("[GameOverController] 승리 웃음 사운드 재생");
         }
     }

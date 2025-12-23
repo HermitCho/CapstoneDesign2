@@ -492,7 +492,7 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
     }
     
     /// <summary>
-    /// 카운트다운 숫자 애니메이션 (카트라이더 스타일)
+    /// 카운트다운 숫자 애니메이션
     /// </summary>
     private IEnumerator AnimateCountdownNumber(int number)
     {
@@ -505,6 +505,19 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
         if (AudioManager.Inst != null)
         {
             AudioManager.Inst.PlayOneShot("SFX_UI_Ready_Countdown");
+        }
+
+        if(number == 3)
+        {
+            AudioManager.Inst.PlayOneShot("SFX_UI_Ready_3");
+        }
+        else if(number == 2)
+        {
+            AudioManager.Inst.PlayOneShot("SFX_UI_Ready_2");
+        }
+        else if(number == 1)
+        {
+            AudioManager.Inst.PlayOneShot("SFX_UI_Ready_1");
         }
         
         countdownTween?.Kill();
@@ -547,7 +560,7 @@ public class ReadyPanel : MonoBehaviourPunCallbacks
         if (AudioManager.Inst != null)
         {
             AudioManager.Inst.PlayOneShot("SFX_UI_Ready_Start");
-            AudioManager.Inst.PlayOneShot("SFX_UI_Ready_StartVoice");
+            AudioManager.Inst.PlayOneShot("SFX_UI_Ready_StartVoice2");
         }
         
         countdownTween?.Kill();
