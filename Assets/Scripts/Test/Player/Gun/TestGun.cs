@@ -334,10 +334,23 @@ public class TestGun : MonoBehaviourPun
             IDamageable target = hit.collider.GetComponentInParent<IDamageable>();
             PhotonView targetView = hit.collider.GetComponentInParent<PhotonView>();
 
+            // ✅ CRITICAL DEBUG: 빌드 네트워크 문제 진단
             Debug.Log($"[TestGun] 컴포넌트 검색 결과 - IDamageable: {target != null}, PhotonView: {targetView != null}");
+            if (targetView != null)
+            {
+                Debug.Log($"[TestGun] PhotonView 상태 - ViewID: {targetView.ViewID}, IsMine: {targetView.IsMine}, OwnerActorNr: {targetView.OwnerActorNr}, Owner: {targetView.Owner?.NickName ?? "null"}");
+                Debug.Log($"[TestGun] PhotonNetwork 상태 - IsConnected: {PhotonNetwork.IsConnected}, InRoom: {PhotonNetwork.InRoom}, IsMasterClient: {PhotonNetwork.IsMasterClient}");
+            }
 
             if (target != null && targetView != null)
             {
+                // ✅ CRITICAL: 빌드에서 PhotonView.ViewID가 0이면 RPC가 실패할 수 있음
+                if (targetView.ViewID == 0)
+                {
+                    Debug.LogError($"[TestGun] ❌ PhotonView.ViewID가 0입니다! RPC 호출 불가능 - {targetView.name}");
+                    return isSoundPlayed;
+                }
+
                 // 자기 자신 피격 방지
                 if (targetView.ViewID == photonViewCached.ViewID)
                 {
@@ -371,8 +384,34 @@ public class TestGun : MonoBehaviourPun
                     OnHitTarget?.Invoke();
                 }
 
-                targetView.RPC("OnDamage", RpcTarget.All, damage, hit.point, hit.normal, attackerViewID);
-                Debug.Log($"[TestGun - ProcessPelletHit] ✅ 데미지 RPC 호출 성공 → {targetView.name} (ViewID: {targetView.ViewID})");
+                // ✅ CRITICAL: 빌드 네트워크 문제 진단을 위한 상세 로그
+                try
+                {
+                    Debug.Log($"[TestGun] RPC 호출 시도 - Target: {targetView.name}, ViewID: {targetView.ViewID}, Method: OnDamage, Target: All");
+                    targetView.RPC("OnDamage", RpcTarget.All, damage, hit.point, hit.normal, attackerViewID);
+                    Debug.Log($"[TestGun - ProcessPelletHit] ✅ 데미지 RPC 호출 성공 → {targetView.name} (ViewID: {targetView.ViewID})");
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogError($"[TestGun] ❌ RPC 호출 실패! - {e.GetType().Name}: {e.Message}");
+                    Debug.LogError($"[TestGun] StackTrace: {e.StackTrace}");
+                }
+            }
+            else
+            {
+                // ✅ CRITICAL: 컴포넌트를 찾지 못한 경우 상세 진단
+                Debug.LogWarning($"[TestGun] 타겟 컴포넌트를 찾지 못함 - Collider: {hit.collider.name}, GameObject: {hit.collider.gameObject.name}");
+                
+                // AIHealth 직접 검색 시도
+                AIHealth aiHealth = hit.collider.GetComponent<AIHealth>();
+                if (aiHealth == null) aiHealth = hit.collider.GetComponentInParent<AIHealth>();
+                if (aiHealth == null) aiHealth = hit.collider.GetComponentInChildren<AIHealth>();
+                
+                if (aiHealth != null)
+                {
+                    PhotonView aiPV = aiHealth.GetComponent<PhotonView>();
+                    Debug.LogWarning($"[TestGun] AIHealth는 찾았지만 PhotonView 없음 - AIHealth: {aiHealth.name}, PhotonView: {aiPV != null}, ViewID: {aiPV?.ViewID ?? 0}");
+                }
             }
         }
         else

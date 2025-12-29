@@ -72,6 +72,17 @@ public class AIHealth : MonoBehaviourPunCallbacks, IPunObservable, IDamageable
     private void Awake()
     {
         pv = GetComponent<PhotonView>();
+        
+        // ✅ CRITICAL DEBUG: 빌드 네트워크 문제 진단
+        if (pv == null)
+        {
+            Debug.LogError($"[AIHealth - Awake] ❌ PhotonView를 찾을 수 없습니다! GameObject: {gameObject.name}");
+        }
+        else
+        {
+            Debug.Log($"[AIHealth - Awake] PhotonView 초기화 - GameObject: {gameObject.name}, ViewID: {pv.ViewID}, IsMine: {pv.IsMine}, OwnerActorNr: {pv.OwnerActorNr}");
+        }
+        
         if (characterData != null)
         {
             maxHealth = characterData.startingHealth;
@@ -80,6 +91,21 @@ public class AIHealth : MonoBehaviourPunCallbacks, IPunObservable, IDamageable
 
         // Renderer 초기화
         InitializeRenderers();
+    }
+    
+    private void Start()
+    {
+        // ✅ CRITICAL DEBUG: 빌드에서 PhotonView가 제대로 초기화되었는지 확인
+        if (pv != null)
+        {
+            Debug.Log($"[AIHealth - Start] PhotonView 상태 확인 - GameObject: {gameObject.name}, ViewID: {pv.ViewID}, IsMine: {pv.IsMine}, OwnerActorNr: {pv.OwnerActorNr}");
+            Debug.Log($"[AIHealth - Start] 네트워크 상태 - IsConnected: {PhotonNetwork.IsConnected}, InRoom: {PhotonNetwork.InRoom}, IsMasterClient: {PhotonNetwork.IsMasterClient}");
+            
+            if (pv.ViewID == 0)
+            {
+                Debug.LogError($"[AIHealth - Start] ❌ PhotonView.ViewID가 0입니다! 빌드에서 RPC가 작동하지 않을 수 있습니다. GameObject: {gameObject.name}");
+            }
+        }
     }
 
     /// <summary>
@@ -148,22 +174,42 @@ public class AIHealth : MonoBehaviourPunCallbacks, IPunObservable, IDamageable
     [PunRPC]
     public void TakeDamage(float damage, Vector3 hitPoint, Vector3 hitNormal, int attackerID)
     {
+        // ✅ CRITICAL DEBUG: 빌드 네트워크 문제 진단
+        Debug.Log($"[AIHealth - TakeDamage] ✅ 호출됨! GameObject: {gameObject.name}, Damage: {damage}, AttackerID: {attackerID}");
+        Debug.Log($"[AIHealth - TakeDamage] PhotonView 상태 - ViewID: {pv.ViewID}, IsMine: {pv.IsMine}, OwnerActorNr: {pv.OwnerActorNr}");
+        Debug.Log($"[AIHealth - TakeDamage] 네트워크 상태 - IsConnected: {PhotonNetwork.IsConnected}, InRoom: {PhotonNetwork.InRoom}, IsMasterClient: {PhotonNetwork.IsMasterClient}");
+        Debug.Log($"[AIHealth - TakeDamage] 현재 상태 - IsDead: {isDead}, CurrentHealth: {currentHealth}, MaxHealth: {maxHealth}");
+        
         // 마스터 클라이언트만 데미지 계산
         if (!PhotonNetwork.IsMasterClient)
+        {
+            Debug.Log($"[AIHealth - TakeDamage] ⚠️ 마스터 클라이언트가 아님 - 무시 (현재 IsMasterClient: {PhotonNetwork.IsMasterClient})");
             return;
+        }
 
         if (isDead)
+        {
+            Debug.Log($"[AIHealth - TakeDamage] 이미 죽음 - 무시");
             return;
+        }
 
         if (currentHealth <= 0)
+        {
+            Debug.Log($"[AIHealth - TakeDamage] 체력이 0 이하 - 무시");
             return;
+        }
 
         // 무적 상태 체크
         if (isInvincible && Time.time < invincibilityEndTime)
+        {
+            Debug.Log($"[AIHealth - TakeDamage] 무적 상태 - 무시");
             return;
+        }
 
         // 데미지 적용
+        float oldHealth = currentHealth;
         currentHealth = Mathf.Max(0, currentHealth - damage);
+        Debug.Log($"[AIHealth - TakeDamage] 데미지 적용! {oldHealth} -> {currentHealth}");
 
         // 모든 클라이언트에 체력 동기화
         pv.RPC("RPC_SyncHealth", RpcTarget.All, currentHealth);
@@ -198,6 +244,12 @@ public class AIHealth : MonoBehaviourPunCallbacks, IPunObservable, IDamageable
     [PunRPC]
     public void OnDamage(float damage, Vector3 hitPoint, Vector3 hitNormal, int attackerActorNr)
     {
+        // ✅ CRITICAL DEBUG: 빌드 네트워크 문제 진단
+        Debug.Log($"[AIHealth - OnDamage] ✅ RPC 수신 성공! GameObject: {gameObject.name}, Damage: {damage}, AttackerID: {attackerActorNr}");
+        Debug.Log($"[AIHealth - OnDamage] PhotonView 상태 - ViewID: {pv.ViewID}, IsMine: {pv.IsMine}, OwnerActorNr: {pv.OwnerActorNr}");
+        Debug.Log($"[AIHealth - OnDamage] 네트워크 상태 - IsConnected: {PhotonNetwork.IsConnected}, InRoom: {PhotonNetwork.InRoom}, IsMasterClient: {PhotonNetwork.IsMasterClient}");
+        Debug.Log($"[AIHealth - OnDamage] 현재 상태 - IsDead: {isDead}, CurrentHealth: {currentHealth}, MaxHealth: {maxHealth}");
+        
         // TakeDamage로 리다이렉트
         TakeDamage(damage, hitPoint, hitNormal, attackerActorNr);
     }
