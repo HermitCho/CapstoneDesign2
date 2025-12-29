@@ -211,8 +211,18 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
             }
             else
             {
-                // ✅ CRITICAL: NavMesh bake 완료 후 NavMeshAgent 초기화
-                StartCoroutine(InitializeNavMeshAgentAfterBake());
+                // ✅ CRITICAL: NavMesh bake 완료 후 NavMeshAgent 초기화 (이벤트 기반)
+                // 이미 준비된 경우 즉시 초기화, 아니면 이벤트 구독
+                if (MapGenerator.GlobalMapReady)
+                {
+                    Debug.Log($"[AIBot] {gameObject.name} NavMesh 이미 준비됨 - 즉시 초기화");
+                    InitializeNavMeshAgentAfterBake();
+                }
+                else
+                {
+                    Debug.Log($"[AIBot] {gameObject.name} NavMesh 대기 중 - 이벤트 구독");
+                    MapGenerator.OnGlobalMapReady += HandleNavMeshReady;
+                }
                 Debug.Log($"[AIBot] {gameObject.name} NavMeshAgent 설정 시작 - Speed:{agent.speed}, ObstacleAvoidance: NoObstacleAvoidance (마스터)");
             }
         }
@@ -231,58 +241,58 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
     }
     
     /// <summary>
-    /// NavMesh bake 완료 후 NavMeshAgent 초기화
+    /// NavMesh bake 완료 후 NavMeshAgent 초기화 (이벤트 기반)
     /// </summary>
-    private IEnumerator InitializeNavMeshAgentAfterBake()
+    private void InitializeNavMeshAgentAfterBake()
     {
-        // NavMesh bake 완료 대기
-        float timeout = 10f;
-        float timer = 0f;
-        
-        while (!MapGenerator.GlobalMapReady && timer < timeout)
+        if (agent == null || !PhotonNetwork.IsMasterClient)
         {
-            yield return new WaitForSeconds(0.1f);
-            timer += 0.1f;
+            return;
         }
         
-        if (!MapGenerator.GlobalMapReady)
+        // ✅ CRITICAL: 봇의 CapsuleCollider가 활성화되어 있는지 확인
+        CapsuleCollider capsuleCollider = GetComponent<CapsuleCollider>();
+        if (capsuleCollider != null)
         {
-            Debug.LogError($"[AIBot] {gameObject.name} NavMesh bake 타임아웃");
-            yield break;
+            capsuleCollider.enabled = true;
+            Debug.Log($"[AIBot] {gameObject.name} CapsuleCollider 활성화 확인 - Enabled: {capsuleCollider.enabled}, Layer: {LayerMask.LayerToName(capsuleCollider.gameObject.layer)}");
+        }
+        else
+        {
+            Debug.LogWarning($"[AIBot] {gameObject.name} CapsuleCollider를 찾을 수 없음!");
         }
         
+        // NavMesh 안정화를 위한 짧은 대기 후 초기화
+        StartCoroutine(InitializeNavMeshAgentCoroutine());
+    }
+    
+    /// <summary>
+    /// NavMeshAgent 초기화 코루틴 (안정화 대기 포함)
+    /// </summary>
+    private IEnumerator InitializeNavMeshAgentCoroutine()
+    {
         // NavMesh 안정화 대기
         yield return new WaitForSeconds(0.2f);
         
-        if (agent != null && PhotonNetwork.IsMasterClient)
+        if (agent == null || !PhotonNetwork.IsMasterClient)
         {
-            // ✅ CRITICAL: 봇의 CapsuleCollider가 활성화되어 있는지 확인
-            CapsuleCollider capsuleCollider = GetComponent<CapsuleCollider>();
-            if (capsuleCollider != null)
-            {
-                capsuleCollider.enabled = true;
-                Debug.Log($"[AIBot] {gameObject.name} CapsuleCollider 활성화 확인 - Enabled: {capsuleCollider.enabled}, Layer: {LayerMask.LayerToName(capsuleCollider.gameObject.layer)}");
-            }
-            else
-            {
-                Debug.LogWarning($"[AIBot] {gameObject.name} CapsuleCollider를 찾을 수 없음!");
-            }
-            
-            // NavMeshAgent 활성화
-            agent.enabled = true;
-            
-            // NavMesh 위로 Warp
-            NavMeshHit hit;
-            if (NavMesh.SamplePosition(transform.position, out hit, 10f, NavMesh.AllAreas))
-            {
-                agent.Warp(hit.position);
-                transform.position = hit.position; // transform.position도 동기화
-                Debug.Log($"[AIBot] {gameObject.name} NavMeshAgent 초기화 완료 - Position: {hit.position}, isOnNavMesh: {agent.isOnNavMesh}");
-            }
-            else
-            {
-                Debug.LogError($"[AIBot] {gameObject.name} NavMesh 위의 위치를 찾을 수 없음 - Position: {transform.position}");
-            }
+            yield break;
+        }
+        
+        // NavMeshAgent 활성화
+        agent.enabled = true;
+        
+        // NavMesh 위로 Warp
+        NavMeshHit hit;
+        if (NavMesh.SamplePosition(transform.position, out hit, 10f, NavMesh.AllAreas))
+        {
+            agent.Warp(hit.position);
+            transform.position = hit.position; // transform.position도 동기화
+            Debug.Log($"[AIBot] {gameObject.name} NavMeshAgent 초기화 완료 - Position: {hit.position}, isOnNavMesh: {agent.isOnNavMesh}");
+        }
+        else
+        {
+            Debug.LogError($"[AIBot] {gameObject.name} NavMesh 위의 위치를 찾을 수 없음 - Position: {transform.position}");
         }
     }
 
@@ -315,6 +325,22 @@ public class AIBot : MonoBehaviourPunCallbacks, IPunObservable
         {
             aiHealth.OnDeath -= HandleDeath;
             aiHealth.OnRevive -= HandleRevive;
+        }
+        
+        // ✅ CRITICAL: 이벤트 구독 해제
+        MapGenerator.OnGlobalMapReady -= HandleNavMeshReady;
+    }
+    
+    /// <summary>
+    /// NavMesh 준비 완료 이벤트 핸들러
+    /// </summary>
+    private void HandleNavMeshReady()
+    {
+        if (PhotonNetwork.IsMasterClient && agent != null && !agent.enabled)
+        {
+            Debug.Log($"[AIBot] {gameObject.name} NavMesh 준비 완료 - 초기화 시작");
+            MapGenerator.OnGlobalMapReady -= HandleNavMeshReady; // 구독 해제
+            InitializeNavMeshAgentAfterBake();
         }
     }
     
